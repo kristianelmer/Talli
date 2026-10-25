@@ -898,7 +898,20 @@ The companion GET `/api/v1/shareholder-register-filings/source-production-filing
 
 `/api/v1/shareholder-register-filings/archive-source/production-stream` downloads the same validated RF record and exact Documents originals as bounded NDJSON. It reads one original at a time, caps combined original bytes at 1 GiB, and ends with counts and a SHA-256 commitment. Missing completion, missing/extra records, changed bytes or historical metadata fail offline verification. Authentication precedes streaming; Documents rechecks access per original. HTTP 200 alone does not prove a completed archive. The existing inline JSON route retains its 128 MiB bound.
 
-RF archive transport overlap: `/archive-source/production-v4` and `/archive-source/production-stream-v4` require captured override history and emit codec v4. The original JSON/streaming routes deliberately omit override history and retain codecs v1–v3 and the exact older response shape, while the domain snapshot remains complete. The legacy web transport first requests v4 and falls back only for an absent endpoint; old history remains unknown, not empty.
+RF archive transport overlap: `/archive-source/production-v4` and `/archive-source/production-stream-v4` require captured override history and emit codec v4. The original JSON/streaming routes deliberately omit override history and retain codecs v1–v3 and the exact older response shape, while the domain snapshot remains complete. Older web deployments first request v4 and fall back only for an absent endpoint; old history remains unknown, not empty.
+
+`/api/v1/shareholder-register-filings/archive-source/production-v6` provides the
+additive JSON source for current company exports. It uses the retained query and
+full archive-v6 codec, preserving V2 sources, captured overrides and withdrawal
+history with the exact Documents originals under the existing inline bounds.
+The readable command projection is unchanged; canonical V6 preserves the complete
+captured context. Current company exports request V6 first. Only an absent endpoint
+permits older contracts; authorization, integrity and availability failures never
+trigger a downgrade. Earlier endpoints and schemas remain unchanged.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/shareholder-register-filings/archive-source/production-v6"]}
+-->
 
 `/api/v1/shareholder-register-filings/archive-source/production-stream-v6` selects
 the complete retained archive query and the explicit stream-v2/archive-v6

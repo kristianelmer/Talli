@@ -5,7 +5,7 @@ import {
   type Rf1086SimulationCommandWire, type Rf1086PermissionCommandWire,
   type Rf1086TestEvidenceCommandWire, type Rf1086ProductionApprovalCommandWire,
   type Rf1086RecordedResultWire, type Rf1086WorkspaceWire, type Rf1086ArchiveSourceWire,
-  type Rf1086ProductionArchiveSourceWire, type Rf1086ProductionArchiveSourceV4Wire,
+  type Rf1086ProductionArchiveSourceWire, type Rf1086ProductionArchiveSourceV4Wire, type Rf1086ProductionArchiveSourceV6Wire,
   type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
   type RfYearSourceCaptureLookupWire, type RfRegisterObservationCaptureLookupWire,
@@ -95,13 +95,20 @@ export async function downloadRf1086RetainedArchive(
 
 export async function loadRf1086ArchiveSource(
   accessToken: string, companyId: string, incomeYear: number, requestId?: string,
-): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire> {
+): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire | Rf1086ProductionArchiveSourceV6Wire> {
   const api = client(accessToken);
-  let value: Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire;
+  let value: Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire | Rf1086ProductionArchiveSourceV6Wire;
   let usedLegacyFallback = false;
+  let usedRetained = false;
   try {
     try {
-      value = await api.rf1086GetProductionArchiveSourceV4(companyId, incomeYear, { ...request(), requestId });
+      try {
+        value = await api.rf1086GetProductionArchiveSourceV6(companyId, incomeYear, { ...request(), requestId });
+        usedRetained = true;
+      } catch (error) {
+        if (!isMissingArchiveEndpoint(error)) throw error;
+        value = await api.rf1086GetProductionArchiveSourceV4(companyId, incomeYear, { ...request(), requestId });
+      }
     } catch (error) {
       if (!isMissingArchiveEndpoint(error)) throw error;
       value = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, { ...request(), requestId });
@@ -112,6 +119,12 @@ export async function loadRf1086ArchiveSource(
     if (!isMissingArchiveEndpoint(error)) throw error;
     value = await api.rf1086GetArchiveSource(companyId, incomeYear, { ...request(), requestId });
     usedLegacyFallback = true;
+  }
+  if (usedRetained) {
+    try {
+      if (!("canonicalArchive" in value) || typeof value.canonicalArchive !== "string"
+          || JSON.parse(value.canonicalArchive)?.codec !== "rf1086-production-archive-v6") throw new Error("codec");
+    } catch { throw new TalliApiError(502, undefined); }
   }
   if (value.companyId !== companyId || value.incomeYear !== incomeYear) throw new TalliApiError(502, undefined);
   for (const rows of [value.previews, value.simulations, value.reviewComments, value.permissions, value.testEvidence]) {

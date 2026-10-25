@@ -27,9 +27,9 @@ import type {
 } from "../../features/investments";
 import type { DocumentBackupProjectionWire } from "../../features/documents";
 import type { RecordedSupportedCorporateEventWire } from "../../features/corporate-governance";
-import type { Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire } from "../../features/shareholder-register-filing";
+import type { Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire, Rf1086ProductionArchiveSourceV6Wire } from "../../features/shareholder-register-filing";
 
-export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
+export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV6Wire,
   "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments" | "feedbackOriginals"> & Partial<Pick<Rf1086ProductionArchiveSourceV4Wire, "overrides">>;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */

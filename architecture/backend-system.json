@@ -401,6 +401,7 @@
         "/api/v1/shareholder-register-filings/source-production-filings",
         "/api/v1/shareholder-register-filings/source-production-filings/{approvalId}",
         "/api/v1/shareholder-register-filings/archive-source/production-v4",
+        "/api/v1/shareholder-register-filings/archive-source/production-v6",
         "/api/v1/shareholder-register-filings/archive-source/production-stream-v4",
         "/api/v1/shareholder-register-filings/archive-source/production-stream-v6",
         "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",

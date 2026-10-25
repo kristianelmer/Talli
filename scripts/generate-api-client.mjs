@@ -323,6 +323,7 @@ const shareholderRegisterFilingOperations = {
   sourcePreview: ["/api/v1/shareholder-register-filings/source-previews/{previewId}", "get", "rf1086ReadSourcePreview"],
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
   productionArchiveSourceV4: ["/api/v1/shareholder-register-filings/archive-source/production-v4", "get", "rf1086GetProductionArchiveSourceV4"],
+  productionArchiveSourceV6: ["/api/v1/shareholder-register-filings/archive-source/production-v6", "get", "rf1086GetProductionArchiveSourceV6"],
   productionArchiveStreamV4: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v4", "get", "rf1086DownloadProductionArchiveV4"],
   productionArchiveStreamV6: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v6", "get", "rf1086DownloadProductionArchiveV6"],
   companyTestRetention: ["/api/v1/shareholder-register-filings/company-test-retention", "get", "rf1086ReadCompanyTestRetention"],
@@ -1014,6 +1015,7 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086SubmissionHeadWire",
   "Rf1086ProductionArchiveSourceWire",
   "Rf1086ProductionArchiveSourceV4Wire",
+  "Rf1086ProductionArchiveSourceV6Wire",
   "Rf1086ArchiveProductionEventWire",
   "Rf1086ArchiveFeedbackArtifactWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -3412,6 +3414,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return response;
+    },
+
+    async rf1086GetProductionArchiveSourceV6(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceV6Wire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-v6?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceV6Wire);
     },
 
     async rf1086GetProductionArchiveSourceV4(

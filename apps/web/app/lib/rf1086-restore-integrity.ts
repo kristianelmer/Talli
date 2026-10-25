@@ -1,4 +1,4 @@
-import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch } from "./rf1086-original-integrity.ts";
+import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch, rf1086RetainedCaptureMatch } from "./rf1086-original-integrity.ts";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
@@ -18,11 +18,12 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
     && Number.isInteger(row.incomeYear) && row.incomeYear === rf.incomeYear;
   const approvals = rf.approvals.filter((row: any) => row.caseProfile === "rf1086_full_year_v1");
   const submissions = rf.productionSubmissions.filter((row: any) => row.caseProfile === "rf1086_full_year_v1");
+  if (!rf1086RetainedCaptureMatch(rf)) fail("canonical_record_invalid");
   if (approvals.length || rf.canonicalArchive != null) {
     try {
       if (typeof rf.canonicalArchive !== "string") throw new Error("missing");
       const envelope = JSON.parse(rf.canonicalArchive);
-      if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
+      if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec)
           || typeof envelope.snapshotText !== "string" || !hash(envelope.sha256)
           || digest(envelope.snapshotText) !== envelope.sha256
           || Object.keys(envelope).sort().join(",") !== "codec,sha256,snapshotText") throw new Error("invalid");

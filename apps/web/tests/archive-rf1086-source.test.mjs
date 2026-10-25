@@ -1,3 +1,5 @@
+import { mockLegacyRfBackend } from "./fixtures/rf1086-legacy-backend.mjs";
+import { retainedArchiveSource } from "./fixtures/rf1086-retained-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -50,8 +52,9 @@ const workspace = () => ({ companyId, incomeYear: null,
   productionSubmissions: [], productionEvents: [], feedbackArtifacts: [], actions: [],
 });
 
-function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
+function route({ companyId: selectedCompany = companyId, generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
   user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {}, documentObjects = [] } = {}) {
+  const companyId = selectedCompany;
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
@@ -153,6 +156,26 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   return { calls, captures, readTables, openingYears, rfYears,
     run: (incomeYear = 2025) => exports.GET(new Request("https://talli.example/archive"), { params: Promise.resolve({ companyId, incomeYear: String(incomeYear) }) }) };
 }
+
+test("company export completes with actual V2-source V6 JSON and every portable original", async t => {
+  const value = retainedArchiveSource();
+  const previous = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  t.after(() => { if (previous === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = previous; });
+  const paths = [];
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    paths.push(new URL(url).pathname);
+    assert.equal(request.headers.Authorization, "Bearer verified-owner");
+    return Response.json(value);
+  });
+  const fixture = route({ companyId: value.companyId, rf: value, openings: [], rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await fixture.run(value.incomeYear)).status, 200);
+  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production-v6"]);
+  const production = fixture.captures[0].rf1086Production;
+  for (const key of ["canonicalArchive", "sourceOriginals", "feedbackOriginals", "sourceHistoryDocuments"])
+    assert.deepEqual(production[key], value[key], key);
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
 
 // Captured original query chains at 91b before removing the two wholly owned opening reads.
 const ORIGINAL_MIXED_CHAINS = [
@@ -263,7 +286,7 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
     else process.env.TALLI_BACKEND_URL = previousUrl;
   });
   const queries = [];
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     const parsed = new URL(url), year = Number(parsed.searchParams.get("incomeYear"));
     if (parsed.pathname.endsWith('/production-v4')) return new Response(null, { status: 404 });
     assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source/production");
@@ -457,7 +480,7 @@ for (const status of [404, 500, 403]) {
     t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
       else process.env.TALLI_BACKEND_URL = previousUrl; });
     const paths = [];
-    t.mock.method(globalThis, "fetch", async url => {
+    mockLegacyRfBackend(t, async url => {
       const parsed = new URL(url); paths.push(parsed.pathname);
       if (parsed.pathname.endsWith("/production") || parsed.pathname.endsWith("/production-v4")) return Response.json({ detail: "Unavailable" }, { status });
       return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
@@ -481,7 +504,7 @@ test("successful production archive endpoint cannot omit productionSubmissions",
   t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
     else process.env.TALLI_BACKEND_URL = previousUrl; });
   const paths = [];
-  t.mock.method(globalThis, "fetch", async url => {
+  mockLegacyRfBackend(t, async url => {
     const parsed = new URL(url); paths.push(parsed.pathname);
     return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
   });
@@ -547,7 +570,7 @@ test('unapproved source history requires all retained metadata versions and inde
   const priorUrl = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = 'https://backend.example';
   t.after(() => { if (priorUrl === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = priorUrl; });
-  t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname.endsWith('/production-v4')
+  mockLegacyRfBackend(t, async url => new URL(url).pathname.endsWith('/production-v4')
     ? new Response(null, { status: 404 }) : Response.json(filing));
   const loaded = await loadRf1086ArchiveSource('token', filing.companyId, filing.incomeYear);
   assert.deepEqual(loaded, filing);

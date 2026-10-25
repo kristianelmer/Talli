@@ -14,7 +14,7 @@ export {
 } from "./presentation.ts";
 export type {
   Rf1086WorkspaceWire, Rf1086ArchiveSourceWire, Rf1086PreviewWire, Rf1086RecordedResultWire,
-  Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire,
+  Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire, Rf1086ProductionArchiveSourceV6Wire,
   Rf1086ReceiptMetadataWire, Rf1086SubmittedPayloadReferenceWire, Rf1086SubmittedPayloadWire,
 } from "@talli/talli-api-client";
 

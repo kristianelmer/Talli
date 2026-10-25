@@ -1,3 +1,4 @@
+import { mockLegacyRfBackend } from "./fixtures/rf1086-legacy-backend.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
@@ -48,7 +49,7 @@ const invalidResponse = (error) => error instanceof TalliApiError && error.statu
 test("retained history reads keep every requested company and all years with authenticated no-store transport", async (t) => {
   environment(t);
   const calls = [];
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     const query = new URL(url).searchParams;
     calls.push(query.get("companyId"));
     assert.equal(query.has("incomeYear"), false);
@@ -66,7 +67,7 @@ test("retained history reads keep every requested company and all years with aut
 test("archive source requests exactly one company/year and retains company-wide review facts", async (t) => {
   environment(t);
   const calls = [], value = productionArchive();
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     calls.push({ url: new URL(url), request });
     return Response.json(value);
   });
@@ -88,7 +89,7 @@ for (const mode of ["production", "legacy"]) {
     environment(t);
     const value = mode === "production" ? productionArchive() : archiveSource();
     const calls = [];
-    t.mock.method(globalThis, "fetch", async url => {
+    mockLegacyRfBackend(t, async url => {
       const path = new URL(url).pathname;
       calls.push(path);
       if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(path))
@@ -119,7 +120,7 @@ for (const mode of ["production", "legacy"]) {
       if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
       if (corruption === "extra-workspace-field") value.productionSubmissions = [];
       let calls = 0;
-      t.mock.method(globalThis, "fetch", async url => {
+      mockLegacyRfBackend(t, async url => {
         calls += 1;
         if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(new URL(url).pathname))
           return new Response(null, { status: 404 });
@@ -135,7 +136,7 @@ test("year-bound archive decoding does not relax the unchanged all-history works
   environment(t);
   const malformed = { ...preview(company, 2024), id: setupId, issues: [{ level: "warning", message: "Original optional-code historical issue" }] };
   const calls = [];
-  t.mock.method(globalThis, "fetch", async url => {
+  mockLegacyRfBackend(t, async url => {
     const parsed = new URL(url); calls.push(parsed.pathname);
     if (parsed.pathname === productionArchivePath) {
       const year = Number(parsed.searchParams.get("incomeYear"));
@@ -161,7 +162,7 @@ for (const corruption of ["company", "child-company", "duplicate", "year", "inva
     if (corruption === "duplicate") value.previews.push(value.previews[0]);
     if (corruption === "year") value.previews[0].incomeYear = 2024;
     if (corruption === "invalid-status") value.previews[0].status = "provider_claims_ready";
-    t.mock.method(globalThis, "fetch", async () => Response.json(value));
+    mockLegacyRfBackend(t, async () => Response.json(value));
     await assert.rejects(loadRf1086Workspaces("owner", [company], 2025), invalidResponse);
   });
 }
@@ -170,7 +171,7 @@ test("preview generation sends only original input identities and rejects a misb
   environment(t);
   const calls = [];
   let misbound = false;
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     calls.push({ url, request });
     return Response.json({ recordId: previewId, companyId: misbound ? other : company, incomeYear: 2025 });
   });
@@ -184,7 +185,7 @@ test("preview generation sends only original input identities and rejects a misb
 
 test("a preview read cannot substitute another aggregate", async (t) => {
   environment(t);
-  t.mock.method(globalThis, "fetch", async () => Response.json({ ...preview(), id: setupId }));
+  mockLegacyRfBackend(t, async () => Response.json({ ...preview(), id: setupId }));
   await assert.rejects(loadRf1086Preview("owner", previewId), invalidResponse);
 });
 
@@ -239,7 +240,7 @@ for (const [status, code, absent] of [
 ]) {
   test(`canonical ownership fallback requires exact not-found (${status}/${code})`, async (t) => {
     environment(t);
-    t.mock.method(globalThis, "fetch", async () => Response.json({
+    mockLegacyRfBackend(t, async () => Response.json({
       type: "about:blank", title: "Unavailable", status, detail: "Sanitized", code,
       instance: "/fixture", requestId: "ownership-fixture",
     }, { status, headers: { "content-type": "application/problem+json" } }));
@@ -255,7 +256,7 @@ const sourceArchiveFixture = JSON.parse((await import('node:fs')).readFileSync(
 
 test('full-year archive response preserves actual backend claim, head and retained lineage DTOs', async t => {
   environment(t);
-  t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(sourceArchiveFixture));
+  mockLegacyRfBackend(t, async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(sourceArchiveFixture));
   assert.deepEqual(await loadRf1086ArchiveSource('owner', sourceArchiveFixture.companyId, sourceArchiveFixture.incomeYear), sourceArchiveFixture);
 });
 
@@ -272,7 +273,7 @@ for (const mutation of ['missing-lineage','missing-claims','missing-head','claim
     if (mutation === 'head-year') value.submissionHead.incomeYear = 2024;
     if (mutation === 'head-submission') value.submissionHead.submissionId = other;
     if (mutation === 'unknown-claim-property') value.sourceSubmissionClaims[0].dispatchAuthorized = true;
-    t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(value));
+    mockLegacyRfBackend(t, async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(value));
     await assert.rejects(loadRf1086ArchiveSource('owner', value.companyId, value.incomeYear), invalidResponse);
   });
 }

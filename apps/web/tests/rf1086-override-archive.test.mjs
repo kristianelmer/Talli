@@ -1,3 +1,4 @@
+import { mockLegacyRfBackend } from "./fixtures/rf1086-legacy-backend.mjs";
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -31,7 +32,7 @@ test('the original production response contract remains byte-identical to the pr
 test('new web requests complete history from a new backend', async t => {
   environment(t);
   const rf = fixture(), calls = [];
-  t.mock.method(globalThis, 'fetch', async url => { calls.push(new URL(url).pathname); return Response.json(rf); });
+  mockLegacyRfBackend(t, async url => { calls.push(new URL(url).pathname); return Response.json(rf); });
   assert.deepEqual(await loadRf1086ArchiveSource('owner', rf.companyId, rf.incomeYear), rf);
   assert.deepEqual(calls, ['/api/v1/shareholder-register-filings/archive-source/production-v4']);
 });
@@ -40,7 +41,7 @@ test('new web on an older backend keeps override history unknown and readable', 
   environment(t);
   const old = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
   const calls = [];
-  t.mock.method(globalThis, 'fetch', async url => {
+  mockLegacyRfBackend(t, async url => {
     const path = new URL(url).pathname; calls.push(path);
     return path.endsWith('/production-v4') ? new Response(null, { status: 404 }) : Response.json(old);
   });
@@ -61,7 +62,7 @@ for (const kind of ['missing-overrides', 'null-overrides', 'forbidden', 'unavail
     const rf = fixture(), calls = [];
     if (kind === 'missing-overrides') delete rf.overrides;
     if (kind === 'null-overrides') rf.overrides = null;
-    t.mock.method(globalThis, 'fetch', async url => {
+    mockLegacyRfBackend(t, async url => {
       calls.push(new URL(url).pathname);
       if (kind === 'forbidden') return new Response(null, { status: 403 });
       if (kind === 'unavailable') return new Response(null, { status: 503 });
@@ -80,7 +81,7 @@ test('new stream transport falls back only before opening an old backend body', 
   environment(t);
   const calls = [], rf = fixture();
   const old = new Response('old stream retains its original codec', { headers: { 'content-type': 'application/x-ndjson' } });
-  t.mock.method(globalThis, 'fetch', async url => {
+  mockLegacyRfBackend(t, async url => {
     const path = new URL(url).pathname; calls.push(path);
     return path.endsWith('/production-stream-v4') ? new Response(null, { status: 404 }) : old;
   });

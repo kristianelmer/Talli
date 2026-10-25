@@ -108,6 +108,14 @@ intentionally retain their old response shape and v1–v3 codec for older web
 deployments. A new web falls back only when the newer endpoint is absent; that
 legacy response cannot satisfy the additional override-completeness check.
 
+Current company exports use the additive `/archive-source/production-v6` JSON
+source. Its canonical V6 record preserves V2 sources and captured source,
+override and withdrawal sections, together with exact source and feedback
+originals. Missing sections, mismatched company/year scope and altered originals
+fail the export checks. Older endpoints retain their original formats; only an
+absent endpoint permits compatibility fallback. This export does not prove a
+database, Auth or object-store restore.
+
 The owned restore runner's optional `--restore-identity` mode restores a complete
 database and cluster roles into a fresh pinned-image cluster, then starts a
 separate Auth service from captured local configuration. Its checks must prove

@@ -23,9 +23,32 @@ const commitment = (row: any) => {
   return JSON.stringify([identity(row), row.contentVersionSha256, row.documentType, row.integrityStatus, createdAt]);
 };
 
+/** V6 capture presence only; Python owns the records and their business meaning. */
+export function rf1086RetainedCaptureMatch(rf: Record<string, any>): boolean {
+  try {
+    if (rf.canonicalArchive == null) return true;
+    const envelope = JSON.parse(rf.canonicalArchive);
+    if (envelope?.codec !== "rf1086-production-archive-v6") return true;
+    if (!record(envelope) || !keys(envelope, ["codec", "snapshotText", "sha256"])
+        || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
+    const snapshot = JSON.parse(envelope.snapshotText);
+    const captured = snapshot?.fields;
+    const history = captured?.source_history;
+    return snapshot?.record === "Rf1086ArchiveSnapshot" && record(captured)
+      && captured.company_id?.record === "CompanyId" && captured.company_id.fields?.value === rf.companyId
+      && captured.income_year?.record === "IncomeYear" && Number.isInteger(captured.income_year.fields?.value)
+      && captured.income_year.fields.value === rf.incomeYear
+      && Array.isArray(captured.overrides) && Array.isArray(captured.withdrawal_capture_records)
+      && history?.record === "Rf1086ArchiveSourceHistory" && record(history.fields)
+      && Object.hasOwn(history.fields, "year_source_head")
+      && ["year_sources", "register_observations", "source_previews", "review_bridges",
+        "source_capture_records", "observation_capture_records"].every(field => Array.isArray(history.fields[field]));
+  } catch { return false; }
+}
+
 function historyCommitmentsMatch(rf: Record<string, any>, documents: any[]): boolean {
   const envelope = JSON.parse(rf.canonicalArchive);
-  if (!record(envelope) || !["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
+  if (!record(envelope) || !["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec)
       || !keys(envelope, ["codec", "snapshotText", "sha256"])
       || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
   const snapshot = JSON.parse(envelope.snapshotText);
@@ -41,7 +64,9 @@ function historyCommitmentsMatch(rf: Record<string, any>, documents: any[]): boo
   ]) {
     if (!Array.isArray(history?.[field])) return false;
     for (const entry of history[field]) {
-      if (entry?.record !== kind || !Array.isArray(entry.fields?.command?.fields?.documents)) return false;
+      const retainedV2 = envelope.codec === "rf1086-production-archive-v6"
+        && kind === "Rf1086YearSourceSnapshot" && entry?.record === "Rf1086YearSourceSnapshotV2";
+      if ((!retainedV2 && entry?.record !== kind) || !Array.isArray(entry.fields?.command?.fields?.documents)) return false;
       for (const document of entry.fields.command.fields.documents) {
         if (document?.record !== documentKind) return false;
         const f = document.fields;
@@ -60,6 +85,7 @@ function historyCommitmentsMatch(rf: Record<string, any>, documents: any[]): boo
 /** Verify transport commitments only; Documents' Python codec owns reconstruction. */
 export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
   try {
+    if (!rf1086RetainedCaptureMatch(rf)) return false;
     const lines = rf.sourceApprovalLineage ?? [];
     if (!Array.isArray(lines)) return false;
     const expected = new Map<string, any>();
@@ -68,7 +94,7 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
     if (history == null && typeof rf.canonicalArchive === "string") {
       let codec;
       try { codec = JSON.parse(rf.canonicalArchive)?.codec; } catch { /* The separate canonical check diagnoses malformed v1. */ }
-      if (["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(codec)) return false;
+      if (["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(codec)) return false;
     }
     const groups = lines.map(line => line?.source?.command?.documents);
     if (history != null) groups.push(history);
@@ -117,14 +143,15 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
 /** Keep the readable override history identical to its canonical records. */
 export function rf1086OverridesMatch(rf: Record<string, any>): boolean {
   try {
+    if (!rf1086RetainedCaptureMatch(rf)) return false;
     if (rf.canonicalArchive == null) return rf.overrides == null;
     const envelope = JSON.parse(rf.canonicalArchive);
-    if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
+    if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec)
         || !keys(envelope, ["codec", "snapshotText", "sha256"])
         || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
     const snapshot = JSON.parse(envelope.snapshotText), rows = rf.overrides;
     if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !record(snapshot.fields)) return false;
-    if (envelope.codec !== "rf1086-production-archive-v4")
+    if (!["rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec))
       return rf.overrides == null && !Object.hasOwn(snapshot.fields, "overrides");
     const captured = snapshot?.fields?.overrides;
     if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !Array.isArray(captured) || !Array.isArray(rows)
@@ -156,6 +183,7 @@ export function rf1086OverridesMatch(rf: Record<string, any>): boolean {
 /** Verify captured feedback bindings and their portable original bytes. */
 export function rf1086FeedbackOriginalsMatch(rf: Record<string, any>): boolean {
   try {
+    if (!rf1086RetainedCaptureMatch(rf)) return false;
     const artifacts = rf.feedbackArtifacts ?? [], originals = rf.feedbackOriginals ?? [];
     if (!Array.isArray(artifacts) || !Array.isArray(originals)) return false;
     if (artifacts.some(row => !record(row)) || new Set(artifacts.map(row => row.id)).size !== artifacts.length) return false;
@@ -169,8 +197,8 @@ export function rf1086FeedbackOriginalsMatch(rf: Record<string, any>): boolean {
       const envelope = JSON.parse(rf.canonicalArchive);
       if (!record(envelope) || !keys(envelope, ["codec", "snapshotText", "sha256"])
           || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256
-          || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
-          || (bound.length > 0 && !["rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec))) return false;
+          || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec)
+          || (bound.length > 0 && !["rf1086-production-archive-v3", "rf1086-production-archive-v4", "rf1086-production-archive-v6"].includes(envelope.codec))) return false;
       const snapshot = JSON.parse(envelope.snapshotText);
       if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !Array.isArray(snapshot.fields?.feedback_artifacts)
           || !Array.isArray(snapshot.fields?.production_submissions)) return false;

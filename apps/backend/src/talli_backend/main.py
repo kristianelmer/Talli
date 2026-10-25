@@ -468,7 +468,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     AcknowledgeRf1086ReviewCommentCommand, AddRf1086ReviewCommentCommand,
     ApprovalId, ApproveRf1086ProductionCommand, ConfirmRf1086FilingPermissionCommand,
     ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand, OpeningShareholder,
-    Rf1086ArchiveQuery, Rf1086ArchiveError, serialize_rf1086_archive, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
+    Rf1086ArchiveQuery, Rf1086ArchiveError, serialize_rf1086_archive, serialize_rf1086_archive_v6, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery, Rf1086SourceCorrectionPredecessor,
     Rf1086UnknownProductionOutcomeError, Rf1086BlockedProductionOperationError,
@@ -2716,6 +2716,13 @@ class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
 
 class Rf1086ProductionArchiveSourceV4Wire(Rf1086ProductionArchiveSourceWire):
     overrides: list[Rf1086OverrideWire]
+
+
+class Rf1086ProductionArchiveSourceV6Wire(Rf1086ProductionArchiveSourceV4Wire):
+    # The common command/receipt projection also fits V2 sources. Their complete
+    # governance and withdrawal evidence belongs to the owner's canonical V6.
+    canonical_archive: str = Field(...)
+    source_history_documents: list[RfSourceDocumentWire] = Field(...)
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -12479,6 +12486,59 @@ def create_app(
                 "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
                 "Content-Disposition": f'attachment; filename="rf1086-{company_id}-{income_year}.ndjson"',
             })
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-v6",
+        operation_id="rf1086GetProductionArchiveSourceV6", response_model=Rf1086ProductionArchiveSourceV6Wire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_retained_production_archive_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086ProductionArchiveSourceV6Wire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            result = await workflow.retained_archive_source(query)
+            try:
+                # Keep every captured section. In particular, a withdrawal is
+                # never projected away to fit an older archive allowlist.
+                canonical_archive = serialize_rf1086_archive_v6(result, query=query)
+            except Rf1086ArchiveError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+            from talli_backend.application.shareholder_register_archive import archive_source_originals, archive_feedback_originals, source_document_evidence
+            source_originals = await archive_source_originals(result, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            feedback_originals = await archive_feedback_originals(result, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            try:
+                return Rf1086ProductionArchiveSourceV6Wire(
+                    company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
+                    canonical_archive=canonical_archive, source_originals=source_originals,
+                    feedback_originals=feedback_originals,
+                    source_history_documents=[RfSourceDocumentWire.model_validate({
+                        name: _rf_source_public_json(getattr(document, name)) for name in RfSourceDocumentWire.model_fields})
+                        for document in source_document_evidence(result)],
+                    overrides=[Rf1086OverrideWire.model_validate(row, from_attributes=True) for row in result.overrides],
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                    approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
+                        update={"manifest": rf1086_json_wire(row.manifest)}) for row in result.approvals],
+                    production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
+                    production_events=[Rf1086ArchiveProductionEventWire.model_validate(row, from_attributes=True) for row in result.production_events],
+                    feedback_artifacts=[Rf1086ArchiveFeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
+                    source_approval_lineage=[_rf_archive_source_approval_lineage_wire(row) for row in result.source_approval_lineage],
+                    source_submission_claims=[_rf_source_claim_wire(row) for row in result.source_submission_claims],
+                    submission_head=_rf_submission_head_wire(result.submission_head),
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
 
     @application.get(
