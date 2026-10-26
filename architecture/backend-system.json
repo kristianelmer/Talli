@@ -591,6 +591,18 @@
       "routes": [
         "/api/v1/company-tax/delivery-drafts"
       ]
+    },
+    {
+      "name": "company-tax-finite-delivery",
+      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and create intent before fixed-path local authority I/O; retains bound results after revocation and never resends uncertain creates. Default composition is disabled.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/delivery-reviews",
+        "/api/v1/company-tax/delivery-advances",
+        "/api/v1/company-tax/delivery-reconciliations"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1242,7 +1254,8 @@
       "talli_backend.adapters.dependency_readiness",
       "talli_backend.application.shareholder_register_company_test_retention_http",
       "talli_backend.adapters.company_test_retention_runtime",
-      "talli_backend.application.company_tax_delivery_preparation"
+      "talli_backend.application.company_tax_delivery_preparation",
+      "talli_backend.application.company_tax_delivery_submission"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1270,7 +1283,9 @@
       "talli_backend.modules.audit.public",
       "talli_backend.application.corporate_register_evidence",
       "talli_backend.application.shareholder_register_company_test_retention_http",
-      "talli_backend.application.company_tax_delivery_preparation"
+      "talli_backend.application.company_tax_delivery_preparation",
+      "talli_backend.application.company_tax_delivery_submission",
+      "talli_backend.application.company_tax_delivery_rehearsal"
     ],
     "adapters": [
       "__future__",
@@ -1348,7 +1363,9 @@
       "talli_backend.adapters.supabase_documents",
       "talli_backend.application.corporate_register_evidence",
       "talli_backend.adapters.postgres_shareholder_register_filing",
-      "lxml"
+      "lxml",
+      "talli_backend.application.company_tax_delivery_submission",
+      "talli_backend.application.company_tax_delivery_rehearsal"
     ]
   }
 }

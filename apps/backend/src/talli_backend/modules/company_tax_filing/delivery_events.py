@@ -4,9 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 
-from talli_backend.shared.kernel import ActorId, ActorKind, Timestamp, UserId
+from talli_backend.shared.kernel import ActorId, ActorKind, Timestamp, UserId, CompanyId, IncomeYear
 from .delivery import TaxMutationKind, TaxMutationRecord, plan_tax_mutation
-from .delivery_approval import TaxDeliveryReviewApproval, decode_tax_delivery_review_approval
+from .delivery_approval import TaxDeliveryAuthorityMode, TaxDeliveryReviewApproval, decode_tax_delivery_review_approval
 from .delivery_draft import TaxDeliveryDraft
 from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
     decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
@@ -106,6 +106,16 @@ class TaxDeliveryJournal:
     def approval(self):
         return self.events[0].value if self.events else None
 
+    @property
+    def progress(self) -> TaxDeliveryProgress:
+        if self.approval is None:raise ValueError('Tax journal has no retained review.')
+        latest=self.events[-1]
+        return TaxDeliveryProgress(self.draft.filing_id,self.draft.envelope.source.company_id,
+            self.draft.envelope.source.income_year,self.approval.approval_id,self.approval.sha256,
+            self.draft.sha256,self.approval.review_sha256,self.approval.authority_mode,
+            'reviewed' if latest.slot=='review' else 'uncertain' if latest.slot.startswith('intent:') else 'mutation_completed',
+            None if latest.slot=='review' else latest.binding.kind,latest.value.sha256,latest.recorded_at)
+
     def plan(self, request: TaxDeliveryMutationRequest):
         if self.approval is None:raise ValueError('Tax journal has no review approval.')
         request.assert_draft(self.approval,self.draft)
@@ -129,3 +139,36 @@ class TaxDeliveryEventAppend:
     def __post_init__(self):
         if type(self.event) is not StoredTaxDeliveryEvent or type(self.inserted) is not bool:
             raise ValueError('Tax event append result is invalid.')
+
+
+@dataclass(frozen=True,slots=True)
+class TaxDeliveryProgress:
+    filing_id: str
+    company_id: CompanyId
+    income_year: IncomeYear
+    approval_id: str
+    approval_sha256: str
+    draft_sha256: str
+    review_sha256: str
+    authority_mode: TaxDeliveryAuthorityMode
+    status: str
+    mutation_kind: TaxMutationKind | None
+    latest_event_sha256: str
+    recorded_at: Timestamp
+
+
+def assert_tax_delivery_attempt_history(query,snapshot,filing_id: str) -> TaxDeliveryJournal:
+    """Only a complete scope with no other active delivery can open a first run.
+
+    Correction/replacement admission is added with its terminal original proofs.
+    A new filing identifier cannot bypass a previously retained uncertain effect.
+    """
+    from .public import CompanyTaxError,project_company_tax_source
+    facts=project_company_tax_source(query,snapshot)
+    if snapshot.contract_version!='company-tax-source-v3' or facts.history_coverage.status!='complete':
+        raise CompanyTaxError.unavailable()
+    if any(event.binding.filing_id!=filing_id for event in snapshot.delivery_events):
+        raise CompanyTaxError.draft_conflict()
+    draft=next((row.draft for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
+    if draft is None:raise CompanyTaxError.not_found()
+    return TaxDeliveryJournal(draft,tuple(event for event in snapshot.delivery_events if event.binding.filing_id==filing_id))

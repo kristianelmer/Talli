@@ -99,6 +99,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
 from talli_backend.modules.company_tax_filing.public import (
     AnnualTaxEstimateSource, CompanyTaxReturnSource, assess_company_tax_readiness, estimate_annual_tax,
     CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
@@ -106,6 +107,7 @@ from talli_backend.modules.company_tax_filing.public import (
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
     PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
 )
@@ -1070,6 +1072,38 @@ class CompanyTaxDeliveryDraftArchiveWire(TransportModel):
     observed_at: datetime
     record_count: int = Field(ge=0, le=1000)
     records: list[CompanyTaxDeliveryDraftOriginalWire]
+
+
+class CompanyTaxApproveDeliveryDraftRequest(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+    draft_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+
+
+class CompanyTaxAdvanceDeliveryRequest(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+    approval_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+
+
+class CompanyTaxDeliveryProgressWire(TransportModel):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    approval_id: UUID
+    approval_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    draft_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    authority_mode: Literal['finite_loopback_rehearsal']
+    status: Literal['reviewed','uncertain','mutation_completed']
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation'] | None
+    latest_event_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    recorded_at: datetime
 
 
 class CompanyTaxSourceFactsWire(TransportModel):
@@ -5497,6 +5531,7 @@ def create_app(
     readiness_probe: ReadinessProbe | None = None,
     company_test_retention_session_factory: CompanyTestRetentionSessionFactory | None = None,
     company_tax_delivery_preparation: CompanyTaxDeliveryPreparation | None = None,
+    company_tax_delivery_submission: CompanyTaxDeliverySubmission | None = None,
 ) -> FastAPI:
     # Readiness follows the infrastructure selected here. Injected adapters own
     # their operational contract; unit/custom applications can inject a probe.
@@ -5564,7 +5599,7 @@ def create_app(
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
     company_tax_application = compose_company_tax_application(company_tax_session_factory,
-        preparation=company_tax_delivery_preparation)
+        preparation=company_tax_delivery_preparation,submission=company_tax_delivery_submission)
     annual_accounts_application = compose_annual_accounts_application(annual_accounts_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
@@ -11902,6 +11937,59 @@ def create_app(
                 recorded_at=result.recorded_at.value, draft_sha256=draft.sha256,
                 review_sha256=draft.envelope.review_sha256, schema_sha256=draft.envelope.schema_sha256)
         return await company_tax_call(execute)
+
+    async def company_tax_delivery_action(request,credentials,command,idempotency_key,action):
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            scope=(CompanyId(str(command.company_id)),IncomeYear(command.income_year),session.actor_id,
+                TaxFilingSubmissionId(str(command.filing_id)),IdempotencyKey(idempotency_key),ledger_correlation(request))
+            if action=='approve':
+                result=await session.approve_delivery_draft(ApproveTaxDeliveryDraft(*scope,command.draft_sha256,command.review_sha256))
+                if result.draft_sha256!=command.draft_sha256 or result.review_sha256!=command.review_sha256:
+                    raise CompanyTaxError.unavailable()
+            else:
+                intent=AdvanceTaxDelivery(*scope,command.approval_sha256)
+                result=await (session.advance_delivery(intent) if action=='advance' else session.reconcile_delivery(intent))
+                if result.approval_sha256!=command.approval_sha256:raise CompanyTaxError.unavailable()
+            if (str(result.company_id)!=str(command.company_id) or int(result.income_year)!=command.income_year
+                    or result.filing_id!=str(command.filing_id)):
+                raise CompanyTaxError.unavailable()
+            return CompanyTaxDeliveryProgressWire(company_id=str(result.company_id),income_year=int(result.income_year),
+                filing_id=result.filing_id,approval_id=result.approval_id,approval_sha256=result.approval_sha256,
+                draft_sha256=result.draft_sha256,review_sha256=result.review_sha256,authority_mode=result.authority_mode.value,
+                status=result.status,mutation_kind=result.mutation_kind.value if result.mutation_kind else None,
+                latest_event_sha256=result.latest_event_sha256,recorded_at=result.recorded_at.value)
+        return await company_tax_call(execute)
+
+    @application.post('/api/v1/company-tax/delivery-reviews',operation_id='companyTaxApproveDeliveryDraft',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_approve_delivery_draft(
+        request: Request,command: CompanyTaxApproveDeliveryDraftRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'approve')
+
+    @application.post('/api/v1/company-tax/delivery-advances',operation_id='companyTaxAdvanceDelivery',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance')
+
+    @application.post('/api/v1/company-tax/delivery-reconciliations',operation_id='companyTaxReconcileDelivery',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile')
 
     @application.get(
         "/api/v1/company-tax/archive-source/delivery-drafts-v1",

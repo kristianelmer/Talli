@@ -3398,6 +3398,36 @@ export interface CompanyTaxPreparedDeliveryDraftWire {
   status?: "prepared_only";
 }
 
+export interface CompanyTaxApproveDeliveryDraftRequest {
+  companyId: string;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: number;
+  reviewSha256: string;
+}
+
+export interface CompanyTaxAdvanceDeliveryRequest {
+  approvalSha256: string;
+  companyId: string;
+  filingId: string;
+  incomeYear: number;
+}
+
+export interface CompanyTaxDeliveryProgressWire {
+  approvalId: string;
+  approvalSha256: string;
+  authorityMode: "finite_loopback_rehearsal";
+  companyId: string;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: 2025;
+  latestEventSha256: string;
+  mutationKind: "create_instance" | "upload_envelope" | "start_validation" | "prepare_confirmation" | null;
+  recordedAt: string;
+  reviewSha256: string;
+  status: "reviewed" | "uncertain" | "mutation_completed";
+}
+
 export interface CompanyTaxAssessmentFactsRequest {
   annualData?: Record<string, unknown> | null;
   holdingActions: Record<string, unknown>[];
@@ -9408,6 +9438,48 @@ function isCompanyTaxPreparedDeliveryDraftWire(value: unknown): value is Company
   );
 }
 
+function isCompanyTaxApproveDeliveryDraftRequest(value: unknown): value is CompanyTaxApproveDeliveryDraftRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","draftSha256","filingId","incomeYear","reviewSha256"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.reviewSha256))
+  );
+}
+
+function isCompanyTaxAdvanceDeliveryRequest(value: unknown): value is CompanyTaxAdvanceDeliveryRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalSha256","companyId","filingId","incomeYear"]) &&
+    (typeof value.approvalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.approvalSha256)) &&
+    isUuid(value.companyId) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025)
+  );
+}
+
+function isCompanyTaxDeliveryProgressWire(value: unknown): value is CompanyTaxDeliveryProgressWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId","approvalSha256","authorityMode","companyId","draftSha256","filingId","incomeYear","latestEventSha256","mutationKind","recordedAt","reviewSha256","status"]) &&
+    isUuid(value.approvalId) &&
+    (typeof value.approvalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.approvalSha256)) &&
+    value.authorityMode === "finite_loopback_rehearsal" &&
+    isUuid(value.companyId) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    value.incomeYear === 2025 &&
+    (typeof value.latestEventSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.latestEventSha256)) &&
+    ((value.mutationKind === "create_instance" || value.mutationKind === "upload_envelope" || value.mutationKind === "start_validation" || value.mutationKind === "prepare_confirmation") || value.mutationKind === null) &&
+    isDateTime(value.recordedAt) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.reviewSha256)) &&
+    (value.status === "reviewed" || value.status === "uncertain" || value.status === "mutation_completed")
+  );
+}
+
 function isCompanyTaxAssessmentFactsRequest(value: unknown): value is CompanyTaxAssessmentFactsRequest {
   return (
     isRecord(value) &&
@@ -13129,6 +13201,39 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           || result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
           || (result.historyCoverage.status === "complete"
             && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxApproveDeliveryDraft(command: CompanyTaxApproveDeliveryDraftRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/delivery-reviews`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.draftSha256 !== command.draftSha256 || result.reviewSha256 !== command.reviewSha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxAdvanceDelivery(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/delivery-advances`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDelivery(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/delivery-reconciliations`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256) {
         throw new TalliApiError(502, undefined);
       }
       return result;

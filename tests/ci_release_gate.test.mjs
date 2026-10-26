@@ -946,6 +946,7 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
     "apps/backend/tests/test_postgres_tax_delivery_draft.py",
     "apps/backend/tests/test_postgres_tax_current_draft.py",
     "apps/backend/tests/test_postgres_tax_delivery_events.py",
+    "apps/backend/tests/test_postgres_tax_delivery_submission.py",
     "apps/backend/tests/test_company_tax_filing_runtime.py",
     "apps/backend/tests/test_company_tax_return_lifecycle.py",
     "apps/backend/tests/test_company_tax_delivery_database.py",
@@ -955,7 +956,7 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   ], "Tax must retain settlement expansion/runtime and filing lifecycle coverage");
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
-  assert.ok(tax.size >= 81);
+  assert.ok(tax.size >= 87);
   assert.match(packageJson.scripts["check:company-tax-schemas"], /scripts\/check_company_tax_schema_drift\.py/u);
   assert.ok(packageJson.scripts["test:launch-rehearsal"].includes("npm run check:company-tax-schemas &&"),
     "the complete gate must check current official Tax schema/code-list resources");

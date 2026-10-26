@@ -24,6 +24,9 @@ class CompanyTaxSession(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
 
+    @property
+    def delivery_rehearsal_target(self) -> str | None: ...
+
     def transaction(self, *, snapshot: bool = False) -> AbstractAsyncContextManager[CompanyTaxTransaction]: ...
 
 

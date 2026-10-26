@@ -800,7 +800,7 @@ from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCo
     decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
-    decode_tax_delivery_event)
+    TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
 from .delivery_archive import TaxDeliveryJournalArchive, archive_tax_delivery_journal
 
 
@@ -820,6 +820,27 @@ class PrepareTaxDeliveryDraft:
                 or type(self.filing_id) is not TaxFilingSubmissionId
                 or type(self.command_key) is not IdempotencyKey or type(self.correlation_id) is not CorrelationId):
             raise ValueError('Tax preparation command scope is invalid.')
+
+
+@dataclass(frozen=True,slots=True)
+class ApproveTaxDeliveryDraft(PrepareTaxDeliveryDraft):
+    expected_draft_sha256: str
+    expected_review_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        _digest(self.expected_draft_sha256);_digest(self.expected_review_sha256)
+
+
+@dataclass(frozen=True,slots=True)
+class AdvanceTaxDelivery(PrepareTaxDeliveryDraft):
+    expected_approval_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        _digest(self.expected_approval_sha256)
 
 
 @dataclass(frozen=True, slots=True)
@@ -872,6 +893,11 @@ class CompanyTaxCurrentDocumentReader(Protocol):
                                      company_org_number: str) -> TaxCurrentDocumentResponse: ...
 
 
+class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
+    async def execute(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
+
+
 def tax_delivery_schema_adapter(contract):
     """Declare an offline schema binding without a global validator registry."""
     def declare(adapter):
@@ -881,6 +907,8 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'ApproveTaxDeliveryDraft', 'AdvanceTaxDelivery', 'TaxDeliveryProgress', 'assert_tax_delivery_attempt_history',
+    'TaxDeliveryMutationAuthority',
     'TaxDeliveryJournalArchive', 'archive_tax_delivery_journal',
     'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
     'TaxDeliveryJournalPersistence',

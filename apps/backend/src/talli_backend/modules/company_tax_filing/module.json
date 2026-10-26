@@ -17,7 +17,9 @@
       "RecordCompanyTaxTestEvidence",
       "CompanyTaxRehearsalConfiguration",
       "rehearse_company_tax_return",
-      "PrepareTaxDeliveryDraft"
+      "PrepareTaxDeliveryDraft",
+      "ApproveTaxDeliveryDraft",
+      "AdvanceTaxDelivery"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -99,7 +101,9 @@
       "decode_tax_delivery_event",
       "TaxDeliveryJournalFact",
       "TaxDeliveryJournalArchive",
-      "archive_tax_delivery_journal"
+      "archive_tax_delivery_journal",
+      "TaxDeliveryProgress",
+      "assert_tax_delivery_attempt_history"
     ],
     "events": [],
     "errors": [
@@ -136,7 +140,8 @@
       "CompanyTaxCurrentDocumentReader",
       "TaxDeliveryAuthorityMode",
       "TaxDeliveryCompletionOrigin",
-      "TaxDeliveryJournalPersistence"
+      "TaxDeliveryJournalPersistence",
+      "TaxDeliveryMutationAuthority"
     ]
   },
   "owns": {
@@ -266,6 +271,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "TaxDeliveryMutationAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryMutationAuthority",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_delivery.LoopbackCompanyTaxDelivery"
+      ]
     }
   ],
   "dependencies": [],
@@ -315,7 +329,11 @@
     "deliveryJournal": "apps/backend/tests/test_company_tax_delivery_journal.py",
     "deliveryEventDatabase": "apps/backend/tests/test_postgres_tax_delivery_events.py",
     "deliveryJournalArchive": "apps/backend/tests/test_company_tax_delivery_journal_archive.py",
-    "deliveryEventsTopology": "apps/backend/tests/test_company_tax_delivery_events_database.py"
+    "deliveryEventsTopology": "apps/backend/tests/test_company_tax_delivery_events_database.py",
+    "deliveryRehearsal": "apps/backend/tests/test_company_tax_delivery_rehearsal.py",
+    "deliverySubmission": "apps/backend/tests/test_company_tax_delivery_submission.py",
+    "deliverySubmissionApi": "apps/backend/tests/test_company_tax_delivery_submission_api.py",
+    "deliverySubmissionDatabase": "apps/backend/tests/test_postgres_tax_delivery_submission.py"
   },
   "compatibilityExceptions": []
 }

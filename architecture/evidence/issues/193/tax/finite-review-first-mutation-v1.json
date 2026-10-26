@@ -1,0 +1,57 @@
+{
+  "version": "finite-tax-review-first-mutation-v1",
+  "status": "LOCAL_FIRST_CREATE_COMPLETE_LATER_STAGES_CLOSED",
+  "baseRevision": "18e2d3a1284ad80009c4f2eb621880855c8d877a",
+  "artifacts": {
+    "apps/backend/src/talli_backend/application/company_tax_delivery_rehearsal.py": "c30a2e6a106a06e9a65fcbd4ed707009f54a7c7a7c5603e4a1a7ddbd66f15067",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "98000b6e07ca6dd3e12cde366f3b23bd3a0fd46eaf1ded687ed3a4911587e7a1",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_delivery.py": "de177d7a2d86be013d91c16955fdb37e905c3d69182f14dfc40d506a23a541ed",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "3fd756538aa5cba11690359419f55282b70f011d1ddc836ffa019e6fcefc056a",
+    "contracts/openapi/talli-v1.json": "fd40f28ce783f92ba3eabcc117d141a0843d2c309894292ae1a43c97588d2044",
+    "packages/talli-api-client/src/generated/client.ts": "e63a01220ca552dcb06fa55509550bb88ef49b4623f1e99731457af95aafcd64"
+  },
+  "proof": [
+    "Finite run binds exact actor/company/year/filing/draft/org, loopback authority, restricted loopback database identity, expiry and request budget",
+    "Default application composition has no delivery authority; HTTP rejects caller runtime, credential, readiness and document fields",
+    "Current RC owner/MFA guards follow source enumeration and span final RR source/journal snapshot and durable insertion",
+    "Authority current GET and first create run with no SQL transaction open; actual loopback server observes committed intent before POST",
+    "Concurrent real PG17 readers produce exactly one provider create; response bytes including BOM/whitespace retained",
+    "Lost request/commit/response acknowledgements never elect another POST; changed retry key and expired run cannot reset uncertainty",
+    "Bound late result survives owner revocation after send; new filing cannot bypass another retained delivery",
+    "Unknown create has no invented lookup; reconciliation returns retained state",
+    "Complete HTTP/body/cleanup deadline is five seconds, no redirects/ambient proxies/credentials or automatic retries",
+    "Confirmed JSON parser recursion failure returns HTTP200 uncertain on first response and retry, with one POST"
+  ],
+  "verification": {
+    "focusedAndLegacyPythonPassed": 135,
+    "nativePostgresActualHttpIncluded": 6,
+    "confirmedRecursionRegressionRecheck": 2,
+    "clientContractsPassed": 29,
+    "mandatoryTaxCollected": 87,
+    "partition": "passed",
+    "typecheck": "passed",
+    "architecture": "passed",
+    "existingOpenapiPathsUnchanged": 184,
+    "existingOpenapiSchemasUnchanged": 522,
+    "generatedClient": "checked",
+    "whitespace": "passed"
+  },
+  "reviews": {
+    "standards": "total-deadline P2 fixed; independent actual loopback reproducer now ends at5seconds/one request",
+    "spec": "parser-recursion P2 fixed; regression verifies actual RecursionError path"
+  },
+  "gates": {
+    "hostedChangesApplied": false,
+    "realProviderEnabled": false,
+    "liveFilingEnabled": false,
+    "commercialAnnualOrBillingAttestation": false,
+    "laterUploadValidationConfirmationEnabled": false
+  },
+  "remaining": [
+    "Persist technical admission and scan/validation/feedback/final-receipt/correction originals",
+    "Enable remaining guarded finite stages and supported read-only reconciliation",
+    "Actual signed JWT desktop/touch Tax flow",
+    "Accounts completion and operational launch gates"
+  ],
+  "minimumApplicationRollback": "18e2d3a1 retains exact V1 approval/request/completion originals and complete V3 archive readers. New runtime commands remain disabled without trusted finite composition."
+}

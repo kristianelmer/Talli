@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 from talli_backend.adapters.supabase_ledger import (
@@ -19,6 +20,8 @@ from talli_backend.adapters.supabase_investments import SupabaseInvestmentsSnaps
 from talli_backend.application.annual_data_compatibility import decode_annual_interview_history
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
+from talli_backend.application.company_tax_delivery_rehearsal import loopback_tax_database_scope
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, Timestamp, UserId
@@ -127,6 +130,19 @@ class PostgresCompanyTaxSession:
     @property
     def actor_id(self):
         return self._verified.actor_id
+
+    @property
+    def delivery_rehearsal_target(self):
+        try:
+            values=conninfo_to_dict(self._database_url)
+            if (values.get('service') or values.get('servicefile') or os.environ.get('PGSERVICE')
+                    or values.get('hostaddr','127.0.0.1')!='127.0.0.1'
+                    or os.environ.get('PGHOSTADDR','127.0.0.1')!='127.0.0.1'):
+                return None
+            return loopback_tax_database_scope(values.get('host'),int(values.get('port','0')),
+                values.get('dbname'),values.get('user'))
+        except (ValueError,TypeError,psycopg.ProgrammingError):
+            return None
 
     @asynccontextmanager
     async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[PostgresCompanyTaxTransaction]:
@@ -548,6 +564,7 @@ class PostgresCompanyTaxTransaction:
 
 
 def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None,
-                                   *, preparation: CompanyTaxDeliveryPreparation | None = None) -> CompanyTaxApplication:
+                                   *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                                   submission: CompanyTaxDeliverySubmission | None = None) -> CompanyTaxApplication:
     return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService,
-                                 preparation=preparation)
+                                 preparation=preparation,submission=submission)

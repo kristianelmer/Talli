@@ -343,3 +343,33 @@ AAL1 tokens and ownership revoked while waiting are denied. Previously committed
 request-bound results remain retainable after revocation through the narrow
 completion RPC, and cannot authorize a new request. Hosted activation remains
 closed pending the guarded dispatch and finite admission workflow.
+
+`ApproveTaxDeliveryDraft` binds the actor/company/year/filing, caller idempotency
+key and exact displayed draft/review hashes. `AdvanceTaxDelivery` binds the retained
+approval; changed retry keys never reset an existing mutation.
+`TaxDeliveryProgress` publishes reviewed, uncertain or mutation-completed metadata
+without originals or credentials. A mutation-completed create means only that
+the instance was created, never submitted, owner-confirmed or receipted Tax.
+`assert_tax_delivery_attempt_history` requires complete Source V3 coverage and
+blocks another retained delivery from being bypassed with a new filing ID.
+Correction/replacement admission remains closed until its terminal proofs exist.
+
+`TaxDeliveryMutationAuthority` joins current-original reads and exact request
+execution. Its only adapter is `LoopbackCompanyTaxDelivery`, confined to a
+backend-issued finite local run. The application rechecks current owner/MFA,
+source, schema and authority originals, commits the exact new intent, closes SQL,
+then performs the fixed-path create. An uncertain intent never elects another
+send. Results are bound to exact original bytes and retained through the narrow
+original-actor completion RPC even if access changes during I/O. Approval retries
+return the immutable original review receipt. Unknown create reconciliation has
+no invented lookup or lease reset. Later upload, validation and confirmation
+stages stay closed until retained read prerequisites are implemented.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliveryMutationAuthority"]}
+-->
+
+The finite authority adapter bounds the complete HTTP operation, streamed body
+and cleanup to five seconds, as well as individual network waits. Redirects and
+retries are disabled; response bytes are bounded. Malformed/deep JSON becomes an
+unknown retained operation outcome, including on the first HTTP response.

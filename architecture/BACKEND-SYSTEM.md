@@ -1133,3 +1133,30 @@ unknown rehearsal state; this read grants no provider dispatch authority.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/archive-source/delivery-journal-v1"]}
 -->
+
+`company-tax-finite-delivery` owns the technical
+`TaxDeliveryRehearsalAdmission` / `TaxDeliveryRehearsalRuntime` and guarded
+`CompanyTaxDeliverySubmission` composition. One run binds actor, company, 2025
+year, immutable filing/draft, organization, literal loopback authority origin,
+request budget, expiry and restricted loopback database identity. Secrets are
+absent from HTTP commands, persistence and progress. Explicit host/port/db/user
+identity is checked before SQL; remote, ambiguous, service-overridden and admin
+connectors fail closed. Current accepted ownership and canonical MFA are checked
+after waits and after source reads. Authority I/O never holds SQL transactions.
+
+The strict `/api/v1/company-tax/delivery-reviews`,
+`/api/v1/company-tax/delivery-advances` and
+`/api/v1/company-tax/delivery-reconciliations` routes accept scope, hashes and an
+idempotency header only. Default composition has no submission dependency and
+returns unavailable. There is no environment activation flag, hosted target,
+provider credential lookup or Annual/Billing readiness attestation. The finite
+mode is synthetic engineering authority. Real filing and all later unimplemented
+provider stages remain closed.
+
+<!-- architecture-inventory
+{"workflows":["company-tax-finite-delivery"],"workflowPurposes":["company-tax-finite-delivery=>Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and create intent before fixed-path local authority I/O; retains bound results after revocation and never resends uncertain creates. Default composition is disabled."],"routes":["/api/v1/company-tax/delivery-reviews","/api/v1/company-tax/delivery-advances","/api/v1/company-tax/delivery-reconciliations"]}
+-->
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.application.company_tax_delivery_submission"],"workflowDependencies":["talli_backend.application.company_tax_delivery_rehearsal","talli_backend.application.company_tax_delivery_submission"],"adapterDependencies":["talli_backend.application.company_tax_delivery_rehearsal","talli_backend.application.company_tax_delivery_submission"]}
+-->
