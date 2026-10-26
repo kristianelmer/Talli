@@ -551,6 +551,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       { incomeYear: sourceYear, caseProfile: "rf1086_full_year_v1" });
     const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
+      signal: t.signal,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
       mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse, predecessorFeedback, recoverSourceCapture,
       crashBackend: crash ? crashBackend : undefined,

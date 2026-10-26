@@ -3,13 +3,14 @@ import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { fixtureTableTransaction } from "../support/rf1086-fixture-access.mjs";
 import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
+import { waitForRfMutationCheckpoint } from "../support/rf1086-crash-checkpoint.mjs";
 import { loadRetainedBrowserHistory } from "./rf1086-retained-browser-history.mjs";
 
 // Uses the already authenticated owner and the loopback-only fresh filing mock.
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash, predecessorFeedback = "accepted", recoverSourceCapture = false }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash, predecessorFeedback = "accepted", recoverSourceCapture = false, signal }) {
   assert.ok(["accepted", "rejected"].includes(predecessorFeedback));
   const predecessorLabel = predecessorFeedback === "accepted" ? "Godkjent" : "Avvist";
   const scope = { companyId: company.id, incomeYear, headers: authorization };
@@ -215,7 +216,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, processed, documentId, predecessorLabel, renamedOriginal });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash,
+    mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash, signal,
     includeUnapprovedHistory: predecessorFeedback === "rejected" });
 }
 
@@ -362,7 +363,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
 }
 
 async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash, includeUnapprovedHistory }) {
+  mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash, includeUnapprovedHistory, signal }) {
   const { nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source: correction.source, prior: correction.submission,
     documentId, consideration: "19000", previousConsideration: "18000" });
@@ -379,14 +380,19 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   if (!crashBackend) mock[fail]();
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
-  await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
   if (crashBackend) {
-    let timer;
-    try {
-      await Promise.race([held, new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error("mock_mutation_hold_deadline_exceeded")), 10_000);
-      })]);
-    } finally { clearTimeout(timer); }
+    const target = new URL(sourceHref);
+    await waitForRfMutationCheckpoint({
+      page, checkpoint: held, signal,
+      trigger: () => panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click(),
+      matchesRequest: request => {
+        const url = new URL(request.url());
+        const body = request.postData() ?? "";
+        return request.method() === "POST" && url.origin === target.origin && url.pathname === target.pathname
+          && url.searchParams.get("companyId") === company.id && url.searchParams.get("incomeYear") === String(incomeYear)
+          && body.includes(nextApproval.id) && body.includes(position.manifestSha256);
+      },
+    });
     const atCrash = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
     const active = atCrash.productionSubmissions.find(row => row.approvalId === nextApproval.id);
     const lastMutation = mock.snapshot().filter(row => row.service === "skatteetaten").at(-1);
@@ -402,6 +408,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     await crashBackend();
     await page.reload();
   } else {
+    await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
     await panel.getByText("Innsendingsutfallet er ukjent. Kontroller lagret status og avklar utfallet før du gjør noe mer.", { exact: true }).waitFor();
   }
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
