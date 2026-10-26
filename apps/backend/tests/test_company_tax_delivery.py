@@ -1,5 +1,5 @@
 """Current-source binding and submit-once policy through Tax's public interface."""
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, dataclass
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -35,6 +35,12 @@ def prepared(source=None):
                                 current_document_reference='current-document-2025', schema_sha256='a' * 64)
 
 
+def verify(envelope, **changes):
+    return verify_tax_review(envelope, **(dict(expected_review_sha256=envelope.review_sha256,
+        current_source=envelope.source, current_schema_sha256=envelope.schema_sha256,
+        current_document_reference=envelope.current_document_reference) | changes))
+
+
 @pytest.mark.parametrize('case', ['supported-dividend', 'no-activity-zero'])
 def test_supported_sources_generate_the_two_statutory_documents_bound_to_current_reference(case):
     source = TaxDeliverySource(**raw_source(case)); envelope = prepared(source)
@@ -42,7 +48,7 @@ def test_supported_sources_generate_the_two_statutory_documents_bound_to_current
     assert 'naeringsspesifikasjon' in envelope.business_xml
     assert '<dokumentidentifikator>current-document-2025</dokumentidentifikator>' in envelope.envelope_xml
     assert envelope.envelope_xml.count('<dokument>') == 2
-    verify_tax_review(envelope, expected_review_sha256=envelope.review_sha256, current_source=source)
+    verify(envelope, current_source=source)
 
 
 def test_source_copy_cannot_be_changed_by_nested_input_mutation():
@@ -54,16 +60,39 @@ def test_source_copy_cannot_be_changed_by_nested_input_mutation():
     with pytest.raises(FrozenInstanceError): source.income_year = IncomeYear(2024)
 
 
+def test_nested_mutable_objects_are_snapshotted_before_source_freezing():
+    @dataclass
+    class Metadata:
+        references: list[str]
+    value = Metadata(['original']); values = raw_source(); values['annual_data']['metadata'] = value
+    source = TaxDeliverySource(**values); digest = source.source_sha256
+    value.references.append('changed'); value.references = ['replacement']
+    assert source.source_sha256 == digest
+    assert source.annual_data['metadata']['references'] == ('original',)
+
+
 @pytest.mark.parametrize('change', ['annual', 'ledger', 'investments', 'schema', 'current-reference', 'review-digest'])
 def test_review_cannot_authorize_changed_source_or_payload(change):
     values = raw_source(); envelope = prepared(TaxDeliverySource(**values)); expected = envelope.review_sha256
     if change in ('annual', 'ledger', 'investments'):
         values['upstream_sha256'][change] = 'b' * 64
-        with pytest.raises(ValueError): verify_tax_review(envelope, expected_review_sha256=expected, current_source=TaxDeliverySource(**values))
+        with pytest.raises(ValueError): verify(envelope, current_source=TaxDeliverySource(**values))
     else:
-        altered = replace(envelope, **({'schema_sha256': 'b' * 64} if change == 'schema' else
-                                      {'current_document_reference': 'another-document'} if change == 'current-reference' else {}))
-        with pytest.raises(ValueError): verify_tax_review(altered, expected_review_sha256='b' * 64 if change == 'review-digest' else expected, current_source=envelope.source)
+        # Retain the original reviewed envelope and vary the independently read
+        # current value. Altering the envelope would only test its own checksum.
+        changed = ({'current_schema_sha256': 'b' * 64} if change == 'schema' else
+                   {'current_document_reference': 'another-document'} if change == 'current-reference' else
+                   {'expected_review_sha256': 'b' * 64})
+        with pytest.raises(ValueError): verify(envelope, **changed)
+
+
+def test_document_preparation_does_not_decide_common_annual_readiness():
+    values = raw_source(); values['annual_data']['answers'].update(
+        bank_balance_confirmed=False, has_unpaid_items=True, authority_to_submit_confirmed=False)
+    # These facts remain in the immutable review. The application must consume
+    # Annual's authoritative decision before it permits approval or effects.
+    envelope = prepared(TaxDeliverySource(**values))
+    assert envelope.source.annual_data['answers']['has_unpaid_items'] is True
 
 
 @pytest.mark.parametrize('answer', [None, True, False, '', 'unknown', 'required', 'NONE', ['none']])

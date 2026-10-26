@@ -96,10 +96,11 @@ class TaxDeliverySource:
             if (any(type(value) is not str or not value for value in identifiers)
                     or len(set(identifiers)) != len(identifiers)):
                 raise ValueError('Tax source contains missing or duplicate identities.')
-        # Reject nonfinite or otherwise unhashable input before storing a copy.
+        # Snapshot every admitted value into canonical primitives first. Merely
+        # freezing mappings/sequences would retain a caller-owned dataclass.
         tax_delivery_digest((self.annual_data, self.ledger_entries, self.holding_actions))
         for name in ('annual_data', 'ledger_entries', 'holding_actions', 'upstream_sha256'):
-            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+            object.__setattr__(self, name, _freeze_return_fact(_json(getattr(self, name))))
 
     @property
     def source_sha256(self):
@@ -140,12 +141,12 @@ def prepare_tax_delivery(source: TaxDeliverySource, *, party_number: str,
     answers = source.annual_data.get('answers')
     if not isinstance(answers, Mapping) or answers.get('company_tax_additional_attachments') != 'none':
         raise ValueError('Tax additional attachment requirement must be explicitly none.')
-    for name in ('shareholder_loans', 'declared_owner_dividends', 'bought_or_sold_shares',
-                 'bank_balance_confirmed', 'has_unpaid_items', 'authority_to_submit_confirmed'):
+    for name in ('shareholder_loans', 'declared_owner_dividends', 'bought_or_sold_shares'):
         if type(answers.get(name)) is not bool:
             raise ValueError('Tax annual answers must be explicit booleans.')
-    if not answers['bank_balance_confirmed'] or not answers['authority_to_submit_confirmed'] or answers['has_unpaid_items']:
-        raise ValueError('Tax annual prerequisites are not satisfied.')
+    # Common readiness remains the Annual owner's decision, consumed by the
+    # application before review/dispatch. This function prepares Tax documents;
+    # their existence is not an authorization or common-readiness attestation.
     for name in ('completed_at', 'updated_at'):
         value = source.annual_data.get(name)
         if type(value) is not str or datetime.fromisoformat(value).utcoffset() is None:
@@ -265,7 +266,10 @@ def plan_tax_mutation(intent: TaxMutationIntent, existing: TaxMutationRecord | N
 
 
 def verify_tax_review(envelope: TaxDeliveryEnvelope, *, expected_review_sha256: str,
-                      current_source: TaxDeliverySource) -> None:
+                      current_source: TaxDeliverySource, current_schema_sha256: str,
+                      current_document_reference: str) -> None:
     if (_digest(expected_review_sha256) != envelope.review_sha256
-            or envelope.source != current_source):
+            or envelope.source != current_source
+            or _digest(current_schema_sha256) != envelope.schema_sha256
+            or _reference(current_document_reference, 'current document reference') != envelope.current_document_reference):
         raise ValueError('Tax review is stale or belongs to another source.')
