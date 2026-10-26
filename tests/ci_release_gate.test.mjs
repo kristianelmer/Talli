@@ -1269,7 +1269,7 @@ test('package partition retains every original file once',()=>{
 test("complete local runner requires the fresh RF browser after historical recovery", () => {
   const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
   assert.equal(scripts["test:browser-shareholder-register-filing"],
-    "node --test --test-concurrency=1 --test-reporter=tap tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs");
+    "node --test --test-concurrency=1 --test-reporter=tap tests/shareholder_register_browser_fixture_safety.test.mjs tests/rf1086_crash_checkpoint.test.mjs tests/browser_shareholder_register_filing.mjs");
   const harness = readFileSync(databaseHarnessPath, "utf8");
   const fresh = "npm run test:browser-shareholder-register-filing";
   assert.equal(harness.split("\n").filter(line => line.trim() === fresh).length, 1);
