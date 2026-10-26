@@ -320,9 +320,26 @@ archive-generation trigger. It reports reviewed/uncertain/mutation-completed
 facts explicitly as finite rehearsal facts; they are never production attempts.
 V1/V2 fail closed after the ninth table exists. Deploy V3-aware readers and finish
 archive composition before any hosted migration; retain V3 readers on rollback.
-The new migration is tested only in isolated PG17 component fixtures, not the
-full hosted topology. Existing HTTP/export routes remain on their prior contracts.
+The migration has isolated PG17 component coverage and a full local Supabase
+topology proof with real signed login/TOTP tokens. The hosted topology has not
+been expanded. Existing HTTP contracts retain their prior response shapes.
 
 <!-- architecture-inventory
 {"ports":["TaxDeliveryJournalPersistence"],"ownedTables":["company_tax_filing.delivery_events"]}
 -->
+
+`TaxDeliveryJournalArchive` and `archive_tax_delivery_journal` retain the complete
+Source V3 draft/event originals and their source-owned facts. The application
+holds the current READ COMMITTED company guard across the separate repeatable
+source enumeration and checks current owner/MFA again before returning bytes.
+The dedicated `companyTaxGetDeliveryJournalArchive` HTTP operation returns this
+bundle only after that guard. An unresolved predecessor production effect keeps
+its unknown attribution; it does not erase archive originals. Every other
+coverage, extent, linkage, enumeration or archive-tracking failure blocks export.
+The web export includes the exact returned journal bundle within its existing
+company generation boundary. Real local Supabase login/TOTP tokens are verified
+through Auth's current-user endpoint in the full topology tests; malformed or
+AAL1 tokens and ownership revoked while waiting are denied. Previously committed
+request-bound results remain retainable after revocation through the narrow
+completion RPC, and cannot authorize a new request. Hosted activation remains
+closed pending the guarded dispatch and finite admission workflow.

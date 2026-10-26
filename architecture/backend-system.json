@@ -576,7 +576,8 @@
         "talli_backend.modules.company_tax_filing.public"
       ],
       "routes": [
-        "/api/v1/company-tax/archive-source/delivery-drafts-v1"
+        "/api/v1/company-tax/archive-source/delivery-drafts-v1",
+        "/api/v1/company-tax/archive-source/delivery-journal-v1"
       ]
     },
     {

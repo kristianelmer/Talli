@@ -49,3 +49,17 @@ prepared-only; these reads decide no filing readiness or authority outcome.
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetSourceFacts","companyTaxGetDeliveryDraftArchive"]}
 -->
+
+`companyTaxGetDeliveryJournalArchive` supplies Source V3 facts, immutable draft
+and event originals, and finite-rehearsal journal summaries from one guarded
+repeatable read. `loadTaxDeliveryDraftArchiveSource` requests it when the older
+exact-extent proof detects the event store, checks original digests/scope and
+review/request links, and includes it in company export. A successor read failure
+never falls back to an older incomplete source. Positively complete seven/eight
+table sources retain their prior read behavior. `TaxDeliveryDraftArchiveProjection`
+carries the optional journal bundle; export publishes `companyTaxDeliveryJournal`
+without interpreting it as a live provider outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetDeliveryJournalArchive"]}
+-->

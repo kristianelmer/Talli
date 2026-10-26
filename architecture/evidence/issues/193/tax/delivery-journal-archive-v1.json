@@ -1,0 +1,51 @@
+{
+  "version": "tax-delivery-journal-archive-v1",
+  "status": "LOCAL_ARCHIVE_COMPLETE_GUARDED_WORKFLOW_PENDING",
+  "baseRevision": "553fa6522eac8ac5b2d764357f31026c9837279b",
+  "artifacts": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_archive.py": "0594b653f7e7abd49340be1c3f6744e546e299b47f0e6a4c3672c486138e5e10",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "450f3a81135a0747524dc8027cedb3383e0f830c7e199064c894a2521e8a1453",
+    "apps/web/features/company-tax-filing/transport.ts": "8887fb611070aa85d96e1fb05c176dbb872ba91fe8ca9c9d5e337995c2e96adb",
+    "apps/web/app/lib/archive.ts": "f572b63ed7f49532a792fc516aec0062fdca34ef1231fdaa7811f8cff517c96f",
+    "contracts/openapi/talli-v1.json": "9409c1450761d790d58b60ae81424ab00ff56ff1f1074af9e32394bdd1c6bfd5",
+    "packages/talli-api-client/src/generated/client.ts": "714555353a1ebfc8bdcaabf756c87a3532563f46fd62656cf308ca22486b2078"
+  },
+  "verification": {
+    "fullSupabaseTopologyCases": 4,
+    "archiveAndPreparationUnitCases": 57,
+    "existingWebContractCases": 79,
+    "newClientAndArchiveCases": 32,
+    "mandatoryPartition": "passed;81Taxcasescollected",
+    "typecheck": "passed",
+    "architecture": "passed",
+    "existingOpenapiPathsUnchanged": 183,
+    "existingOpenapiSchemasUnchanged": 519,
+    "generatedClient": "checked",
+    "whitespace": "passed"
+  },
+  "proof": [
+    "Real local Supabase password login and TOTP issue signed AAL2 JWTs verified through Auth current-user endpoint",
+    "AAL1 and tampered tokens denied; owner revoked while waiting denied",
+    "Exact draft/current-original/review/intent bytes survive archive; uncertainty remains finite-rehearsal uncertainty",
+    "Bound late completion persists after current ownership revoked; next request is denied",
+    "One-to-one draft-fact and original binding; event causal prefix and exact hashes verified before export",
+    "Existing company export generation boundary encloses archive source and retained journal bundle"
+  ],
+  "review": {
+    "standards": "no consequential findings",
+    "spec": "Three malformed-response findings fixed with explicit predecessor, request-hash and draft-fact bijection regression cases."
+  },
+  "activation": {
+    "hostedMigrationApplied": false,
+    "providerDispatchImplemented": false,
+    "liveFilingEnabled": false,
+    "paidActivationEnabled": false
+  },
+  "remaining": [
+    "finite loopback runtime admission and guarded approval/dispatch/reconciliation",
+    "persisted scan/validation/feedback/final-receipt/correction originals",
+    "connected desktop/touch Tax then Accounts",
+    "operational release gates"
+  ],
+  "minimumRollback": "Retain the backend and web readers in the commit containing this artifact after enabling the journal store; earlier V1/V2 readers fail closed on the ninth table."
+}

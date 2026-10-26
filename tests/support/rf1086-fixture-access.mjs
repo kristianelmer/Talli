@@ -35,6 +35,7 @@ const allowed = new Set([
 
   "company_tax_filing.settlements",
   "company_tax_filing.delivery_drafts",
+  "company_tax_filing.delivery_events",
   "annual_accounts_filing.filing_submissions",
   "annual_accounts_filing.filing_review_comments",
   "annual_accounts_filing.filing_overrides",

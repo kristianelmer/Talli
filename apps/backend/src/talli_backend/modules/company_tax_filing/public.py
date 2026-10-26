@@ -801,6 +801,7 @@ from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCo
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     decode_tax_delivery_event)
+from .delivery_archive import TaxDeliveryJournalArchive, archive_tax_delivery_journal
 
 
 @dataclass(frozen=True, slots=True)
@@ -880,6 +881,7 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'TaxDeliveryJournalArchive', 'archive_tax_delivery_journal',
     'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
     'TaxDeliveryJournalPersistence',
     'TaxDeliveryJournalFact',

@@ -292,6 +292,7 @@ const annualAccountsOperations = {
 const companyTaxOperations = {
   prepareDeliveryDraft: ["/api/v1/company-tax/delivery-drafts", "post", "companyTaxPrepareDeliveryDraft"],
   deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
+  deliveryJournalArchive: ["/api/v1/company-tax/archive-source/delivery-journal-v1", "get", "companyTaxGetDeliveryJournalArchive"],
   sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
   annualEstimatePreview: ["/api/v1/company-tax/annual-estimate-previews", "post", "companyTaxPreviewAnnualEstimate"],
@@ -911,6 +912,7 @@ const companyTaxSchemas = Object.fromEntries([
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
   "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxDeliveryDraftFactWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxDeliveryDraftOriginalWire", "CompanyTaxDeliveryDraftArchiveWire",
+  "CompanyTaxDeliveryJournalOriginalWire", "CompanyTaxDeliveryJournalFactWire", "CompanyTaxDeliveryJournalArchiveWire",
   "CompanyTaxPrepareDeliveryDraftRequest", "CompanyTaxPreparedDeliveryDraftWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
   "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
@@ -2958,6 +2960,39 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId !== companyId || result.incomeYear !== incomeYear
           || result.recordCount !== result.records.length
           || new Set(result.records.map(row => row.filingId)).size !== result.records.length) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryJournalArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?\${query}\`,
+        "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
+      );
+      const source = result.sourceFacts;
+      const draftIds = new Set(result.drafts.map(row => row.filingId));
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
+          || source.evidence.version !== "company-tax-source-v3:" + result.sourceSha256
+          || source.evidence.digest !== result.sourceSha256
+          || source.evidence.evaluatedAt !== result.observedAt
+          || source.historyCoverage.evidenceReference !== source.evidence.reference
+          || source.historyCoverage.status === "unavailable"
+          || source.historyCoverage.reasons.some(reason => reason !== "production_journal_unavailable")
+          || result.draftCount !== result.drafts.length || draftIds.size !== result.drafts.length
+          || result.eventCount !== result.events.length
+          || new Set(result.events.map(row => row.filingId + ":" + row.slot)).size !== result.events.length
+          || result.events.some(row => !draftIds.has(row.filingId))
+          || new Set(result.journals.map(row => row.filingId)).size !== result.journals.length
+          || result.journals.some(row => !draftIds.has(row.filingId))
+          || source.deliveryDrafts === undefined || source.deliveryDrafts.length !== result.drafts.length
+          || new Set(source.deliveryDrafts.map(row => row.filingId)).size !== source.deliveryDrafts.length
+          || source.deliveryDrafts.some(row => !result.drafts.some(original =>
+            original.filingId === row.filingId && original.draftSha256 === row.draftSha256))) {
         throw new TalliApiError(502, undefined);
       }
       return result;

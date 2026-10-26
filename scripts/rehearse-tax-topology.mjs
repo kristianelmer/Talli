@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable", "journal-expand", "journal-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -43,7 +43,14 @@ try {
   } else {
     const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
-    if (direction === "current-enable") {
+    if (direction === "journal-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026100000_company_tax_delivery_events.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_journal_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "journal-expand") {
+      await apply("contract-migrations/20261026100000_company_tax_delivery_events.sql");
+    } else if (direction === "current-enable") {
       // This entire entry point requires loopback PostgreSQL. Reuse the exact
       // containment authority round-trip, opening only its one private fence
       // and RPC privilege for the synthetic rehearsal. No hosted activation.

@@ -97,7 +97,9 @@
       "TaxDeliveryEventAppend",
       "TaxDeliveryJournal",
       "decode_tax_delivery_event",
-      "TaxDeliveryJournalFact"
+      "TaxDeliveryJournalFact",
+      "TaxDeliveryJournalArchive",
+      "archive_tax_delivery_journal"
     ],
     "events": [],
     "errors": [
@@ -311,7 +313,9 @@
     "currentPreparationDatabase": "apps/backend/tests/test_company_tax_current_preparation_database.py",
     "deliveryApproval": "apps/backend/tests/test_company_tax_delivery_approval.py",
     "deliveryJournal": "apps/backend/tests/test_company_tax_delivery_journal.py",
-    "deliveryEventDatabase": "apps/backend/tests/test_postgres_tax_delivery_events.py"
+    "deliveryEventDatabase": "apps/backend/tests/test_postgres_tax_delivery_events.py",
+    "deliveryJournalArchive": "apps/backend/tests/test_company_tax_delivery_journal_archive.py",
+    "deliveryEventsTopology": "apps/backend/tests/test_company_tax_delivery_events_database.py"
   },
   "compatibilityExceptions": []
 }

@@ -1085,6 +1085,64 @@ class CompanyTaxSourceFactsWire(TransportModel):
     delivery_drafts: list[CompanyTaxDeliveryDraftFactWire] = Field(default_factory=list)
 
 
+class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
+    filing_id: UUID
+    slot: str = Field(pattern=r"^(review|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation))$")
+    recorded_by: UUID
+    recorded_at: datetime
+    canonical_json: str
+    event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CompanyTaxDeliveryJournalFactWire(TransportModel):
+    filing_id: UUID
+    approved_by: UUID
+    authority_mode: Literal['finite_loopback_rehearsal']
+    status: Literal['reviewed','uncertain','mutation_completed']
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation'] | None
+    approval_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    latest_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    recorded_at: datetime
+
+
+class CompanyTaxDeliveryJournalArchiveWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    codec: Literal['company-tax-delivery-journal-archive-v1']
+    coverage: Literal['complete']
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    observed_at: datetime
+    source_facts: CompanyTaxSourceFactsWire
+    draft_count: int = Field(ge=0,le=1000)
+    drafts: list[CompanyTaxDeliveryDraftOriginalWire]
+    event_count: int = Field(ge=0,le=9000)
+    events: list[CompanyTaxDeliveryJournalOriginalWire]
+    journals: list[CompanyTaxDeliveryJournalFactWire]
+
+
+def company_tax_source_facts_wire(result, *, include_delivery_drafts: bool = False) -> CompanyTaxSourceFactsWire:
+    evidence, coverage = result.evidence, result.history_coverage
+    return CompanyTaxSourceFactsWire(
+        evidence=CompanyTaxSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
+            obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
+            digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
+        readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
+        history_coverage=CompanyTaxHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
+            evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
+            submission_count=coverage.submission_count, scope=coverage.scope),
+        recorded_submissions=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
+        production_attempts=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
+        correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
+        incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
+        outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+        **({'delivery_drafts': [CompanyTaxDeliveryDraftFactWire(
+            filing_id=row.filing_id, prepared_by=str(row.prepared_by.subject),
+            recorded_at=row.recorded_at.value, draft_sha256=row.draft_sha256,
+            review_sha256=row.review_sha256, schema_sha256=row.schema_sha256,
+            status=row.status) for row in result.delivery_drafts]} if include_delivery_drafts else {}),
+    )
+
+
 class AnnualAccountsSourceEvidenceWire(TransportModel):
     company_id: UUID
     income_year: int
@@ -11812,26 +11870,7 @@ def create_app(
                 CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id,
             ))
             try:
-                evidence, coverage = result.evidence, result.history_coverage
-                return CompanyTaxSourceFactsWire(
-                    evidence=CompanyTaxSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
-                        obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
-                        digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
-                    readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
-                    history_coverage=CompanyTaxHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
-                        evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
-                        submission_count=coverage.submission_count, scope=coverage.scope),
-                    recorded_submissions=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
-                    production_attempts=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
-                    correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
-                    incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
-                    outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
-                    **({'delivery_drafts': [CompanyTaxDeliveryDraftFactWire(
-                        filing_id=row.filing_id, prepared_by=str(row.prepared_by.subject),
-                        recorded_at=row.recorded_at.value, draft_sha256=row.draft_sha256,
-                        review_sha256=row.review_sha256, schema_sha256=row.schema_sha256,
-                        status=row.status) for row in result.delivery_drafts]} if include_delivery_drafts else {}),
-                )
+                return company_tax_source_facts_wire(result,include_delivery_drafts=include_delivery_drafts)
             except ValidationError:
                 raise CompanyTaxError.unavailable() from None
         return await company_tax_call(execute)
@@ -11885,6 +11924,40 @@ def create_app(
                 records=[CompanyTaxDeliveryDraftOriginalWire(filing_id=row.draft.filing_id,
                     recorded_at=row.recorded_at.value, canonical_json=row.draft.canonical_json,
                     draft_sha256=row.draft.sha256) for row in result.drafts])
+        return await company_tax_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/archive-source/delivery-journal-v1",
+        operation_id="companyTaxGetDeliveryJournalArchive", response_model=CompanyTaxDeliveryJournalArchiveWire,
+        response_model_exclude_unset=True, responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_delivery_journal_archive(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryJournalArchiveWire:
+        async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
+            session=await company_tax_application.session(bearer_token(credentials))
+            result=await session.delivery_journal_archive(CompanyTaxSourceQuery(
+                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id))
+            facts=result.source_facts
+            try:
+                return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),
+                    codec='company-tax-delivery-journal-archive-v1',coverage='complete',source_sha256=facts.evidence.digest,
+                    observed_at=result.observed_at.value,source_facts=company_tax_source_facts_wire(facts,include_delivery_drafts=True),
+                    draft_count=len(result.drafts),drafts=[CompanyTaxDeliveryDraftOriginalWire(filing_id=row.draft.filing_id,
+                        recorded_at=row.recorded_at.value,canonical_json=row.draft.canonical_json,draft_sha256=row.draft.sha256)
+                        for row in result.drafts],
+                    event_count=len(result.events),events=[CompanyTaxDeliveryJournalOriginalWire(filing_id=row.binding.filing_id,
+                        slot=row.slot,recorded_by=str(row.recorded_by.subject),recorded_at=row.recorded_at.value,
+                        canonical_json=row.value.canonical_json,event_sha256=row.value.sha256) for row in result.events],
+                    journals=[CompanyTaxDeliveryJournalFactWire(filing_id=row.filing_id,approved_by=str(row.approved_by.subject),
+                        authority_mode=row.authority_mode.value,status=row.status,mutation_kind=row.mutation_kind.value if row.mutation_kind else None,
+                        approval_sha256=row.approval_sha256,latest_event_sha256=row.latest_event_sha256,
+                        recorded_at=row.recorded_at.value) for row in facts.delivery_journals])
+            except (ValidationError,ValueError,AttributeError):
+                raise CompanyTaxError.unavailable() from None
         return await company_tax_call(execute)
 
     @application.get(

@@ -1123,3 +1123,13 @@ originals. No paid authority, common Annual readiness or provider mutation is in
 <!-- architecture-inventory
 {"ports": ["CompanyTaxCurrentDocumentReader"], "adapterBindings": ["CompanyTaxCurrentDocumentReader=>talli_backend.adapters.company_tax_authority.CompanyTaxTransport"], "adapterBindingOwners": ["CompanyTaxCurrentDocumentReader=>backend-system"], "adapterBindingModes": ["CompanyTaxCurrentDocumentReader=>fixed TT02 current-return GET only; strict UTF-8 and exact original bytes; preparation remains unconfigured in default composition"], "workflows": ["company-tax-delivery-preparation"], "workflowPurposes": ["company-tax-delivery-preparation=>Prepare immutable drafts from complete owning sources and inspected current-authority originals outside SQL; exact authorized replay before GET and source drift rejection; no filing approval or provider mutation."]}
 -->
+
+The `company-tax-source-facts` composition also publishes
+`/api/v1/company-tax/archive-source/delivery-journal-v1`: current owner/MFA guards
+span a separate complete repeatable Source V3 enumeration and are rechecked
+before returning exact immutable draft and journal originals. Export retains
+unknown rehearsal state; this read grants no provider dispatch authority.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/archive-source/delivery-journal-v1"]}
+-->

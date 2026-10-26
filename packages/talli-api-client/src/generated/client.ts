@@ -3346,6 +3346,41 @@ export interface CompanyTaxDeliveryDraftArchiveWire {
   sourceSha256: string;
 }
 
+export interface CompanyTaxDeliveryJournalOriginalWire {
+  canonicalJson: string;
+  eventSha256: string;
+  filingId: string;
+  recordedAt: string;
+  recordedBy: string;
+  slot: string;
+}
+
+export interface CompanyTaxDeliveryJournalFactWire {
+  approvalSha256: string;
+  approvedBy: string;
+  authorityMode: "finite_loopback_rehearsal";
+  filingId: string;
+  latestEventSha256: string;
+  mutationKind: "create_instance" | "upload_envelope" | "start_validation" | "prepare_confirmation" | null;
+  recordedAt: string;
+  status: "reviewed" | "uncertain" | "mutation_completed";
+}
+
+export interface CompanyTaxDeliveryJournalArchiveWire {
+  codec: "company-tax-delivery-journal-archive-v1";
+  companyId: string;
+  coverage: "complete";
+  draftCount: number;
+  drafts: CompanyTaxDeliveryDraftOriginalWire[];
+  eventCount: number;
+  events: CompanyTaxDeliveryJournalOriginalWire[];
+  incomeYear: number;
+  journals: CompanyTaxDeliveryJournalFactWire[];
+  observedAt: string;
+  sourceFacts: CompanyTaxSourceFactsWire;
+  sourceSha256: string;
+}
+
 export interface CompanyTaxPrepareDeliveryDraftRequest {
   companyId: string;
   filingId: string;
@@ -9301,6 +9336,53 @@ function isCompanyTaxDeliveryDraftArchiveWire(value: unknown): value is CompanyT
   );
 }
 
+function isCompanyTaxDeliveryJournalOriginalWire(value: unknown): value is CompanyTaxDeliveryJournalOriginalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["canonicalJson","eventSha256","filingId","recordedAt","recordedBy","slot"]) &&
+    typeof value.canonicalJson === "string" &&
+    (typeof value.eventSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.eventSha256)) &&
+    isUuid(value.filingId) &&
+    isDateTime(value.recordedAt) &&
+    isUuid(value.recordedBy) &&
+    (typeof value.slot === "string" && new RegExp("^(review|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation))$", "u").test(value.slot))
+  );
+}
+
+function isCompanyTaxDeliveryJournalFactWire(value: unknown): value is CompanyTaxDeliveryJournalFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalSha256","approvedBy","authorityMode","filingId","latestEventSha256","mutationKind","recordedAt","status"]) &&
+    (typeof value.approvalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.approvalSha256)) &&
+    isUuid(value.approvedBy) &&
+    value.authorityMode === "finite_loopback_rehearsal" &&
+    isUuid(value.filingId) &&
+    (typeof value.latestEventSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.latestEventSha256)) &&
+    ((value.mutationKind === "create_instance" || value.mutationKind === "upload_envelope" || value.mutationKind === "start_validation" || value.mutationKind === "prepare_confirmation") || value.mutationKind === null) &&
+    isDateTime(value.recordedAt) &&
+    (value.status === "reviewed" || value.status === "uncertain" || value.status === "mutation_completed")
+  );
+}
+
+function isCompanyTaxDeliveryJournalArchiveWire(value: unknown): value is CompanyTaxDeliveryJournalArchiveWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["codec","companyId","coverage","draftCount","drafts","eventCount","events","incomeYear","journals","observedAt","sourceFacts","sourceSha256"]) &&
+    value.codec === "company-tax-delivery-journal-archive-v1" &&
+    isUuid(value.companyId) &&
+    value.coverage === "complete" &&
+    (typeof value.draftCount === "number" && Number.isInteger(value.draftCount) && value.draftCount >= 0 && value.draftCount <= 1000) &&
+    Array.isArray(value.drafts) && value.drafts.every((item) => isCompanyTaxDeliveryDraftOriginalWire(item)) &&
+    (typeof value.eventCount === "number" && Number.isInteger(value.eventCount) && value.eventCount >= 0 && value.eventCount <= 9000) &&
+    Array.isArray(value.events) && value.events.every((item) => isCompanyTaxDeliveryJournalOriginalWire(item)) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.journals) && value.journals.every((item) => isCompanyTaxDeliveryJournalFactWire(item)) &&
+    isDateTime(value.observedAt) &&
+    isCompanyTaxSourceFactsWire(value.sourceFacts) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256))
+  );
+}
+
 function isCompanyTaxPrepareDeliveryDraftRequest(value: unknown): value is CompanyTaxPrepareDeliveryDraftRequest {
   return (
     isRecord(value) &&
@@ -13077,6 +13159,39 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId !== companyId || result.incomeYear !== incomeYear
           || result.recordCount !== result.records.length
           || new Set(result.records.map(row => row.filingId)).size !== result.records.length) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryJournalArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?${query}`,
+        "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
+      );
+      const source = result.sourceFacts;
+      const draftIds = new Set(result.drafts.map(row => row.filingId));
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
+          || source.evidence.version !== "company-tax-source-v3:" + result.sourceSha256
+          || source.evidence.digest !== result.sourceSha256
+          || source.evidence.evaluatedAt !== result.observedAt
+          || source.historyCoverage.evidenceReference !== source.evidence.reference
+          || source.historyCoverage.status === "unavailable"
+          || source.historyCoverage.reasons.some(reason => reason !== "production_journal_unavailable")
+          || result.draftCount !== result.drafts.length || draftIds.size !== result.drafts.length
+          || result.eventCount !== result.events.length
+          || new Set(result.events.map(row => row.filingId + ":" + row.slot)).size !== result.events.length
+          || result.events.some(row => !draftIds.has(row.filingId))
+          || new Set(result.journals.map(row => row.filingId)).size !== result.journals.length
+          || result.journals.some(row => !draftIds.has(row.filingId))
+          || source.deliveryDrafts === undefined || source.deliveryDrafts.length !== result.drafts.length
+          || new Set(source.deliveryDrafts.map(row => row.filingId)).size !== source.deliveryDrafts.length
+          || source.deliveryDrafts.some(row => !result.drafts.some(original =>
+            original.filingId === row.filingId && original.draftSha256 === row.draftSha256))) {
         throw new TalliApiError(502, undefined);
       }
       return result;

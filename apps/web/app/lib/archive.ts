@@ -287,7 +287,10 @@ export function buildPersistedCompanyArchive(input: {
     // Canonical immutable records, separate from historical simulation shapes.
     rf1086Production: input.rf1086Production ?? null,
     rf1086ProductionEvidenceAvailability: input.rf1086Production ? "included" : "unavailable",
-    companyTaxDeliveryDrafts: input.taxDeliveryDrafts ?? null,
+    companyTaxDeliveryDrafts: input.taxDeliveryDrafts ? {
+      sourceFacts: input.taxDeliveryDrafts.sourceFacts, originals: input.taxDeliveryDrafts.originals,
+    } : null,
+    companyTaxDeliveryJournal: input.taxDeliveryDrafts?.journal ?? null,
     companyTaxSubmissions: input.filingSubmissions
       .filter(
         (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",
