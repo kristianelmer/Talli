@@ -75,6 +75,8 @@ def upload_http(upload_database,current_draft,monkeypatch):
                     state['on_result']();return self.respond(200,state['validationResult'],'application/xml')
                 if self.path.endswith('/data/'+DATA):
                     state['on_file']();return self.respond(200,state['uploaded'],'application/xml')
+                if state.get('receiptBytes') is not None and self.path.endswith('/data/00000000-0000-4000-8000-000000009999'):
+                    state.get('on_feedback',lambda:None)();return self.respond(200,state['receiptBytes'],'text/xml')
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE
                 if state['parallel'] and state['uploaded'] is None:state['barrier'].wait(timeout=5)
                 body=instance_document(value)
@@ -82,6 +84,12 @@ def upload_http(upload_database,current_draft,monkeypatch):
                     'elementId':state['processElement'],'flow':state['processFlow']}
                 if state['uploaded'] is not None:body['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
                     'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
+                if state.get('receiptBytes') is not None:body['data'].append({'id':'00000000-0000-4000-8000-000000009999',
+                    'dataType':'tilbakemelding','contentType':'text/xml','size':len(state['receiptBytes']),'fileScanResult':'Clean'})
+                if state.get('terminal'):
+                    terminal_at=state.setdefault('terminalAt',datetime.now(UTC).isoformat())
+                    body['process']['currentTask']=None;body['process']['ended']=terminal_at
+                    body['status']={'isArchived':True,'archived':terminal_at}
                 self.respond(200,b'\xef\xbb\xbf'+json.dumps(body).encode()+b'\n')
             except Exception as error:state['errors'].append(type(error).__name__);self.respond(500,b'{}')
         def do_PUT(self):
@@ -89,6 +97,16 @@ def upload_http(upload_database,current_draft,monkeypatch):
                 self.check();raw=self.rfile.read(int(self.headers['Content-Length']))
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
                 assert raw==b'' and self.headers['Content-Type']=='application/json'
+                if state.get('submissionEnabled'):
+                    with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:
+                        submitted=db.execute("select count(*) from company_tax_filing.delivery_events where filing_id=%s and slot='intent:confirm_submission' and canonical_json::jsonb->>'version'='company-tax-delivery-mutation-request-v5'",(value.filing_id,)).fetchone()==(1,)
+                    if submitted:
+                        assert state['processTask']=='confirmation' and state['processElement']=='Task_2'
+                        state['submissionPuts']+=1;state.update(processTask='feedback',processElement='Task_3',processFlow=3)
+                        state['on_submission']()
+                        if state['lostSubmission']:
+                            self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                        return self.respond(200,state['processResponse'])
                 with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:
                     assert db.execute("select count(*) from company_tax_filing.delivery_events where filing_id=%s and slot='intent:prepare_confirmation' and canonical_json::jsonb->>'version'='company-tax-delivery-mutation-request-v4'",(value.filing_id,)).fetchone()==(1,)
                 state['confirmationPuts']+=1;state.update(processTask='confirmation',processElement='Task_2',processFlow=2)

@@ -212,6 +212,7 @@ class TaxMutationKind(StrEnum):
     UPLOAD_ENVELOPE = 'upload_envelope'
     START_VALIDATION = 'start_validation'
     PREPARE_CONFIRMATION = 'prepare_confirmation'
+    CONFIRM_SUBMISSION = 'confirm_submission'
 
 
 class TaxMutationDisposition(StrEnum):
@@ -227,6 +228,7 @@ def _mutation_result(kind, result):
         TaxMutationKind.UPLOAD_ENVELOPE: {'instanceId', 'dataId', 'envelopeSha256'},
         TaxMutationKind.START_VALIDATION: {'instanceId', 'jobId'},
         TaxMutationKind.PREPARE_CONFIRMATION: {'instanceId', 'processTask'},
+        TaxMutationKind.CONFIRM_SUBMISSION: {'instanceId', 'processTask'},
     }[kind]
     if set(result) != expected:
         raise ValueError('Tax operation result has missing or unexpected fields.')
@@ -244,6 +246,8 @@ def _mutation_result(kind, result):
         raise ValueError('Tax validation job identity is invalid.')
     if kind is TaxMutationKind.PREPARE_CONFIRMATION and result['processTask'] != 'confirmation':
         raise ValueError('Tax owner confirmation was not prepared.')
+    if kind is TaxMutationKind.CONFIRM_SUBMISSION and result['processTask'] != 'feedback':
+        raise ValueError('Tax submission has no known feedback-stage read proof.')
 
 
 @dataclass(frozen=True, slots=True)

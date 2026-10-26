@@ -28,6 +28,7 @@ class TaxDeliveryOriginalPurpose(StrEnum):
     VALIDATION_RESULT='validation_result'
     VALIDATION_JOB='validation_job'
     PROCESS_RESPONSE='process_response'
+    FEEDBACK='feedback'
 
 
 @dataclass(frozen=True,slots=True)
@@ -46,10 +47,10 @@ class TaxDeliveryReadOriginal:
             if self.http_status is not None:raise ValueError('A local admission is not an HTTP response.')
         elif type(self.http_status) is not int or self.http_status!=200:
             raise ValueError('Tax read original HTTP status is invalid.')
-        _bytes(self.body_base64)
+        _bytes(self.body_base64,require_utf8=self.purpose is not TaxDeliveryOriginalPurpose.FEEDBACK)
 
     @property
-    def raw_bytes(self) -> bytes:return _bytes(self.body_base64)
+    def raw_bytes(self) -> bytes:return _bytes(self.body_base64,require_utf8=self.purpose is not TaxDeliveryOriginalPurpose.FEEDBACK)
 
     @property
     def sha256(self) -> str:return hashlib.sha256(self.raw_bytes).hexdigest()

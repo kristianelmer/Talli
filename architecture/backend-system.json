@@ -608,7 +608,10 @@
         "/api/v1/company-tax/delivery-validation-reconciliations",
         "/api/v1/company-tax/delivery-confirmation-advances",
         "/api/v1/company-tax/delivery-confirmation-reconciliations",
-        "/api/v1/company-tax/delivery-owner-review"
+        "/api/v1/company-tax/delivery-owner-review",
+        "/api/v1/company-tax/delivery-submission-advances",
+        "/api/v1/company-tax/delivery-submission-reconciliations",
+        "/api/v1/company-tax/delivery-feedback-reconciliations"
       ]
     }
   ],

@@ -20,6 +20,9 @@ from test_company_tax_delivery_approval import review_basis
 
 INSTANCE='123456/00000000-0000-4000-8000-000000000155'
 DATA='00000000-0000-4000-8000-000000000156'
+# Frozen V1 semantics. The explicit owner-confirmed V5 lane has separate proofs.
+LEGACY_KINDS=(TaxMutationKind.CREATE_INSTANCE,TaxMutationKind.UPLOAD_ENVELOPE,
+    TaxMutationKind.START_VALIDATION,TaxMutationKind.PREPARE_CONFIRMATION)
 
 
 @pytest.fixture(scope='module')
@@ -51,7 +54,7 @@ def complete(approved,kind,**changes):
                 else TaxDeliveryCompletionOrigin.MUTATION_RESPONSE)|changes))
 
 
-@pytest.mark.parametrize('kind',list(TaxMutationKind))
+@pytest.mark.parametrize('kind',LEGACY_KINDS)
 def test_exact_approved_request_and_original_response_survive_retention(approved,kind):
     approval,draft=approved;value=request(approved,kind)
     assert decode_tax_delivery_mutation_request(value.canonical_json,value.sha256)==value
@@ -71,7 +74,7 @@ def test_exact_approved_request_and_original_response_survive_retention(approved
     with pytest.raises(TypeError):restored.result['instanceId']='changed'
 
 
-@pytest.mark.parametrize('kind',list(TaxMutationKind))
+@pytest.mark.parametrize('kind',LEGACY_KINDS)
 def test_uncertain_intent_cannot_be_reissued_or_rebound(approved,kind):
     approval,_=approved;value=request(approved,kind);intent=value.intent(approval)
     assert plan_tax_mutation(intent,TaxMutationRecord(intent,'uncertain')) is TaxMutationDisposition.RECONCILE
@@ -80,7 +83,7 @@ def test_uncertain_intent_cannot_be_reissued_or_rebound(approved,kind):
     with pytest.raises(ValueError):plan_tax_mutation(altered.intent(approval),TaxMutationRecord(intent,'uncertain'))
 
 
-@pytest.mark.parametrize('kind',list(TaxMutationKind))
+@pytest.mark.parametrize('kind',LEGACY_KINDS)
 def test_wrong_response_origin_does_not_clear_uncertainty(approved,kind):
     origin=TaxDeliveryCompletionOrigin.MUTATION_RESPONSE if kind is TaxMutationKind.PREPARE_CONFIRMATION else TaxDeliveryCompletionOrigin.INSTANCE_READ
     with pytest.raises(ValueError):complete(approved,kind,origin=origin)

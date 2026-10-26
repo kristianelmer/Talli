@@ -22,14 +22,15 @@ def validated(client,draft,token):
     return command,headers
 
 
-def checked_archive(client,draft,headers):
+def checked_archive(client,draft,headers,*,version=7):
     params={'companyId':str(draft.envelope.source.company_id),'incomeYear':2025}
     response=client.get(ARCHIVE,params=params|{'readEvidence':True,'readEvidenceVersion':2,'validationEvidence':True,
-        'confirmationEvidence':True},headers=headers)
+        'confirmationEvidence':True,'submissionEvidence':version>=8},headers=headers)
     assert response.status_code==200
-    value=response.json();assert value['sourceFacts']['evidence']['version'].startswith('company-tax-source-v7:')
+    value=response.json();assert value['sourceFacts']['evidence']['version'].startswith('company-tax-source-v'+str(version)+':')
     source=client.get('/api/v1/company-tax/source-facts',params=params,headers=headers);assert source.status_code==200
-    checked=subprocess.run(['node','tests/support/check-tax-journal-client.mjs'],input=json.dumps({'archive':value,'source':source.json()}),
+    checked=subprocess.run(['node','tests/support/check-tax-journal-client.mjs'],input=json.dumps({'archive':value,'source':source.json(),
+        'testSubmissionCorruptions':version>=8}),
         text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3],timeout=30)
     assert checked.returncode==0,checked.stdout+checked.stderr
     return value

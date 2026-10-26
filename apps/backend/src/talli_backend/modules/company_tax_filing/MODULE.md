@@ -576,3 +576,55 @@ The review text values are `TaxValidationDeviation`, `TaxValidationGuidance` and
 `TaxValidationSubjectFlag`. Calculated view values are
 `TaxCalculatedReviewField` and `TaxCalculatedDocumentReview`; field paths retain
 repeated occurrences without collapsing them into a summary.
+
+
+`ConfirmTaxDeliverySubmission` requires the complete owner-review commitment and
+explicit strict-boolean document confirmation and warning acknowledgment.
+`TaxDeliveryOwnerConfirmation` and `confirm_tax_delivery_owner_review` bind that
+decision to the exact prepared request/read result and enclosing calculated
+response. Preparation and reading never infer this decision.
+`TaxDeliverySubmissionPrerequisite` and
+`bind_tax_delivery_submission_prerequisite` bind four fresh known job/result and
+ordinary Task_2 Clean/file reads in one ordered 30-second window. A changed
+response, source, current authority document, owner, MFA or ordinary stage blocks
+new work. Runtime admission remains finite and independently scoped.
+
+The V5 request records this decision in a separate `confirm_submission` intent.
+Only an acknowledged new committed intent elects one fixed empty process PUT;
+replays, changed command keys, lost acknowledgments and uncertain outcomes never
+elect another PUT. V2 process acknowledgments retain exact opaque UTF-8 response
+bytes without proving submission; V1 acknowledgment bytes remain unchanged.
+`TaxDeliverySubmissionReadEvidence`, `is_tax_delivery_submitted_instance` and
+`reconcile_tax_delivery_submission` require complete post-intent originals for
+ordinary Task_3 feedback, or a terminal archived instance plus an exact known
+Clean receipt. Auditor/unknown stages remain unresolved. Terminal archive time
+must follow process end and cannot be later than the metadata observation.
+The V4 completion binds exact metadata, approved file and any receipt originals.
+
+`TaxDeliveryFeedbackObservation` and
+`decode_tax_delivery_feedback_observation` preserve the exact known-instance
+receipt bytes and metadata reference. The published receipt contract establishes
+an XML-file download but no assumed final-receipt XSD or assessment outcome.
+Only the new feedback purpose admits opaque non-UTF-8 bytes; previous purposes
+retain their UTF-8 contract. A later receipt refresh leaves the mutation result
+immutable. Narrow original-actor acknowledgment, completion and receipt writes
+survive access loss or containment after provider I/O, without disclosing
+unrelated history or weakening owner-only draft RLS.
+
+Source V8 / Journal V6 positively cover the same nine tables and require every
+predecessor proof plus `declaredSubmissionExtentValid=true` and
+`submissionCodecVersion=tax-submission-evidence-v1`. New codecs require the new
+reader flag. Additive `submissionEvidence=true` negotiates a complete V7 only
+before any submission/feedback original exists; no omission or invalid-positive
+fallback is permitted. The CLI-created deferred submission expansion defaults
+closed, preserves exact borrowed-role membership and private helper ACLs, and
+rechecks volatile new-work fences and owner/MFA after the company lock. Its
+rollback closes new submission intents while preserving readers and exact known
+results. This local contract enables no real provider or production filing.
+
+
+`TaxDeliveryEventFormat` and `tax_delivery_event_format` classify the retained
+codec family once. Persistence maps this closed domain value to a fixed RPC and
+reader capabilities; compatibility negotiation uses the same family predicates.
+Receipt `assert_metadata` owns draft-independent scope/file binding for both
+submission proofs and original-actor late retention.

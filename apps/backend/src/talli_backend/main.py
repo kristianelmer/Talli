@@ -20,7 +20,7 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import StrictBool, AwareDatetime, NaiveDatetime, BeforeValidator, AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import StrictBool, AwareDatetime, NaiveDatetime, BeforeValidator, AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator,field_validator
 from pydantic.json_schema import SkipJsonSchema, WithJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -107,7 +107,7 @@ from talli_backend.modules.company_tax_filing.public import (
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
-    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,ConfirmTaxDeliverySubmission,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
     PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
 )
@@ -1091,6 +1091,18 @@ class CompanyTaxAdvanceDeliveryRequest(TransportModel):
     approval_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
 
 
+class CompanyTaxConfirmSubmissionRequest(CompanyTaxAdvanceDeliveryRequest):
+    owner_review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    documents_confirmed: StrictBool
+    warnings_acknowledged: StrictBool
+
+    @field_validator('documents_confirmed','warnings_acknowledged')
+    @classmethod
+    def explicit_owner_confirmation(cls,value):
+        if value is not True:raise ValueError('Explicit owner confirmation is required.')
+        return value
+
+
 class CompanyTaxDeliveryProgressWire(TransportModel):
     company_id: UUID
     income_year: Literal[2025]
@@ -1101,7 +1113,7 @@ class CompanyTaxDeliveryProgressWire(TransportModel):
     review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
     authority_mode: Literal['finite_loopback_rehearsal']
     status: Literal['reviewed','uncertain','mutation_completed']
-    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation'] | None
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation','confirm_submission'] | None
     latest_event_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
     recorded_at: datetime
 
@@ -1121,7 +1133,7 @@ class CompanyTaxSourceFactsWire(TransportModel):
 
 class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
     filing_id: UUID
-    slot: str = Field(pattern=r"^(review|admission|acknowledgment:prepare_confirmation|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation)|observation:(instance|envelope|validation-job|validation-result):[0-9a-f]{64})$")
+    slot: str = Field(pattern=r"^(review|admission|acknowledgment:(prepare_confirmation|confirm_submission)|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation|confirm_submission)|observation:(instance|envelope|validation-job|validation-result|feedback):[0-9a-f]{64})$")
     recorded_by: UUID
     recorded_at: datetime
     canonical_json: str
@@ -1274,7 +1286,7 @@ class CompanyTaxDeliveryJournalFactWire(TransportModel):
     approved_by: UUID
     authority_mode: Literal['finite_loopback_rehearsal']
     status: Literal['reviewed','uncertain','mutation_completed']
-    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation'] | None
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation','confirm_submission'] | None
     approval_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     latest_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     recorded_at: datetime
@@ -12098,6 +12110,10 @@ def create_app(
                 elif action=='reconcile-validation':result=await session.reconcile_delivery_validation(intent)
                 elif action=='advance-confirmation':result=await session.advance_delivery_confirmation(intent)
                 elif action=='reconcile-confirmation':result=await session.reconcile_delivery_confirmation(intent)
+                elif action=='advance-submission':result=await session.confirm_delivery_submission(ConfirmTaxDeliverySubmission(
+                    *scope,command.approval_sha256,command.owner_review_sha256,command.documents_confirmed,command.warnings_acknowledged))
+                elif action=='reconcile-submission':result=await session.reconcile_delivery_submission(intent)
+                elif action=='reconcile-feedback':result=await session.reconcile_delivery_feedback(intent)
                 else:raise CompanyTaxError.unavailable()
                 if result.approval_sha256!=command.approval_sha256:raise CompanyTaxError.unavailable()
                 if action in ('advance-upload','reconcile-upload') and result.mutation_kind is not TaxMutationKind.UPLOAD_ENVELOPE:
@@ -12105,6 +12121,8 @@ def create_app(
                 if action in ('advance-validation','reconcile-validation') and result.mutation_kind is not TaxMutationKind.START_VALIDATION:
                     raise CompanyTaxError.unavailable()
                 if action in ('advance-confirmation','reconcile-confirmation') and result.mutation_kind is not TaxMutationKind.PREPARE_CONFIRMATION:
+                    raise CompanyTaxError.unavailable()
+                if action in ('advance-submission','reconcile-submission','reconcile-feedback') and result.mutation_kind is not TaxMutationKind.CONFIRM_SUBMISSION:
                     raise CompanyTaxError.unavailable()
             if (str(result.company_id)!=str(command.company_id) or int(result.income_year)!=command.income_year
                     or result.filing_id!=str(command.filing_id)):
@@ -12206,6 +12224,36 @@ def create_app(
     ) -> CompanyTaxDeliveryProgressWire:
         return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-confirmation')
 
+    @application.post('/api/v1/company-tax/delivery-submission-advances',operation_id='companyTaxConfirmDeliverySubmission',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_confirm_delivery_submission(
+        request: Request,command: CompanyTaxConfirmSubmissionRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-submission')
+
+    @application.post('/api/v1/company-tax/delivery-submission-reconciliations',operation_id='companyTaxReconcileDeliverySubmission',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_submission(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-submission')
+
+    @application.post('/api/v1/company-tax/delivery-feedback-reconciliations',operation_id='companyTaxReconcileDeliveryFeedback',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_feedback(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-feedback')
+
     @application.get('/api/v1/company-tax/delivery-owner-review',operation_id='companyTaxGetDeliveryOwnerReview',
         response_model=CompanyTaxOwnerReviewArtifactWire,responses=ledger_errors,tags=['company-tax'],
         openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
@@ -12263,6 +12311,7 @@ def create_app(
         read_evidence_version: Annotated[int, Query(alias="readEvidenceVersion",ge=1,le=2)] = 1,
         validation_evidence: Annotated[bool, Query(alias="validationEvidence")] = False,
         confirmation_evidence: Annotated[bool, Query(alias="confirmationEvidence")] = False,
+        submission_evidence: Annotated[bool, Query(alias="submissionEvidence")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxDeliveryJournalArchiveWire:
         async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
@@ -12271,7 +12320,8 @@ def create_app(
                 CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),read_evidence=read_evidence,
                 guarded_upload=read_evidence and read_evidence_version==2,
                 validation_evidence=read_evidence and read_evidence_version==2 and validation_evidence,
-                confirmation_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence)
+                confirmation_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence,
+                submission_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence)
             facts=result.source_facts
             try:
                 return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),

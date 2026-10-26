@@ -19,7 +19,7 @@ from talli_backend.modules.company_tax_filing.public import (
     AdvanceTaxDelivery,ApproveTaxDeliveryDraft,CompanyTaxError,TaxDeliveryEventAppend,StoredTaxDeliveryEvent,
     StoredTaxDeliveryDraft,approve_tax_delivery_review,
     TaxDeliveryInstanceObservation,
-    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,
+    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryFeedbackObservation,
 )
 from talli_backend.shared.kernel import CorrelationId,IdempotencyKey,Timestamp
 from talli_backend.modules.company_tax_filing.public import TaxFilingSubmissionId
@@ -51,17 +51,19 @@ class Session:
                 if not session.owner:raise CompanyTaxError.not_found()
                 if not session.fresh:raise CompanyTaxError.mfa_required()
                 return session.snapshot()
+            async def filing_source_snapshot(self,query):
+                return await self.journal_history_snapshot(query)
             async def append_delivery_event(self,value):
                 nonlocal last
                 assert session.active==[False]
                 recorded=(session.current_time() if session.current_time is not None else Timestamp(session.base.as_of.value+timedelta(microseconds=len(session.events)+1)))
                 event=StoredTaxDeliveryEvent(value,recorded,session.actor_id)
-                if not event.slot.startswith('completion:') and event.slot!='acknowledgment:prepare_confirmation':
+                if not event.slot.startswith('completion:') and event.slot not in ('acknowledgment:prepare_confirmation','acknowledgment:confirm_submission') and not event.slot.startswith('observation:feedback:'):
                     if not session.owner:raise CompanyTaxError.not_found()
                     if not session.fresh:raise CompanyTaxError.mfa_required()
                 prior=next((row for row in session.events if row.slot==event.slot and row.binding.filing_id==event.binding.filing_id),None)
                 if prior is not None:
-                    if prior.value!=value and not (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
+                    if prior.value!=value and not (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryFeedbackObservation)
                         and type(prior.value) is type(value)
                         and value.evidence_sha256==prior.value.evidence_sha256 and value.original==prior.value.original):
                         raise CompanyTaxError.draft_conflict()
@@ -90,9 +92,9 @@ class Session:
 
 
 @pytest.fixture
-def workflow(review_basis,complete_archive,monkeypatch):
+def workflow(review_basis,complete_archive,monkeypatch,request):
     _,base=complete_archive
-    grant,runtime,clock,_,draft=admitted(review_basis,maximum_requests=20)
+    grant,runtime,clock,_,draft=admitted(review_basis,maximum_requests=getattr(request,'param',20))
     base=replace(base,contract_version='company-tax-source-v4',coverage=dict(base.coverage)|{
         'contractVersion':'company-tax-source-v4','declaredObservationExtentValid':True,'observationCodecVersion':'tax-read-evidence-v1'})
     session=Session(replace(base,delivery_events=()),draft,review_basis['approved_by'])

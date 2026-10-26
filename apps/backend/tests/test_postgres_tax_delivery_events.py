@@ -119,7 +119,8 @@ def test_complete_journal_keeps_all_exact_originals_and_replays_each_operation(e
         value,approval=await prepared(events_database,current_draft)
         await append(events_database,approval)
         originals=[approval]
-        for kind in TaxMutationKind:
+        for kind in (TaxMutationKind.CREATE_INSTANCE,TaxMutationKind.UPLOAD_ENVELOPE,
+                TaxMutationKind.START_VALIDATION,TaxMutationKind.PREPARE_CONFIRMATION):
             request=mutation(approval,value,kind)
             assert (await read(events_database,value)).plan(request) is TaxMutationDisposition.EXECUTE
             assert (await append(events_database,request)).inserted

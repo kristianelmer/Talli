@@ -21,10 +21,13 @@ const operations=[
   ["companyTaxReconcileDeliveryValidation","delivery-validation-reconciliations",advance],
   ["companyTaxAdvanceDeliveryConfirmation","delivery-confirmation-advances",advance],
   ["companyTaxReconcileDeliveryConfirmation","delivery-confirmation-reconciliations",advance],
+  ["companyTaxConfirmDeliverySubmission","delivery-submission-advances",{...advance,ownerReviewSha256:"e".repeat(64),documentsConfirmed:true,warningsAcknowledged:true}],
+  ["companyTaxReconcileDeliverySubmission","delivery-submission-reconciliations",advance],
+  ["companyTaxReconcileDeliveryFeedback","delivery-feedback-reconciliations",advance],
 ];
 
 for(const [method,path,command] of operations) {
-  const expected=method.endsWith("Confirmation")?{...progress,status:"uncertain",mutationKind:"prepare_confirmation"}:method.endsWith("Upload")?{...progress,status:"uncertain",mutationKind:"upload_envelope"}:method.endsWith("Validation")?{...progress,status:"uncertain",mutationKind:"start_validation"}:progress;
+  const expected=method.endsWith("Submission")||method.endsWith("Feedback")?{...progress,status:"uncertain",mutationKind:"confirm_submission"}:method.endsWith("Confirmation")?{...progress,status:"uncertain",mutationKind:"prepare_confirmation"}:method.endsWith("Upload")?{...progress,status:"uncertain",mutationKind:"upload_envelope"}:method.endsWith("Validation")?{...progress,status:"uncertain",mutationKind:"start_validation"}:progress;
   test(`${method} sends only bound scope and immutable review identity`,async()=>{
     let called;const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async(url,request)=>{
       called={url,request};return Response.json(expected);
@@ -43,6 +46,16 @@ for(const [method,path,command] of operations) {
     const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...expected,...change})});
     await assert.rejects(api[method](command,{idempotencyKey:"one-command-key-v1"}),error=>error instanceof TalliApiError&&error.status===502);
   });
+  if(method.endsWith("Submission")||method.endsWith("Feedback")) {
+    test(`${method} cannot substitute a preparation receipt`,async()=>{
+      const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...expected,mutationKind:"prepare_confirmation"})});
+      await assert.rejects(api[method](command,{idempotencyKey:"one-command-key-v1"}),error=>error instanceof TalliApiError&&error.status===502);
+    });
+    test(`${method} never retries a lost response`,async()=>{
+      let calls=0;const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>{calls++;throw new TypeError("lost response");}});
+      await assert.rejects(api[method](command,{idempotencyKey:"one-command-key-v1"}),TypeError);assert.equal(calls,1);
+    });
+  }
 }
 
 for(const field of ["draftSha256","reviewSha256"])test(`approval receipt must match ${field}`,async()=>{

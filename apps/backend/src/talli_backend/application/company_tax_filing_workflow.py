@@ -23,7 +23,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
     TaxDeliveryJournalArchive, archive_tax_delivery_journal,
     PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,
-    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,ConfirmTaxDeliverySubmission,TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -126,6 +126,21 @@ class AuthenticatedCompanyTax:
         if self._submission is None:raise CompanyTaxError.unavailable()
         return await self._submission.reconcile_confirmation(self._session,command)
 
+    async def confirm_delivery_submission(self,command: ConfirmTaxDeliverySubmission):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_submission(self._session,command)
+
+    async def reconcile_delivery_submission(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_submission(self._session,command)
+
+    async def reconcile_delivery_feedback(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_feedback(self._session,command)
+
     async def delivery_owner_review(self,query: TaxDeliveryOwnerReviewQuery) -> TaxDeliveryOwnerReview:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         if self._submission is None:raise CompanyTaxError.unavailable()
@@ -222,7 +237,7 @@ class AuthenticatedCompanyTax:
             return result
 
     async def delivery_journal_archive(self, query: CompanyTaxSourceQuery, *, read_evidence: bool=False,guarded_upload: bool=False,
-            validation_evidence: bool=False,confirmation_evidence: bool=False) -> TaxDeliveryJournalArchive:
+            validation_evidence: bool=False,confirmation_evidence: bool=False,submission_evidence: bool=False) -> TaxDeliveryJournalArchive:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         # The current guard spans the separate repeatable source snapshot. The
         # late guard evaluates ownership/MFA after all enumeration and waits.
@@ -231,7 +246,7 @@ class AuthenticatedCompanyTax:
             async with self._session.transaction(snapshot=True) as transaction:
                 result=archive_tax_delivery_journal(query,await transaction.journal_history_snapshot(query),
                     read_evidence=read_evidence,guarded_upload=guarded_upload,validation_evidence=validation_evidence,
-                    confirmation_evidence=confirmation_evidence)
+                    confirmation_evidence=confirmation_evidence,submission_evidence=submission_evidence)
             await guard.lock_delivery_draft_archive(query)
             return result
 

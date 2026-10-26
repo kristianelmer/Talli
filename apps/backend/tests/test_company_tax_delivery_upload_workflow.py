@@ -58,6 +58,13 @@ def upload_workflow(workflow):
         if request.method=='PUT':
             assert request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
             assert request.content==b'' and request.headers['content-type']=='application/json'
+            if state.get('submissionEnabled') and any(event.slot=='intent:confirm_submission' for event in session.events):
+                assert state['processTask']=='confirmation' and state['processElement']=='Task_2'
+                state['submissionPuts']+=1
+                state.update(processTask=state.get('afterSubmissionTask','feedback'),processElement=state.get('afterSubmissionElement','Task_3'),processFlow=3)
+                state['on_submission']()
+                if state['lostSubmission']:raise httpx.ReadTimeout('synthetic submission acknowledgment lost',request=request)
+                return httpx.Response(200,content=state['processResponse'],headers={'content-type':'application/json'})
             assert any(event.slot=='intent:prepare_confirmation' for event in session.events)
             state['confirmationPuts']+=1;state['processTask']='confirmation';state['processElement']='Task_2';state['processFlow']=2
             state['on_confirmation']()
@@ -75,6 +82,9 @@ def upload_workflow(workflow):
             return httpx.Response(201,json={'id':DATA,'fileScanResult':'Pending'})
         if request.url.path.endswith('/data/'+DATA):
             state['on_file']();return httpx.Response(200,content=state['uploaded'],headers={'content-type':'application/xml'})
+        if state.get('receiptBytes') is not None and request.url.path.endswith('/data/00000000-0000-4000-8000-000000009999'):
+            state.get('on_feedback',lambda:None)()
+            return httpx.Response(200,content=state['receiptBytes'],headers={'content-type':'text/xml'})
         assert request.method=='GET' and request.url.path.endswith('/instances/'+INSTANCE)
         state['on_metadata']()
         if state['metadata'] is not None:return httpx.Response(200,content=state['metadata'],headers={'content-type':'application/json'})
@@ -83,6 +93,12 @@ def upload_workflow(workflow):
             'elementId':state['processElement'],'flow':state['processFlow']}
         if state['uploaded'] is not None:value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
             'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
+        if state.get('receiptBytes') is not None:value['data'].append({'id':'00000000-0000-4000-8000-000000009999',
+            'dataType':'tilbakemelding','contentType':'text/xml','size':len(state['receiptBytes']),'fileScanResult':state.get('receiptScan','Clean')})
+        if state.get('terminal'):
+            terminal_at=state.setdefault('terminalAt',clock[0].value.isoformat())
+            value['process']['currentTask']=None;value['process']['ended']=terminal_at
+            value['status']={'isArchived':True,'archived':terminal_at}
         return httpx.Response(200,json=value)
     service._authority=LoopbackCompanyTaxDelivery(service._runtime,transport=httpx.MockTransport(authority))
     return session,service,command,calls,state,clock,grant

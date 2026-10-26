@@ -19,7 +19,8 @@
       "rehearse_company_tax_return",
       "PrepareTaxDeliveryDraft",
       "ApproveTaxDeliveryDraft",
-      "AdvanceTaxDelivery"
+      "AdvanceTaxDelivery",
+      "ConfirmTaxDeliverySubmission"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -145,7 +146,17 @@
       "TaxCalculatedDocumentsReview",
       "TaxDeliveryOwnerReviewQuery",
       "TaxDeliveryOwnerReview",
-      "build_tax_delivery_owner_review"
+      "build_tax_delivery_owner_review",
+      "TaxDeliveryOwnerConfirmation",
+      "confirm_tax_delivery_owner_review",
+      "TaxDeliverySubmissionPrerequisite",
+      "bind_tax_delivery_submission_prerequisite",
+      "TaxDeliverySubmissionReadEvidence",
+      "is_tax_delivery_submitted_instance",
+      "reconcile_tax_delivery_submission",
+      "TaxDeliveryFeedbackObservation",
+      "decode_tax_delivery_feedback_observation",
+      "tax_delivery_event_format"
     ],
     "events": [],
     "errors": [
@@ -184,7 +195,8 @@
       "TaxDeliveryCompletionOrigin",
       "TaxDeliveryJournalPersistence",
       "TaxDeliveryMutationAuthority",
-      "TaxDeliveryOriginalPurpose"
+      "TaxDeliveryOriginalPurpose",
+      "TaxDeliveryEventFormat"
     ]
   },
   "owns": {
@@ -426,7 +438,13 @@
     "confirmationTopology": "apps/backend/tests/test_company_tax_confirmation_database.py",
     "ownerReview": "apps/backend/tests/test_company_tax_delivery_owner_review.py",
     "validationReview": "apps/backend/tests/test_company_tax_validation_review.py",
-    "ownerReviewApi": "apps/backend/tests/test_company_tax_delivery_owner_review_api.py"
+    "ownerReviewApi": "apps/backend/tests/test_company_tax_delivery_owner_review_api.py",
+    "submissionPrerequisite": "apps/backend/tests/test_company_tax_submission_prerequisite.py",
+    "finalSubmissionWorkflow": "apps/backend/tests/test_company_tax_delivery_final_submission_workflow.py",
+    "finalSubmissionApi": "apps/backend/tests/test_company_tax_delivery_final_submission_api.py",
+    "submissionEvidenceDatabase": "apps/backend/tests/test_postgres_tax_submission_evidence.py",
+    "finalSubmissionHttpDatabase": "apps/backend/tests/test_postgres_tax_final_submission.py",
+    "finalSubmissionTopology": "apps/backend/tests/test_company_tax_final_submission_database.py"
   },
   "compatibilityExceptions": []
 }

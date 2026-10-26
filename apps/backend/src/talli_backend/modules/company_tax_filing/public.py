@@ -818,9 +818,14 @@ from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobIns
 from .delivery_validation_result import (TaxDeliveryValidationResultObservation,decode_tax_delivery_validation_result_observation)
 from .delivery_owner_review import (TaxCalculatedReviewField,TaxCalculatedDocumentReview,TaxCalculatedDocumentsReview,
     TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,build_tax_delivery_owner_review)
+from .delivery_owner_confirmation import TaxDeliveryOwnerConfirmation,confirm_tax_delivery_owner_review
+from .delivery_submission_prerequisite import TaxDeliverySubmissionPrerequisite,bind_tax_delivery_submission_prerequisite
+from .delivery_submission_read_evidence import TaxDeliverySubmissionReadEvidence,is_tax_delivery_submitted_instance
+from .delivery_feedback_observation import TaxDeliveryFeedbackObservation,decode_tax_delivery_feedback_observation
+from .delivery_journal import reconcile_tax_delivery_submission
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
-    TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
+    TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event,TaxDeliveryEventFormat,tax_delivery_event_format)
 from .delivery_archive import TaxDeliveryJournalArchive, archive_tax_delivery_journal
 
 
@@ -863,6 +868,20 @@ class AdvanceTaxDelivery(PrepareTaxDeliveryDraft):
         _digest(self.expected_approval_sha256)
 
 
+@dataclass(frozen=True,slots=True)
+class ConfirmTaxDeliverySubmission(AdvanceTaxDelivery):
+    expected_owner_review_sha256: str
+    documents_confirmed: bool
+    warnings_acknowledged: bool
+
+    def __post_init__(self):
+        from .delivery import _digest
+        AdvanceTaxDelivery.__post_init__(self);_digest(self.expected_owner_review_sha256)
+        if (type(self.documents_confirmed) is not bool or self.documents_confirmed is not True
+                or type(self.warnings_acknowledged) is not bool or self.warnings_acknowledged is not True):
+            raise ValueError('Tax submission requires explicit owner confirmation of documents and warnings.')
+
+
 @dataclass(frozen=True, slots=True)
 class TaxDeliveryDraftFact:
     filing_id: str
@@ -884,7 +903,7 @@ class TaxDeliveryDraftPersistence(Protocol):
 
 
 class TaxDeliveryJournalPersistence(Protocol):
-    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation | TaxDeliveryValidationJobObservation | TaxDeliveryValidationResultObservation) -> TaxDeliveryEventAppend: ...
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation | TaxDeliveryValidationJobObservation | TaxDeliveryValidationResultObservation | TaxDeliveryProcessAcknowledgment | TaxDeliveryFeedbackObservation) -> TaxDeliveryEventAppend: ...
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
     async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
 
@@ -933,10 +952,14 @@ class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
                       draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
     async def prepare_confirmation(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
                       draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment: ...
+    async def confirm_submission(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment: ...
     async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
                                created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
     async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
                                created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
+    async def observe_feedback(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation: ...
     async def observe_validation_job(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
             request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion) -> TaxDeliveryValidationJobObservation: ...
     async def observe_validation_result(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
@@ -982,6 +1005,11 @@ __all__ = [
     'TaxCalculatedDocumentValidator','TaxCalculatedDocumentsInspection',
     'TaxCalculatedReviewField','TaxCalculatedDocumentReview','TaxCalculatedDocumentsReview',
     'TaxDeliveryOwnerReviewQuery','TaxDeliveryOwnerReview','build_tax_delivery_owner_review',
+    'TaxDeliveryOwnerConfirmation','confirm_tax_delivery_owner_review','ConfirmTaxDeliverySubmission',
+    'TaxDeliverySubmissionPrerequisite','bind_tax_delivery_submission_prerequisite',
+    'TaxDeliverySubmissionReadEvidence','is_tax_delivery_submitted_instance','reconcile_tax_delivery_submission',
+    'TaxDeliveryFeedbackObservation','decode_tax_delivery_feedback_observation',
+    'TaxDeliveryEventFormat','tax_delivery_event_format',
     'TaxDeliveryConfirmationPrerequisite','bind_tax_delivery_confirmation_prerequisite',
     'is_tax_delivery_owner_confirmation_instance',
     'TaxDeliveryConfirmationReadEvidence','reconcile_tax_delivery_confirmation',

@@ -21,6 +21,8 @@ from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence,_decode
 from .delivery_validation_prerequisite import TaxDeliveryValidationPrerequisite,_decode_validation_prerequisite
 from .delivery_confirmation_prerequisite import TaxDeliveryConfirmationPrerequisite,_decode_confirmation_prerequisite
 from .delivery_confirmation_read_evidence import TaxDeliveryConfirmationReadEvidence,_decode_confirmation_read_evidence
+from .delivery_submission_prerequisite import TaxDeliverySubmissionPrerequisite,_decode_submission_prerequisite
+from .delivery_submission_read_evidence import TaxDeliverySubmissionReadEvidence,_decode_submission_read_evidence
 
 _APP_ID='skd/formueinntekt-skattemelding-v2'
 
@@ -38,6 +40,7 @@ class TaxDeliveryMutationRequest:
     upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None
     validation_prerequisite: TaxDeliveryValidationPrerequisite | None=None
     confirmation_prerequisite: TaxDeliveryConfirmationPrerequisite | None=None
+    submission_prerequisite: TaxDeliverySubmissionPrerequisite | None=None
 
     def __post_init__(self):
         _uuid(self.filing_id);_digest(self.approval_sha256)
@@ -50,7 +53,7 @@ class TaxDeliveryMutationRequest:
         if self.kind is TaxMutationKind.CREATE_INSTANCE:
             if self.target_instance is not None:raise ValueError('New Tax instance cannot have a prior target.')
         else:_instance(self.target_instance)
-        _bytes(self.body_base64,allow_empty=self.kind is TaxMutationKind.PREPARE_CONFIRMATION)
+        _bytes(self.body_base64,allow_empty=self.kind in (TaxMutationKind.PREPARE_CONFIRMATION,TaxMutationKind.CONFIRM_SUBMISSION))
         if self.upload_prerequisite is not None and (
                 type(self.upload_prerequisite) is not TaxDeliveryUploadPrerequisite
                 or self.kind is not TaxMutationKind.UPLOAD_ENVELOPE
@@ -67,10 +70,18 @@ class TaxDeliveryMutationRequest:
                 or self.kind is not TaxMutationKind.PREPARE_CONFIRMATION
                 or self.confirmation_prerequisite.instance_id!=self.target_instance or self.body_bytes!=b''):
             raise ValueError('Tax confirmation prerequisite differs from its exact request.')
+        if self.kind is TaxMutationKind.CONFIRM_SUBMISSION and self.submission_prerequisite is None:
+            raise ValueError('Tax submission cannot use an earlier request codec without explicit owner confirmation.')
+        if self.submission_prerequisite is not None and (
+                type(self.submission_prerequisite) is not TaxDeliverySubmissionPrerequisite
+                or self.kind is not TaxMutationKind.CONFIRM_SUBMISSION or self.upload_prerequisite is not None
+                or self.validation_prerequisite is not None or self.confirmation_prerequisite is not None
+                or self.submission_prerequisite.instance_id!=self.target_instance or self.body_bytes!=b''):
+            raise ValueError('Tax submission prerequisite differs from its exact request.')
 
     @property
     def body_bytes(self) -> bytes:
-        return _bytes(self.body_base64,allow_empty=self.kind is TaxMutationKind.PREPARE_CONFIRMATION)
+        return _bytes(self.body_base64,allow_empty=self.kind in (TaxMutationKind.PREPARE_CONFIRMATION,TaxMutationKind.CONFIRM_SUBMISSION))
 
     @property
     def canonical_json(self) -> str:
@@ -82,6 +93,8 @@ class TaxDeliveryMutationRequest:
         else:version='company-tax-delivery-mutation-request-v3'
         if self.confirmation_prerequisite is None:value.pop('confirmation_prerequisite')
         else:version='company-tax-delivery-mutation-request-v4'
+        if self.submission_prerequisite is None:value.pop('submission_prerequisite')
+        else:version='company-tax-delivery-mutation-request-v5'
         return _canonical({'version':version,'request':value})
 
     @property
@@ -99,19 +112,22 @@ class TaxDeliveryMutationRequest:
     def assert_draft(self, approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft) -> None:
         if self != build_tax_delivery_mutation_request(approval,draft,self.kind,target_instance=self.target_instance,
                 upload_prerequisite=self.upload_prerequisite,validation_prerequisite=self.validation_prerequisite,
-                confirmation_prerequisite=self.confirmation_prerequisite):
+                confirmation_prerequisite=self.confirmation_prerequisite,submission_prerequisite=self.submission_prerequisite):
             raise ValueError('Tax mutation request differs from the approved original.')
         if self.confirmation_prerequisite is not None and (
                 self.confirmation_prerequisite.calculated.draft_sha256!=draft.sha256
                 or self.confirmation_prerequisite.envelope_sha256!=draft.envelope.envelope_sha256):
             raise ValueError('Tax confirmation prerequisite differs from the retained draft.')
+        if self.submission_prerequisite is not None and self.submission_prerequisite.envelope_sha256!=draft.envelope.envelope_sha256:
+            raise ValueError('Tax submission prerequisite differs from the retained draft.')
 
 
 def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft,
         kind: TaxMutationKind, *, target_instance: str | None = None,
         upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None,
         validation_prerequisite: TaxDeliveryValidationPrerequisite | None=None,
-        confirmation_prerequisite: TaxDeliveryConfirmationPrerequisite | None=None) -> TaxDeliveryMutationRequest:
+        confirmation_prerequisite: TaxDeliveryConfirmationPrerequisite | None=None,
+        submission_prerequisite: TaxDeliverySubmissionPrerequisite | None=None) -> TaxDeliveryMutationRequest:
     """Create exact nonsecret wire bodies; an operation never accepts a URL.
 
     These bodies preserve the fixed Tax application contract. The eventual
@@ -131,7 +147,7 @@ def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, dra
     else:body=b''
     return TaxDeliveryMutationRequest(draft.filing_id,source.company_id,source.income_year,
         source.organization_number,approval.sha256,kind,target_instance,base64.b64encode(body).decode('ascii'),
-        upload_prerequisite,validation_prerequisite,confirmation_prerequisite)
+        upload_prerequisite,validation_prerequisite,confirmation_prerequisite,submission_prerequisite)
 
 
 class TaxDeliveryCompletionOrigin(StrEnum):
@@ -139,6 +155,7 @@ class TaxDeliveryCompletionOrigin(StrEnum):
     INSTANCE_READ = 'instance_read'
     ENVELOPE_READ = 'envelope_read'
     CONFIRMATION_READ = 'confirmation_read'
+    SUBMISSION_READ = 'submission_read'
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,19 +167,22 @@ class TaxDeliveryMutationCompletion:
     origin: TaxDeliveryCompletionOrigin
     upload_read_evidence: TaxDeliveryUploadReadEvidence | None=None
     confirmation_read_evidence: TaxDeliveryConfirmationReadEvidence | None=None
+    submission_read_evidence: TaxDeliverySubmissionReadEvidence | None=None
 
     def __post_init__(self):
         if (type(self.intent) is not TaxMutationIntent or type(self.observed_at) is not Timestamp
                 or type(self.origin) is not TaxDeliveryCompletionOrigin):
             raise ValueError('Tax completion binding is invalid.')
         record=TaxMutationRecord(self.intent,'completed',self.result)
-        if self.upload_read_evidence is not None or self.confirmation_read_evidence is not None:
-            if self.upload_read_evidence is not None and self.confirmation_read_evidence is not None:
+        if self.upload_read_evidence is not None or self.confirmation_read_evidence is not None or self.submission_read_evidence is not None:
+            if sum(value is not None for value in (self.upload_read_evidence,self.confirmation_read_evidence,self.submission_read_evidence))!=1:
                 raise ValueError('Tax completion cannot combine different read proofs.')
-            proof=self.upload_read_evidence or self.confirmation_read_evidence
+            proof=self.upload_read_evidence or self.confirmation_read_evidence or self.submission_read_evidence
             kind,origin,proof_type=((TaxMutationKind.UPLOAD_ENVELOPE,TaxDeliveryCompletionOrigin.ENVELOPE_READ,TaxDeliveryUploadReadEvidence)
                 if self.upload_read_evidence is not None else
-                (TaxMutationKind.PREPARE_CONFIRMATION,TaxDeliveryCompletionOrigin.CONFIRMATION_READ,TaxDeliveryConfirmationReadEvidence))
+                (TaxMutationKind.PREPARE_CONFIRMATION,TaxDeliveryCompletionOrigin.CONFIRMATION_READ,TaxDeliveryConfirmationReadEvidence)
+                if self.confirmation_read_evidence is not None else
+                (TaxMutationKind.CONFIRM_SUBMISSION,TaxDeliveryCompletionOrigin.SUBMISSION_READ,TaxDeliverySubmissionReadEvidence))
             if (type(proof) is not proof_type or self.intent.kind is not kind
                     or self.origin is not origin or self.response_base64 is not None
                     or dict(record.result)!=proof.result or self.intent.filing_id!=proof.instance.filing_id
@@ -170,8 +190,13 @@ class TaxDeliveryMutationCompletion:
                     or self.intent.approved_by!=proof.instance.approved_by or self.intent.approval_sha256!=proof.instance.approval_sha256
                     or self.observed_at.value<proof.instance.observed_at.value or self.observed_at.value<proof.envelope.observed_at.value):
                 raise ValueError('Tax reconciliation is not bound to its original intent and read originals.')
+            if (self.submission_read_evidence is not None and self.submission_read_evidence.feedback is not None
+                    and self.observed_at.value<self.submission_read_evidence.feedback.observed_at.value):
+                raise ValueError('Tax submission completion predates its exact receipt original.')
             object.__setattr__(self,'result',record.result)
             return
+        if self.intent.kind is TaxMutationKind.CONFIRM_SUBMISSION:
+            raise ValueError('Tax submission cannot complete from a process acknowledgment or an earlier codec.')
         value=_response_object(_bytes(self.response_base64))
         # Bind the normalized result to its original. A PUT acknowledgment does
         # not prove confirmation: that requires a separate instance read.
@@ -195,6 +220,7 @@ class TaxDeliveryMutationCompletion:
     def response_bytes(self) -> bytes:
         if self.upload_read_evidence is not None:return self.upload_read_evidence.instance.original.raw_bytes
         if self.confirmation_read_evidence is not None:return self.confirmation_read_evidence.instance.original.raw_bytes
+        if self.submission_read_evidence is not None:return self.submission_read_evidence.instance.original.raw_bytes
         return _bytes(self.response_base64)
 
     @property
@@ -207,6 +233,9 @@ class TaxDeliveryMutationCompletion:
         if self.confirmation_read_evidence is not None:
             value.pop('response_base64');value['confirmation_read_evidence']=self.confirmation_read_evidence.canonical_value
             version='company-tax-delivery-mutation-completion-v3'
+        if self.submission_read_evidence is not None:
+            value.pop('response_base64');value['submission_read_evidence']=self.submission_read_evidence.canonical_value
+            version='company-tax-delivery-mutation-completion-v4'
         return _canonical({'version':version,'completion':value})
 
     @property
@@ -223,6 +252,9 @@ class TaxDeliveryMutationCompletion:
             raise ValueError('Tax completion refers to different envelope bytes.')
         if self.upload_read_evidence is not None:self.upload_read_evidence.assert_request(request)
         if self.confirmation_read_evidence is not None:self.confirmation_read_evidence.assert_request(request)
+        if self.submission_read_evidence is not None:self.submission_read_evidence.assert_request(request)
+        if request.submission_prerequisite is not None and self.submission_read_evidence is None:
+            raise ValueError('Tax submission needs complete known post-transition read originals.')
         if request.confirmation_prerequisite is not None and self.confirmation_read_evidence is None:
             raise ValueError('Tax confirmation preparation needs the complete post-transition read originals.')
         if request.validation_prerequisite is not None and _response_object(self.response_bytes).get('jobbStatus')!='OPPRETTET':
@@ -285,6 +317,19 @@ def reconcile_tax_delivery_confirmation(request: TaxDeliveryMutationRequest,appr
     return result
 
 
+def reconcile_tax_delivery_submission(request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+        draft: TaxDeliveryDraft,*,evidence: TaxDeliverySubmissionReadEvidence,observed_at: Timestamp) -> TaxDeliveryMutationCompletion:
+    request.assert_draft(approval,draft)
+    if type(evidence) is not TaxDeliverySubmissionReadEvidence:raise ValueError('Tax submission read originals are required.')
+    evidence.envelope.assert_instance(approval,draft,evidence.instance)
+    if evidence.feedback is not None:evidence.feedback.assert_instance(approval,draft,evidence.instance)
+    evidence.assert_request(request)
+    result=TaxDeliveryMutationCompletion(request.intent(approval),evidence.result,None,observed_at,
+        TaxDeliveryCompletionOrigin.SUBMISSION_READ,submission_read_evidence=evidence)
+    result.assert_request(request,approval)
+    return result
+
+
 def _decode(raw, expected_sha256, version, field, *, maximum=12*1024*1024+16384):
     def pairs(items):
         value={}
@@ -305,17 +350,19 @@ def decode_tax_delivery_mutation_request(raw: str, expected_sha256: str) -> TaxD
     try:
         if type(raw) is not str or len(raw.encode('utf-8'))>12*1024*1024+16384:raise ValueError()
         version=_response_object(raw.encode('utf-8')).get('version')
-        if version not in ('company-tax-delivery-mutation-request-v1','company-tax-delivery-mutation-request-v2','company-tax-delivery-mutation-request-v3','company-tax-delivery-mutation-request-v4'):raise ValueError()
+        if version not in ('company-tax-delivery-mutation-request-v1','company-tax-delivery-mutation-request-v2','company-tax-delivery-mutation-request-v3','company-tax-delivery-mutation-request-v4','company-tax-delivery-mutation-request-v5'):raise ValueError()
         successor=version=='company-tax-delivery-mutation-request-v2'
         validation=version=='company-tax-delivery-mutation-request-v3'
         confirmation=version=='company-tax-delivery-mutation-request-v4'
+        submission=version=='company-tax-delivery-mutation-request-v5'
         value=_object(_decode(raw,expected_sha256,version,'request'),
             ('filing_id','company_id','income_year','organization_number','approval_sha256','kind','target_instance','body_base64',
                 *(('upload_prerequisite',) if successor else ()),*(('validation_prerequisite',) if validation else ()),
-                *(('confirmation_prerequisite',) if confirmation else ())))
+                *(('confirmation_prerequisite',) if confirmation else ()),*(('submission_prerequisite',) if submission else ())))
         if successor:value=value|{'upload_prerequisite':_decode_upload_prerequisite(value['upload_prerequisite'])}
         if validation:value=value|{'validation_prerequisite':_decode_validation_prerequisite(value['validation_prerequisite'])}
         if confirmation:value=value|{'confirmation_prerequisite':_decode_confirmation_prerequisite(value['confirmation_prerequisite'])}
+        if submission:value=value|{'submission_prerequisite':_decode_submission_prerequisite(value['submission_prerequisite'])}
         company=_object(value['company_id'],('value',));year=_object(value['income_year'],('value',))
         result=TaxDeliveryMutationRequest(**(value|{'company_id':CompanyId(company['value']),
             'income_year':IncomeYear(year['value']),'kind':TaxMutationKind(value['kind'])}))
@@ -327,15 +374,19 @@ def decode_tax_delivery_mutation_request(raw: str, expected_sha256: str) -> TaxD
 
 def decode_tax_delivery_mutation_completion(raw: str, expected_sha256: str) -> TaxDeliveryMutationCompletion:
     try:
-        if type(raw) is not str or len(raw.encode('utf-8'))>24*1024*1024+32768:raise ValueError()
+        if type(raw) is not str or len(raw.encode('utf-8'))>36*1024*1024+49152:raise ValueError()
         version=_response_object(raw.encode('utf-8')).get('version')
-        if version not in ('company-tax-delivery-mutation-completion-v1','company-tax-delivery-mutation-completion-v2','company-tax-delivery-mutation-completion-v3'):raise ValueError()
+        if version not in ('company-tax-delivery-mutation-completion-v1','company-tax-delivery-mutation-completion-v2','company-tax-delivery-mutation-completion-v3','company-tax-delivery-mutation-completion-v4'):raise ValueError()
         successor=version=='company-tax-delivery-mutation-completion-v2'
         confirmation=version=='company-tax-delivery-mutation-completion-v3'
-        value=_object(_decode(raw,expected_sha256,version,'completion',maximum=(24*1024*1024+32768 if successor or confirmation else 12*1024*1024+16384)),
-            ('intent','result','observed_at','origin','upload_read_evidence' if successor else 'confirmation_read_evidence' if confirmation else 'response_base64'))
+        submission=version=='company-tax-delivery-mutation-completion-v4'
+        maximum=36*1024*1024+49152 if submission else 24*1024*1024+32768 if successor or confirmation else 12*1024*1024+16384
+        value=_object(_decode(raw,expected_sha256,version,'completion',maximum=maximum),
+            ('intent','result','observed_at','origin','upload_read_evidence' if successor else
+                'confirmation_read_evidence' if confirmation else 'submission_read_evidence' if submission else 'response_base64'))
         if successor:value=value|{'upload_read_evidence':_decode_upload_read_evidence(value['upload_read_evidence']),'response_base64':None}
         if confirmation:value=value|{'confirmation_read_evidence':_decode_confirmation_read_evidence(value['confirmation_read_evidence']),'response_base64':None}
+        if submission:value=value|{'submission_read_evidence':_decode_submission_read_evidence(value['submission_read_evidence']),'response_base64':None}
         intent=_object(value['intent'],('filing_id','company_id','income_year','approved_by','approval_sha256','kind','request_sha256'))
         company=_object(intent['company_id'],('value',));year=_object(intent['income_year'],('value',))
         actor=_object(intent['approved_by'],('kind','subject'));subject=_object(actor['subject'],('value',))
@@ -345,7 +396,7 @@ def decode_tax_delivery_mutation_completion(raw: str, expected_sha256: str) -> T
             'approved_by':ActorId(ActorKind(actor['kind']),UserId(subject['value']))}))
         result=TaxDeliveryMutationCompletion(intent,value['result'],value['response_base64'],
             Timestamp(datetime.fromisoformat(observed['value'])),TaxDeliveryCompletionOrigin(value['origin']),
-            value.get('upload_read_evidence'),value.get('confirmation_read_evidence'))
+            value.get('upload_read_evidence'),value.get('confirmation_read_evidence'),value.get('submission_read_evidence'))
         if result.canonical_json!=raw:raise ValueError()
         return result
     except (ValueError,TypeError,KeyError,AttributeError,RecursionError,OverflowError):

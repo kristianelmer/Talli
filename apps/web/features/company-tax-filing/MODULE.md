@@ -77,3 +77,14 @@ confirmation or submission outcome.
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetDeliveryOwnerReview"]}
 -->
+
+
+The journal reader accepts positively covered Source V8. It checks the V5
+submission request's explicit owner choices, preparation prefix and exact
+fresh known-validation/Task_2 file references. It verifies V2 acknowledgments
+without treating them as effects, and V4 submission completions through exact
+known Task_3 or terminal archived metadata/file/receipt originals. Separate later
+feedback originals retain arbitrary original bytes, metadata scope and identity;
+they are never decoded with a guessed receipt schema or classified as Tax
+acceptance. Old codecs retain their checks and byte contracts. Unknown/partial
+successor reads remain unavailable.

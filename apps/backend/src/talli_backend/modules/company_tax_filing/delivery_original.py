@@ -28,14 +28,14 @@ def _job(value):
     return value
 
 
-def _bytes(encoded, *, allow_empty=False):
+def _bytes(encoded, *, allow_empty=False,require_utf8=True):
     if type(encoded) is not str or len(encoded)>12*1024*1024:
         raise ValueError('Tax journal original exceeds its limit.')
     raw=base64.b64decode(encoded,validate=True)
     if ((not raw and not allow_empty) or len(raw)>_MAX_BODY
             or base64.b64encode(raw).decode('ascii')!=encoded):
         raise ValueError('Tax journal original encoding is invalid.')
-    raw.decode('utf-8',errors='strict')
+    if require_utf8:raw.decode('utf-8',errors='strict')
     return raw
 
 def _response_object(raw: bytes):

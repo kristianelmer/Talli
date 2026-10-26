@@ -1202,3 +1202,19 @@ owner confirmation or submission authority; default composition remains closed.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/delivery-owner-review"]}
 -->
+
+
+`POST /api/v1/company-tax/delivery-submission-advances` accepts only scope,
+initial approval, exact owner-review commitment and explicit document/warning
+choices. It binds the verified bearer actor and delegates the separate durable
+owner-confirmed intent to Tax. The authenticated
+`/api/v1/company-tax/delivery-submission-reconciliations` and
+`/api/v1/company-tax/delivery-feedback-reconciliations` perform only fixed known
+instance/file reads. A process acknowledgment grants no outcome. Receipts retain
+exact bytes with assessment unclassified. Source V8 archive negotiation adds
+`submissionEvidence` beside the existing bounded options; old routes preserve
+prior operation-specific replay behavior. Default composition remains closed.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/delivery-submission-advances","/api/v1/company-tax/delivery-submission-reconciliations","/api/v1/company-tax/delivery-feedback-reconciliations"]}
+-->

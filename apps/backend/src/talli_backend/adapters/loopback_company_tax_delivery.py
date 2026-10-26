@@ -16,7 +16,7 @@ from talli_backend.modules.company_tax_filing.public import (
     build_tax_delivery_mutation_request,
     TaxDeliveryEnvelopeObservation,
     TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxValidationJobStatus,
-    TaxDeliveryProcessAcknowledgment,
+    TaxDeliveryProcessAcknowledgment,TaxDeliveryFeedbackObservation,
 )
 from talli_backend.shared.kernel import IncomeYear
 
@@ -106,11 +106,20 @@ class LoopbackCompanyTaxDelivery:
 
     async def prepare_confirmation(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
             draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment:
+        if request.kind is not TaxMutationKind.PREPARE_CONFIRMATION:raise CompanyTaxError.unavailable()
+        return await self._process(request,approval,draft)
+
+    async def confirm_submission(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+            draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment:
+        if request.kind is not TaxMutationKind.CONFIRM_SUBMISSION:raise CompanyTaxError.unavailable()
+        return await self._process(request,approval,draft)
+
+    async def _process(self,request,approval,draft):
         request.assert_draft(approval,draft)
-        if request.kind is not TaxMutationKind.PREPARE_CONFIRMATION or request.confirmation_prerequisite is None:
-            raise CompanyTaxError.unavailable()
+        proof=request.confirmation_prerequisite if request.kind is TaxMutationKind.PREPARE_CONFIRMATION else request.submission_prerequisite
+        if proof is None:raise CompanyTaxError.unavailable()
         if self._runtime.authorize(draft,approval.approved_by)!=approval.authority_context_sha256:raise CompanyTaxError.forbidden()
-        try:request.confirmation_prerequisite.assert_current(self._runtime.now())
+        try:proof.assert_current(self._runtime.now())
         except ValueError:raise CompanyTaxError.unavailable() from None
         response=await self._request('PUT',_APP_PATH+'/instances/'+request.target_instance+'/process/next',
             body=request.body_bytes,content_type='application/json',expected_statuses=(200,),response_types=('application/json',))
@@ -118,7 +127,7 @@ class LoopbackCompanyTaxDelivery:
             result=TaxDeliveryProcessAcknowledgment(draft.filing_id,approval.company_id,approval.income_year,approval.approved_by,
                 approval.sha256,draft.envelope.source.organization_number,request.target_instance,request.sha256,
                 TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.PROCESS_RESPONSE,base64.b64encode(response.raw_bytes).decode('ascii'),
-                    response.media_type,response.status),self._runtime.now())
+                    response.media_type,response.status),self._runtime.now(),request.kind)
             result.assert_request(request,approval,draft)
             return result
         except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
@@ -147,11 +156,19 @@ class LoopbackCompanyTaxDelivery:
 
     async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
             created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation:
+        return await self._observe_file(approval,draft,created,instance,TaxDeliveryOriginalPurpose.ENVELOPE)
+
+    async def observe_feedback(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation:
+        return await self._observe_file(approval,draft,created,instance,TaxDeliveryOriginalPurpose.FEEDBACK)
+
+    async def _observe_file(self,approval,draft,created,instance,purpose):
         if (type(created) is not TaxDeliveryMutationCompletion or created.intent.kind is not TaxMutationKind.CREATE_INSTANCE
                 or type(instance) is not TaxDeliveryInstanceObservation):raise CompanyTaxError.invalid_input()
         created.assert_request(build_tax_delivery_mutation_request(approval,draft,TaxMutationKind.CREATE_INSTANCE),approval)
         instance.assert_approval(approval,draft,created.result['instanceId'])
-        element=instance.inspection.envelope
+        element=instance.inspection.envelope if purpose is TaxDeliveryOriginalPurpose.ENVELOPE else instance.inspection.feedback
+        observation_type=TaxDeliveryEnvelopeObservation if purpose is TaxDeliveryOriginalPurpose.ENVELOPE else TaxDeliveryFeedbackObservation
         if (not instance.inspection.known or element is None
                 or element.content_type.split(';',1)[0].strip().lower() not in ('application/xml','text/xml')):
             raise CompanyTaxError.unavailable()
@@ -159,14 +176,14 @@ class LoopbackCompanyTaxDelivery:
         response=await self._request('GET',_APP_PATH+'/instances/'+instance.instance_id+'/data/'+element.data_id,
             expected_statuses=(200,),response_types=('application/xml','text/xml'))
         try:
-            value=TaxDeliveryEnvelopeObservation(draft.filing_id,approval.company_id,approval.income_year,
+            value=observation_type(draft.filing_id,approval.company_id,approval.income_year,
                 approval.approved_by,approval.sha256,draft.envelope.source.organization_number,instance.instance_id,
-                element.data_id,instance.evidence_sha256,TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.ENVELOPE,
+                element.data_id,instance.evidence_sha256,TaxDeliveryReadOriginal(purpose,
                     base64.b64encode(response.raw_bytes).decode('ascii'),response.media_type,response.status),self._runtime.now())
             value.assert_instance(approval,draft,instance)
             return value
         except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
-            raise CompanyTaxReturnAuthorityError('Finite Tax envelope scope is unavailable.',
+            raise CompanyTaxReturnAuthorityError('Finite Tax file scope is unavailable.',
                 code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
 
     async def observe_validation_job(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
