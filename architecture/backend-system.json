@@ -1111,6 +1111,12 @@
       "adapter": "talli_backend.application.shareholder_register_source_dispatch_v3._OperationJournalV3",
       "owner": "backend-system",
       "mode": "default V3 retained recovery and fresh same-connection operation admission; original-byte preflight outside guards, committed intents before gated provider I/O"
+    },
+    {
+      "port": "TaxDeliverySchemaValidator",
+      "adapter": "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas",
+      "owner": "backend-system",
+      "mode": "offline pinned official 2025 XSD/code-list validation; exact source and document/envelope bindings; no provider authority"
     }
   ],
   "allowedDependencies": {
@@ -1304,7 +1310,8 @@
       "talli_backend.adapters.postgres_document_evidence",
       "talli_backend.adapters.supabase_documents",
       "talli_backend.application.corporate_register_evidence",
-      "talli_backend.adapters.postgres_shareholder_register_filing"
+      "talli_backend.adapters.postgres_shareholder_register_filing",
+      "lxml"
     ]
   }
 }

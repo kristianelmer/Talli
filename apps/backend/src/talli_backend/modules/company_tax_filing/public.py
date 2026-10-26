@@ -363,7 +363,10 @@ class PreparedCompanyTaxReturn:
 
 def prepare_company_tax_return(source: CompanyTaxReturnSource) -> PreparedCompanyTaxReturn:
     """Retain the authority-tool blocking gate before producing sendable XML."""
-    candidate = build_company_tax_return(source)
+    return _prepare_company_tax_candidate(build_company_tax_return(source))
+
+
+def _prepare_company_tax_candidate(candidate: CompanyTaxReturnCandidate) -> PreparedCompanyTaxReturn:
     if any(item['level'] == 'block' for item in candidate.feedback):
         raise CompanyTaxError(code='COMPANY_TAX_PAYLOAD_BLOCKED', category=ErrorCategory.PRECONDITION_FAILED)
     return PreparedCompanyTaxReturn(render_company_tax_return(candidate), candidate.feedback)
@@ -768,13 +771,29 @@ from .delivery import (
     TaxDeliverySource, TaxDeliveryEnvelope, TaxMutationKind, TaxMutationDisposition,
     TaxMutationIntent, TaxMutationRecord, tax_delivery_digest, prepare_tax_delivery,
     plan_tax_mutation, verify_tax_review,
+    TaxSchemaValidation,
 )
+
+
+class TaxDeliverySchemaValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def validate(self, envelope: TaxDeliveryEnvelope) -> TaxSchemaValidation: ...
+
+
+def tax_delivery_schema_adapter(contract):
+    """Declare an offline schema binding without a global validator registry."""
+    def declare(adapter):
+        _ = contract
+        return adapter
+    return declare
 
 
 __all__ = [
     'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',
     'TaxMutationIntent', 'TaxMutationRecord', 'tax_delivery_digest', 'prepare_tax_delivery',
     'plan_tax_mutation', 'verify_tax_review',
+    'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
     "CompanyTaxSourceQuery",
     "CompanyTaxSourceSnapshot",
     "CompanyTaxSourceEvidence",

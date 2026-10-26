@@ -133,9 +133,35 @@ class TaxDeliveryEnvelope:
         return tax_delivery_digest(self)
 
 
+@dataclass(frozen=True, slots=True)
+class TaxSchemaValidation:
+    """Local XSD/code-list proof for exact bytes; no provider authorization."""
+    schema_sha256: str
+    source_sha256: str
+    review_sha256: str
+    tax_xml_sha256: str
+    business_xml_sha256: str
+    envelope_xml_sha256: str
+
+    def __post_init__(self):
+        for field in fields(self):
+            _digest(getattr(self, field.name))
+
+    def verify(self, envelope: TaxDeliveryEnvelope) -> None:
+        if (self.schema_sha256 != envelope.schema_sha256
+                or self.source_sha256 != envelope.source.source_sha256
+                or self.review_sha256 != envelope.review_sha256
+                or self.tax_xml_sha256 != hashlib.sha256(envelope.tax_xml.encode('utf-8')).hexdigest()
+                or self.business_xml_sha256 != hashlib.sha256(envelope.business_xml.encode('utf-8')).hexdigest()
+                or self.envelope_xml_sha256 != envelope.envelope_sha256):
+            raise ValueError('Tax validation does not match the current schema and exact documents.')
+
+
 def prepare_tax_delivery(source: TaxDeliverySource, *, party_number: str,
                          current_document_reference: str, schema_sha256: str) -> TaxDeliveryEnvelope:
-    from .public import CompanyTaxEnvelopeInput, CompanyTaxReturnSource, prepare_company_tax_return, render_company_tax_envelope
+    from .public import (CompanyTaxEnvelopeInput, CompanyTaxReturnSource, CompanyTaxReturnCandidate,
+                         _calculation_source, _prepare_company_tax_candidate, render_company_tax_envelope)
+    from .calculation import build
     if int(source.income_year) != 2025:
         raise ValueError('Tax delivery requires the supported 2025 schema/code-list generation.')
     _reference(current_document_reference, 'current document reference')
@@ -159,11 +185,14 @@ def prepare_tax_delivery(source: TaxDeliverySource, *, party_number: str,
     if source.annual_data['no_activity_confirmed'] and (
             source.holding_actions or any(row.get('entry_type') != 'opening_balance' for row in source.ledger_entries)):
         raise ValueError('Tax no-activity declaration contradicts recorded activity.')
-    documents = prepare_company_tax_return(CompanyTaxReturnSource(
+    calculation_source = CompanyTaxReturnSource(
         organization_number=source.organization_number, income_year=int(source.income_year),
         annual_data=source.annual_data, ledger_entries=source.ledger_entries,
         holding_actions=source.holding_actions, party_number=party_number,
-    )).documents
+    )
+    candidate = CompanyTaxReturnCandidate(**build(_calculation_source(calculation_source),
+        projection_version='company-tax-delivery-2025-v1'))
+    documents = _prepare_company_tax_candidate(candidate).documents
     envelope = render_company_tax_envelope(CompanyTaxEnvelopeInput(
         documents=documents,
         organization_number=source.organization_number, income_year=int(source.income_year),

@@ -859,6 +859,16 @@ foreign table grant, business writer, HTTP route, or provider activation is adde
 {"workflowDependencies":["talli_backend.application.company_tax_delivery_source"]}
 -->
 
+`TaxDeliverySchemaValidator` binds to
+`talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas`. Its packaged,
+fixed-commit official 2025 resources are verified before offline XSD/code-list
+validation of exact source/document/envelope bindings. Validation is local
+evidence only and grants no provider authority.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliverySchemaValidator"],"adapterBindings":["TaxDeliverySchemaValidator=>talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas"],"adapterBindingOwners":["TaxDeliverySchemaValidator=>backend-system"],"adapterBindingModes":["TaxDeliverySchemaValidator=>offline pinned official 2025 XSD/code-list validation; exact source and document/envelope bindings; no provider authority"],"adapterDependencies":["lxml"]}
+-->
+
 <!-- architecture-inventory
 {"technicalMigrations":["supabase/migrations/20260929094835_annual_interview_company_guard.sql","supabase/rollback/20260929094835_annual_interview_company_guard.sql",
     "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",

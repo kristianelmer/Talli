@@ -73,7 +73,8 @@
       "tax_delivery_digest",
       "prepare_tax_delivery",
       "plan_tax_mutation",
-      "verify_tax_review"
+      "verify_tax_review",
+      "TaxSchemaValidation"
     ],
     "events": [],
     "errors": [
@@ -102,7 +103,9 @@
       "CompanyTaxRehearsalIO",
       "CompanyTaxSourcePersistence",
       "TaxMutationKind",
-      "TaxMutationDisposition"
+      "TaxMutationDisposition",
+      "TaxDeliverySchemaValidator",
+      "tax_delivery_schema_adapter"
     ]
   },
   "owns": {
@@ -194,6 +197,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "TaxDeliverySchemaValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliverySchemaValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas"
+      ]
     }
   ],
   "dependencies": [],
@@ -231,7 +243,8 @@
     "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py",
     "deliveryPolicy": "apps/backend/tests/test_company_tax_delivery.py",
     "deliverySource": "apps/backend/tests/test_company_tax_delivery_source.py",
-    "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py"
+    "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py",
+    "schemas": "apps/backend/tests/test_company_tax_schemas.py"
   },
   "compatibilityExceptions": []
 }

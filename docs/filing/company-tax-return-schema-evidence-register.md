@@ -75,7 +75,7 @@ Skatteetaten validation service and completed the TT02 submission flow on
 | Bank balance | Næringsspesifikasjon | `balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi[*]`, code `1920` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
 | Share capital / retained earnings | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital[*]`, codes `2000` and `2050` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
 | Other short-term debt | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld[*]`, code `2990` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate; related-party cases remain escalation |
-| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[*]` with exact supported codes such as `6700`, `6420`, `7770`, `7790` | v6 XSD + 2025 result/balance code list | Candidate; narrow supported categories only |
+| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[*]` with authority codes `6400`, `6700`, `7700` | v6 XSD + 2025 result/balance code list | Delivery v1 groups Ledger software lease, outside services, and other supported costs under these codes; Ledger account numbers remain source references. |
 | Deposit interest | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8050` (`Annen renteinntekt`) | v6 XSD + 2025 result/balance code list | Ordinary taxable income candidate |
 | Dividend income | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8090` | v6 XSD + 2025 result/balance code list | Candidate |
 | Share-sale gain/loss | Næringsspesifikasjon | finance occurrences using codes `8074` and `8174` | v6 XSD + 2025 result/balance code list | Candidate only for action rows explicitly classified `fritaksmetoden` |
@@ -103,6 +103,22 @@ so matching the Ledger account number would misclassify investment income.
 Evidence: the pinned [2025 result/balance code list](https://github.com/Skatteetaten/skattemeldingen/blob/7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba/src/resources/kodeliste/2025/2025_resultatregnskapOgBalanse.xml).
 These are local schema/mapping decisions; provider conformance and activation
 remain separate gates.
+
+The offline delivery validator also checks code-list membership within the
+correct result/balance family. This exposed the historical assumption that
+Ledger accounts `6420`, `6720`, `7770` and `7790` were themselves authority codes.
+The new `company-tax-delivery-2025-v1` projection groups supported costs under
+`6400` (cost-expensed lease), `6700` (outside services) and `7700` (other costs).
+The characterized predecessor projection remains a historical byte reference;
+it is not code-list validation for new delivery. One shared calculator retains
+the amount rules and a versioned authority-code projection; bookkeeping is
+unchanged.
+
+The packaged resource manifest binds all three XSDs, the five consumed code
+lists, the upstream Apache license and commit
+`7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`. Runtime validation is offline,
+denies DTD/external resources, and binds the exact source and two enclosed
+document bytes to the company/year/current authority document reference.
 
 ### Unsupported launch scope
 

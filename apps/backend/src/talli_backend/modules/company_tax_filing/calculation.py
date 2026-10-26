@@ -29,7 +29,7 @@ def _sale_component(action, key, fallback):
     return _amount(action, key) if key in action['payload'] else fallback
 
 
-def _ledger_totals(entries):
+def _ledger_totals(entries, *, delivery_codes=False):
     lines = [line for entry in entries for line in entry['lines']]
 
     def balance(account):
@@ -40,14 +40,20 @@ def _ledger_totals(entries):
         return money(-balance(account))
 
     investments = [{'account': account, 'amount': balance(account)} for account in ('1300', '1310', '1350', '1800', '1810', '1815') if balance(account) != 0]
-    groups = {}
+    groups, source_accounts = {}, {}
     for account in ('6700', '6705', '6420', '6720', '7770', '7790', '7795'):
         value = balance(account)
         if value == 0:
             continue
-        target = {'6705': '6700', '7795': '7790'}.get(account, account)
+        targets = ({'6700':'6700', '6705':'6700', '6720':'6700', '6420':'6400',
+                    '7770':'7700', '7790':'7700', '7795':'7700'} if delivery_codes
+                   else {'6705':'6700', '7795':'7790'})
+        target = targets.get(account, account)
         groups[target] = money(groups[target] + value) if target in groups else value
-    costs = [{'account': account, 'amount': groups[account]} for account in sorted(groups)]
+        source_accounts.setdefault(target, []).append(account)
+    costs = [{'account': account, 'amount': groups[account],
+              'source': 'ledger.' + ('_or_'.join(source_accounts[account]) if delivery_codes else account)}
+             for account in sorted(groups)]
     return {
         'bankBalance': balance('1920'), 'investmentBalances': investments,
         'adminCostsByAccount': costs, 'adminCosts': money(total(item['amount'] for item in costs)),
@@ -122,12 +128,14 @@ def _difference(index, kind, value, source):
         ('.id', f'permanent-{index}'), ('.permanentForskjellstype.permanentForskjellstype', kind), ('.beloep.beloep.beloep', value))]
 
 
-def build(input):
+def build(input, *, projection_version='legacy-characterized-2025'):
+    if projection_version not in ('legacy-characterized-2025', 'company-tax-delivery-2025-v1'):
+        raise ValueError('Unsupported company Tax projection version.')
     party = input.get('companyPartyNumber')
     if party is None:
         party = input['companyOrgNumber']
     year = input['incomeYear']
-    totals = _ledger_totals(input['ledgerEntries'])
+    totals = _ledger_totals(input['ledgerEntries'], delivery_codes=projection_version == 'company-tax-delivery-2025-v1')
     actions = input['holdingActions']
     dividends = [a for a in actions if a['action_type'] == 'dividend_received']
     distributions = [a for a in actions if a['action_type'] == 'fund_distribution_received']
@@ -160,7 +168,7 @@ def build(input):
         _field(BUSINESS, 'naeringsspesifikasjon.inntektsaar', year, 'company.income_year', BUSINESS_XSD),
     ])
     for index, cost in enumerate(totals['adminCostsByAccount']):
-        fields.extend(_occurrence('resultatregnskap.driftskostnad.annenDriftskostnad.kostnad', index, cost['account'], cost['amount'], f"ledger.{cost['account']}"))
+        fields.extend(_occurrence('resultatregnskap.driftskostnad.annenDriftskostnad.kostnad', index, cost['account'], cost['amount'], cost['source']))
     for base, index, code, value, source in (
         ('resultatregnskap.finansinntekt.inntekt', 0, '8090', dividend, 'holding_actions.dividend_received'),
         ('resultatregnskap.finansinntekt.inntekt', 1, '8050', totals['interestIncome'], 'ledger.8050'),

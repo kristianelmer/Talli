@@ -137,6 +137,29 @@ Unsettled investment-income and sale receivables (`1530`/`1570`) map to the pinn
 Current-asset occurrences reserve distinct paths for securities, bank and
 receivables instead of colliding when the only investment is a current asset.
 
+`TaxDeliverySchemaValidator`, `TaxSchemaValidation` and
+`tax_delivery_schema_adapter` bind local validation to the exact immutable
+documents and schema/code-list pin. The infrastructure adapter
+`talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas` verifies the
+packaged manifest and every resource against the fixed upstream commit, then
+validates all three XML documents offline. It rejects DTDs/external resources,
+unlisted business codes, substituted envelope bytes and inconsistent
+company/year/party/current-reference bindings. The shipped Apache-licensed
+resources retain their upstream license and provenance; runtime makes no fetch.
+
+The single calculator has a versioned authority-code projection. Historical
+characterization keeps its original Ledger-number labels. New delivery uses
+`company-tax-delivery-2025-v1`: Ledger cost accounts `6420`,
+`6700`/`6705`/`6720`, and `7770`/`7790`/`7795` map respectively to the official
+2025 business codes `6400`, `6700`, and `7700`, aggregating each category while
+retaining the contributing Ledger account references. Amount calculations and
+bookkeeping accounts are shared; this adds no second writer. The old labels do
+not constitute code-list validation or authorization for new delivery.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliverySchemaValidator"]}
+-->
+
 <!-- architecture-inventory
 {"ports": ["CompanyTaxSourcePersistence"]}
 -->
