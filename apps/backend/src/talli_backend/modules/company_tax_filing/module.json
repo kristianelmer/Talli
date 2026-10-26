@@ -103,7 +103,11 @@
       "TaxDeliveryJournalArchive",
       "archive_tax_delivery_journal",
       "TaxDeliveryProgress",
-      "assert_tax_delivery_attempt_history"
+      "assert_tax_delivery_attempt_history",
+      "TaxDeliveryReadOriginal",
+      "TaxDeliveryAdmissionEvidence",
+      "TaxDeliveryInstanceObservation",
+      "decode_tax_delivery_observation"
     ],
     "events": [],
     "errors": [
@@ -141,7 +145,8 @@
       "TaxDeliveryAuthorityMode",
       "TaxDeliveryCompletionOrigin",
       "TaxDeliveryJournalPersistence",
-      "TaxDeliveryMutationAuthority"
+      "TaxDeliveryMutationAuthority",
+      "TaxDeliveryOriginalPurpose"
     ]
   },
   "owns": {
@@ -303,7 +308,8 @@
     "typing",
     "uuid",
     "datetime",
-    "json"
+    "json",
+    "urllib.parse"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",
@@ -333,7 +339,11 @@
     "deliveryRehearsal": "apps/backend/tests/test_company_tax_delivery_rehearsal.py",
     "deliverySubmission": "apps/backend/tests/test_company_tax_delivery_submission.py",
     "deliverySubmissionApi": "apps/backend/tests/test_company_tax_delivery_submission_api.py",
-    "deliverySubmissionDatabase": "apps/backend/tests/test_postgres_tax_delivery_submission.py"
+    "deliverySubmissionDatabase": "apps/backend/tests/test_postgres_tax_delivery_submission.py",
+    "deliveryObservation": "apps/backend/tests/test_company_tax_delivery_observation.py",
+    "deliveryObservationWorkflow": "apps/backend/tests/test_company_tax_delivery_observation_workflow.py",
+    "deliveryObservationDatabase": "apps/backend/tests/test_postgres_tax_delivery_observations.py",
+    "deliveryObservationsTopology": "apps/backend/tests/test_company_tax_delivery_observations_database.py"
   },
   "compatibilityExceptions": []
 }

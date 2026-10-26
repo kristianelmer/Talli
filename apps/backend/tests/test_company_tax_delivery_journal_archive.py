@@ -42,6 +42,18 @@ def test_archive_keeps_one_complete_source_and_exact_originals(complete_archive)
     assert not result.source_facts.production_attempts
 
 
+def test_reader_negotiation_keeps_predecessor_only_history_compatible_without_masking_bad_proof(complete_archive):
+    query,snapshot=complete_archive
+    successor=replace(snapshot,contract_version='company-tax-source-v4',coverage=dict(snapshot.coverage)|{
+        'contractVersion':'company-tax-source-v4','declaredObservationExtentValid':True,'observationCodecVersion':'tax-read-evidence-v1'})
+    compatible=archive_tax_delivery_journal(query,successor,read_evidence=False)
+    assert compatible.source_facts==archive_tax_delivery_journal(query,snapshot).source_facts
+    assert compatible.events==snapshot.delivery_events and compatible.drafts==snapshot.delivery_drafts
+    assert archive_tax_delivery_journal(query,successor).source_facts.evidence.version.startswith('company-tax-source-v4:')
+    broken=replace(successor,coverage=dict(successor.coverage)|{'declaredObservationExtentValid':False})
+    with pytest.raises(CompanyTaxError):archive_tax_delivery_journal(query,broken,read_evidence=False)
+
+
 @pytest.mark.parametrize('change',['version','proof','events','drafts','tracking','extent'])
 def test_incomplete_archive_never_returns_partial_originals(complete_archive,change):
     query,snapshot=complete_archive

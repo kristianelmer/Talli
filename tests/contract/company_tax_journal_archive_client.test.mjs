@@ -42,8 +42,78 @@ function feature(api) {
   const exports={};const dependencies={backendBaseUrl:()=>"https://backend.example",TalliApiError,createTalliApiClient:()=>api};
   const source=readFileSync(new URL("../../apps/web/features/company-tax-filing/transport.ts",import.meta.url),"utf8");
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
-    {exports,require:()=>dependencies,AbortSignal,TextEncoder,crypto:webcrypto});
+    {exports,require:()=>dependencies,AbortSignal,TextEncoder,TextDecoder,atob,btoa,crypto:webcrypto});
   return exports;
+}
+
+function readBundle() {
+  const value=bundle();const draft=JSON.parse(value.drafts[0].canonicalJson);
+  draft.draft.envelope.source.organization_number="999888777";
+  value.drafts[0].canonicalJson=JSON.stringify(draft);value.drafts[0].draftSha256=hash(value.drafts[0].canonicalJson);
+  value.sourceFacts.deliveryDrafts[0].draftSha256=value.drafts[0].draftSha256;
+  const context={version:"tax-loopback-admission-v1",runId:filing,companyId:company,incomeYear:2025,actorId:actor,
+    filingId:filing,draftSha256:value.drafts[0].draftSha256,organizationNumber:"999888777",issuedAt:observedAt,
+    expiresAt:"2026-10-26T10:10:00Z",origin:"http://127.0.0.1:17829",credentialSha256:"d".repeat(64),
+    databaseScopeSha256:"e".repeat(64),maximumRequests:20};
+  const contextRaw=JSON.stringify(context);
+  const approval=JSON.parse(value.events[0].canonicalJson);
+  approval.approval.draft_sha256=value.drafts[0].draftSha256;approval.approval.authority_context_sha256=hash(contextRaw);
+  value.events[0].canonicalJson=JSON.stringify(approval);value.events[0].eventSha256=hash(value.events[0].canonicalJson);
+  const binding={...scope,approved_by:{kind:"USER",subject:{value:actor}},approval_sha256:value.events[0].eventSha256};
+  const event=(slot,body)=>{const raw=JSON.stringify(body);return{filingId:filing,slot,recordedBy:actor,recordedAt:observedAt,canonicalJson:raw,eventSha256:hash(raw)};};
+  const admission=event("admission",{version:"company-tax-delivery-admission-v1",admission:{...binding,
+    original:{purpose:"finite_admission",body_base64:Buffer.from(contextRaw).toString("base64"),content_type:"application/json",http_status:null}}});
+  const request=JSON.parse(value.events[1].canonicalJson);request.request.approval_sha256=binding.approval_sha256;
+  const intent=event("intent:create_instance",request);
+  const instance="123456/10000000-0000-4000-8000-000000000004";
+  const completed=event("completion:create_instance",{version:"company-tax-delivery-mutation-completion-v1",
+    completion:{intent:{...binding,kind:"create_instance",request_sha256:intent.eventSha256},result:{instanceId:instance}}});
+  const raw="\ufeff{\"metadata\":\"unavailable\"}\n";
+  const identity=JSON.stringify(["tax-instance-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",instance,hash(raw)]);
+  const observation=event("observation:instance:"+hash(identity),{version:"company-tax-delivery-instance-observation-v1",
+    observation:{...binding,organization_number:"999888777",instance_id:instance,observed_at:{value:observedAt},
+      original:{purpose:"instance",body_base64:Buffer.from(raw).toString("base64"),content_type:"application/json",http_status:200}}});
+  value.events=[value.events[0],admission,intent,completed,observation];value.eventCount=value.events.length;
+  value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v3:","v4:");
+  Object.assign(value.journals[0],{status:"mutation_completed",approvalSha256:binding.approval_sha256,latestEventSha256:observation.eventSha256});
+  return value;
+}
+
+test("V4 export preserves exact read evidence without treating it as another completed mutation",async()=>{
+  const value=readBundle();const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+  assert.equal(result.error,null);assert.deepEqual(result.data.journal.events,value.events);
+  assert.equal(result.data.journal.journals[0].status,"mutation_completed");
+  assert.equal(result.data.journal.journals[0].mutationKind,"create_instance");
+  const observation=JSON.parse(value.events[4].canonicalJson).observation;
+  assert.equal(Buffer.from(observation.original.body_base64,"base64").toString(),"\ufeff{\"metadata\":\"unavailable\"}\n");
+});
+
+for(const change of ["old-source","missing-admission","missing-create","identity","purpose","utf8","admission-hash","foreign-actor","false-outcome"]) {
+  test(`read-evidence export refuses ${change} without fallback`,async()=>{
+    const value=readBundle();
+    if(change==="old-source")value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v4:","v3:");
+    else if(change==="missing-admission")value.events.splice(1,1);
+    else if(change==="missing-create")value.events.splice(3,1);
+    else if(change==="identity")value.events[4].slot="observation:instance:"+"0".repeat(64);
+    else if(change==="false-outcome")value.journals[0].status="reviewed";
+    else {
+      const index=change==="admission-hash"?1:4;const raw=JSON.parse(value.events[index].canonicalJson);
+      const binding=raw.observation??raw.admission;
+      if(change==="purpose")binding.original.purpose="envelope";
+      else if(change==="utf8")binding.original.body_base64="/w==";
+      else if(change==="foreign-actor")binding.approved_by.subject.value=company;
+      else binding.original.body_base64=Buffer.from("{}").toString("base64");
+      value.events[index].canonicalJson=JSON.stringify(raw);value.events[index].eventSha256=hash(value.events[index].canonicalJson);
+    }
+    value.eventCount=value.events.length;
+    let fallbacks=0;
+    const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,companyTaxGetDeliveryJournalArchive:async()=>value,
+      companyTaxGetDeliveryDraftArchive:async()=>{fallbacks++;return{};}};
+    const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+    assert.ok(result.error);assert.equal(result.data,null);assert.equal(fallbacks,0);
+  });
 }
 
 test("generated journal archive client binds one complete source and exact scope",async()=>{
@@ -54,6 +124,7 @@ test("generated journal archive client binds one complete source and exact scope
   assert.deepEqual(await api.companyTaxGetDeliveryJournalArchive(company,2025,{headers:{Authorization:"Bearer fixture"}}),value);
   assert.equal(called.url.pathname,"/api/v1/company-tax/archive-source/delivery-journal-v1");
   assert.equal(called.url.searchParams.get("companyId"),company);
+  assert.equal(called.url.searchParams.get("readEvidence"),"true");
   assert.equal(new Headers(called.request.headers).get("Authorization"),"Bearer fixture");
 });
 

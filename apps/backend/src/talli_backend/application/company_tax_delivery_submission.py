@@ -6,6 +6,7 @@ stages stay closed until their retained read prerequisites are implemented.
 """
 from __future__ import annotations
 
+import base64
 from uuid import NAMESPACE_URL,uuid5
 
 from talli_backend.application.company_tax_delivery_rehearsal import TaxDeliveryRehearsalRuntime
@@ -17,6 +18,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryMutationAuthority,TaxDeliveryJournal,TaxDeliveryMutationCompletion,TaxDeliveryEventAppend,
     TaxMutationKind,TaxMutationDisposition,assert_tax_delivery_attempt_history,
     approve_tax_delivery_review,build_tax_delivery_mutation_request,
+    TaxDeliveryAdmissionEvidence,TaxDeliveryReadOriginal,TaxDeliveryOriginalPurpose,TaxDeliveryInstanceObservation,
 )
 
 
@@ -94,7 +96,24 @@ class CompanyTaxDeliverySubmission:
     @staticmethod
     def _append(journal,result,value):
         if type(result) is not TaxDeliveryEventAppend or result.event.value!=value:raise CompanyTaxError.unavailable()
-        return TaxDeliveryJournal(journal.draft,journal.events+(result.event,))
+        return TaxDeliveryJournal(journal.draft,journal.events+(result.event,),journal.read_evidence)
+
+    def _admission(self,journal):
+        approval=journal.approval
+        value=TaxDeliveryAdmissionEvidence(journal.draft.filing_id,approval.company_id,approval.income_year,
+            approval.approved_by,approval.sha256,TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.ADMISSION,
+                base64.b64encode(self._runtime.admission.canonical_context.encode('utf-8')).decode('ascii'),'application/json',None))
+        value.assert_approval(approval,journal.draft)
+        return value
+
+    async def _retain_admission(self,transaction,journal):
+        if not journal.read_evidence:raise CompanyTaxError.unavailable()
+        value=self._admission(journal)
+        prior=next((event for event in journal.events if event.slot=='admission'),None)
+        if prior is not None:
+            if prior.value!=value:raise CompanyTaxError.draft_conflict()
+            return journal
+        return self._append(journal,await transaction.append_delivery_event(value),value)
 
     async def approve(self,session: CompanyTaxSession,command: ApproveTaxDeliveryDraft):
         if type(command) is not ApproveTaxDeliveryDraft:raise CompanyTaxError.invalid_input()
@@ -103,6 +122,7 @@ class CompanyTaxDeliverySubmission:
         journal=await self._guarded_history(session,query,command.filing_id)
         replay=_review_replay(journal,command)
         if replay is not None:return replay
+        if not journal.read_evidence:raise CompanyTaxError.unavailable()
         if (journal.draft.sha256!=command.expected_draft_sha256
                 or journal.draft.envelope.review_sha256!=command.expected_review_sha256):
             raise CompanyTaxError.draft_conflict()
@@ -129,7 +149,8 @@ class CompanyTaxDeliverySubmission:
             await guard.lock_delivery_draft_archive(query)
             result=await guard.append_delivery_event(approval)
             retained=self._append(latest,result,approval)
-        return retained.progress
+            retained=await self._retain_admission(guard,retained)
+        return _review_replay(retained,command)
 
     async def advance(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
         if type(command) is not AdvanceTaxDelivery:raise CompanyTaxError.invalid_input()
@@ -139,6 +160,7 @@ class CompanyTaxDeliverySubmission:
         _approved(journal,command)
         request=build_tax_delivery_mutation_request(journal.approval,journal.draft,TaxMutationKind.CREATE_INSTANCE)
         if journal.plan(request) is not TaxMutationDisposition.EXECUTE:return journal.progress
+        if not journal.read_evidence:raise CompanyTaxError.unavailable()
         context=self._admit(journal,session.actor_id)
         if context!=journal.approval.authority_context_sha256:raise CompanyTaxError.forbidden()
         source=await self._source(session,query,command)
@@ -161,6 +183,7 @@ class CompanyTaxDeliverySubmission:
             if fresh!=source or latest.draft!=journal.draft:raise CompanyTaxError.draft_conflict()
             if self._admit(latest,session.actor_id)!=context:raise CompanyTaxError.forbidden()
             await guard.lock_delivery_draft_archive(query)
+            latest=await self._retain_admission(guard,latest)
             result=await guard.append_delivery_event(request)
             retained=self._append(latest,result,request)
         # Only an acknowledged committed insertion can elect this caller. A
@@ -188,4 +211,41 @@ class CompanyTaxDeliverySubmission:
         _approved(journal,command)
         # No generic lookup exists for a create whose response reference was
         # lost. Do not invent one, lease-reset it, or create another filing.
-        return journal.progress
+        created=next((event.value for event in journal.events if event.slot=='completion:create_instance'),None)
+        if created is None or not journal.read_evidence:return journal.progress
+        context=self._admit(journal,session.actor_id)
+        if context!=journal.approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        query=_query(session,command)
+        # Only a known create reference can be observed. Missing response IDs
+        # never trigger provider lookups or a second create. Close SQL before GET.
+        async with session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with session.transaction(snapshot=True) as snapshot:
+                latest=await self._history(snapshot,query,command.filing_id)
+            _approved(latest,command)
+            if self._admit(latest,session.actor_id)!=context:raise CompanyTaxError.forbidden()
+            await guard.lock_delivery_draft_archive(query)
+            await self._retain_admission(guard,latest)
+        try:
+            observation=await self._authority.observe_instance(journal.approval,journal.draft,created)
+            if type(observation) is not TaxDeliveryInstanceObservation:raise ValueError()
+            observation.assert_approval(journal.approval,journal.draft,created.result['instanceId'])
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        async with session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with session.transaction(snapshot=True) as snapshot:
+                latest=await self._history(snapshot,query,command.filing_id)
+            _approved(latest,command)
+            await guard.lock_delivery_draft_archive(query)
+            result=await guard.append_delivery_event(observation)
+            if type(result) is not TaxDeliveryEventAppend or type(result.event.value) is not TaxDeliveryInstanceObservation:
+                raise CompanyTaxError.unavailable()
+            if result.event.value.evidence_sha256!=observation.evidence_sha256 or result.event.value.original!=observation.original:
+                raise CompanyTaxError.unavailable()
+            prior=next((event for event in latest.events if event.slot==result.event.slot),None)
+            if prior is not None:
+                if prior!=result.event:raise CompanyTaxError.unavailable()
+                return latest.progress
+            retained=TaxDeliveryJournal(latest.draft,latest.events+(result.event,),latest.read_evidence)
+        return retained.progress

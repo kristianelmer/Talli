@@ -1,7 +1,7 @@
 """Complete retained Tax journal originals under a current archive guard."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass,replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,14 +22,24 @@ class TaxDeliveryJournalArchive:
     observed_at: Timestamp
 
 
-def archive_tax_delivery_journal(query, snapshot) -> TaxDeliveryJournalArchive:
+def archive_tax_delivery_journal(query, snapshot, *, read_evidence: bool=True) -> TaxDeliveryJournalArchive:
     from .public import CompanyTaxError, project_company_tax_source
     facts=project_company_tax_source(query,snapshot)
     # An unresolved predecessor effect does not erase retained originals. Every
     # extent, enumeration, linkage, tracking and scope failure still blocks.
-    if (snapshot.contract_version!='company-tax-source-v3'
+    if (snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4')
             or facts.history_coverage.status=='unavailable'
             or set(facts.history_coverage.reasons)-{'production_journal_unavailable'}):
         raise CompanyTaxError.unavailable()
+    if type(read_evidence) is not bool:raise CompanyTaxError.invalid_input()
+    if not read_evidence and snapshot.contract_version=='company-tax-source-v4':
+        # Negotiate only a genuinely compatible history. Never omit new records
+        # to manufacture a predecessor response, even when a client is older.
+        if any(event.slot=='admission' or event.slot.startswith('observation:') for event in snapshot.delivery_events):
+            raise CompanyTaxError.unavailable()
+        proof=dict(snapshot.coverage)|{'contractVersion':'company-tax-source-v3'}
+        proof.pop('declaredObservationExtentValid',None);proof.pop('observationCodecVersion',None)
+        compatible=replace(snapshot,contract_version='company-tax-source-v3',coverage=proof)
+        facts=project_company_tax_source(query,compatible)
     return TaxDeliveryJournalArchive(query.company_id,query.income_year,
         snapshot.delivery_drafts,snapshot.delivery_events,facts,snapshot.as_of)

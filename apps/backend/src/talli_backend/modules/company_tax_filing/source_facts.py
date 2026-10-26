@@ -19,6 +19,9 @@ from .public import (
 _VERSION = 'company-tax-source-v1'
 _DELIVERY_VERSION = 'company-tax-source-v2'
 _JOURNAL_VERSION = 'company-tax-source-v3'
+_OBSERVATION_VERSION = 'company-tax-source-v4'
+_DELIVERY_VERSIONS=(_DELIVERY_VERSION,_JOURNAL_VERSION,_OBSERVATION_VERSION)
+_JOURNAL_VERSIONS=(_JOURNAL_VERSION,_OBSERVATION_VERSION)
 _FAMILIES = {
     'filing_previews': 'previews', 'filing_submissions': 'submissions',
     'filing_overrides': 'overrides', 'filing_review_comments': 'review_comments',
@@ -63,15 +66,15 @@ def _coverage(query, snapshot, evidence_reference):
             reasons.append('canonical_source_unavailable')
         if not re.fullmatch('[0-9a-f]{40}', str(proof.get('sourceRevision', ''))):
             reasons.append('migration_source_version_missing')
-        extent_flag = ('declaredJournalExtentValid' if snapshot.contract_version == _JOURNAL_VERSION else
+        extent_flag = ('declaredJournalExtentValid' if snapshot.contract_version in _JOURNAL_VERSIONS else
             'declaredDeliveryExtentValid' if snapshot.contract_version == _DELIVERY_VERSION else 'declaredExtentValid')
         for flag in ('inventoryValid', 'quarantineClear', 'sourceRowsValid', 'legacyFencesValid', 'modeChecksValid', extent_flag):
             if proof.get(flag) is not True:
                 reasons.append(flag + '_unproven')
-        if snapshot.contract_version in (_DELIVERY_VERSION,_JOURNAL_VERSION):
+        if snapshot.contract_version in _DELIVERY_VERSIONS:
             if proof.get('deliveryDraftArchiveTrackingValid') is not True:
                 reasons.append('delivery_archive_tracking_unproven')
-            expected = sorted((*_FAMILIES, 'settlements', 'delivery_drafts',*(('delivery_events',) if snapshot.contract_version==_JOURNAL_VERSION else ())))
+            expected = sorted((*_FAMILIES, 'settlements', 'delivery_drafts',*(('delivery_events',) if snapshot.contract_version in _JOURNAL_VERSIONS else ())))
             if (proof.get('contractVersion') != snapshot.contract_version
                     or tuple(proof.get('declaredTables', ())) != tuple(expected)
                     or proof.get('declaredExtentValid') is not False):
@@ -82,8 +85,11 @@ def _coverage(query, snapshot, evidence_reference):
                 reasons.append('delivery_draft_enumeration_incomplete')
         elif snapshot.delivery_drafts or proof.get('contractVersion') is not None:
             reasons.append('delivery_source_contract_required')
-        if snapshot.contract_version==_JOURNAL_VERSION:
+        if snapshot.contract_version in _JOURNAL_VERSIONS:
             events=snapshot.delivery_events
+            if snapshot.contract_version==_OBSERVATION_VERSION:
+                if proof.get('declaredObservationExtentValid') is not True or proof.get('observationCodecVersion')!='tax-read-evidence-v1':
+                    reasons.append('observation_source_contract_unproven')
             if proof.get('deliveryEventArchiveTrackingValid') is not True or proof.get('declaredDeliveryExtentValid') is not False:
                 reasons.append('journal_archive_tracking_unproven')
             if (type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=len(events)
@@ -133,7 +139,7 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
     if rows.company_id != query.company_id or rows.income_year != query.income_year:
         raise CompanyTaxError.unavailable()
     try:
-        if snapshot.contract_version not in (_VERSION, _DELIVERY_VERSION, _JOURNAL_VERSION):
+        if snapshot.contract_version not in (_VERSION, *_DELIVERY_VERSIONS):
             raise ValueError('Unsupported Tax source contract.')
         drafts = snapshot.delivery_drafts
         if (any(type(row) is not StoredTaxDeliveryDraft or row.draft.envelope.source.company_id != query.company_id
@@ -144,13 +150,15 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
         content = {'version': snapshot.contract_version, 'rows': rows, 'coverage': snapshot.coverage,
                    'completeEnumeration': snapshot.complete_enumeration}
         journals=[]
-        if snapshot.contract_version in (_DELIVERY_VERSION,_JOURNAL_VERSION):
+        if snapshot.contract_version in _DELIVERY_VERSIONS:
             # Bind exact versioned storage bytes, independent of future Python
             # dataclass fields or internal representations of the same original.
             content['deliveryDrafts'] = [{'filingId':row.draft.filing_id,
                 'draftSha256':row.draft.sha256,'recordedAt':row.recorded_at.value.isoformat()} for row in drafts]
-        if snapshot.contract_version==_JOURNAL_VERSION:
+        if snapshot.contract_version in _JOURNAL_VERSIONS:
             events=snapshot.delivery_events;draft_ids={row.draft.filing_id for row in drafts}
+            if snapshot.contract_version==_JOURNAL_VERSION and any(event.slot=='admission' or event.slot.startswith('observation:') for event in events):
+                raise ValueError('Tax read evidence requires the positive V4 reader contract.')
             if any(type(event) is not StoredTaxDeliveryEvent or event.binding.filing_id not in draft_ids
                     or event.recorded_at.value>snapshot.as_of.value for event in events):
                 raise ValueError('Tax event history is incomplete or out of scope.')
@@ -159,14 +167,12 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
                 'recordedBy':str(event.recorded_by.subject)} for event in events]
             for row in drafts:
                 retained=tuple(event for event in events if event.binding.filing_id==row.draft.filing_id)
-                journal=TaxDeliveryJournal(row.draft,retained)
+                journal=TaxDeliveryJournal(row.draft,retained,snapshot.contract_version==_OBSERVATION_VERSION)
                 if retained:
-                    latest=retained[-1]
+                    progress=journal.progress
                     journals.append(TaxDeliveryJournalFact(row.draft.filing_id,journal.approval.approved_by,
-                        journal.approval.authority_mode,'reviewed' if latest.slot=='review' else
-                        'uncertain' if latest.slot.startswith('intent:') else 'mutation_completed',
-                        None if latest.slot=='review' else latest.binding.kind,journal.approval.sha256,
-                        latest.value.sha256,latest.recorded_at))
+                        journal.approval.authority_mode,progress.status,progress.mutation_kind,journal.approval.sha256,
+                        progress.latest_event_sha256,progress.recorded_at))
         digest = _digest(content)
         evidence = CompanyTaxSourceEvidence(query.company_id, query.income_year,
             f'company-tax:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)

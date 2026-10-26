@@ -14,6 +14,7 @@ from talli_backend.adapters.loopback_company_tax_delivery import LoopbackCompany
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError,CompanyTaxReturnAuthorityError,TaxMutationKind,approve_tax_delivery_review,
     build_tax_delivery_mutation_request,
+    complete_tax_delivery_mutation,TaxDeliveryCompletionOrigin,
 )
 from talli_backend.shared.kernel import Timestamp,ActorId,ActorKind,UserId
 from test_company_tax_delivery_approval import review_basis
@@ -129,6 +130,30 @@ def test_other_mutations_expired_admission_and_changed_context_never_reach_http(
     clock[0]=grant.expires_at
     with pytest.raises(CompanyTaxError):asyncio.run(provider.execute(request,approval,draft))
     assert calls==[] and runtime.requests_used==0
+
+
+@pytest.mark.parametrize('response_kind',['exact','unknown','status','media','redirect'])
+def test_known_instance_read_is_fixed_bounded_and_never_guesses_negative_metadata(review_basis,response_kind):
+    grant,runtime,_,approval,draft=admitted(review_basis);calls=[]
+    instance='123456/00000000-0000-4000-8000-000000000155'
+    request=build_tax_delivery_mutation_request(approval,draft,TaxMutationKind.CREATE_INSTANCE)
+    created=complete_tax_delivery_mutation(request,approval,draft,response_bytes=json.dumps({'id':instance}).encode(),
+        observed_at=runtime.now(),origin=TaxDeliveryCompletionOrigin.MUTATION_RESPONSE)
+    raw=b'\xef\xbb\xbf{"metadata":"unavailable"}\n' if response_kind=='exact' else b'not json'
+    async def authority(request):
+        calls.append(request)
+        assert request.method=='GET' and request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+instance
+        assert request.headers['x-talli-rehearsal-run']==grant.run_id and 'authorization' not in request.headers
+        return httpx.Response(201 if response_kind=='status' else 307 if response_kind=='redirect' else 200,
+            content=raw,headers={'content-type':'text/html' if response_kind=='media' else 'application/json; charset=utf-8',
+                'location':'https://must-not-follow.invalid'})
+    provider=LoopbackCompanyTaxDelivery(runtime,transport=httpx.MockTransport(authority))
+    if response_kind in ('exact','unknown'):
+        result=asyncio.run(provider.observe_instance(approval,draft,created))
+        assert result.original.raw_bytes==raw and not result.inspection.known and not result.inspection.empty_data
+    else:
+        with pytest.raises(CompanyTaxReturnAuthorityError):asyncio.run(provider.observe_instance(approval,draft,created))
+    assert len(calls)==1 and runtime.requests_used==1
 
 
 @pytest.mark.parametrize('target',[

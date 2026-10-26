@@ -33,6 +33,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryDraft, StoredTaxDeliveryDraft, TaxDeliveryDraftPersistence, decode_tax_delivery_draft,
     TaxDeliveryJournalPersistence, StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryReviewApproval, TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion, decode_tax_delivery_event,
+    TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
     AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
@@ -236,31 +237,40 @@ class PostgresCompanyTaxTransaction:
             raise CompanyTaxError.unavailable() from None
 
     async def append_delivery_event(self, value) -> TaxDeliveryEventAppend:
-        if type(value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion):
+        observation=type(value) in (TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation)
+        if type(value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion,TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation):
             raise CompanyTaxError.invalid_input()
         binding=value.intent if type(value) is TaxDeliveryMutationCompletion else value
         if type(value) is not TaxDeliveryMutationRequest and binding.approved_by!=self.actor_id:
             raise CompanyTaxError.forbidden()
-        row=await self._delivery_row('select company_tax_filing.append_delivery_event_v1(%s::text,%s::text,%s::text) as result',
+        row=await self._delivery_row(('select company_tax_filing.append_delivery_observation_v1(%s::text,%s::text,%s::text) as result' if observation else
+            'select company_tax_filing.append_delivery_event_v1(%s::text,%s::text,%s::text) as result'),
             (value.canonical_json,value.sha256,str(self.actor_id.subject)))
         try:
             result=row['result'];event=self._delivery_event(result['event'])
-            if event.value!=value or result['event']['recorded_by']!=str(self.actor_id.subject):raise ValueError()
+            same=(event.value==value or (type(value) is TaxDeliveryInstanceObservation
+                and type(event.value) is TaxDeliveryInstanceObservation and result['inserted'] is False
+                and event.value.evidence_sha256==value.evidence_sha256 and event.value.original==value.original))
+            if not same or result['event']['recorded_by']!=str(self.actor_id.subject):raise ValueError()
             return TaxDeliveryEventAppend(event,result['inserted'])
         except (KeyError,TypeError,ValueError):
             raise CompanyTaxError.unavailable() from None
 
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
-        row=await self._delivery_row('select company_tax_filing.read_delivery_journal_v1(%s::uuid,%s::integer,%s::uuid,%s::text) as result',
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v2(uuid,integer,uuid,text)') is not null as installed",())
+        successor=installed['installed'] is True
+        row=await self._delivery_row(('select company_tax_filing.read_delivery_journal_v2(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if successor else
+            'select company_tax_filing.read_delivery_journal_v1(%s::uuid,%s::integer,%s::uuid,%s::text) as result'),
             (str(query.company_id),int(query.income_year),filing_id,str(self.actor_id.subject)))
         try:
             result=row['result'];draft=self._delivery_draft(result['draft']).draft
+            if successor and result['observationCodecVersion']!='tax-read-evidence-v1':raise ValueError()
             if (result['completeEnumeration'] is not True or draft.filing_id!=filing_id
                     or draft.envelope.source.company_id!=query.company_id or draft.envelope.source.income_year!=query.income_year):
                 raise ValueError()
             events=tuple(self._delivery_event(value) for value in result['events'])
-            journal=TaxDeliveryJournal(draft,events)
+            journal=TaxDeliveryJournal(draft,events,successor)
             if any(value['recorded_by']!=str(journal.approval.approved_by.subject) for value in result['events']):raise ValueError()
             return journal
         except (KeyError,TypeError,ValueError,AttributeError):
@@ -472,8 +482,13 @@ class PostgresCompanyTaxTransaction:
     async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False, journal: bool = False) -> CompanyTaxSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
+        successor=False
+        if journal:
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v4(uuid,integer,text)') is not null as installed",())
+            successor=installed['installed'] is True
         row = await (self._delivery_row if delivery else self._one_idempotent_row)(
-            ('select company_tax_filing.read_source_snapshot_v3(%s::uuid,%s::integer,%s::text) as result' if journal else
+            ('select company_tax_filing.read_source_snapshot_v4(%s::uuid,%s::integer,%s::text) as result' if successor else
+             'select company_tax_filing.read_source_snapshot_v3(%s::uuid,%s::integer,%s::text) as result' if journal else
              'select company_tax_filing.read_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text) as result' if archive else
              'select company_tax_filing.read_source_snapshot_v2(%s::uuid,%s::integer,%s::text) as result' if delivery else
              'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result'),
@@ -481,6 +496,7 @@ class PostgresCompanyTaxTransaction:
         )
         value = row.get('result')
         try:
+            if journal and value['contractVersion']!=('company-tax-source-v4' if successor else 'company-tax-source-v3'):raise ValueError()
             if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
                     or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
                     or type(value['completeEnumeration']) is not bool):

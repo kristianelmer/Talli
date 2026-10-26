@@ -798,6 +798,8 @@ from .delivery_approval import (TaxDeliveryAuthorityMode, TaxDeliveryReviewAppro
 from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
     TaxDeliveryCompletionOrigin, build_tax_delivery_mutation_request, complete_tax_delivery_mutation,
     decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
+from .delivery_observation import (TaxDeliveryOriginalPurpose, TaxDeliveryReadOriginal,
+    TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation, decode_tax_delivery_observation)
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
@@ -864,7 +866,7 @@ class TaxDeliveryDraftPersistence(Protocol):
 
 
 class TaxDeliveryJournalPersistence(Protocol):
-    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion) -> TaxDeliveryEventAppend: ...
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation) -> TaxDeliveryEventAppend: ...
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
     async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
 
@@ -896,6 +898,8 @@ class CompanyTaxCurrentDocumentReader(Protocol):
 class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
     async def execute(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
                       draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
+    async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
 
 
 def tax_delivery_schema_adapter(contract):
@@ -909,6 +913,8 @@ def tax_delivery_schema_adapter(contract):
 __all__ = [
     'ApproveTaxDeliveryDraft', 'AdvanceTaxDelivery', 'TaxDeliveryProgress', 'assert_tax_delivery_attempt_history',
     'TaxDeliveryMutationAuthority',
+    'TaxDeliveryOriginalPurpose', 'TaxDeliveryReadOriginal', 'TaxDeliveryAdmissionEvidence',
+    'TaxDeliveryInstanceObservation', 'decode_tax_delivery_observation',
     'TaxDeliveryJournalArchive', 'archive_tax_delivery_journal',
     'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
     'TaxDeliveryJournalPersistence',

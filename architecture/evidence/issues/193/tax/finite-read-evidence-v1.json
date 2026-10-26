@@ -1,0 +1,140 @@
+{
+  "version": "tax-finite-read-evidence-v1",
+  "baselineRevision": "c896d0a4e8d327fef41d6ce739567e4978aedabd",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Exact nonsecret finite admission context resolves the immutable review hash.",
+    "Known-instance read originals retain exact UTF-8 bytes; malformed metadata stays unknown and valid foreign scope is rejected.",
+    "Default-closed append-only evidence in the existing events table; positive V4 source and V2 journal readers; exact nine-table extent.",
+    "Current owner/MFA before network and before write/disclosure; no SQL held during authority I/O.",
+    "Identical polls preserve the first original and recording time without export-generation churn, including concurrent polls.",
+    "New reviews/dispatch require successor support; historical V3 review/unknown/completed state replays without another effect.",
+    "Explicit readEvidence archive negotiation preserves predecessor-only V3 exports and refuses to omit new records."
+  ],
+  "validation": {
+    "unitApiAndSourceRegression": {
+      "passed": 221,
+      "privateLog": "read-evidence-regression-final-v1.log"
+    },
+    "nativePgAndRealLoopbackComponent": {
+      "passed": 13,
+      "privateLog": "read-evidence-native-final-v1.log"
+    },
+    "nativeAtomicReviewRollback": {
+      "passed": 1,
+      "privateLog": "read-evidence-atomic-review-v1.log"
+    },
+    "signedMfaFullTopology": {
+      "passed": 3,
+      "privateLog": "read-evidence-signed-topology-final-v1.log",
+      "includes": "Two new actual signed GoTrue MFA + full source + real loopback HTTP cases; one predecessor-only signed archive overlap case."
+    },
+    "generatedClientAndExport": {
+      "passed": 87,
+      "privateLog": "read-evidence-client-final-v2.log"
+    },
+    "predecessorPgOverlap": {
+      "passed": 14,
+      "privateLog": "read-evidence-predecessor-overlap-v1.log",
+      "note": "Before requiring the new admission in fresh workflows; old reader/codec overlap remains characterized."
+    },
+    "architecture": "PASS",
+    "typecheck": "PASS",
+    "generatedArtifacts": "PASS",
+    "whitespace": "PASS",
+    "mandatoryPartition": {
+      "status": "PASS",
+      "minimumTaxCases": 97,
+      "markerParity": true,
+      "privateLog": "read-evidence-mandatory-partition-final-v1.log"
+    },
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    }
+  },
+  "review": {
+    "standards": {
+      "initialFindings": 1,
+      "resolved": 1,
+      "remaining": 0,
+      "resolution": "Explicit query negotiation and complete V3 reprojection only for predecessor-only data; actual old/new client deployment-order probes passed."
+    },
+    "spec": {
+      "initialFindings": 2,
+      "resolved": 2,
+      "remaining": 0,
+      "resolution": "Require successor for new review/dispatch after historical replay; recognize valid conflicting identity before foreign-scope rejection, otherwise retain unknown."
+    }
+  },
+  "contracts": {
+    "paths": 187,
+    "schemas": 525,
+    "changedPaths": [
+      "/api/v1/company-tax/archive-source/delivery-journal-v1"
+    ],
+    "changedSchemas": [
+      "CompanyTaxDeliveryJournalOriginalWire"
+    ],
+    "existingOriginalCodecsUnchanged": true,
+    "frozenExportRouteUnchanged": true
+  },
+  "rollout": {
+    "hostedChanges": false,
+    "pushOrDeployment": false,
+    "evidenceWritesDefaultEnabled": false,
+    "realProviderActivation": false,
+    "productionFiling": false,
+    "paidActivation": false,
+    "liveData": false,
+    "publicLaunch": false,
+    "minimumRollback": "After first admission/observation original, retain this compatible reader or a successor; older readers must fail closed. Matching rollback contains new evidence writes without dropping originals/readers."
+  },
+  "notEstablished": [
+    "Upload and clean-scan dispatch prerequisite/recovery",
+    "Validation-job and pinned result originals",
+    "Owner confirmation and final feedback/receipt truth",
+    "Correction chain",
+    "Actual signed-JWT desktop/touch Tax browser completion",
+    "Accounts completion",
+    "Commercial Annual/Billing or production authority",
+    "Original Model3/P-H compatibility",
+    "Customer-ready release verdict"
+  ],
+  "sourceFiles": {
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_delivery.py": "a212e634c440f4d134d3131c6cd3f8ced830aadd592e1794ab634f375db78c73",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "19efd755cb43e79989fc5a44ac1bc323389f47ab3febd70472cd474ca166a8b5",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_rehearsal.py": "f0a23e52a516fd65275be9e9931c461673fbb31aaa575c88108fb0cfd46ac503",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "99e6552b255a6994d4ce174bef62413ddc00bc86ecbd47a64aba614a231d103b",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "3648fa5f97361dcc0fcf36be98f2111e4f1a823acbc726dfe94933bef44ed73a",
+    "apps/backend/src/talli_backend/main.py": "3a221deaa8e3bad2905ea095d473fbb3b19c9a93c16df2508fb22a4cd601f3c0",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "6bddcec2f87220bc3b042d471eb396574045645dd7125fe8062d3977261d14a9",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_archive.py": "1cf3114274811d1252749b4089355d1743e447a512d6c1c89e2eda802f657f36",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "c862feee250553a500db3f33970246be1f652eaeed534a966f4c861fb2851821",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_observation.py": "6fb56ed5fe67cbe958a358a7ff88106e0d98e8052aedb616cf14e50012e24c14",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "b5527d33ca94c8e69e299662aa5e23ce55486b059f63c683bddebf3b660bb3d3",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "b7cbd2e9b962f1647162ccc00ecbe2156e61782d4bd0f0286ada0ce78c65c828",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "eb00a4d14be2510e16fe9f3c1e8d93040516d0ac8025ed4cec47e2d091899fcc",
+    "apps/backend/tests/test_company_tax_delivery_journal_archive.py": "f4c0a344591032da23fd0f10e091158cc02af659e7bd2c6792575ce32cf3cdf0",
+    "apps/backend/tests/test_company_tax_delivery_observation.py": "d7e49e4a6b54c96b5c0a95b29e937d3f62ba4c086a446f68d703c197efa6cc67",
+    "apps/backend/tests/test_company_tax_delivery_observation_workflow.py": "f4a5354f42a5c0e87c5cb1933c7ce38680bbc7f789da237ea1f0ac2ec1d0dcfa",
+    "apps/backend/tests/test_company_tax_delivery_observations_database.py": "9f4aafbc4117ab0572e39ef6c6e805398bf01c84ec6875699e252de1608d18f6",
+    "apps/backend/tests/test_company_tax_delivery_rehearsal.py": "e965f0f2119c1c55d9c090e668d8b7e0c84164c3f636c4fe657ae6049fcc2c8a",
+    "apps/backend/tests/test_company_tax_delivery_submission.py": "57c798392b3333bc8af70c26c673419acc3fd29d39bcdbb3f2220dd342a59bb5",
+    "apps/backend/tests/test_company_tax_delivery_submission_api.py": "2a3ae6206ec7d6cb4d9cf81a1e38bb352f1d83ddcc9ca742730747fbc71e9618",
+    "apps/backend/tests/test_postgres_tax_delivery_observations.py": "b557840f06b081cbee8f8dbec7cbed5f46b87fe11e399325eec62849234bd883",
+    "apps/backend/tests/test_postgres_tax_delivery_submission.py": "71f7db7f7c81f26290dbd01d349c7f76c5a1cf5684246a9df8961c35bdc3647e",
+    "apps/web/features/company-tax-filing/transport.ts": "5844b307dab3c31f04f8b612f29121870d0b377b902172962c4ed1482e737442",
+    "contracts/openapi/talli-v1.json": "1fdedccc55b3b2c0d7919b2ad4f6cecb492fc97617a3065777c7dde077c0f14d",
+    "package.json": "33d638a425f77b3c31e7b2e620e6eb4a7939f17346e2deb887987cfc0179fe4c",
+    "packages/talli-api-client/src/generated/client.ts": "bc390e70468d2bcda00a0eb84376c8a17c3085bf8a08ab08ddf0da086c670ec4",
+    "scripts/generate-api-client.mjs": "39ea1bdc0b5391e5c8b252e666f1188c9a10f3144abe9304e6d2233359435fec",
+    "scripts/rehearse-tax-topology.mjs": "c0f12e61de4da875d1fd6d07e7e10163c998f9c92e62418104b516d96d937c94",
+    "supabase/contract-migrations/20261026111629_company_tax_delivery_observations.sql": "bbbd7aba95937257372c4179c654a87d04c5c0cf2d151cea55e61c6beb6dad70",
+    "supabase/rollback/20261026111629_company_tax_delivery_observations.sql": "64381471d5ebefd543aa253746ebf46784a89529037593b18e665e0ec39cf118",
+    "tests/ci_release_gate.test.mjs": "48a8a8ed1def54ab91da22b057c3693c1169049695b8cb949cf27a54f4f30745",
+    "tests/contract/company_tax_journal_archive_client.test.mjs": "b228cfece70783fa03133e626eda4299e67a62acc62aa844d7791c227bb6be1b"
+  }
+}

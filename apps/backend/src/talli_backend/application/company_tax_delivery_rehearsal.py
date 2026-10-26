@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass,field
 from datetime import UTC,datetime
 import hashlib
+import json
 import re
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -69,14 +70,19 @@ class TaxDeliveryRehearsalAdmission:
             raise ValueError('Tax rehearsal admission is invalid.') from None
 
     @property
-    def context_sha256(self) -> str:
-        return tax_delivery_digest({'version':'tax-loopback-admission-v1','runId':self.run_id,
+    def canonical_context(self) -> str:
+        """Retain the exact nonsecret context that the immutable review names."""
+        return json.dumps({'version':'tax-loopback-admission-v1','runId':self.run_id,
             'companyId':str(self.company_id),'incomeYear':int(self.income_year),'actorId':str(self.actor_id.subject),
             'filingId':self.filing_id,'draftSha256':self.draft_sha256,'organizationNumber':self.organization_number,
-            'issuedAt':self.issued_at.value,'expiresAt':self.expires_at.value,'origin':self.origin,
+            'issuedAt':self.issued_at.value.isoformat(),'expiresAt':self.expires_at.value.isoformat(),'origin':self.origin,
             'credentialSha256':hashlib.sha256(self.credential.encode('ascii')).hexdigest(),
             'databaseScopeSha256':self.database_scope_sha256,
-            'maximumRequests':self.maximum_requests})
+            'maximumRequests':self.maximum_requests},sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False)
+
+    @property
+    def context_sha256(self) -> str:
+        return hashlib.sha256(self.canonical_context.encode('utf-8')).hexdigest()
 
 
 class TaxDeliveryRehearsalRuntime:

@@ -34,10 +34,12 @@ def test_http_review_create_and_reconcile_expose_only_bound_progress(workflow):
     result=client.post('/api/v1/company-tax/delivery-advances',json=advance,headers=headers)
     assert result.status_code==200 and result.json()['status']=='mutation_completed'
     assert result.json()['mutationKind']=='create_instance'
-    assert client.post('/api/v1/company-tax/delivery-reconciliations',json=advance,headers=headers).json()==result.json()
+    observed=client.post('/api/v1/company-tax/delivery-reconciliations',json=advance,headers=headers)
+    assert observed.status_code==200 and observed.json()['status']=='mutation_completed'
+    assert observed.json()['mutationKind']=='create_instance'
     assert client.post('/api/v1/company-tax/delivery-reviews',json=body,headers=headers).json()==first
     assert all(key not in result.text for key in ('canonicalJson','body_base64','response_base64','credential','origin','envelope_xml'))
-    assert [method for method,_ in workflow[3]]==['GET','GET','POST']
+    assert [method for method,_ in workflow[3]]==['GET','GET','POST','GET']
 
 
 @pytest.mark.parametrize('path',['delivery-reviews','delivery-advances','delivery-reconciliations'])

@@ -18,6 +18,7 @@ from talli_backend.application.company_tax_delivery_submission import CompanyTax
 from talli_backend.modules.company_tax_filing.public import (
     AdvanceTaxDelivery,ApproveTaxDeliveryDraft,CompanyTaxError,TaxDeliveryEventAppend,StoredTaxDeliveryEvent,
     StoredTaxDeliveryDraft,approve_tax_delivery_review,
+    TaxDeliveryInstanceObservation,
 )
 from talli_backend.shared.kernel import CorrelationId,IdempotencyKey,Timestamp
 from talli_backend.modules.company_tax_filing.public import TaxFilingSubmissionId
@@ -57,7 +58,10 @@ class Session:
                     if not session.fresh:raise CompanyTaxError.mfa_required()
                 prior=next((row for row in session.events if row.slot==event.slot and row.binding.filing_id==event.binding.filing_id),None)
                 if prior is not None:
-                    if prior.value!=value:raise CompanyTaxError.draft_conflict()
+                    if prior.value!=value and not (type(value) is TaxDeliveryInstanceObservation
+                        and type(prior.value) is TaxDeliveryInstanceObservation
+                        and value.evidence_sha256==prior.value.evidence_sha256 and value.original==prior.value.original):
+                        raise CompanyTaxError.draft_conflict()
                     return TaxDeliveryEventAppend(prior,False)
                 session.events.append(event);last=event.slot
                 return TaxDeliveryEventAppend(event,True)
@@ -68,7 +72,7 @@ class Session:
         finally:self.active.pop()
         if last:
             self.on_commit(last)
-            if self.lose==last:
+            if self.lose is not None and self.lose in (row.slot for row in self.events[len(before):]):
                 self.lose=None
                 raise CompanyTaxError.unavailable()
 
@@ -86,13 +90,18 @@ class Session:
 def workflow(review_basis,complete_archive,monkeypatch):
     _,base=complete_archive
     grant,runtime,clock,_,draft=admitted(review_basis,maximum_requests=20)
+    base=replace(base,contract_version='company-tax-source-v4',coverage=dict(base.coverage)|{
+        'contractVersion':'company-tax-source-v4','declaredObservationExtentValid':True,'observationCodecVersion':'tax-read-evidence-v1'})
     session=Session(replace(base,delivery_events=()),draft,review_basis['approved_by'])
     session.delivery_rehearsal_target=grant.database_scope_sha256
-    calls=[];response={'lost':False,'on_get':lambda:None,'on_post':lambda:None}
+    calls=[];response={'lost':False,'on_get':lambda:None,'on_post':lambda:None,'instance':b'{"metadata":"unavailable"}'}
     async def authority(request):
         assert session.active==[],'Authority I/O must follow transaction commit.'
         calls.append((request.method,request.content))
         if request.method=='GET':
+            if request.url.path.startswith('/skd/formueinntekt-skattemelding-v2/instances/') and 'instance' in response:
+                response.get('on_instance_get',lambda:None)()
+                return httpx.Response(200,content=response['instance'],headers={'content-type':'application/json; charset=utf-8'})
             response['on_get']()
             return httpx.Response(200,content=draft.current_document.response.raw_bytes)
         assert any(row.slot=='intent:create_instance' for row in session.events)
@@ -129,10 +138,12 @@ def test_review_and_first_mutation_preserve_exact_order_and_replay_without_autho
         # Approval retries keep the original immutable review receipt even after
         # a later operation has changed the current progress projection.
         assert await service.approve(session,command)==approved
-        assert await service.reconcile(session,advancing(command,approved))==result
+        observed=await service.reconcile(session,advancing(command,approved))
+        assert observed.status==result.status and observed.mutation_kind==result.mutation_kind
+        assert observed.latest_event_sha256==session.events[-1].value.sha256
     asyncio.run(exercise())
-    assert [method for method,_ in calls]==['GET','GET','POST']
-    assert [row.slot for row in session.events]==['review','intent:create_instance','completion:create_instance']
+    assert [method for method,_ in calls]==['GET','GET','POST','GET']
+    assert [row.slot for row in session.events[:4]]==['review','admission','intent:create_instance','completion:create_instance']
 
 
 def test_lost_create_response_never_reissues_even_with_changed_key_or_expired_run(workflow):
@@ -147,7 +158,7 @@ def test_lost_create_response_never_reissues_even_with_changed_key_or_expired_ru
         assert await service.reconcile(session,advance)==result
     asyncio.run(exercise())
     assert [method for method,_ in calls]==['GET','GET','POST']
-    assert len(session.events)==2
+    assert len(session.events)==3
 
 
 @pytest.mark.parametrize('lost',['review','intent:create_instance','completion:create_instance'])
@@ -212,7 +223,7 @@ def test_bound_known_result_is_retained_after_revocation_and_source_change_durin
         result=await service.advance(session,advancing(command,approval))
         assert result.status=='mutation_completed'
     asyncio.run(exercise())
-    assert len(session.events)==3 and calls[-1][0]=='POST'
+    assert len(session.events)==4 and calls[-1][0]=='POST'
 
 
 def test_admission_expiring_after_intent_commit_leaves_uncertain_intent_without_post(workflow):
@@ -223,7 +234,7 @@ def test_admission_expiring_after_intent_commit_leaves_uncertain_intent_without_
         result=await service.advance(session,advancing(command,approval))
         assert result.status=='uncertain'
     asyncio.run(exercise())
-    assert [method for method,_ in calls]==['GET','GET'] and len(session.events)==2
+    assert [method for method,_ in calls]==['GET','GET'] and len(session.events)==3
 
 
 def test_new_filing_cannot_bypass_an_existing_retained_review_or_uncertain_effect(workflow,review_basis):

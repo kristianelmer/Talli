@@ -55,6 +55,20 @@ async function exactTaxOriginal(raw: string, expected: string) {
   return JSON.parse(raw);
 }
 
+async function taxReadOriginal(value: {purpose: unknown;content_type: unknown;http_status: unknown;body_base64: unknown},purpose: "finite_admission" | "instance") {
+  if (!value || Object.keys(value).sort().join(",") !== "body_base64,content_type,http_status,purpose"
+      || value.purpose !== purpose || value.content_type !== "application/json"
+      || value.http_status !== (purpose === "finite_admission" ? null : 200)
+      || typeof value.body_base64 !== "string" || value.body_base64.length > 12*1024*1024) throw new Error("Tax read original is invalid.");
+  const decoded=atob(value.body_base64);
+  if (!decoded.length || decoded.length > 8*1024*1024 || btoa(decoded) !== value.body_base64) throw new Error("Tax read original encoding changed.");
+  const bytes=Uint8Array.from(decoded,char => char.charCodeAt(0));
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+  const sha256=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)))
+    .map(byte => byte.toString(16).padStart(2,"0")).join("");
+  return {text,sha256};
+}
+
 async function verifyTaxDraftOriginals(originals: CompanyTaxDeliveryDraftArchiveWire,companyId: string,incomeYear: number) {
   for (const record of originals.records) {
     const value = await exactTaxOriginal(record.canonicalJson,record.draftSha256);
@@ -66,13 +80,61 @@ async function verifyTaxDraftOriginals(originals: CompanyTaxDeliveryDraftArchive
 }
 
 async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchiveWire,companyId: string,incomeYear: number) {
-  const approvals = new Map<string,{hash: string;actor: string}>();
+  const approvals = new Map<string,{hash: string;actor: string;context: string;draft: string;organization: string | undefined}>();
   const requests = new Map<string,string>();
   const completed = new Set<string>();
   const instances = new Map<string,string>();
   const latest = new Map<string,typeof journal.events[number]>();
+  const effects = new Map<string,typeof journal.events[number]>();
+  const admissions = new Set<string>();
+  const slots = new Set<string>();
+  const drafts = new Map<string,{envelope?: {source?: {organization_number?: string}}}>();
+  for (const draft of journal.drafts) drafts.set(draft.filingId,(await exactTaxOriginal(draft.canonicalJson,draft.draftSha256)).draft);
   for (const record of journal.events) {
+    const slot=record.filingId+":"+record.slot;
+    if (slots.has(slot)) throw new Error("Tax journal has duplicate slots.");
+    slots.add(slot);
     const value = await exactTaxOriginal(record.canonicalJson,record.eventSha256);
+    const evidence=record.slot === "admission" || record.slot.startsWith("observation:");
+    if (evidence) {
+      if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v4:")) throw new Error("Tax reads require the V4 source.");
+      const admission=record.slot === "admission";
+      const binding=admission ? value.admission : value.observation;
+      const approval=approvals.get(record.filingId);
+      if (value.version !== (admission ? "company-tax-delivery-admission-v1" : "company-tax-delivery-instance-observation-v1")
+          || !approval || binding?.filing_id !== record.filingId || binding?.company_id?.value !== companyId
+          || binding?.income_year?.value !== incomeYear || binding?.approval_sha256 !== approval.hash
+          || record.recordedBy !== approval.actor || binding?.approved_by?.kind !== "USER"
+          || binding?.approved_by?.subject?.value !== approval.actor) throw new Error("Tax read scope mismatch.");
+      const original=await taxReadOriginal(binding.original,admission ? "finite_admission" : "instance");
+      if (admission) {
+        const context=JSON.parse(original.text);
+        const keys="actorId,companyId,credentialSha256,databaseScopeSha256,draftSha256,expiresAt,filingId,incomeYear,issuedAt,maximumRequests,organizationNumber,origin,runId,version";
+        const ttl=Date.parse(context.expiresAt)-Date.parse(context.issuedAt);
+        const port=typeof context.origin === "string" && /^http:\/\/127\.0\.0\.1:[0-9]{4,5}$/u.test(context.origin)
+          ? Number(context.origin.split(":")[2]) : 0;
+        if (Object.keys(context).sort().join(",") !== keys || context.version !== "tax-loopback-admission-v1"
+            || original.sha256 !== approval.context || context.companyId !== companyId || context.incomeYear !== incomeYear
+            || context.actorId !== approval.actor || context.filingId !== record.filingId || context.draftSha256 !== approval.draft
+            || context.organizationNumber !== approval.organization || !Number.isInteger(context.maximumRequests)
+            || context.maximumRequests < 1 || context.maximumRequests > 1000 || !Number.isFinite(ttl) || ttl <= 0 || ttl > 3600000
+            || port < 1024 || port > 65535 || context.origin !== "http://127.0.0.1:"+port
+            || typeof context.runId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(context.runId)
+            || !/^[0-9a-f]{64}$/u.test(context.credentialSha256) || !/^[0-9a-f]{64}$/u.test(context.databaseScopeSha256)) throw new Error("Tax finite admission mismatch.");
+        admissions.add(record.filingId);
+      } else {
+        if (!admissions.has(record.filingId) || !instances.has(record.filingId)
+            || binding.instance_id !== instances.get(record.filingId) || binding.organization_number !== approval.organization
+            || typeof binding.observed_at?.value !== "string" || !Number.isFinite(Date.parse(binding.observed_at.value))) throw new Error("Tax instance read has no known target.");
+        const identity=JSON.stringify(["tax-instance-read-identity-v1",record.filingId,companyId,incomeYear,
+          approval.actor,approval.hash,binding.organization_number,binding.instance_id,original.sha256]);
+        const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(identity))))
+          .map(byte => byte.toString(16).padStart(2,"0")).join("");
+        if (record.slot !== "observation:instance:"+digest) throw new Error("Tax read identity mismatch.");
+      }
+      latest.set(record.filingId,record);
+      continue;
+    }
     const mode = record.slot === "review" ? "review" : record.slot.startsWith("intent:") ? "intent" : "completion";
     const expected = {review:"company-tax-delivery-review-approval-v1",intent:"company-tax-delivery-mutation-request-v1",completion:"company-tax-delivery-mutation-completion-v1"}[mode];
     const binding = mode === "review" ? value.approval : mode === "intent" ? value.request : value.completion?.intent;
@@ -83,7 +145,8 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
       if (binding.approved_by?.kind !== "USER" || binding.approved_by?.subject?.value !== record.recordedBy
           || binding.authority_mode !== "finite_loopback_rehearsal"
           || !journal.drafts.some(draft => draft.filingId === record.filingId && draft.draftSha256 === binding.draft_sha256)) throw new Error("Tax approval original mismatch.");
-      approvals.set(record.filingId,{hash:record.eventSha256,actor:record.recordedBy});
+      approvals.set(record.filingId,{hash:record.eventSha256,actor:record.recordedBy,context:binding.authority_context_sha256,
+        draft:binding.draft_sha256,organization:drafts.get(record.filingId)?.envelope?.source?.organization_number});
     } else {
       const approval = approvals.get(record.filingId);
       if (!approval || binding.approval_sha256 !== approval.hash || record.recordedBy !== approval.actor) throw new Error("Tax journal approval binding mismatch.");
@@ -106,13 +169,14 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
       }
     }
     latest.set(record.filingId,record);
+    effects.set(record.filingId,record);
   }
   if (journal.journals.length !== latest.size || journal.journals.some(fact => {
-    const record=latest.get(fact.filingId);const approval=approvals.get(fact.filingId);
-    return !record || !approval || fact.approvalSha256 !== approval.hash || fact.approvedBy !== approval.actor
+    const record=latest.get(fact.filingId);const effect=effects.get(fact.filingId);const approval=approvals.get(fact.filingId);
+    return !record || !effect || !approval || fact.approvalSha256 !== approval.hash || fact.approvedBy !== approval.actor
       || fact.latestEventSha256 !== record.eventSha256 || fact.recordedAt !== record.recordedAt
-      || fact.status !== (record.slot === "review" ? "reviewed" : record.slot.startsWith("intent:") ? "uncertain" : "mutation_completed")
-      || fact.mutationKind !== (record.slot === "review" ? null : record.slot.split(":")[1]);
+      || fact.status !== (effect.slot === "review" ? "reviewed" : effect.slot.startsWith("intent:") ? "uncertain" : "mutation_completed")
+      || fact.mutationKind !== (effect.slot === "review" ? null : effect.slot.split(":")[1]);
   })) throw new Error("Tax journal summary mismatch.");
 }
 
@@ -127,7 +191,7 @@ export async function loadTaxDeliveryDraftArchiveSource(accessToken: string, com
         && source.historyCoverage.status === "complete") {
       return { data: { sourceFacts: source, originals: null } satisfies TaxDeliveryDraftArchiveProjection, error: null };
     }
-    if (/^company-tax-source-v3:[0-9a-f]{64}$/u.test(source.evidence.version)
+    if (/^company-tax-source-v[34]:[0-9a-f]{64}$/u.test(source.evidence.version)
         || (/^company-tax-source-v2:[0-9a-f]{64}$/u.test(source.evidence.version)
           && source.historyCoverage.reasons.includes("declaredDeliveryExtentValid_unproven"))) {
       // The nine-table successor supplies facts and originals from one guarded

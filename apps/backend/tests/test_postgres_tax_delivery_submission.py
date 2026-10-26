@@ -28,13 +28,16 @@ from test_postgres_tax_source_snapshot import database
 from test_postgres_tax_delivery_draft import draft_database
 from test_postgres_tax_current_draft import current_database,current_draft,current_session
 from test_postgres_tax_delivery_events import events_database,enable
+from test_postgres_tax_delivery_observations import observation_database,enable_observations
 
 pytestmark=pytest.mark.company_tax_database
 
 
 @pytest.fixture
-def delivery(events_database,current_draft,monkeypatch):
+def delivery(observation_database,current_draft,monkeypatch):
+    events_database=observation_database
     enable(events_database)
+    enable_observations(events_database)
     with psycopg.connect(**events_database,user='postgres',autocommit=True) as db:
         db.execute('truncate company_tax_filing.delivery_events,company_tax_filing.delivery_drafts')
     session=current_session(events_database)
@@ -50,7 +53,7 @@ def delivery(events_database,current_draft,monkeypatch):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
         def send(self,status,raw):
-            self.send_response(status);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+            self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
         def verify(self):
             assert self.headers.get('X-Talli-Rehearsal-Run')==state['run']
             assert self.headers.get('X-Talli-Rehearsal-Key')==state['key']
@@ -60,6 +63,8 @@ def delivery(events_database,current_draft,monkeypatch):
         def do_GET(self):
             try:
                 self.verify();state['calls'].append(('GET',self.path))
+                if self.path.startswith('/skd/formueinntekt-skattemelding-v2/instances/'):
+                    return self.send(200,b'{"metadata":"unavailable"}')
                 assert self.path=='/api/skattemelding/v2/2025/'+value.envelope.source.organization_number
                 if state['parallel']:state['barrier'].wait(timeout=5)
                 self.send(200,value.current_document.response.raw_bytes)
@@ -120,6 +125,21 @@ def test_actual_http_runs_after_intent_commit_and_retains_exact_response_origina
     asyncio.run(exercise());assert state['accepted']==1
 
 
+def test_closed_admission_writer_rolls_back_the_whole_review_transaction(delivery):
+    session,service,command,state,database,_=delivery
+    with psycopg.connect(**database,user='postgres') as db:
+        before=db.execute('select generation from public.tax_draft_fixture_generation').fetchone()
+    enable_observations(database,False)
+    async def exercise():
+        with pytest.raises(CompanyTaxError):await service.approve(session,command)
+        assert not (await journal(session,command)).events
+        with psycopg.connect(**database,user='postgres') as db:
+            assert db.execute('select generation from public.tax_draft_fixture_generation').fetchone()==before
+    try:asyncio.run(exercise())
+    finally:enable_observations(database)
+    assert state['accepted']==0 and len(state['calls'])==1 and state['calls'][0][0]=='GET'
+
+
 def test_provider_acceptance_with_lost_response_stays_unknown_and_never_resends(delivery):
     session,service,command,state,_,_=delivery
     async def exercise():
@@ -128,7 +148,7 @@ def test_provider_acceptance_with_lost_response_stays_unknown_and_never_resends(
         assert first.status=='uncertain'
         assert await service.advance(session,advancing(command,approved))==first
         assert await service.reconcile(session,advancing(command,approved))==first
-        assert len((await journal(session,command)).events)==2
+        assert len((await journal(session,command)).events)==3
     asyncio.run(exercise());assert state['accepted']==1
 
 

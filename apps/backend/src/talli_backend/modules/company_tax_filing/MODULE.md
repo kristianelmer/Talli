@@ -373,3 +373,45 @@ The finite authority adapter bounds the complete HTTP operation, streamed body
 and cleanup to five seconds, as well as individual network waits. Redirects and
 retries are disabled; response bytes are bounded. Malformed/deep JSON becomes an
 unknown retained operation outcome, including on the first HTTP response.
+
+The deferred `20261026111629_company_tax_delivery_observations.sql` installs
+Source V4 and a bounded journal V2 reader before opening any evidence writer.
+The exact nine-table extent, existing FORCE RLS and original V1 codecs remain.
+New writes default closed. The matching rollback contains new evidence writes
+after company-lock waits while retaining all originals and compatible readers.
+Deploy the compatible backend, client and export reader before enabling writes;
+once a new codec is retained, an older reader must fail closed rather than erase
+it from an export. Mutation containment remains independently controlled.
+The generated archive client requests `readEvidence=true`. Without that explicit
+negotiation, a V4 installation with predecessor-only records returns a fully
+reprojected V3 archive. New records instead make a predecessor request unavailable;
+they are never omitted. An older backend ignores the additive query and returns
+its supported V3 archive, preserving both deployment orders before writer cutover.
+
+`TaxDeliveryAdmissionEvidence` retains the exact nonsecret context named by the
+review hash: finite scope, lifetime, request budget, loopback origin, credential
+hash and restricted database identity hash. No credential or DSN is retained.
+Review plus admission commit atomically; the review receipt stays immutable.
+The successor contract is required for every new review or mutation intent.
+Predecessor-only installations retain historical review/intent/result replay;
+they cannot open a new dispatch without the admission store and reader.
+
+`TaxDeliveryInstanceObservation` retains exact successful known-instance read
+bytes, including BOM and whitespace. A known create result supplies the fixed
+read target. Unknown create has no invented lookup. Explicit foreign scope is
+rejected; missing, malformed or ambiguous metadata stays unknown and cannot
+prove an empty instance. Positive metadata inspection includes scan and process
+facts but authorizes no upload, validation, confirmation or final receipt.
+
+Read evidence requires the successor contract. Current owner and fresh MFA are
+checked before network and again before storing or disclosing a read. Network
+runs outside SQL transactions. Unchanged read bytes reuse their first original
+and recording time without advancing export generation; the later local read
+time is not promoted to a fresh consequential proof. Evidence updates the last
+event reference without inventing another completed mutation or submitted state.
+Journal enumeration is bounded to 2,048 events/64 MiB per filing; source export
+retains its 9,000-event/64 MiB company-year bounds. Exceeding a bound fails closed.
+`TaxDeliveryReadOriginal` and `TaxDeliveryOriginalPurpose` define bounded exact
+UTF-8 resource bytes, purpose, media type and successful read status.
+`decode_tax_delivery_observation` rechecks closed codec fields, canonical bytes,
+scope, original encoding and the expected digest before reconstructing evidence.

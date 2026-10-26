@@ -1121,7 +1121,7 @@ class CompanyTaxSourceFactsWire(TransportModel):
 
 class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
     filing_id: UUID
-    slot: str = Field(pattern=r"^(review|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation))$")
+    slot: str = Field(pattern=r"^(review|admission|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation)|observation:instance:[0-9a-f]{64})$")
     recorded_by: UUID
     recorded_at: datetime
     canonical_json: str
@@ -12023,12 +12023,13 @@ def create_app(
     async def company_tax_delivery_journal_archive(
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        read_evidence: Annotated[bool, Query(alias="readEvidence")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxDeliveryJournalArchiveWire:
         async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
             session=await company_tax_application.session(bearer_token(credentials))
             result=await session.delivery_journal_archive(CompanyTaxSourceQuery(
-                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id))
+                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),read_evidence=read_evidence)
             facts=result.source_facts
             try:
                 return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),

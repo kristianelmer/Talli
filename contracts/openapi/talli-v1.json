@@ -7363,7 +7363,7 @@
             "type": "string"
           },
           "slot": {
-            "pattern": "^(review|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation))$",
+            "pattern": "^(review|admission|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation)|observation:instance:[0-9a-f]{64})$",
             "title": "Slot",
             "type": "string"
           }
@@ -65634,6 +65634,16 @@
               "minimum": 2000,
               "title": "Incomeyear",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "readEvidence",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Readevidence",
+              "type": "boolean"
             }
           },
           {

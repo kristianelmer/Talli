@@ -10,16 +10,20 @@ from .delivery_approval import TaxDeliveryAuthorityMode, TaxDeliveryReviewApprov
 from .delivery_draft import TaxDeliveryDraft
 from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
     decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
+from .delivery_observation import (TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation,
+    decode_tax_delivery_observation)
+
+_EVIDENCE=(TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation)
 
 
 @dataclass(frozen=True, slots=True)
 class StoredTaxDeliveryEvent:
-    value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion
+    value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation
     recorded_at: Timestamp
     recorded_by: ActorId
 
     def __post_init__(self):
-        if (type(self.value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion)
+        if (type(self.value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion,*_EVIDENCE)
                 or type(self.recorded_at) is not Timestamp or type(self.recorded_by) is not ActorId
                 or self.recorded_by.kind is not ActorKind.USER or type(self.recorded_by.subject) is not UserId):
             raise ValueError('Tax delivery event is invalid.')
@@ -33,6 +37,8 @@ class StoredTaxDeliveryEvent:
     @property
     def slot(self):
         if type(self.value) is TaxDeliveryReviewApproval:return 'review'
+        if type(self.value) is TaxDeliveryAdmissionEvidence:return 'admission'
+        if type(self.value) is TaxDeliveryInstanceObservation:return 'observation:instance:'+self.value.evidence_sha256
         prefix='completion' if type(self.value) is TaxDeliveryMutationCompletion else 'intent'
         return prefix+':'+self.binding.kind.value
 
@@ -49,6 +55,8 @@ def decode_tax_delivery_event(raw: str, expected_sha256: str, recorded_at: Times
             'company-tax-delivery-review-approval-v1':decode_tax_delivery_review_approval,
             'company-tax-delivery-mutation-request-v1':decode_tax_delivery_mutation_request,
             'company-tax-delivery-mutation-completion-v1':decode_tax_delivery_mutation_completion,
+            'company-tax-delivery-admission-v1':decode_tax_delivery_observation,
+            'company-tax-delivery-instance-observation-v1':decode_tax_delivery_observation,
         }[version]
         return StoredTaxDeliveryEvent(decoder(raw,expected_sha256),recorded_at,recorded_by)
     except (KeyError,TypeError,ValueError,RecursionError,OverflowError):
@@ -65,12 +73,13 @@ class TaxDeliveryJournal:
     """
     draft: TaxDeliveryDraft
     events: tuple[StoredTaxDeliveryEvent, ...]
+    read_evidence: bool=False
 
     def __post_init__(self):
-        if type(self.draft) is not TaxDeliveryDraft:raise ValueError('Tax journal draft is invalid.')
+        if type(self.draft) is not TaxDeliveryDraft or type(self.read_evidence) is not bool:raise ValueError('Tax journal draft is invalid.')
         object.__setattr__(self,'events',tuple(self.events))
-        if len(self.events)>9:raise ValueError('Tax journal has unknown event slots.')
-        approval=None;requests={};completions={};slots=set();previous_time=None
+        if len(self.events)>2048:raise ValueError('Tax journal exceeds its evidence limit.')
+        approval=None;admission=None;requests={};completions={};slots=set();previous_time=None
         for event in self.events:
             if type(event) is not StoredTaxDeliveryEvent or event.slot in slots:
                 raise ValueError('Tax journal has duplicate or invalid events.')
@@ -82,13 +91,20 @@ class TaxDeliveryJournal:
                     or binding.income_year!=self.draft.envelope.source.income_year):
                 raise ValueError('Tax journal contains foreign scope.')
             value=event.value
+            if type(value) in _EVIDENCE and not self.read_evidence:raise ValueError('Tax read evidence requires the successor contract.')
             if type(value) is TaxDeliveryReviewApproval:
                 if self.events[0]!=event:raise ValueError('Tax review must precede effects.')
                 value.assert_draft(self.draft);approval=value
             else:
                 if approval is None:raise ValueError('Tax mutation has no retained approval.')
                 if event.recorded_by!=approval.approved_by:raise ValueError('Tax journal recorder differs from its approval.')
-                if type(value) is TaxDeliveryMutationRequest:
+                if type(value) is TaxDeliveryAdmissionEvidence:
+                    value.assert_approval(approval,self.draft);admission=value
+                elif type(value) is TaxDeliveryInstanceObservation:
+                    created=completions.get(TaxMutationKind.CREATE_INSTANCE)
+                    if admission is None or created is None:raise ValueError('Tax read has no retained admission and known instance.')
+                    value.assert_approval(approval,self.draft,created.result['instanceId'])
+                elif type(value) is TaxDeliveryMutationRequest:
                     value.assert_draft(approval,self.draft)
                     kinds=list(TaxMutationKind);index=kinds.index(value.kind)
                     if index and kinds[index-1] not in completions:
@@ -110,11 +126,12 @@ class TaxDeliveryJournal:
     def progress(self) -> TaxDeliveryProgress:
         if self.approval is None:raise ValueError('Tax journal has no retained review.')
         latest=self.events[-1]
+        effect=next(event for event in reversed(self.events) if type(event.value) not in _EVIDENCE)
         return TaxDeliveryProgress(self.draft.filing_id,self.draft.envelope.source.company_id,
             self.draft.envelope.source.income_year,self.approval.approval_id,self.approval.sha256,
             self.draft.sha256,self.approval.review_sha256,self.approval.authority_mode,
-            'reviewed' if latest.slot=='review' else 'uncertain' if latest.slot.startswith('intent:') else 'mutation_completed',
-            None if latest.slot=='review' else latest.binding.kind,latest.value.sha256,latest.recorded_at)
+            'reviewed' if effect.slot=='review' else 'uncertain' if effect.slot.startswith('intent:') else 'mutation_completed',
+            None if effect.slot=='review' else effect.binding.kind,latest.value.sha256,latest.recorded_at)
 
     def plan(self, request: TaxDeliveryMutationRequest):
         if self.approval is None:raise ValueError('Tax journal has no review approval.')
@@ -123,7 +140,7 @@ class TaxDeliveryJournal:
         prior=next((event.value for event in self.events if event.slot=='intent:'+request.kind.value),None)
         if prior is None:
             # Validate an append in the same order persistence will retain it.
-            TaxDeliveryJournal(self.draft,self.events+(StoredTaxDeliveryEvent(request,self.events[-1].recorded_at,self.approval.approved_by),))
+            TaxDeliveryJournal(self.draft,self.events+(StoredTaxDeliveryEvent(request,self.events[-1].recorded_at,self.approval.approved_by),),self.read_evidence)
             return plan_tax_mutation(intent,None)
         completion=next((event.value for event in self.events if event.slot=='completion:'+request.kind.value),None)
         record=TaxMutationRecord(prior.intent(self.approval),'completed' if completion else 'uncertain',
@@ -165,10 +182,10 @@ def assert_tax_delivery_attempt_history(query,snapshot,filing_id: str) -> TaxDel
     """
     from .public import CompanyTaxError,project_company_tax_source
     facts=project_company_tax_source(query,snapshot)
-    if snapshot.contract_version!='company-tax-source-v3' or facts.history_coverage.status!='complete':
+    if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4') or facts.history_coverage.status!='complete':
         raise CompanyTaxError.unavailable()
     if any(event.binding.filing_id!=filing_id for event in snapshot.delivery_events):
         raise CompanyTaxError.draft_conflict()
     draft=next((row.draft for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
     if draft is None:raise CompanyTaxError.not_found()
-    return TaxDeliveryJournal(draft,tuple(event for event in snapshot.delivery_events if event.binding.filing_id==filing_id))
+    return TaxDeliveryJournal(draft,tuple(event for event in snapshot.delivery_events if event.binding.filing_id==filing_id),snapshot.contract_version=='company-tax-source-v4')

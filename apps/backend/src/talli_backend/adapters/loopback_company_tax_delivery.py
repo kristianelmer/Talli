@@ -11,6 +11,8 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion,
     TaxMutationKind,TaxDeliveryCompletionOrigin,complete_tax_delivery_mutation,
     TaxDeliveryMutationAuthority,company_tax_authority_adapter,
+    TaxDeliveryOriginalPurpose,TaxDeliveryReadOriginal,TaxDeliveryInstanceObservation,
+    build_tax_delivery_mutation_request,
 )
 from talli_backend.shared.kernel import IncomeYear
 
@@ -25,7 +27,8 @@ class LoopbackCompanyTaxDelivery:
         self._runtime=runtime
         self._transport=transport
 
-    async def _request(self,method: str,path: str,*,body: bytes | None=None,content_type: str | None=None) -> bytes:
+    async def _request(self,method: str,path: str,*,body: bytes | None=None,content_type: str | None=None,
+            expected_statuses=(200,201),response_type: str | None=None) -> bytes:
         grant=self._runtime.admission
         self._runtime.consume(organization_number=grant.organization_number,income_year=int(grant.income_year))
         headers={'X-Talli-Rehearsal-Run':grant.run_id,'X-Talli-Rehearsal-Key':grant.credential}
@@ -35,7 +38,9 @@ class LoopbackCompanyTaxDelivery:
                 async with httpx.AsyncClient(base_url=grant.origin,timeout=5,follow_redirects=False,
                         trust_env=False,transport=self._transport) as client:
                     async with client.stream(method,path,content=body,headers=headers) as response:
-                        if response.status_code not in (200,201):raise ValueError()
+                        if response.status_code not in expected_statuses:raise ValueError()
+                        if response_type is not None and response.headers.get('content-type','').split(';',1)[0].strip().lower()!=response_type:
+                            raise ValueError()
                         chunks=[];size=0
                         async for chunk in response.aiter_bytes(chunk_size=65536):
                             size+=len(chunk)
@@ -70,4 +75,24 @@ class LoopbackCompanyTaxDelivery:
                 observed_at=self._runtime.now(),origin=TaxDeliveryCompletionOrigin.MUTATION_RESPONSE)
         except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
             raise CompanyTaxReturnAuthorityError('Finite Tax mutation result is unknown.',
+                code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
+
+    async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation:
+        # Only a retained, draft-bound create result can supply a read target.
+        if type(created) is not TaxDeliveryMutationCompletion or created.intent.kind is not TaxMutationKind.CREATE_INSTANCE:
+            raise CompanyTaxError.invalid_input()
+        created.assert_request(build_tax_delivery_mutation_request(approval,draft,TaxMutationKind.CREATE_INSTANCE),approval)
+        if self._runtime.authorize(draft,approval.approved_by)!=approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        instance=created.result['instanceId']
+        raw=await self._request('GET',_APP_PATH+'/instances/'+instance,expected_statuses=(200,),response_type='application/json')
+        try:
+            value=TaxDeliveryInstanceObservation(draft.filing_id,approval.company_id,approval.income_year,
+                approval.approved_by,approval.sha256,draft.envelope.source.organization_number,instance,
+                TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.INSTANCE,base64.b64encode(raw).decode('ascii'),'application/json',200),
+                self._runtime.now())
+            value.assert_approval(approval,draft,instance)
+            return value
+        except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
+            raise CompanyTaxReturnAuthorityError('Finite Tax instance scope is unavailable.',
                 code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
