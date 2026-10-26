@@ -49,6 +49,14 @@ def test_signed_owner_enters_confirmation_once_and_both_archive_readers_keep_exa
         assert completed.status_code==200 and completed.json()['status']=='mutation_completed'
         before=len(state['calls']);assert client.post(RECONCILE,json=command,headers=headers).json()==completed.json()
         assert len(state['calls'])==before and state['confirmationPuts']==1
+        response=client.get('/api/v1/company-tax/delivery-owner-review',params=command,headers=headers)
+        assert response.status_code==200
+        assert client.get('/api/v1/company-tax/delivery-owner-review',params=command,
+            headers=headers|{'Authorization':'Bearer '+aal1}).status_code==403
+        assert len(state['calls'])==before
+        checked=subprocess.run(['node','--experimental-strip-types','tests/support/check-tax-owner-review-client.mjs'],
+            input=response.text,text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3],timeout=30)
+        assert checked.returncode==0,checked.stdout+checked.stderr
         value=checked_archive(client,draft,headers)
         result=next(json.loads(row['canonicalJson'])['completion'] for row in value['events'] if row['slot']=='completion:prepare_confirmation')
         metadata=json.loads(result['confirmation_read_evidence']['instance_canonical_json'])['observation']

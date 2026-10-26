@@ -545,3 +545,34 @@ Finite envelope uploads follow the pinned authority API instructions: `Content-T
 The deferred confirmation successor adds positive Source V7 / Journal V5 readers on the same nine tables before a private volatile default-false intent gate. The writer rechecks all new-work fences and current owner/MFA after the company lock, validates exact prior request/job/result/metadata/file references and bounded fresh times, and independently matches result code, all counts and decoded document bytes against retained XML. DTD/entity declarations are forbidden before SQL XML parsing; full XSD and intrinsic scope stay in the pinned adapter. Original-actor known acknowledgments/results survive revocation/containment using the committed request without broadening draft RLS. Runtime direct table access remains revoked. Rollback closes new confirmation intents while preserving originals, compatible readers and late-result retention.
 
 The two explicit confirmation API routes accept scope/approval/key only. Default composition remains closed. Readers keep `readEvidenceVersion=2` plus additive `validationEvidence=true` and `confirmationEvidence=true`; older callers receive complete V6 only before confirmation originals exist. Web readers verify closed new codecs, raw hashes, known-job/result prefix, fresh original references and Task_1/Task_2 Clean/file proofs. They do not turn XML retention or a derived projection into browser XSD, owner-confirmation, submission or Tax-acceptance authority.
+
+
+The read-only owner-review artifact follows a complete confirmation-stage read
+proof. `TaxDeliveryOwnerReviewQuery`, `TaxDeliveryOwnerReview` and
+`build_tax_delivery_owner_review` bind the initial approval, exact V4 preparation
+request and V3 read result to the retained validation response. The separate
+`TaxValidationResponseReview` preserves every deviation, received/calculated
+value, guidance text, failure reason and company subject flag.
+`TaxCalculatedDocumentsReview` preserves all calculated originals and every
+scalar leaf, attribute and meaningful mixed-text value in indexed document
+paths. XML character normalization affects the projection only; exact response
+and decoded document bytes remain unchanged. The exact enclosing validation
+response is included in the artifact and verified against its retained SHA,
+including BOM and whitespace. Repeated document paths are bounded while the
+projection is built. Existing inspection and request
+codecs retain their bytes.
+
+`TaxValidationResponseValidator.review` and
+`TaxCalculatedDocumentValidator.review_documents` use the same offline pinned
+schemas and scope checks as their existing inspections. The artifact has a
+stable content digest and a 24 MiB bound. Current ownership, MFA and complete
+Annual/Ledger/Investments source are checked before disclosure, including after
+XML inspection. Expired dispatch admission does not remove retained review
+access. This read makes no provider call or business write and grants no owner
+confirmation, submission or authority outcome. Default composition remains
+unavailable.
+
+The review text values are `TaxValidationDeviation`, `TaxValidationGuidance` and
+`TaxValidationSubjectFlag`. Calculated view values are
+`TaxCalculatedReviewField` and `TaxCalculatedDocumentReview`; field paths retain
+repeated occurrences without collapsing them into a summary.

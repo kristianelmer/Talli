@@ -107,7 +107,7 @@ from talli_backend.modules.company_tax_filing.public import (
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
-    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
     PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
 )
@@ -1126,6 +1126,147 @@ class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
     recorded_at: datetime
     canonical_json: str
     event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+CompanyTaxReviewDigest=Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+CompanyTaxReviewText=Annotated[str,Field(max_length=8*1024*1024)]
+
+
+class CompanyTaxReviewContentModel(BaseModel):
+    # Inner keys are the explicit byte-contract keys. Keep them unchanged in
+    # the JSON used to verify the complete owner-review content commitment.
+    model_config=ConfigDict(extra='forbid',strict=True)
+
+
+class CompanyTaxReviewUuidValue(CompanyTaxReviewContentModel):
+    value: UUID
+
+
+class CompanyTaxReviewYearValue(CompanyTaxReviewContentModel):
+    value: Literal[2025]
+
+
+class CompanyTaxReviewActorValue(CompanyTaxReviewContentModel):
+    kind: Literal['USER']
+    subject: CompanyTaxReviewUuidValue
+
+
+class CompanyTaxReviewApprovalValue(CompanyTaxReviewContentModel):
+    approval_id: UUID
+    filing_id: UUID
+    company_id: CompanyTaxReviewUuidValue
+    income_year: CompanyTaxReviewYearValue
+    approved_by: CompanyTaxReviewActorValue
+    draft_sha256: CompanyTaxReviewDigest
+    review_sha256: CompanyTaxReviewDigest
+    source_sha256: CompanyTaxReviewDigest
+    schema_sha256: CompanyTaxReviewDigest
+    current_original_sha256: CompanyTaxReviewDigest
+    authority_mode: Literal['finite_loopback_rehearsal']
+    authority_context_sha256: CompanyTaxReviewDigest
+
+
+class CompanyTaxCalculatedReviewContextValue(CompanyTaxReviewContentModel):
+    schema_sha256: CompanyTaxReviewDigest
+    draft_sha256: CompanyTaxReviewDigest
+    company_id: CompanyTaxReviewUuidValue
+    income_year: CompanyTaxReviewYearValue
+    party_number: str = Field(min_length=1,max_length=4000)
+
+
+CompanyTaxCalculatedReviewDocumentType=Literal['skattemeldingUpersonligEtterBeregning','naeringsspesifikasjonEtterBeregning',
+    'beregnetSkattUpersonlig','summertSkattegrunnlagForVisningUpersonlig']
+
+
+class CompanyTaxCalculatedReviewFieldValue(CompanyTaxReviewContentModel):
+    path: str = Field(min_length=1,max_length=16384)
+    value: CompanyTaxReviewText
+
+
+class CompanyTaxCalculatedReviewDocumentValue(CompanyTaxReviewContentModel):
+    document_type: CompanyTaxCalculatedReviewDocumentType
+    original_sha256: CompanyTaxReviewDigest
+    fields: list[CompanyTaxCalculatedReviewFieldValue] = Field(min_length=1,max_length=100000)
+
+
+class CompanyTaxCalculatedReviewOriginalValue(CompanyTaxReviewContentModel):
+    document_type: CompanyTaxCalculatedReviewDocumentType
+    body_base64: str = Field(min_length=1,max_length=12*1024*1024)
+
+
+class CompanyTaxResponseReviewInspectionValue(CompanyTaxReviewContentModel):
+    schema_sha256: CompanyTaxReviewDigest
+    original_sha256: CompanyTaxReviewDigest
+    result_code: Literal['validertOK','validertMedFeil']
+    calculation_deviation_count: int = Field(ge=0,le=100000)
+    validation_deviation_count: int = Field(ge=0,le=100000)
+    guidance_count: int = Field(ge=0,le=100000)
+    failure_reason_count: int = Field(ge=0,le=100000)
+    calculated_documents: list[CompanyTaxCalculatedReviewOriginalValue] = Field(min_length=2,max_length=4)
+
+
+class CompanyTaxResponseReviewDeviationValue(CompanyTaxReviewContentModel):
+    type_code: CompanyTaxReviewText
+    occurrence_id: CompanyTaxReviewText | None=None
+    received_value: CompanyTaxReviewText | None=None
+    calculated_value: CompanyTaxReviewText | None=None
+    difference_value: CompanyTaxReviewText | None=None
+    received_text: CompanyTaxReviewText | None=None
+    calculated_text: CompanyTaxReviewText | None=None
+    path: CompanyTaxReviewText | None=None
+    additional_info: CompanyTaxReviewText | None=None
+
+
+class CompanyTaxResponseReviewGuidanceValue(CompanyTaxReviewContentModel):
+    type_code: CompanyTaxReviewText
+    occurrence_id: CompanyTaxReviewText | None=None
+    message: CompanyTaxReviewText | None=None
+    servicing_strategy: CompanyTaxReviewText | None=None
+    path: CompanyTaxReviewText | None=None
+
+
+class CompanyTaxResponseReviewSubjectFlagValue(CompanyTaxReviewContentModel):
+    name: Literal['erFritattForFormuesskatt','erOmfattetAvSaerreglerForKraftforetak','erOmfattetAvPetroleumsskatteloven',
+        'erOmfattetAvRederiskatteordningen','erOmfattetAvFinansskattPaaLoennOgOverskudd','harLeveringsfritak']
+    value: StrictBool
+
+
+class CompanyTaxResponseReviewValue(CompanyTaxReviewContentModel):
+    inspection: CompanyTaxResponseReviewInspectionValue
+    calculation_deviations: list[CompanyTaxResponseReviewDeviationValue] = Field(max_length=100000)
+    validation_deviations: list[CompanyTaxResponseReviewDeviationValue] = Field(max_length=100000)
+    guidance: list[CompanyTaxResponseReviewGuidanceValue] = Field(max_length=100000)
+    failure_reasons: list[CompanyTaxReviewText] = Field(max_length=100000)
+    subject_flags: list[CompanyTaxResponseReviewSubjectFlagValue] = Field(max_length=6)
+
+
+class CompanyTaxResponseReviewOriginalValue(CompanyTaxReviewContentModel):
+    purpose: Literal['validation_result']
+    body_base64: str = Field(min_length=1,max_length=12*1024*1024)
+    content_type: Literal['application/xml','text/xml']
+    http_status: Literal[200]
+
+
+class CompanyTaxOwnerReviewValue(CompanyTaxReviewContentModel):
+    approval: CompanyTaxReviewApprovalValue
+    preparation_request_sha256: CompanyTaxReviewDigest
+    preparation_result_sha256: CompanyTaxReviewDigest
+    source_sha256: CompanyTaxReviewDigest
+    calculated_context: CompanyTaxCalculatedReviewContextValue
+    documents: list[CompanyTaxCalculatedReviewDocumentValue] = Field(min_length=2,max_length=4)
+    response: CompanyTaxResponseReviewValue
+    response_original: CompanyTaxResponseReviewOriginalValue
+
+
+class CompanyTaxOwnerReviewArtifactWire(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    approval_sha256: CompanyTaxReviewDigest
+    artifact_sha256: CompanyTaxReviewDigest
+    version: Literal['company-tax-delivery-owner-review-v1']
+    review: CompanyTaxOwnerReviewValue
 
 
 class CompanyTaxDeliveryJournalFactWire(TransportModel):
@@ -12064,6 +12205,27 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
     ) -> CompanyTaxDeliveryProgressWire:
         return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-confirmation')
+
+    @application.get('/api/v1/company-tax/delivery-owner-review',operation_id='companyTaxGetDeliveryOwnerReview',
+        response_model=CompanyTaxOwnerReviewArtifactWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_owner_review(
+        request: Request,
+        company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        filing_id: Annotated[UUID,Query(alias='filingId')],
+        approval_sha256: Annotated[str,Query(alias='approvalSha256',pattern=r'^[0-9a-f]{64}$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxOwnerReviewArtifactWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            artifact=await session.delivery_owner_review(TaxDeliveryOwnerReviewQuery(CompanyId(str(company_id)),IncomeYear(income_year),
+                session.actor_id,str(filing_id),approval_sha256,ledger_correlation(request)))
+            content=json.loads(artifact.canonical_json)
+            payload=content|{'companyId':str(artifact.approval.company_id),'incomeYear':int(artifact.approval.income_year),
+                'filingId':artifact.approval.filing_id,'approvalSha256':artifact.approval.sha256,'artifactSha256':artifact.sha256}
+            return CompanyTaxOwnerReviewArtifactWire.model_validate_json(json.dumps(payload,ensure_ascii=False,allow_nan=False))
+        return await company_tax_call(execute)
 
     @application.get(
         "/api/v1/company-tax/archive-source/delivery-drafts-v1",

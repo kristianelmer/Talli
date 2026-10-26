@@ -53,6 +53,52 @@ async function taxTextSha(raw: string) {
     .map(byte => byte.toString(16).padStart(2,"0")).join("");
 }
 
+function taxReviewCanonical(value: unknown): string {
+  // Review contract keys are ASCII, quantities are integer counts, and all
+  // statutory values are strings. Match the backend's sorted UTF-8 JSON.
+  if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
+  if (Array.isArray(value)) return "["+value.map(taxReviewCanonical).join(",")+"]";
+  if (typeof value === "object" && value !== null) return "{"+Object.keys(value).sort().map(key =>
+    JSON.stringify(key)+":"+taxReviewCanonical((value as Record<string,unknown>)[key])).join(",")+"}";
+  throw new Error("Tax owner review contains unsupported values.");
+}
+
+export async function loadTaxDeliveryOwnerReview(accessToken: string,companyId: string,incomeYear: number,filingId: string,approvalSha256: string) {
+  const result=await client(accessToken).companyTaxGetDeliveryOwnerReview(companyId,incomeYear,filingId,approvalSha256,
+    {signal:AbortSignal.timeout(10_000)});
+  const review=result.review;const response=review.response;const inspection=response.inspection;
+  const responseOriginal=await taxReadOriginal(review.response_original,"validation_result");
+  const raw=taxReviewCanonical({version:result.version,review});
+  if (new TextEncoder().encode(raw).length>24*1024*1024 || await taxTextSha(raw)!==result.artifactSha256
+      || await taxTextSha(taxReviewCanonical({version:"company-tax-delivery-review-approval-v1",approval:review.approval}))!==approvalSha256
+      || responseOriginal.sha256!==inspection.original_sha256
+      || review.calculated_context.schema_sha256!=="c9631dcb56397a2e9632f9a8339d4060aa8f3ae6f58c7bf35b7cc19df5e77769"
+      || inspection.schema_sha256!=="eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1"
+      || review.approval.schema_sha256!=="56668da96711b664843df91d518bb127eb79bddf93c9635765bbd28d35bdda1b"
+      || inspection.result_code!=="validertOK" || inspection.validation_deviation_count!==0 || inspection.failure_reason_count!==0
+      || inspection.calculation_deviation_count!==response.calculation_deviations.length
+      || inspection.validation_deviation_count!==response.validation_deviations.length
+      || inspection.guidance_count!==response.guidance.length || inspection.failure_reason_count!==response.failure_reasons.length
+      || new Set(response.subject_flags.map(value=>value.name)).size!==response.subject_flags.length
+      || inspection.calculated_documents.length!==review.documents.length) throw new Error("Tax owner review content commitment changed.");
+  const types=new Set<string>();
+  for (let index=0;index<review.documents.length;index++) {
+    const document=review.documents[index];const original=inspection.calculated_documents[index];
+    const decoded=await taxEncodedOriginal(original.body_base64);
+    if (types.has(document.document_type) || document.document_type!==original.document_type || decoded.sha256!==document.original_sha256
+        || new Set(document.fields.map(field=>field.path)).size!==document.fields.length
+        || document.fields.some(field=>!field.path.startsWith("/"))) throw new Error("Tax owner review calculated original changed.");
+    types.add(document.document_type);
+  }
+  if (!types.has("skattemeldingUpersonligEtterBeregning") || !types.has("naeringsspesifikasjonEtterBeregning")) {
+    throw new Error("Tax owner review is missing its calculated document pair.");
+  }
+  // This read preserves backend-owned projections and every original. It grants
+  // no XML/schema verdict, owner confirmation or submission authority.
+  return result;
+}
+
 function taxJsonObject(raw: string,integerFields: readonly string[]=[],integerDepth=1) {
   const value=JSON.parse(raw);
   if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("Tax JSON original is not an object.");

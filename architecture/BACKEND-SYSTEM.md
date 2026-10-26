@@ -1188,3 +1188,17 @@ Confirmation preparation remains separate from owner confirmation and submission
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/delivery-confirmation-advances","/api/v1/company-tax/delivery-confirmation-reconciliations"]}
 -->
+
+
+`GET /api/v1/company-tax/delivery-owner-review` returns the full calculated
+owner-review artifact for a known prepared ordinary confirmation stage. It
+rechecks current ownership, MFA and all owning source inputs after parsing,
+returns stable exact-content commitments and complete warning/document views,
+and performs no provider operation or business write. Dispatch admission expiry
+does not erase retained review access. The generated SDK and web loader retain
+all originals and fail on malformed or inconsistent content. The read grants no
+owner confirmation or submission authority; default composition remains closed.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/delivery-owner-review"]}
+-->

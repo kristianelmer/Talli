@@ -32,7 +32,8 @@
     "companyTaxPreviewAnnualEstimate",
     "companyTaxGetSourceFacts",
     "companyTaxGetDeliveryDraftArchive",
-    "companyTaxGetDeliveryJournalArchive"
+    "companyTaxGetDeliveryJournalArchive",
+    "companyTaxGetDeliveryOwnerReview"
   ],
   "dependencies": [],
   "allowedImports": [

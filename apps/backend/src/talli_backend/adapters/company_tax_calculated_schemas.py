@@ -13,6 +13,7 @@ from talli_backend.adapters.company_tax_response_schemas import PinnedTaxValidat
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError,TaxDeliveryReadOriginal,TaxDeliveryDraft,TaxCalculatedDocumentsInspection,
     TaxCalculatedDocumentValidator,tax_delivery_schema_adapter,
+    TaxCalculatedReviewField,TaxCalculatedDocumentReview,TaxCalculatedDocumentsReview,
 )
 
 _BUNDLE=Path(__file__).resolve().parents[1]/'modules/company_tax_filing/schemas/calculated-2025'
@@ -87,4 +88,37 @@ class PinnedTax2025CalculatedSchemas:
             result.assert_original(original,draft)
             return result
         except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+
+    def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview:
+        inspection=self.inspect(original,draft=draft)
+        try:
+            reviews=[];projection_bytes=0
+            for document in inspection.response.calculated_documents:
+                root=_parse(document.raw_bytes);values=[]
+                def retain(path,value):
+                    nonlocal projection_bytes
+                    if len(values)>=100000:raise ValueError('Tax calculated review field bound exceeded.')
+                    field=TaxCalculatedReviewField(path,value)
+                    projection_bytes+=len(json.dumps({'path':path,'value':value},ensure_ascii=False,
+                        separators=(',',':'),allow_nan=False).encode('utf-8'))
+                    # Repeated long ancestor paths can amplify a small XML
+                    # original. Stop before materializing an oversized view.
+                    if projection_bytes>24*1024*1024:raise ValueError('Tax calculated review byte bound exceeded.')
+                    values.append(field)
+                def visit(node,path):
+                    for name,value in sorted(node.attrib.items()):
+                        retain(path+'/@'+name,value)
+                    if not len(node):retain(path,node.text or '')
+                    elif node.text and node.text.strip():retain(path+'/#text',node.text)
+                    counts={}
+                    for child in node:
+                        name=etree.QName(child).localname;counts[name]=counts.get(name,0)+1
+                        visit(child,path+'/'+name+'['+str(counts[name])+']')
+                        if child.tail and child.tail.strip():
+                            retain(path+'/'+name+'['+str(counts[name])+']/#tail',child.tail)
+                visit(root,'/'+etree.QName(root).localname+'[1]')
+                reviews.append(TaxCalculatedDocumentReview(document.document_type,sha256(document.raw_bytes).hexdigest(),tuple(values)))
+            return TaxCalculatedDocumentsReview(inspection,tuple(reviews))
+        except (ValueError,TypeError,AttributeError,etree.LxmlError,RecursionError,OverflowError):
             raise CompanyTaxError.unavailable() from None

@@ -805,6 +805,7 @@ from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryU
     bind_tax_delivery_upload_prerequisite)
 from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
 from .delivery_validation_response import (TaxValidationResultCode,TaxValidationCalculatedDocument,TaxValidationResponseInspection)
+from .delivery_validation_review import (TaxValidationDeviation,TaxValidationGuidance,TaxValidationSubjectFlag,TaxValidationResponseReview)
 from .delivery_calculated_documents import TaxCalculatedDocumentsInspection
 from .delivery_confirmation_prerequisite import (TaxDeliveryConfirmationPrerequisite,bind_tax_delivery_confirmation_prerequisite,
     is_tax_delivery_owner_confirmation_instance)
@@ -815,6 +816,8 @@ from .delivery_validation_prerequisite import (TaxDeliveryValidationPrerequisite
 from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobInspection,TaxDeliveryValidationJobObservation,
     decode_tax_delivery_validation_job_observation)
 from .delivery_validation_result import (TaxDeliveryValidationResultObservation,decode_tax_delivery_validation_result_observation)
+from .delivery_owner_review import (TaxCalculatedReviewField,TaxCalculatedDocumentReview,TaxCalculatedDocumentsReview,
+    TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,build_tax_delivery_owner_review)
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
@@ -910,12 +913,14 @@ class TaxValidationResponseValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
     def inspect(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseInspection: ...
+    def review(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseReview: ...
 
 
 class TaxCalculatedDocumentValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
     def inspect(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsInspection: ...
+    def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview: ...
 
 
 class CompanyTaxCurrentDocumentReader(Protocol):
@@ -973,7 +978,10 @@ __all__ = [
     'plan_tax_mutation', 'verify_tax_review',
     'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
     'TaxValidationResponseValidator','TaxValidationResultCode','TaxValidationCalculatedDocument','TaxValidationResponseInspection',
+    'TaxValidationDeviation','TaxValidationGuidance','TaxValidationSubjectFlag','TaxValidationResponseReview',
     'TaxCalculatedDocumentValidator','TaxCalculatedDocumentsInspection',
+    'TaxCalculatedReviewField','TaxCalculatedDocumentReview','TaxCalculatedDocumentsReview',
+    'TaxDeliveryOwnerReviewQuery','TaxDeliveryOwnerReview','build_tax_delivery_owner_review',
     'TaxDeliveryConfirmationPrerequisite','bind_tax_delivery_confirmation_prerequisite',
     'is_tax_delivery_owner_confirmation_instance',
     'TaxDeliveryConfirmationReadEvidence','reconcile_tax_delivery_confirmation',

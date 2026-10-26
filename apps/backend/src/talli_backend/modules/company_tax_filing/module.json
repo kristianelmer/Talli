@@ -135,7 +135,17 @@
       "TaxDeliveryConfirmationReadEvidence",
       "reconcile_tax_delivery_confirmation",
       "TaxDeliveryProcessAcknowledgment",
-      "decode_tax_delivery_process_acknowledgment"
+      "decode_tax_delivery_process_acknowledgment",
+      "TaxValidationDeviation",
+      "TaxValidationGuidance",
+      "TaxValidationSubjectFlag",
+      "TaxValidationResponseReview",
+      "TaxCalculatedReviewField",
+      "TaxCalculatedDocumentReview",
+      "TaxCalculatedDocumentsReview",
+      "TaxDeliveryOwnerReviewQuery",
+      "TaxDeliveryOwnerReview",
+      "build_tax_delivery_owner_review"
     ],
     "events": [],
     "errors": [
@@ -413,7 +423,10 @@
     "confirmationApi": "apps/backend/tests/test_company_tax_delivery_confirmation_api.py",
     "confirmationEvidenceDatabase": "apps/backend/tests/test_postgres_tax_confirmation_evidence.py",
     "confirmationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_confirmation_submission.py",
-    "confirmationTopology": "apps/backend/tests/test_company_tax_confirmation_database.py"
+    "confirmationTopology": "apps/backend/tests/test_company_tax_confirmation_database.py",
+    "ownerReview": "apps/backend/tests/test_company_tax_delivery_owner_review.py",
+    "validationReview": "apps/backend/tests/test_company_tax_validation_review.py",
+    "ownerReviewApi": "apps/backend/tests/test_company_tax_delivery_owner_review_api.py"
   },
   "compatibilityExceptions": []
 }

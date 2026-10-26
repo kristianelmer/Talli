@@ -14,6 +14,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError,TaxDeliveryReadOriginal,TaxDeliveryOriginalPurpose,
     TaxValidationCalculatedDocument,TaxValidationResponseInspection,TaxValidationResultCode,
     TaxValidationResponseValidator,tax_delivery_schema_adapter,
+    TaxValidationDeviation,TaxValidationGuidance,TaxValidationSubjectFlag,TaxValidationResponseReview,
 )
 
 _BUNDLE=Path(__file__).resolve().parents[1]/'modules/company_tax_filing/schemas/validation-v2'
@@ -70,6 +71,29 @@ class PinnedTaxValidationResponseSchemas:
                 len(root.findall(_NS+'avvikVedValidering/'+_NS+'avvik')),
                 len(root.findall(_NS+'veiledningEtterKontroll/'+_NS+'veiledning')),
                 len(root.findall(_NS+'aarsakTilValidertMedFeil')),tuple(documents))
+            result.verify_original(original)
+            return result
+        except (ValueError,TypeError,AttributeError,etree.LxmlError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+
+    def review(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseReview:
+        inspection=self.inspect(original)
+        try:
+            root=_parse(original.raw_bytes)
+            if root.find(_NS+'informasjonOmPersonligSkattesubjekt') is not None:raise ValueError()
+            def deviations(group):
+                return tuple(TaxValidationDeviation(*(node.findtext(_NS+field) for field in (
+                    'avvikstype','forekomstidentifikator','mottattVerdi','beregnetVerdi','avvikIVerdi',
+                    'mottattTekst','beregnetTekst','sti','oevrigInformasjon')))
+                    for node in root.findall(_NS+group+'/'+_NS+'avvik'))
+            guidance=tuple(TaxValidationGuidance(*(node.findtext(_NS+field) for field in (
+                'veiledningstype','forekomstidentifikator','hjelpetekst','betjeningsstrategi','sti')))
+                for node in root.findall(_NS+'veiledningEtterKontroll/'+_NS+'veiledning'))
+            subject=root.find(_NS+'informasjonOmUpersonligSkattesubjekt')
+            flags=() if subject is None else tuple(TaxValidationSubjectFlag(etree.QName(node).localname,
+                (node.text or '').strip() in ('true','1')) for node in subject)
+            result=TaxValidationResponseReview(inspection,deviations('avvikEtterBeregning'),deviations('avvikVedValidering'),
+                guidance,tuple(node.text or '' for node in root.findall(_NS+'aarsakTilValidertMedFeil')),flags)
             result.verify_original(original)
             return result
         except (ValueError,TypeError,AttributeError,etree.LxmlError,RecursionError,OverflowError):

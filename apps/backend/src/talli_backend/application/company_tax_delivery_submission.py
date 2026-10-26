@@ -26,6 +26,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxValidationResponseValidator,TaxCalculatedDocumentValidator,TaxDeliveryProcessAcknowledgment,
     bind_tax_delivery_confirmation_prerequisite,TaxDeliveryConfirmationReadEvidence,reconcile_tax_delivery_confirmation,
     is_tax_delivery_owner_confirmation_instance,
+    TaxDeliveryOwnerReviewQuery,build_tax_delivery_owner_review,
 )
 
 
@@ -526,6 +527,42 @@ class CompanyTaxDeliverySubmission:
     @staticmethod
     def _confirmation_original(journal):
         return next((event.value for event in journal.events if event.slot=='intent:prepare_confirmation'),None)
+
+    async def owner_review(self,session: CompanyTaxSession,query: TaxDeliveryOwnerReviewQuery):
+        """Read exact prepared documents; current access/source is rechecked.
+
+        No provider operation, mutation or readiness flag is returned. Expired
+        dispatch admission cannot erase retained owner-review originals.
+        """
+        if type(query) is not TaxDeliveryOwnerReviewQuery:raise CompanyTaxError.invalid_input()
+        self._runtime.assert_session(session);scope=_query(session,query)
+        journal=await self._guarded_history(session,scope,query.filing_id);_approved(journal,query)
+        if not journal.confirmation_evidence or self._response_schemas is None or self._calculated_schemas is None:
+            raise CompanyTaxError.unavailable()
+        request=self._confirmation_original(journal)
+        prepared=next((event.value for event in journal.events if event.slot=='completion:prepare_confirmation'),None)
+        if request is None or request.confirmation_prerequisite is None or prepared is None:raise CompanyTaxError.draft_conflict()
+        result=next((event.value for event in journal.events
+            if event.value.sha256==request.confirmation_prerequisite.result_read.event_sha256),None)
+        if type(result) is not TaxDeliveryValidationResultObservation:raise CompanyTaxError.unavailable()
+        try:
+            response=self._response_schemas.review(result.original)
+            calculated=self._calculated_schemas.review_documents(result.original,draft=journal.draft)
+            artifact=build_tax_delivery_owner_review(journal.approval,journal.draft,request,prepared,result,
+                calculated=calculated,response=response)
+        except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        async with session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(scope)
+            async with session.transaction(snapshot=True) as snapshot:
+                latest=await self._history(snapshot,scope,query.filing_id);_approved(latest,query)
+                current=await read_company_tax_delivery_source(snapshot,scope,correlation_id=query.correlation_id)
+            if (latest.draft!=journal.draft or current!=journal.draft.envelope.source
+                    or self._confirmation_original(latest)!=request
+                    or not any(event.value==prepared for event in latest.events)):
+                raise CompanyTaxError.draft_conflict()
+            await guard.lock_delivery_draft_archive(scope)
+        return artifact
 
     async def advance_confirmation(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
         """Enter the owner-review stage once. This does not submit a filing."""

@@ -607,7 +607,8 @@
         "/api/v1/company-tax/delivery-validation-advances",
         "/api/v1/company-tax/delivery-validation-reconciliations",
         "/api/v1/company-tax/delivery-confirmation-advances",
-        "/api/v1/company-tax/delivery-confirmation-reconciliations"
+        "/api/v1/company-tax/delivery-confirmation-reconciliations",
+        "/api/v1/company-tax/delivery-owner-review"
       ]
     }
   ],

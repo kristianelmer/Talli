@@ -7020,6 +7020,127 @@
         "title": "CompanyTaxAssessmentFactsRequest",
         "type": "object"
       },
+      "CompanyTaxCalculatedReviewContextValue": {
+        "additionalProperties": false,
+        "properties": {
+          "company_id": {
+            "$ref": "#/components/schemas/CompanyTaxReviewUuidValue"
+          },
+          "draft_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Draft Sha256",
+            "type": "string"
+          },
+          "income_year": {
+            "$ref": "#/components/schemas/CompanyTaxReviewYearValue"
+          },
+          "party_number": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Party Number",
+            "type": "string"
+          },
+          "schema_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Schema Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_sha256",
+          "draft_sha256",
+          "company_id",
+          "income_year",
+          "party_number"
+        ],
+        "title": "CompanyTaxCalculatedReviewContextValue",
+        "type": "object"
+      },
+      "CompanyTaxCalculatedReviewDocumentValue": {
+        "additionalProperties": false,
+        "properties": {
+          "document_type": {
+            "enum": [
+              "skattemeldingUpersonligEtterBeregning",
+              "naeringsspesifikasjonEtterBeregning",
+              "beregnetSkattUpersonlig",
+              "summertSkattegrunnlagForVisningUpersonlig"
+            ],
+            "title": "Document Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxCalculatedReviewFieldValue"
+            },
+            "maxItems": 100000,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Original Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_type",
+          "original_sha256",
+          "fields"
+        ],
+        "title": "CompanyTaxCalculatedReviewDocumentValue",
+        "type": "object"
+      },
+      "CompanyTaxCalculatedReviewFieldValue": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 16384,
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 8388608,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "value"
+        ],
+        "title": "CompanyTaxCalculatedReviewFieldValue",
+        "type": "object"
+      },
+      "CompanyTaxCalculatedReviewOriginalValue": {
+        "additionalProperties": false,
+        "properties": {
+          "body_base64": {
+            "maxLength": 12582912,
+            "minLength": 1,
+            "title": "Body Base64",
+            "type": "string"
+          },
+          "document_type": {
+            "enum": [
+              "skattemeldingUpersonligEtterBeregning",
+              "naeringsspesifikasjonEtterBeregning",
+              "beregnetSkattUpersonlig",
+              "summertSkattegrunnlagForVisningUpersonlig"
+            ],
+            "title": "Document Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_type",
+          "body_base64"
+        ],
+        "title": "CompanyTaxCalculatedReviewOriginalValue",
+        "type": "object"
+      },
       "CompanyTaxCorrectionLinkWire": {
         "properties": {
           "sourceId": {
@@ -7868,6 +7989,108 @@
         "title": "CompanyTaxOverrideWire",
         "type": "object"
       },
+      "CompanyTaxOwnerReviewArtifactWire": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Approvalsha256",
+            "type": "string"
+          },
+          "artifactSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifactsha256",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "filingId": {
+            "format": "uuid",
+            "title": "Filingid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "const": 2025,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "review": {
+            "$ref": "#/components/schemas/CompanyTaxOwnerReviewValue"
+          },
+          "version": {
+            "const": "company-tax-delivery-owner-review-v1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "filingId",
+          "approvalSha256",
+          "artifactSha256",
+          "version",
+          "review"
+        ],
+        "title": "CompanyTaxOwnerReviewArtifactWire",
+        "type": "object"
+      },
+      "CompanyTaxOwnerReviewValue": {
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/CompanyTaxReviewApprovalValue"
+          },
+          "calculated_context": {
+            "$ref": "#/components/schemas/CompanyTaxCalculatedReviewContextValue"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxCalculatedReviewDocumentValue"
+            },
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Documents",
+            "type": "array"
+          },
+          "preparation_request_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Preparation Request Sha256",
+            "type": "string"
+          },
+          "preparation_result_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Preparation Result Sha256",
+            "type": "string"
+          },
+          "response": {
+            "$ref": "#/components/schemas/CompanyTaxResponseReviewValue"
+          },
+          "response_original": {
+            "$ref": "#/components/schemas/CompanyTaxResponseReviewOriginalValue"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approval",
+          "preparation_request_sha256",
+          "preparation_result_sha256",
+          "source_sha256",
+          "calculated_context",
+          "documents",
+          "response",
+          "response_original"
+        ],
+        "title": "CompanyTaxOwnerReviewValue",
+        "type": "object"
+      },
       "CompanyTaxPermissionRequest": {
         "properties": {
           "companyId": {
@@ -8279,6 +8502,465 @@
         "title": "CompanyTaxRecordedWire",
         "type": "object"
       },
+      "CompanyTaxResponseReviewDeviationValue": {
+        "additionalProperties": false,
+        "properties": {
+          "additional_info": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Info"
+          },
+          "calculated_text": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculated Text"
+          },
+          "calculated_value": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculated Value"
+          },
+          "difference_value": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference Value"
+          },
+          "occurrence_id": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurrence Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "received_text": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Text"
+          },
+          "received_value": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Value"
+          },
+          "type_code": {
+            "maxLength": 8388608,
+            "title": "Type Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_code"
+        ],
+        "title": "CompanyTaxResponseReviewDeviationValue",
+        "type": "object"
+      },
+      "CompanyTaxResponseReviewGuidanceValue": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "occurrence_id": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurrence Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "servicing_strategy": {
+            "anyOf": [
+              {
+                "maxLength": 8388608,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicing Strategy"
+          },
+          "type_code": {
+            "maxLength": 8388608,
+            "title": "Type Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_code"
+        ],
+        "title": "CompanyTaxResponseReviewGuidanceValue",
+        "type": "object"
+      },
+      "CompanyTaxResponseReviewInspectionValue": {
+        "additionalProperties": false,
+        "properties": {
+          "calculated_documents": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxCalculatedReviewOriginalValue"
+            },
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Calculated Documents",
+            "type": "array"
+          },
+          "calculation_deviation_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Calculation Deviation Count",
+            "type": "integer"
+          },
+          "failure_reason_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Failure Reason Count",
+            "type": "integer"
+          },
+          "guidance_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Guidance Count",
+            "type": "integer"
+          },
+          "original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "result_code": {
+            "enum": [
+              "validertOK",
+              "validertMedFeil"
+            ],
+            "title": "Result Code",
+            "type": "string"
+          },
+          "schema_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Schema Sha256",
+            "type": "string"
+          },
+          "validation_deviation_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Validation Deviation Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_sha256",
+          "original_sha256",
+          "result_code",
+          "calculation_deviation_count",
+          "validation_deviation_count",
+          "guidance_count",
+          "failure_reason_count",
+          "calculated_documents"
+        ],
+        "title": "CompanyTaxResponseReviewInspectionValue",
+        "type": "object"
+      },
+      "CompanyTaxResponseReviewOriginalValue": {
+        "additionalProperties": false,
+        "properties": {
+          "body_base64": {
+            "maxLength": 12582912,
+            "minLength": 1,
+            "title": "Body Base64",
+            "type": "string"
+          },
+          "content_type": {
+            "enum": [
+              "application/xml",
+              "text/xml"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "http_status": {
+            "const": 200,
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "purpose": {
+            "const": "validation_result",
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "body_base64",
+          "content_type",
+          "http_status"
+        ],
+        "title": "CompanyTaxResponseReviewOriginalValue",
+        "type": "object"
+      },
+      "CompanyTaxResponseReviewSubjectFlagValue": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "erFritattForFormuesskatt",
+              "erOmfattetAvSaerreglerForKraftforetak",
+              "erOmfattetAvPetroleumsskatteloven",
+              "erOmfattetAvRederiskatteordningen",
+              "erOmfattetAvFinansskattPaaLoennOgOverskudd",
+              "harLeveringsfritak"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "CompanyTaxResponseReviewSubjectFlagValue",
+        "type": "object"
+      },
+      "CompanyTaxResponseReviewValue": {
+        "additionalProperties": false,
+        "properties": {
+          "calculation_deviations": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxResponseReviewDeviationValue"
+            },
+            "maxItems": 100000,
+            "title": "Calculation Deviations",
+            "type": "array"
+          },
+          "failure_reasons": {
+            "items": {
+              "maxLength": 8388608,
+              "type": "string"
+            },
+            "maxItems": 100000,
+            "title": "Failure Reasons",
+            "type": "array"
+          },
+          "guidance": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxResponseReviewGuidanceValue"
+            },
+            "maxItems": 100000,
+            "title": "Guidance",
+            "type": "array"
+          },
+          "inspection": {
+            "$ref": "#/components/schemas/CompanyTaxResponseReviewInspectionValue"
+          },
+          "subject_flags": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxResponseReviewSubjectFlagValue"
+            },
+            "maxItems": 6,
+            "title": "Subject Flags",
+            "type": "array"
+          },
+          "validation_deviations": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxResponseReviewDeviationValue"
+            },
+            "maxItems": 100000,
+            "title": "Validation Deviations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "inspection",
+          "calculation_deviations",
+          "validation_deviations",
+          "guidance",
+          "failure_reasons",
+          "subject_flags"
+        ],
+        "title": "CompanyTaxResponseReviewValue",
+        "type": "object"
+      },
+      "CompanyTaxReviewActorValue": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "USER",
+            "title": "Kind",
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/CompanyTaxReviewUuidValue"
+          }
+        },
+        "required": [
+          "kind",
+          "subject"
+        ],
+        "title": "CompanyTaxReviewActorValue",
+        "type": "object"
+      },
+      "CompanyTaxReviewApprovalValue": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_id": {
+            "format": "uuid",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "approved_by": {
+            "$ref": "#/components/schemas/CompanyTaxReviewActorValue"
+          },
+          "authority_context_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Authority Context Sha256",
+            "type": "string"
+          },
+          "authority_mode": {
+            "const": "finite_loopback_rehearsal",
+            "title": "Authority Mode",
+            "type": "string"
+          },
+          "company_id": {
+            "$ref": "#/components/schemas/CompanyTaxReviewUuidValue"
+          },
+          "current_original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Current Original Sha256",
+            "type": "string"
+          },
+          "draft_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Draft Sha256",
+            "type": "string"
+          },
+          "filing_id": {
+            "format": "uuid",
+            "title": "Filing Id",
+            "type": "string"
+          },
+          "income_year": {
+            "$ref": "#/components/schemas/CompanyTaxReviewYearValue"
+          },
+          "review_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Review Sha256",
+            "type": "string"
+          },
+          "schema_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Schema Sha256",
+            "type": "string"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approval_id",
+          "filing_id",
+          "company_id",
+          "income_year",
+          "approved_by",
+          "draft_sha256",
+          "review_sha256",
+          "source_sha256",
+          "schema_sha256",
+          "current_original_sha256",
+          "authority_mode",
+          "authority_context_sha256"
+        ],
+        "title": "CompanyTaxReviewApprovalValue",
+        "type": "object"
+      },
       "CompanyTaxReviewCommentWire": {
         "properties": {
           "acknowledgedAt": {
@@ -8384,6 +9066,36 @@
           "body"
         ],
         "title": "CompanyTaxReviewRequest",
+        "type": "object"
+      },
+      "CompanyTaxReviewUuidValue": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "format": "uuid",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CompanyTaxReviewUuidValue",
+        "type": "object"
+      },
+      "CompanyTaxReviewYearValue": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "const": 2025,
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CompanyTaxReviewYearValue",
         "type": "object"
       },
       "CompanyTaxSourceEvidenceWire": {
@@ -67972,6 +68684,490 @@
           }
         ],
         "summary": "Company Tax Prepare Delivery Draft",
+        "tags": [
+          "company-tax"
+        ]
+      }
+    },
+    "/api/v1/company-tax/delivery-owner-review": {
+      "get": {
+        "operationId": "companyTaxGetDeliveryOwnerReview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2025,
+              "minimum": 2025,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filingId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Filingid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "approvalSha256",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Approvalsha256",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyTaxOwnerReviewArtifactWire"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Company Tax Delivery Owner Review",
         "tags": [
           "company-tax"
         ]

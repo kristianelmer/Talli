@@ -920,6 +920,11 @@ const companyTaxSchemas = Object.fromEntries([
   "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxDeliveryDraftFactWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxDeliveryDraftOriginalWire", "CompanyTaxDeliveryDraftArchiveWire",
   "CompanyTaxDeliveryJournalOriginalWire", "CompanyTaxDeliveryJournalFactWire", "CompanyTaxDeliveryJournalArchiveWire",
+  "CompanyTaxReviewUuidValue", "CompanyTaxReviewYearValue", "CompanyTaxReviewActorValue", "CompanyTaxReviewApprovalValue",
+  "CompanyTaxCalculatedReviewContextValue", "CompanyTaxCalculatedReviewFieldValue", "CompanyTaxCalculatedReviewDocumentValue",
+  "CompanyTaxCalculatedReviewOriginalValue", "CompanyTaxResponseReviewInspectionValue", "CompanyTaxResponseReviewDeviationValue",
+  "CompanyTaxResponseReviewGuidanceValue", "CompanyTaxResponseReviewSubjectFlagValue", "CompanyTaxResponseReviewValue",
+  "CompanyTaxResponseReviewOriginalValue", "CompanyTaxOwnerReviewValue", "CompanyTaxOwnerReviewArtifactWire",
   "CompanyTaxPrepareDeliveryDraftRequest", "CompanyTaxPreparedDeliveryDraftWire",
   "CompanyTaxApproveDeliveryDraftRequest", "CompanyTaxAdvanceDeliveryRequest", "CompanyTaxDeliveryProgressWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
@@ -3037,6 +3042,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
       if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
           || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryOwnerReview(
+      companyId: string, incomeYear: number, filingId: string, approvalSha256: string, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxOwnerReviewArtifactWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), filingId, approvalSha256 });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-owner-review?\${query}\`,
+        "GET", request, undefined, isCompanyTaxOwnerReviewArtifactWire,
+      );
+      const approval = result.review.approval;
+      const context = result.review.calculated_context;
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear || result.filingId !== filingId
+          || result.approvalSha256 !== approvalSha256 || approval.company_id.value !== companyId
+          || approval.income_year.value !== incomeYear || approval.filing_id !== filingId
+          || context.company_id.value !== companyId || context.income_year.value !== incomeYear
+          || context.draft_sha256 !== approval.draft_sha256 || result.review.source_sha256 !== approval.source_sha256) {
         throw new TalliApiError(502, undefined);
       }
       return result;

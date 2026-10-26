@@ -63,3 +63,17 @@ without interpreting it as a live provider outcome.
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetDeliveryJournalArchive"]}
 -->
+
+
+`loadTaxDeliveryOwnerReview` reads the complete prepared review through generated
+authenticated transport. It verifies scope, initial approval and artifact
+commitments, fixed schema pins, detail counts, unique fields and decoded
+calculated-original hashes, plus the exact enclosing validation-response hash.
+Missing or malformed data fails the read; there is
+no empty-review fallback. The artifact retains backend-owned projections and
+all calculated originals. The browser decides no XML validity, readiness,
+confirmation or submission outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetDeliveryOwnerReview"]}
+-->

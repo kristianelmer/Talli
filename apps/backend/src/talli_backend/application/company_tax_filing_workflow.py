@@ -23,7 +23,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
     TaxDeliveryJournalArchive, archive_tax_delivery_journal,
     PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,
-    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -125,6 +125,11 @@ class AuthenticatedCompanyTax:
         if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         if self._submission is None:raise CompanyTaxError.unavailable()
         return await self._submission.reconcile_confirmation(self._session,command)
+
+    async def delivery_owner_review(self,query: TaxDeliveryOwnerReviewQuery) -> TaxDeliveryOwnerReview:
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.owner_review(self._session,query)
 
     async def prepare_delivery_draft(self, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
         if command.actor_id != self.actor_id:

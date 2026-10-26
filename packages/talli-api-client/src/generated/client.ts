@@ -3381,6 +3381,131 @@ export interface CompanyTaxDeliveryJournalArchiveWire {
   sourceSha256: string;
 }
 
+export interface CompanyTaxReviewUuidValue {
+  value: string;
+}
+
+export interface CompanyTaxReviewYearValue {
+  value: 2025;
+}
+
+export interface CompanyTaxReviewActorValue {
+  kind: "USER";
+  subject: CompanyTaxReviewUuidValue;
+}
+
+export interface CompanyTaxReviewApprovalValue {
+  approval_id: string;
+  approved_by: CompanyTaxReviewActorValue;
+  authority_context_sha256: string;
+  authority_mode: "finite_loopback_rehearsal";
+  company_id: CompanyTaxReviewUuidValue;
+  current_original_sha256: string;
+  draft_sha256: string;
+  filing_id: string;
+  income_year: CompanyTaxReviewYearValue;
+  review_sha256: string;
+  schema_sha256: string;
+  source_sha256: string;
+}
+
+export interface CompanyTaxCalculatedReviewContextValue {
+  company_id: CompanyTaxReviewUuidValue;
+  draft_sha256: string;
+  income_year: CompanyTaxReviewYearValue;
+  party_number: string;
+  schema_sha256: string;
+}
+
+export interface CompanyTaxCalculatedReviewFieldValue {
+  path: string;
+  value: string;
+}
+
+export interface CompanyTaxCalculatedReviewDocumentValue {
+  document_type: "skattemeldingUpersonligEtterBeregning" | "naeringsspesifikasjonEtterBeregning" | "beregnetSkattUpersonlig" | "summertSkattegrunnlagForVisningUpersonlig";
+  fields: CompanyTaxCalculatedReviewFieldValue[];
+  original_sha256: string;
+}
+
+export interface CompanyTaxCalculatedReviewOriginalValue {
+  body_base64: string;
+  document_type: "skattemeldingUpersonligEtterBeregning" | "naeringsspesifikasjonEtterBeregning" | "beregnetSkattUpersonlig" | "summertSkattegrunnlagForVisningUpersonlig";
+}
+
+export interface CompanyTaxResponseReviewInspectionValue {
+  calculated_documents: CompanyTaxCalculatedReviewOriginalValue[];
+  calculation_deviation_count: number;
+  failure_reason_count: number;
+  guidance_count: number;
+  original_sha256: string;
+  result_code: "validertOK" | "validertMedFeil";
+  schema_sha256: string;
+  validation_deviation_count: number;
+}
+
+export interface CompanyTaxResponseReviewDeviationValue {
+  additional_info?: string | null;
+  calculated_text?: string | null;
+  calculated_value?: string | null;
+  difference_value?: string | null;
+  occurrence_id?: string | null;
+  path?: string | null;
+  received_text?: string | null;
+  received_value?: string | null;
+  type_code: string;
+}
+
+export interface CompanyTaxResponseReviewGuidanceValue {
+  message?: string | null;
+  occurrence_id?: string | null;
+  path?: string | null;
+  servicing_strategy?: string | null;
+  type_code: string;
+}
+
+export interface CompanyTaxResponseReviewSubjectFlagValue {
+  name: "erFritattForFormuesskatt" | "erOmfattetAvSaerreglerForKraftforetak" | "erOmfattetAvPetroleumsskatteloven" | "erOmfattetAvRederiskatteordningen" | "erOmfattetAvFinansskattPaaLoennOgOverskudd" | "harLeveringsfritak";
+  value: boolean;
+}
+
+export interface CompanyTaxResponseReviewValue {
+  calculation_deviations: CompanyTaxResponseReviewDeviationValue[];
+  failure_reasons: string[];
+  guidance: CompanyTaxResponseReviewGuidanceValue[];
+  inspection: CompanyTaxResponseReviewInspectionValue;
+  subject_flags: CompanyTaxResponseReviewSubjectFlagValue[];
+  validation_deviations: CompanyTaxResponseReviewDeviationValue[];
+}
+
+export interface CompanyTaxResponseReviewOriginalValue {
+  body_base64: string;
+  content_type: "application/xml" | "text/xml";
+  http_status: 200;
+  purpose: "validation_result";
+}
+
+export interface CompanyTaxOwnerReviewValue {
+  approval: CompanyTaxReviewApprovalValue;
+  calculated_context: CompanyTaxCalculatedReviewContextValue;
+  documents: CompanyTaxCalculatedReviewDocumentValue[];
+  preparation_request_sha256: string;
+  preparation_result_sha256: string;
+  response: CompanyTaxResponseReviewValue;
+  response_original: CompanyTaxResponseReviewOriginalValue;
+  source_sha256: string;
+}
+
+export interface CompanyTaxOwnerReviewArtifactWire {
+  approvalSha256: string;
+  artifactSha256: string;
+  companyId: string;
+  filingId: string;
+  incomeYear: 2025;
+  review: CompanyTaxOwnerReviewValue;
+  version: "company-tax-delivery-owner-review-v1";
+}
+
 export interface CompanyTaxPrepareDeliveryDraftRequest {
   companyId: string;
   filingId: string;
@@ -9413,6 +9538,195 @@ function isCompanyTaxDeliveryJournalArchiveWire(value: unknown): value is Compan
   );
 }
 
+function isCompanyTaxReviewUuidValue(value: unknown): value is CompanyTaxReviewUuidValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["value"]) &&
+    isUuid(value.value)
+  );
+}
+
+function isCompanyTaxReviewYearValue(value: unknown): value is CompanyTaxReviewYearValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["value"]) &&
+    value.value === 2025
+  );
+}
+
+function isCompanyTaxReviewActorValue(value: unknown): value is CompanyTaxReviewActorValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["kind","subject"]) &&
+    value.kind === "USER" &&
+    isCompanyTaxReviewUuidValue(value.subject)
+  );
+}
+
+function isCompanyTaxReviewApprovalValue(value: unknown): value is CompanyTaxReviewApprovalValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approval_id","approved_by","authority_context_sha256","authority_mode","company_id","current_original_sha256","draft_sha256","filing_id","income_year","review_sha256","schema_sha256","source_sha256"]) &&
+    isUuid(value.approval_id) &&
+    isCompanyTaxReviewActorValue(value.approved_by) &&
+    (typeof value.authority_context_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.authority_context_sha256)) &&
+    value.authority_mode === "finite_loopback_rehearsal" &&
+    isCompanyTaxReviewUuidValue(value.company_id) &&
+    (typeof value.current_original_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.current_original_sha256)) &&
+    (typeof value.draft_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draft_sha256)) &&
+    isUuid(value.filing_id) &&
+    isCompanyTaxReviewYearValue(value.income_year) &&
+    (typeof value.review_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.review_sha256)) &&
+    (typeof value.schema_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.schema_sha256)) &&
+    (typeof value.source_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.source_sha256))
+  );
+}
+
+function isCompanyTaxCalculatedReviewContextValue(value: unknown): value is CompanyTaxCalculatedReviewContextValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["company_id","draft_sha256","income_year","party_number","schema_sha256"]) &&
+    isCompanyTaxReviewUuidValue(value.company_id) &&
+    (typeof value.draft_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draft_sha256)) &&
+    isCompanyTaxReviewYearValue(value.income_year) &&
+    (typeof value.party_number === "string" && value.party_number.length >= 1 && value.party_number.length <= 4000) &&
+    (typeof value.schema_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.schema_sha256))
+  );
+}
+
+function isCompanyTaxCalculatedReviewFieldValue(value: unknown): value is CompanyTaxCalculatedReviewFieldValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["path","value"]) &&
+    (typeof value.path === "string" && value.path.length >= 1 && value.path.length <= 16384) &&
+    (typeof value.value === "string" && value.value.length <= 8388608)
+  );
+}
+
+function isCompanyTaxCalculatedReviewDocumentValue(value: unknown): value is CompanyTaxCalculatedReviewDocumentValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["document_type","fields","original_sha256"]) &&
+    (value.document_type === "skattemeldingUpersonligEtterBeregning" || value.document_type === "naeringsspesifikasjonEtterBeregning" || value.document_type === "beregnetSkattUpersonlig" || value.document_type === "summertSkattegrunnlagForVisningUpersonlig") &&
+    Array.isArray(value.fields) && value.fields.every((item) => isCompanyTaxCalculatedReviewFieldValue(item)) && value.fields.length >= 1 && value.fields.length <= 100000 &&
+    (typeof value.original_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.original_sha256))
+  );
+}
+
+function isCompanyTaxCalculatedReviewOriginalValue(value: unknown): value is CompanyTaxCalculatedReviewOriginalValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["body_base64","document_type"]) &&
+    (typeof value.body_base64 === "string" && value.body_base64.length >= 1 && value.body_base64.length <= 12582912) &&
+    (value.document_type === "skattemeldingUpersonligEtterBeregning" || value.document_type === "naeringsspesifikasjonEtterBeregning" || value.document_type === "beregnetSkattUpersonlig" || value.document_type === "summertSkattegrunnlagForVisningUpersonlig")
+  );
+}
+
+function isCompanyTaxResponseReviewInspectionValue(value: unknown): value is CompanyTaxResponseReviewInspectionValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["calculated_documents","calculation_deviation_count","failure_reason_count","guidance_count","original_sha256","result_code","schema_sha256","validation_deviation_count"]) &&
+    Array.isArray(value.calculated_documents) && value.calculated_documents.every((item) => isCompanyTaxCalculatedReviewOriginalValue(item)) && value.calculated_documents.length >= 2 && value.calculated_documents.length <= 4 &&
+    (typeof value.calculation_deviation_count === "number" && Number.isInteger(value.calculation_deviation_count) && value.calculation_deviation_count >= 0 && value.calculation_deviation_count <= 100000) &&
+    (typeof value.failure_reason_count === "number" && Number.isInteger(value.failure_reason_count) && value.failure_reason_count >= 0 && value.failure_reason_count <= 100000) &&
+    (typeof value.guidance_count === "number" && Number.isInteger(value.guidance_count) && value.guidance_count >= 0 && value.guidance_count <= 100000) &&
+    (typeof value.original_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.original_sha256)) &&
+    (value.result_code === "validertOK" || value.result_code === "validertMedFeil") &&
+    (typeof value.schema_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.schema_sha256)) &&
+    (typeof value.validation_deviation_count === "number" && Number.isInteger(value.validation_deviation_count) && value.validation_deviation_count >= 0 && value.validation_deviation_count <= 100000)
+  );
+}
+
+function isCompanyTaxResponseReviewDeviationValue(value: unknown): value is CompanyTaxResponseReviewDeviationValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["additional_info","calculated_text","calculated_value","difference_value","occurrence_id","path","received_text","received_value","type_code"]) &&
+    (value.additional_info === undefined || ((typeof value.additional_info === "string" && value.additional_info.length <= 8388608) || value.additional_info === null)) &&
+    (value.calculated_text === undefined || ((typeof value.calculated_text === "string" && value.calculated_text.length <= 8388608) || value.calculated_text === null)) &&
+    (value.calculated_value === undefined || ((typeof value.calculated_value === "string" && value.calculated_value.length <= 8388608) || value.calculated_value === null)) &&
+    (value.difference_value === undefined || ((typeof value.difference_value === "string" && value.difference_value.length <= 8388608) || value.difference_value === null)) &&
+    (value.occurrence_id === undefined || ((typeof value.occurrence_id === "string" && value.occurrence_id.length <= 8388608) || value.occurrence_id === null)) &&
+    (value.path === undefined || ((typeof value.path === "string" && value.path.length <= 8388608) || value.path === null)) &&
+    (value.received_text === undefined || ((typeof value.received_text === "string" && value.received_text.length <= 8388608) || value.received_text === null)) &&
+    (value.received_value === undefined || ((typeof value.received_value === "string" && value.received_value.length <= 8388608) || value.received_value === null)) &&
+    (typeof value.type_code === "string" && value.type_code.length <= 8388608)
+  );
+}
+
+function isCompanyTaxResponseReviewGuidanceValue(value: unknown): value is CompanyTaxResponseReviewGuidanceValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["message","occurrence_id","path","servicing_strategy","type_code"]) &&
+    (value.message === undefined || ((typeof value.message === "string" && value.message.length <= 8388608) || value.message === null)) &&
+    (value.occurrence_id === undefined || ((typeof value.occurrence_id === "string" && value.occurrence_id.length <= 8388608) || value.occurrence_id === null)) &&
+    (value.path === undefined || ((typeof value.path === "string" && value.path.length <= 8388608) || value.path === null)) &&
+    (value.servicing_strategy === undefined || ((typeof value.servicing_strategy === "string" && value.servicing_strategy.length <= 8388608) || value.servicing_strategy === null)) &&
+    (typeof value.type_code === "string" && value.type_code.length <= 8388608)
+  );
+}
+
+function isCompanyTaxResponseReviewSubjectFlagValue(value: unknown): value is CompanyTaxResponseReviewSubjectFlagValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","value"]) &&
+    (value.name === "erFritattForFormuesskatt" || value.name === "erOmfattetAvSaerreglerForKraftforetak" || value.name === "erOmfattetAvPetroleumsskatteloven" || value.name === "erOmfattetAvRederiskatteordningen" || value.name === "erOmfattetAvFinansskattPaaLoennOgOverskudd" || value.name === "harLeveringsfritak") &&
+    typeof value.value === "boolean"
+  );
+}
+
+function isCompanyTaxResponseReviewValue(value: unknown): value is CompanyTaxResponseReviewValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["calculation_deviations","failure_reasons","guidance","inspection","subject_flags","validation_deviations"]) &&
+    Array.isArray(value.calculation_deviations) && value.calculation_deviations.every((item) => isCompanyTaxResponseReviewDeviationValue(item)) && value.calculation_deviations.length <= 100000 &&
+    Array.isArray(value.failure_reasons) && value.failure_reasons.every((item) => (typeof item === "string" && item.length <= 8388608)) && value.failure_reasons.length <= 100000 &&
+    Array.isArray(value.guidance) && value.guidance.every((item) => isCompanyTaxResponseReviewGuidanceValue(item)) && value.guidance.length <= 100000 &&
+    isCompanyTaxResponseReviewInspectionValue(value.inspection) &&
+    Array.isArray(value.subject_flags) && value.subject_flags.every((item) => isCompanyTaxResponseReviewSubjectFlagValue(item)) && value.subject_flags.length <= 6 &&
+    Array.isArray(value.validation_deviations) && value.validation_deviations.every((item) => isCompanyTaxResponseReviewDeviationValue(item)) && value.validation_deviations.length <= 100000
+  );
+}
+
+function isCompanyTaxResponseReviewOriginalValue(value: unknown): value is CompanyTaxResponseReviewOriginalValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["body_base64","content_type","http_status","purpose"]) &&
+    (typeof value.body_base64 === "string" && value.body_base64.length >= 1 && value.body_base64.length <= 12582912) &&
+    (value.content_type === "application/xml" || value.content_type === "text/xml") &&
+    value.http_status === 200 &&
+    value.purpose === "validation_result"
+  );
+}
+
+function isCompanyTaxOwnerReviewValue(value: unknown): value is CompanyTaxOwnerReviewValue {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approval","calculated_context","documents","preparation_request_sha256","preparation_result_sha256","response","response_original","source_sha256"]) &&
+    isCompanyTaxReviewApprovalValue(value.approval) &&
+    isCompanyTaxCalculatedReviewContextValue(value.calculated_context) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isCompanyTaxCalculatedReviewDocumentValue(item)) && value.documents.length >= 2 && value.documents.length <= 4 &&
+    (typeof value.preparation_request_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.preparation_request_sha256)) &&
+    (typeof value.preparation_result_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.preparation_result_sha256)) &&
+    isCompanyTaxResponseReviewValue(value.response) &&
+    isCompanyTaxResponseReviewOriginalValue(value.response_original) &&
+    (typeof value.source_sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.source_sha256))
+  );
+}
+
+function isCompanyTaxOwnerReviewArtifactWire(value: unknown): value is CompanyTaxOwnerReviewArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalSha256","artifactSha256","companyId","filingId","incomeYear","review","version"]) &&
+    (typeof value.approvalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.approvalSha256)) &&
+    (typeof value.artifactSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.artifactSha256)) &&
+    isUuid(value.companyId) &&
+    isUuid(value.filingId) &&
+    value.incomeYear === 2025 &&
+    isCompanyTaxOwnerReviewValue(value.review) &&
+    value.version === "company-tax-delivery-owner-review-v1"
+  );
+}
+
 function isCompanyTaxPrepareDeliveryDraftRequest(value: unknown): value is CompanyTaxPrepareDeliveryDraftRequest {
   return (
     isRecord(value) &&
@@ -13300,6 +13614,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
       if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
           || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryOwnerReview(
+      companyId: string, incomeYear: number, filingId: string, approvalSha256: string, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxOwnerReviewArtifactWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), filingId, approvalSha256 });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/delivery-owner-review?${query}`,
+        "GET", request, undefined, isCompanyTaxOwnerReviewArtifactWire,
+      );
+      const approval = result.review.approval;
+      const context = result.review.calculated_context;
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear || result.filingId !== filingId
+          || result.approvalSha256 !== approvalSha256 || approval.company_id.value !== companyId
+          || approval.income_year.value !== incomeYear || approval.filing_id !== filingId
+          || context.company_id.value !== companyId || context.income_year.value !== incomeYear
+          || context.draft_sha256 !== approval.draft_sha256 || result.review.source_sha256 !== approval.source_sha256) {
         throw new TalliApiError(502, undefined);
       }
       return result;
