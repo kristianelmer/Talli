@@ -13,10 +13,12 @@ from .public import (
     CompanyTaxHistoryCoverage, CompanyTaxSubmissionFact, CompanyTaxIncidentFact, CompanyTaxOutcomeFact,
     CompanyTaxCorrectionLink, CompanyTaxSourceFacts,
     StoredTaxDeliveryDraft, TaxDeliveryDraftFact,
+    StoredTaxDeliveryEvent, TaxDeliveryJournal, TaxDeliveryJournalFact,
 )
 
 _VERSION = 'company-tax-source-v1'
 _DELIVERY_VERSION = 'company-tax-source-v2'
+_JOURNAL_VERSION = 'company-tax-source-v3'
 _FAMILIES = {
     'filing_previews': 'previews', 'filing_submissions': 'submissions',
     'filing_overrides': 'overrides', 'filing_review_comments': 'review_comments',
@@ -61,15 +63,16 @@ def _coverage(query, snapshot, evidence_reference):
             reasons.append('canonical_source_unavailable')
         if not re.fullmatch('[0-9a-f]{40}', str(proof.get('sourceRevision', ''))):
             reasons.append('migration_source_version_missing')
-        extent_flag = 'declaredDeliveryExtentValid' if snapshot.contract_version == _DELIVERY_VERSION else 'declaredExtentValid'
+        extent_flag = ('declaredJournalExtentValid' if snapshot.contract_version == _JOURNAL_VERSION else
+            'declaredDeliveryExtentValid' if snapshot.contract_version == _DELIVERY_VERSION else 'declaredExtentValid')
         for flag in ('inventoryValid', 'quarantineClear', 'sourceRowsValid', 'legacyFencesValid', 'modeChecksValid', extent_flag):
             if proof.get(flag) is not True:
                 reasons.append(flag + '_unproven')
-        if snapshot.contract_version == _DELIVERY_VERSION:
+        if snapshot.contract_version in (_DELIVERY_VERSION,_JOURNAL_VERSION):
             if proof.get('deliveryDraftArchiveTrackingValid') is not True:
                 reasons.append('delivery_archive_tracking_unproven')
-            expected = sorted((*_FAMILIES, 'settlements', 'delivery_drafts'))
-            if (proof.get('contractVersion') != _DELIVERY_VERSION
+            expected = sorted((*_FAMILIES, 'settlements', 'delivery_drafts',*(('delivery_events',) if snapshot.contract_version==_JOURNAL_VERSION else ())))
+            if (proof.get('contractVersion') != snapshot.contract_version
                     or tuple(proof.get('declaredTables', ())) != tuple(expected)
                     or proof.get('declaredExtentValid') is not False):
                 reasons.append('delivery_source_contract_unproven')
@@ -79,6 +82,15 @@ def _coverage(query, snapshot, evidence_reference):
                 reasons.append('delivery_draft_enumeration_incomplete')
         elif snapshot.delivery_drafts or proof.get('contractVersion') is not None:
             reasons.append('delivery_source_contract_required')
+        if snapshot.contract_version==_JOURNAL_VERSION:
+            events=snapshot.delivery_events
+            if proof.get('deliveryEventArchiveTrackingValid') is not True or proof.get('declaredDeliveryExtentValid') is not False:
+                reasons.append('journal_archive_tracking_unproven')
+            if (type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=len(events)
+                    or proof.get('deliveryEventDigests')!={event.binding.filing_id+':'+event.slot:event.value.sha256 for event in events}):
+                reasons.append('journal_enumeration_incomplete')
+        elif snapshot.delivery_events:
+            reasons.append('journal_source_contract_required')
         if set(proof.get('reconciledFamilies', ())) != set(_FAMILIES):
             reasons.append('migration_reconciliation_incomplete')
         counts, digests = proof.get('familyCounts'), proof.get('familyDigests')
@@ -121,7 +133,7 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
     if rows.company_id != query.company_id or rows.income_year != query.income_year:
         raise CompanyTaxError.unavailable()
     try:
-        if snapshot.contract_version not in (_VERSION, _DELIVERY_VERSION):
+        if snapshot.contract_version not in (_VERSION, _DELIVERY_VERSION, _JOURNAL_VERSION):
             raise ValueError('Unsupported Tax source contract.')
         drafts = snapshot.delivery_drafts
         if (any(type(row) is not StoredTaxDeliveryDraft or row.draft.envelope.source.company_id != query.company_id
@@ -131,11 +143,30 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
             raise ValueError('Tax delivery history is incomplete or out of scope.')
         content = {'version': snapshot.contract_version, 'rows': rows, 'coverage': snapshot.coverage,
                    'completeEnumeration': snapshot.complete_enumeration}
-        if snapshot.contract_version == _DELIVERY_VERSION:
+        journals=[]
+        if snapshot.contract_version in (_DELIVERY_VERSION,_JOURNAL_VERSION):
             # Bind exact versioned storage bytes, independent of future Python
             # dataclass fields or internal representations of the same original.
             content['deliveryDrafts'] = [{'filingId':row.draft.filing_id,
                 'draftSha256':row.draft.sha256,'recordedAt':row.recorded_at.value.isoformat()} for row in drafts]
+        if snapshot.contract_version==_JOURNAL_VERSION:
+            events=snapshot.delivery_events;draft_ids={row.draft.filing_id for row in drafts}
+            if any(type(event) is not StoredTaxDeliveryEvent or event.binding.filing_id not in draft_ids
+                    or event.recorded_at.value>snapshot.as_of.value for event in events):
+                raise ValueError('Tax event history is incomplete or out of scope.')
+            content['deliveryEvents']=[{'filingId':event.binding.filing_id,'slot':event.slot,
+                'eventSha256':event.value.sha256,'recordedAt':event.recorded_at.value.isoformat(),
+                'recordedBy':str(event.recorded_by.subject)} for event in events]
+            for row in drafts:
+                retained=tuple(event for event in events if event.binding.filing_id==row.draft.filing_id)
+                journal=TaxDeliveryJournal(row.draft,retained)
+                if retained:
+                    latest=retained[-1]
+                    journals.append(TaxDeliveryJournalFact(row.draft.filing_id,journal.approval.approved_by,
+                        journal.approval.authority_mode,'reviewed' if latest.slot=='review' else
+                        'uncertain' if latest.slot.startswith('intent:') else 'mutation_completed',
+                        None if latest.slot=='review' else latest.binding.kind,journal.approval.sha256,
+                        latest.value.sha256,latest.recorded_at))
         digest = _digest(content)
         evidence = CompanyTaxSourceEvidence(query.company_id, query.income_year,
             f'company-tax:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)
@@ -172,7 +203,7 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
         return CompanyTaxSourceFacts(evidence, status, blocks, coverage, tuple(submissions), tuple(attempts),
             tuple(corrections), tuple(incidents), tuple(outcomes), tuple(TaxDeliveryDraftFact(
                 row.draft.filing_id, row.draft.prepared_by, row.recorded_at, row.draft.sha256,
-                row.draft.envelope.review_sha256, row.draft.envelope.schema_sha256) for row in drafts))
+                row.draft.envelope.review_sha256, row.draft.envelope.schema_sha256) for row in drafts),tuple(journals))
     except (KeyError, TypeError, ValueError, AttributeError, RecursionError):
         raise CompanyTaxError.unavailable() from None
 

@@ -269,3 +269,60 @@ rollback target after any V2 record exists. Containment disables V2 writes but
 retains both codecs; rolling back to a V1-only reader is unsupported.
 The new V2 migration leaves its write fence closed. Only the owned loopback rehearsal
 explicitly opens it; hosted activation requires a separate reviewed rollout.
+
+`TaxDeliveryReviewApproval`, `approve_tax_delivery_review` and
+`decode_tax_delivery_review_approval` bind the exact draft/review, complete
+source, schema and current-original digests to the reviewing actor and an opaque
+authority-context digest. A later observation time does not change identical
+originals; changed bytes or interpreted authority identity invalidate review.
+The initial `TaxDeliveryAuthorityMode` admits only a finite loopback rehearsal.
+This commitment alone grants no runtime admission, common Annual readiness,
+Billing entitlement or live filing authority. Current owner/MFA and guarded
+source revalidation belong to the application before persistence.
+
+The append-only delivery journal retains one review, and one intent/result pair
+for each of create, upload, validation start and confirmation preparation.
+`build_tax_delivery_mutation_request` and `complete_tax_delivery_mutation` build
+the bound values; `decode_tax_delivery_mutation_request` and
+`decode_tax_delivery_mutation_completion` recheck exact retained codecs.
+`TaxDeliveryMutationRequest` rebuilds exact approved wire bytes without accepting
+URLs or credentials. `TaxDeliveryMutationCompletion` binds normalized references
+to the exact response original, including BOM and whitespace. Confirmation
+preparation requires an instance read showing the confirmation task; a PUT
+acknowledgment is insufficient. These records do not attest clean scanning,
+successful validation, owner confirmation, submission or final receipt.
+`TaxDeliveryCompletionOrigin` distinguishes mutation responses from instance
+reads. `StoredTaxDeliveryEvent` binds each original to its recording actor/time;
+`decode_tax_delivery_event` refuses unknown versions. `TaxDeliveryEventAppend`
+reports the committed insertion/replay result. `TaxDeliveryJournalFact` is the
+sanitized source-owned projection of the latest retained journal state.
+
+`TaxDeliveryJournalPersistence` appends through one restricted RPC and reads a
+complete journal in a repeatable snapshot. Company locking elects one insertion;
+the caller must observe transaction commit before using `inserted=true`. A lost
+commit acknowledgment leaves an uncertain intent: exact replay returns
+`inserted=false` and only permits reconciliation. There is no lease or retry
+reset. The same verified actor can append an exact request-bound result after
+ownership or MFA changes during I/O. That narrow path cannot create an intent,
+replace a result or read originals without current ownership and fresh MFA.
+
+Deferred migration `20261026100000_company_tax_delivery_events.sql` leaves new
+reviews/intents disabled. Its rollback also fences callers already waiting for
+the company lock, retains originals and permits only bound late completions.
+No runtime factory, HTTP writer or provider dispatcher enables this journal.
+`TaxDeliveryJournal.plan` checks causal ordering, not runtime admission or
+external prerequisites. Finite loopback admission, scan/validation observations,
+dispatch/reconciliation workflows and connected approval remain unfinished.
+
+Source V3 positively covers exactly nine owned tables, every event digest/count,
+scope, recording actor, immutable draft and causal prefix, plus the enabled
+archive-generation trigger. It reports reviewed/uncertain/mutation-completed
+facts explicitly as finite rehearsal facts; they are never production attempts.
+V1/V2 fail closed after the ninth table exists. Deploy V3-aware readers and finish
+archive composition before any hosted migration; retain V3 readers on rollback.
+The new migration is tested only in isolated PG17 component fixtures, not the
+full hosted topology. Existing HTTP/export routes remain on their prior contracts.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliveryJournalPersistence"],"ownedTables":["company_tax_filing.delivery_events"]}
+-->

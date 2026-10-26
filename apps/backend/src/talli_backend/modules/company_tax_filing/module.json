@@ -83,7 +83,21 @@
       "TaxDeliveryDraftArchive",
       "archive_tax_delivery_drafts",
       "TaxCurrentDocumentResponse",
-      "TaxCurrentDocument"
+      "TaxCurrentDocument",
+      "TaxDeliveryReviewApproval",
+      "approve_tax_delivery_review",
+      "decode_tax_delivery_review_approval",
+      "TaxDeliveryMutationRequest",
+      "TaxDeliveryMutationCompletion",
+      "build_tax_delivery_mutation_request",
+      "complete_tax_delivery_mutation",
+      "decode_tax_delivery_mutation_request",
+      "decode_tax_delivery_mutation_completion",
+      "StoredTaxDeliveryEvent",
+      "TaxDeliveryEventAppend",
+      "TaxDeliveryJournal",
+      "decode_tax_delivery_event",
+      "TaxDeliveryJournalFact"
     ],
     "events": [],
     "errors": [
@@ -117,7 +131,10 @@
       "tax_delivery_schema_adapter",
       "TaxDeliveryDraftPersistence",
       "TaxCurrentDocumentKind",
-      "CompanyTaxCurrentDocumentReader"
+      "CompanyTaxCurrentDocumentReader",
+      "TaxDeliveryAuthorityMode",
+      "TaxDeliveryCompletionOrigin",
+      "TaxDeliveryJournalPersistence"
     ]
   },
   "owns": {
@@ -132,7 +149,8 @@
       "company_tax_filing.filing_review_comments",
       "company_tax_filing.authority_permissions",
       "company_tax_filing.authority_test_runs",
-      "company_tax_filing.delivery_drafts"
+      "company_tax_filing.delivery_drafts",
+      "company_tax_filing.delivery_events"
     ],
     "storageBuckets": [],
     "projections": [],
@@ -237,6 +255,15 @@
       "adapters": [
         "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
       ]
+    },
+    {
+      "name": "TaxDeliveryJournalPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryJournalPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
     }
   ],
   "dependencies": [],
@@ -281,7 +308,10 @@
     "currentDocument": "apps/backend/tests/test_company_tax_current_document.py",
     "deliveryPreparation": "apps/backend/tests/test_company_tax_delivery_preparation.py",
     "currentDraftDatabase": "apps/backend/tests/test_postgres_tax_current_draft.py",
-    "currentPreparationDatabase": "apps/backend/tests/test_company_tax_current_preparation_database.py"
+    "currentPreparationDatabase": "apps/backend/tests/test_company_tax_current_preparation_database.py",
+    "deliveryApproval": "apps/backend/tests/test_company_tax_delivery_approval.py",
+    "deliveryJournal": "apps/backend/tests/test_company_tax_delivery_journal.py",
+    "deliveryEventDatabase": "apps/backend/tests/test_postgres_tax_delivery_events.py"
   },
   "compatibilityExceptions": []
 }

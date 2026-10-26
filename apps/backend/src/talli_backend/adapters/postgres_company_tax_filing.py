@@ -21,13 +21,15 @@ from talli_backend.application.company_tax_filing_session import CompanyTaxSessi
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, Timestamp, UserId
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryDraft, StoredTaxDeliveryDraft, TaxDeliveryDraftPersistence, decode_tax_delivery_draft,
+    TaxDeliveryJournalPersistence, StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
+    TaxDeliveryReviewApproval, TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion, decode_tax_delivery_event,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
     AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
@@ -150,6 +152,7 @@ class PostgresCompanyTaxSession:
 
 
 @tax_settlement_persistence_adapter(TaxDeliveryDraftPersistence)
+@tax_settlement_persistence_adapter(TaxDeliveryJournalPersistence)
 @tax_settlement_persistence_adapter(CompanyTaxSourcePersistence)
 @tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
 @audit_inclusion_adapter(AuditInclusion)
@@ -200,6 +203,52 @@ class PostgresCompanyTaxTransaction:
         if stored.draft != draft:
             raise CompanyTaxError.unavailable()
         return stored
+
+    def _delivery_event(self, value):
+        try:
+            event=decode_tax_delivery_event(value['canonical_json'],value['event_sha256'],
+                Timestamp(datetime.fromisoformat(value['recorded_at'])),ActorId(ActorKind.USER,UserId(value['recorded_by'])))
+            binding=event.binding
+            if (value['filing_id']!=binding.filing_id or value['company_id']!=str(binding.company_id)
+                    or type(value['income_year']) is not int or value['income_year']!=int(binding.income_year)
+                    or value['slot']!=event.slot or type(value['sequence']) is not int or value['sequence']<1):
+                raise ValueError()
+            if type(event.value) is not TaxDeliveryMutationRequest and value['recorded_by']!=str(binding.approved_by.subject):
+                raise ValueError()
+            return event
+        except (ValueError,KeyError,TypeError,AttributeError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def append_delivery_event(self, value) -> TaxDeliveryEventAppend:
+        if type(value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion):
+            raise CompanyTaxError.invalid_input()
+        binding=value.intent if type(value) is TaxDeliveryMutationCompletion else value
+        if type(value) is not TaxDeliveryMutationRequest and binding.approved_by!=self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row=await self._delivery_row('select company_tax_filing.append_delivery_event_v1(%s::text,%s::text,%s::text) as result',
+            (value.canonical_json,value.sha256,str(self.actor_id.subject)))
+        try:
+            result=row['result'];event=self._delivery_event(result['event'])
+            if event.value!=value or result['event']['recorded_by']!=str(self.actor_id.subject):raise ValueError()
+            return TaxDeliveryEventAppend(event,result['inserted'])
+        except (KeyError,TypeError,ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal:
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        row=await self._delivery_row('select company_tax_filing.read_delivery_journal_v1(%s::uuid,%s::integer,%s::uuid,%s::text) as result',
+            (str(query.company_id),int(query.income_year),filing_id,str(self.actor_id.subject)))
+        try:
+            result=row['result'];draft=self._delivery_draft(result['draft']).draft
+            if (result['completeEnumeration'] is not True or draft.filing_id!=filing_id
+                    or draft.envelope.source.company_id!=query.company_id or draft.envelope.source.income_year!=query.income_year):
+                raise ValueError()
+            events=tuple(self._delivery_event(value) for value in result['events'])
+            journal=TaxDeliveryJournal(draft,events)
+            if any(value['recorded_by']!=str(journal.approval.approved_by.subject) for value in result['events']):raise ValueError()
+            return journal
+        except (KeyError,TypeError,ValueError,AttributeError):
+            raise CompanyTaxError.unavailable() from None
 
     async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery, command_key) -> StoredTaxDeliveryDraft | None:
         if query.actor_id != self.actor_id:
@@ -391,6 +440,9 @@ class PostgresCompanyTaxTransaction:
     async def delivery_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
         return await self._filing_source_snapshot(query, delivery=True)
 
+    async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query,delivery=True,journal=True)
+
     async def delivery_draft_archive_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
         return await self._filing_source_snapshot(query, delivery=True, archive=True)
 
@@ -401,11 +453,12 @@ class PostgresCompanyTaxTransaction:
             'select company_tax_filing.lock_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text)',
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)))
 
-    async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False) -> CompanyTaxSourceSnapshot:
+    async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False, journal: bool = False) -> CompanyTaxSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
         row = await (self._delivery_row if delivery else self._one_idempotent_row)(
-            ('select company_tax_filing.read_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text) as result' if archive else
+            ('select company_tax_filing.read_source_snapshot_v3(%s::uuid,%s::integer,%s::text) as result' if journal else
+             'select company_tax_filing.read_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text) as result' if archive else
              'select company_tax_filing.read_source_snapshot_v2(%s::uuid,%s::integer,%s::text) as result' if delivery else
              'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result'),
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
@@ -422,7 +475,8 @@ class PostgresCompanyTaxTransaction:
             return CompanyTaxSourceSnapshot(rows, value['coverage'],
                 Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
                 value['contractVersion'] if delivery else 'company-tax-source-v1',
-                tuple(self._delivery_draft(row) for row in value['deliveryDrafts']) if delivery else ())
+                tuple(self._delivery_draft(row) for row in value['deliveryDrafts']) if delivery else (),
+                tuple(self._delivery_event(row) for row in value['deliveryEvents']) if journal else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise CompanyTaxError.unavailable() from None
 

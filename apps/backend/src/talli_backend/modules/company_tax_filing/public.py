@@ -672,10 +672,12 @@ class CompanyTaxSourceSnapshot:
     complete_enumeration: bool
     contract_version: str = 'company-tax-source-v1'
     delivery_drafts: tuple[StoredTaxDeliveryDraft, ...] = ()
+    delivery_events: tuple[StoredTaxDeliveryEvent, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze_return_fact(self.coverage))
         object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
+        object.__setattr__(self, "delivery_events", tuple(self.delivery_events))
 
 
 @dataclass(frozen=True, slots=True)
@@ -762,6 +764,7 @@ class CompanyTaxSourceFacts:
     incidents: tuple[CompanyTaxIncidentFact, ...]
     outcomes: tuple[CompanyTaxOutcomeFact, ...]
     delivery_drafts: tuple[TaxDeliveryDraftFact, ...] = ()
+    delivery_journals: tuple[TaxDeliveryJournalFact, ...] = ()
 
 
 class CompanyTaxSourcePersistence(Protocol):
@@ -789,6 +792,15 @@ from .delivery import (
 from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
 from .current_document import TaxCurrentDocument, TaxCurrentDocumentResponse, TaxCurrentDocumentKind
+from .delivery_approval import (TaxDeliveryAuthorityMode, TaxDeliveryReviewApproval,
+    approve_tax_delivery_review, decode_tax_delivery_review_approval)
+
+from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
+    TaxDeliveryCompletionOrigin, build_tax_delivery_mutation_request, complete_tax_delivery_mutation,
+    decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
+
+from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
+    decode_tax_delivery_event)
 
 
 @dataclass(frozen=True, slots=True)
@@ -829,6 +841,24 @@ class TaxDeliveryDraftPersistence(Protocol):
     async def lock_delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> None: ...
 
 
+class TaxDeliveryJournalPersistence(Protocol):
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion) -> TaxDeliveryEventAppend: ...
+    async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
+    async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+
+
+@dataclass(frozen=True, slots=True)
+class TaxDeliveryJournalFact:
+    filing_id: str
+    approved_by: ActorId
+    authority_mode: TaxDeliveryAuthorityMode
+    status: str
+    mutation_kind: TaxMutationKind | None
+    approval_sha256: str
+    latest_event_sha256: str
+    recorded_at: Timestamp
+
+
 class TaxDeliverySchemaValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
@@ -850,6 +880,14 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
+    'TaxDeliveryJournalPersistence',
+    'TaxDeliveryJournalFact',
+    'TaxDeliveryMutationRequest', 'TaxDeliveryMutationCompletion', 'TaxDeliveryCompletionOrigin',
+    'build_tax_delivery_mutation_request', 'complete_tax_delivery_mutation',
+    'decode_tax_delivery_mutation_request', 'decode_tax_delivery_mutation_completion',
+    'TaxDeliveryAuthorityMode', 'TaxDeliveryReviewApproval', 'approve_tax_delivery_review',
+    'decode_tax_delivery_review_approval',
     'PrepareTaxDeliveryDraft',
     'TaxCurrentDocument', 'TaxCurrentDocumentResponse', 'TaxCurrentDocumentKind', 'CompanyTaxCurrentDocumentReader',
     'TaxDeliveryDraft', 'StoredTaxDeliveryDraft', 'TaxDeliveryDraftFact', 'decode_tax_delivery_draft', 'TaxDeliveryDraftPersistence',

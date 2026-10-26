@@ -15,7 +15,7 @@ import hashlib
 import json
 import re
 
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
 
 def _json(value):
@@ -258,8 +258,12 @@ class TaxMutationIntent:
 
     def __post_init__(self):
         from uuid import UUID
-        if str(UUID(self.filing_id)) != self.filing_id:
+        if type(self.filing_id) is not str or str(UUID(self.filing_id)) != self.filing_id:
             raise ValueError('Tax filing identifier is invalid.')
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int or type(self.approved_by) is not ActorId
+                or self.approved_by.kind is not ActorKind.USER or type(self.approved_by.subject) is not UserId):
+            raise ValueError('Tax mutation scope or approving actor is invalid.')
         if type(self.kind) is not TaxMutationKind:
             raise ValueError('Tax mutation kind is invalid.')
         _digest(self.approval_sha256)
@@ -278,7 +282,7 @@ class TaxMutationRecord:
 
     def __post_init__(self):
         from .public import _freeze_return_fact
-        if self.state not in ('uncertain', 'completed'):
+        if type(self.intent) is not TaxMutationIntent or self.state not in ('uncertain', 'completed'):
             raise ValueError('Tax mutation record state is invalid.')
         if (self.state == 'completed') != isinstance(self.result, Mapping):
             raise ValueError('Tax mutation completion evidence is missing or premature.')
