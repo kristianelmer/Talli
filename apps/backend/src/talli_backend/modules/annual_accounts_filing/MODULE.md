@@ -248,3 +248,31 @@ contract does not certify missing Corporate close or signed-artifact prerequisit
 and a stored permission or TT02 receipt cannot lift it. Billing alone applies
 commercial classification, charges and refunds. Raw caller-supplied readiness
 previews are separate from this durable snapshot and never certify history.
+
+
+## Pinned durable-delivery document boundary
+
+`AnnualAccountsDocumentsInspection` binds exact raw main/company XML hashes,
+organization, year and a content-pinned resource generation. It carries no filing
+readiness, signature, submission or acceptance assertion.
+`AnnualAccountsSchemaValidator` and `annual_accounts_schema_adapter` declare the
+offline `talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas`
+implementation. Its four exact public resources were fetched from the RR0002
+TT02 app on 2026-10-26: application metadata, BPMN and both JSON model schemas.
+The two task identifiers are `Utfylling` and `Signering`; the public process
+separates confirm from sign, and system-user authority cannot perform person
+signing.
+
+The local validator derives a strict XML subset from the pinned JSON models'
+XSD annotations, internal definitions, required/occurrence constraints, fixed
+attributes, scalar bounds and enums. Unknown schema constructs, external
+references, extra XML, DTD/entities, processing instructions, non-UTF8, oversized
+or over-deep documents fail. The local profile additionally restricts the packet
+to 2025, AS/small-enterprise, NOK/whole kroner, standalone unaudited statements.
+It rejects upstream wildcard attributes rather than ignoring them. This is not
+an upstream XSD and does not certify the authority's custom validation. The
+existing renderer and its frozen byte contract remain unchanged.
+
+<!-- architecture-inventory
+{"ports":["AnnualAccountsSchemaValidator"]}
+-->

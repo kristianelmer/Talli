@@ -1265,3 +1265,14 @@ Neither read performs provider I/O or grants mutation authority.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/delivery-workspace","/api/v1/company-tax/delivery-original"]}
 -->
+
+
+`AnnualAccountsSchemaValidator` binds the offline
+`talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas`
+adapter. Exact public JSON-model, application and BPMN resources define a pinned
+local constraint generation. Derived XML checks remain separate from authority
+validation, owner/person signing and runtime filing admission.
+
+<!-- architecture-inventory
+{"ports": ["AnnualAccountsSchemaValidator"], "adapterBindings": ["AnnualAccountsSchemaValidator=>talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas"], "adapterDependencies": ["talli_backend.adapters.annual_accounts_schemas"], "adapterBindingOwners": ["AnnualAccountsSchemaValidator=>backend-system"], "adapterBindingModes": ["AnnualAccountsSchemaValidator=>Offline exact public RR0002 JSON models/BPMN/application metadata; derived strict XML constraints and supported AS/NOK profile, exact raw document hashes; no upstream XSD or runtime acceptance claim and no person-signing authority."]}
+-->

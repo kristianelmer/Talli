@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
 
 from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear, Timestamp
+from .delivery_documents import AnnualAccountsDocumentsInspection
 
 
 def _freeze(value):
@@ -614,7 +615,19 @@ def verify_annual_accounts_source(
     return verify(query, evidence, snapshot)
 
 
+class AnnualAccountsSchemaValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def validate_pair(self,main_form: bytes,company_accounts: bytes,*,organization_number: str,
+        income_year: int) -> AnnualAccountsDocumentsInspection: ...
+
+
+def annual_accounts_schema_adapter(contract: type[object]):
+    return annual_accounts_authority_adapter(contract)
+
+
 __all__ = [
+    "AnnualAccountsDocumentsInspection","AnnualAccountsSchemaValidator","annual_accounts_schema_adapter",
     "AnnualAccountsSourceQuery",
     "AnnualAccountsSourceSnapshot",
     "AnnualAccountsSourceEvidence",

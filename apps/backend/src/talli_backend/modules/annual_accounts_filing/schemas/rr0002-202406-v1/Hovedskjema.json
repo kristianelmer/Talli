@@ -1,0 +1,950 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schema.json",
+  "type": "object",
+  "@xsdNamespaces": {
+    "": "http://schema.brreg.no/regnsys/aarsregnskap_vanlig",
+    "xs": "http://www.w3.org/2001/XMLSchema"
+  },
+  "@xsdSchemaAttributes": {
+    "AttributeFormDefault": "None",
+    "ElementFormDefault": "Qualified",
+    "BlockDefault": "None",
+    "FinalDefault": "None",
+    "TargetNamespace": "http://schema.brreg.no/regnsys/aarsregnskap_vanlig"
+  },
+  "info": {
+    "domenenavn": "Regnskapsregisteret",
+    "modellnavn": "RR0002H_M"
+  },
+  "@xsdRootElement": "melding",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/RR0002H_M"
+    }
+  ],
+  "$defs": {
+    "RR0002H_M": {
+      "allOf": [
+        {
+          "properties": {
+            "dataFormatId": {
+              "@xsdType": "string",
+              "type": "string",
+              "const": "1266",
+              "@xsdAttribute": true
+            },
+            "dataFormatVersion": {
+              "@xsdType": "string",
+              "type": "string",
+              "const": "51820",
+              "@xsdAttribute": true
+            },
+            "tjenestehandling": {
+              "@xsdType": "string",
+              "type": "string",
+              "const": "aarsregnskap_vanlig",
+              "@xsdAttribute": true
+            },
+            "tjeneste": {
+              "@xsdType": "string",
+              "type": "string",
+              "const": "regnskap",
+              "@xsdAttribute": true
+            }
+          },
+          "required": [
+            "dataFormatId",
+            "dataFormatVersion",
+            "tjenestehandling",
+            "tjeneste"
+          ]
+        },
+        {
+          "properties": {
+            "Innsender": {
+              "$ref": "#/$defs/Innsender"
+            },
+            "Skjemainnhold": {
+              "$ref": "#/$defs/Skjemainnhold"
+            }
+          },
+          "required": [
+            "Innsender",
+            "Skjemainnhold"
+          ]
+        }
+      ],
+      "@xsdAnyAttribute": {
+        "Namespace": "##any",
+        "ProcessContent": "None"
+      }
+    },
+    "Innsender": {
+      "properties": {
+        "enhet": {
+          "$ref": "#/$defs/Enhet"
+        },
+        "kontaktperson": {
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Kontaktperson"
+          },
+          "@xsdMinOccurs": 0,
+          "@xsdMaxOccurs": "10"
+        },
+        "opplysningerInnsending": {
+          "$ref": "#/$defs/OpplysningerInnsending"
+        }
+      },
+      "required": [
+        "enhet",
+        "opplysningerInnsending"
+      ]
+    },
+    "Enhet": {
+      "properties": {
+        "organisasjonsnummer": {
+          "$ref": "#/$defs/EnhetOrganisasjonsnummer"
+        },
+        "organisasjonsform": {
+          "$ref": "#/$defs/EnhetOrganisasjonsform"
+        },
+        "navn": {
+          "$ref": "#/$defs/EnhetNavn"
+        }
+      },
+      "required": [
+        "organisasjonsnummer",
+        "organisasjonsform",
+        "navn"
+      ]
+    },
+    "EnhetOrganisasjonsnummer": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/HeltallNi"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "18",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "EnhetOrganisasjonsform": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstTrettiFemTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "756",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "EnhetNavn": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstHundreOgSyttiFemTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "1",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Kontaktperson": {
+      "properties": {
+        "e-post": {
+          "$ref": "#/$defs/KontaktpersonEPost",
+          "@xsdMinOccurs": 0
+        }
+      }
+    },
+    "KontaktpersonEPost": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstSyttiTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "19022",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Taksonomi": {
+      "properties": {
+        "berekraftstaksonomi": {
+          "$ref": "#/$defs/Berekraftstaksonomi",
+          "@xsdMinOccurs": 0
+        },
+        "berekraftsversjon": {
+          "$ref": "#/$defs/Berekraftsversjon",
+          "@xsdMinOccurs": 0
+        }
+      }
+    },
+    "Standard": {
+      "properties": {
+        "berekraftsrapporteringsstandard": {
+          "$ref": "#/$defs/Berekraftsrapporteringsstandard",
+          "@xsdMinOccurs": 0
+        }
+      }
+    },
+    "OpplysningerInnsending": {
+      "properties": {
+        "landTilLand": {
+          "$ref": "#/$defs/ArsregnskapLandTilLand",
+          "@xsdMinOccurs": 0
+        },
+        "avviklingsregnskap": {
+          "$ref": "#/$defs/Avviklingsregnskap",
+          "@xsdMinOccurs": 0
+        },
+        "noteMaskinellBehandling": {
+          "$ref": "#/$defs/TilMaskinellBehandling"
+        },
+        "utenlandskRegnskapNUF": {
+          "$ref": "#/$defs/UtenlandskRegnskapNUF",
+          "@xsdMinOccurs": 0
+        },
+        "systemNavn": {
+          "$ref": "#/$defs/SystemNavn"
+        }
+      },
+      "required": [
+        "noteMaskinellBehandling",
+        "systemNavn"
+      ]
+    },
+    "ArsregnskapLandTilLand": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Boolean"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "35172",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Avviklingsregnskap": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Boolean"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40314",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "TilMaskinellBehandling": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Tekst"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "37499",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "UtenlandskRegnskapNUF": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Boolean"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "39006",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "SystemNavn": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstFemtiTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "39007",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Skjemainnhold": {
+      "properties": {
+        "regnskapsperiode": {
+          "$ref": "#/$defs/Regnskapsperiode"
+        },
+        "konsern": {
+          "$ref": "#/$defs/Konsern"
+        },
+        "regnskapsprinsipper": {
+          "$ref": "#/$defs/Regnskapsprinsipper"
+        },
+        "fastsettelse": {
+          "$ref": "#/$defs/Fastsettelse"
+        },
+        "revisjonRegnskapsfoerer": {
+          "$ref": "#/$defs/RevisjonRegnskapsfoerer",
+          "@xsdMinOccurs": 0
+        },
+        "aarsberetning": {
+          "$ref": "#/$defs/Aarsberetning",
+          "@xsdMinOccurs": 0
+        }
+      },
+      "required": [
+        "regnskapsperiode",
+        "konsern",
+        "regnskapsprinsipper",
+        "fastsettelse"
+      ]
+    },
+    "Regnskapsperiode": {
+      "properties": {
+        "regnskapsaar": {
+          "$ref": "#/$defs/RegnskapAr"
+        },
+        "regnskapsstart": {
+          "$ref": "#/$defs/RegnskapStartdato"
+        },
+        "regnskapsslutt": {
+          "$ref": "#/$defs/RegnskapAvslutningsdato"
+        }
+      },
+      "required": [
+        "regnskapsaar",
+        "regnskapsstart",
+        "regnskapsslutt"
+      ]
+    },
+    "RegnskapAr": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Tekst"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "17102",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "RegnskapStartdato": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Dato"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "17103",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "RegnskapAvslutningsdato": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Dato"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "17104",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Konsern": {
+      "properties": {
+        "morselskap": {
+          "$ref": "#/$defs/Morselskap"
+        },
+        "konsernregnskap": {
+          "$ref": "#/$defs/KonsernregnskapVedlegg",
+          "@xsdMinOccurs": 0
+        },
+        "utenlandskKonsern": {
+          "$ref": "#/$defs/UtenlandskKonsern",
+          "@xsdMinOccurs": 0
+        }
+      },
+      "required": [
+        "morselskap"
+      ]
+    },
+    "Morselskap": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "4168",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "KonsernregnskapVedlegg": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "25943",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "UtenlandskKonsern": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "36640",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Regnskapsprinsipper": {
+      "properties": {
+        "smaaForetak": {
+          "$ref": "#/$defs/RegnskapsreglerSmaForetak"
+        },
+        "regnskapsreglerSelskap": {
+          "$ref": "#/$defs/RegnskapsoppsettIFRS"
+        },
+        "forenkletIFRS": {
+          "$ref": "#/$defs/ForenkletIFRS",
+          "@xsdMinOccurs": 0
+        },
+        "regnskapsreglerKonsern": {
+          "$ref": "#/$defs/RegnskapsoppsettKonsernIFRS",
+          "@xsdMinOccurs": 0
+        },
+        "forenkletIFRSKonsern": {
+          "$ref": "#/$defs/ForenkletIFRSKonsern",
+          "@xsdMinOccurs": 0
+        }
+      },
+      "required": [
+        "smaaForetak",
+        "regnskapsreglerSelskap"
+      ]
+    },
+    "RegnskapsreglerSmaForetak": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "8079",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "RegnskapsoppsettIFRS": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarNeiJa"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "25021",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "ForenkletIFRS": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "36639",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "RegnskapsoppsettKonsernIFRS": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarNeiJa"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "25944",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "ForenkletIFRSKonsern": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "36641",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "RevisjonRegnskapsfoerer": {
+      "properties": {
+        "aarsregnskapIkkeRevideres": {
+          "$ref": "#/$defs/ArsregnskapIkkeRevisjonBesluttet",
+          "@xsdMinOccurs": 0
+        },
+        "aarsregnskapUtarbeidetAutorisertRegnskapsfoerer": {
+          "$ref": "#/$defs/ArsregnskapUtarbeidelseAvAutorisertRegnskapsforer",
+          "@xsdMinOccurs": 0
+        },
+        "tjenestebistandEksternAutorisertRegnskapsfoerer": {
+          "$ref": "#/$defs/TjenestebistandEksternAutorisertRegnskapsforer",
+          "@xsdMinOccurs": 0
+        }
+      }
+    },
+    "Aarsberetning": {
+      "properties": {
+        "inkludererBerekraftrapportering": {
+          "$ref": "#/$defs/InkludererBerekraftrapportering",
+          "@xsdMinOccurs": 0
+        },
+        "standard": {
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Standard"
+          },
+          "@xsdMinOccurs": 0,
+          "@xsdMaxOccurs": "2"
+        },
+        "taksonomi": {
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Taksonomi"
+          },
+          "@xsdMinOccurs": 0,
+          "@xsdMaxOccurs": "2"
+        },
+        "leiNummer": {
+          "$ref": "#/$defs/LeiNummer",
+          "@xsdMinOccurs": 0
+        }
+      }
+    },
+    "ArsregnskapIkkeRevisjonBesluttet": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "34669",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "ArsregnskapUtarbeidelseAvAutorisertRegnskapsforer": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "34670",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "TjenestebistandEksternAutorisertRegnskapsforer": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "34671",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Berekraftsversjon": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstTjueTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40312",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "LeiNummer": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstTjueTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40313",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "InkludererBerekraftrapportering": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/SvarJaNei"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40309",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Berekraftsrapporteringsstandard": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstTjueTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40310",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Berekraftstaksonomi": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstTjueTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "40311",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "Fastsettelse": {
+      "properties": {
+        "fastsettelsedato": {
+          "$ref": "#/$defs/RegnskapFastsettelseDato"
+        },
+        "bekreftendeSelskapsrepresentant": {
+          "$ref": "#/$defs/StyremedlemNavnSpesifisertStyremedlem"
+        }
+      },
+      "required": [
+        "fastsettelsedato",
+        "bekreftendeSelskapsrepresentant"
+      ]
+    },
+    "RegnskapFastsettelseDato": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/Dato"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "17105",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "StyremedlemNavnSpesifisertStyremedlem": {
+      "properties": {
+        "value": {
+          "@xsdText": true,
+          "$ref": "#/$defs/TekstSyttiTegn"
+        },
+        "orid": {
+          "@xsdType": "string",
+          "type": "string",
+          "const": "19023",
+          "@xsdAttribute": true
+        }
+      },
+      "required": [
+        "value",
+        "orid"
+      ]
+    },
+    "HeltallNi": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "maxLength": 9,
+      "minLength": 9
+    },
+    "TekstTrettiFemTegn": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "minLength": 1,
+      "maxLength": 35
+    },
+    "TekstHundreOgSyttiFemTegn": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "minLength": 1,
+      "maxLength": 175
+    },
+    "Boolean": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "TekstFemtiTegn": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "maxLength": 50
+    },
+    "Tekst": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction"
+    },
+    "SvarNeiJa": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "enum": [
+        "nei",
+        "ja"
+      ]
+    },
+    "SvarJaNei": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "enum": [
+        "ja",
+        "nei"
+      ]
+    },
+    "Dato": {
+      "@xsdType": "date",
+      "type": "string",
+      "format": "date",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction"
+    },
+    "TekstSyttiTegn": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "minLength": 1,
+      "maxLength": 70
+    },
+    "TekstTjueTegn": {
+      "@xsdType": "string",
+      "type": "string",
+      "@xsdStructure": "XmlSchemaSimpleTypeRestriction",
+      "minLength": 1,
+      "maxLength": 20
+    }
+  }
+}

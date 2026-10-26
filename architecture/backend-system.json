@@ -1201,6 +1201,12 @@
       "adapter": "talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead",
       "owner": "backend-system",
       "mode": "Separate finite read-only known-parent metadata and exact receipt/file GETs; no dispatch capability or extension of the parent mutation grant."
+    },
+    {
+      "port": "AnnualAccountsSchemaValidator",
+      "adapter": "talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas",
+      "owner": "backend-system",
+      "mode": "Offline exact public RR0002 JSON models/BPMN/application metadata; derived strict XML constraints and supported AS/NOK profile, exact raw document hashes; no upstream XSD or runtime acceptance claim and no person-signing authority."
     }
   ],
   "allowedDependencies": {
@@ -1404,7 +1410,8 @@
       "urllib.error",
       "urllib.parse",
       "urllib.request",
-      "talli_backend.adapters.company_tax_loopback_read"
+      "talli_backend.adapters.company_tax_loopback_read",
+      "talli_backend.adapters.annual_accounts_schemas"
     ]
   }
 }

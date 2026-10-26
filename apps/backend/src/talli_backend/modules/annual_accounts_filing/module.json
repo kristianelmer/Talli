@@ -55,7 +55,8 @@
       "AnnualAccountsCorrectionLink",
       "AnnualAccountsSourceFacts",
       "project_annual_accounts_source",
-      "verify_annual_accounts_source"
+      "verify_annual_accounts_source",
+      "AnnualAccountsDocumentsInspection"
     ],
     "events": [],
     "errors": [
@@ -71,7 +72,9 @@
       "AnnualAccountsPreparationPersistence",
       "AnnualAccountsWorkspacePersistence",
       "annual_accounts_persistence_adapter",
-      "AnnualAccountsSourcePersistence"
+      "AnnualAccountsSourcePersistence",
+      "AnnualAccountsSchemaValidator",
+      "annual_accounts_schema_adapter"
     ]
   },
   "owns": {
@@ -144,6 +147,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
       ]
+    },
+    {
+      "name": "AnnualAccountsSchemaValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsSchemaValidator",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas"
+      ]
     }
   ],
   "dependencies": [],
@@ -174,7 +186,8 @@
   "tests": {
     "policy": "apps/backend/tests/test_annual_accounts_filing.py",
     "architecture": "tests/architecture_foundation.test.mjs",
-    "offline": "tests/test_annual_accounts_offline_migration.py"
+    "offline": "tests/test_annual_accounts_offline_migration.py",
+    "deliverySchemas": "apps/backend/tests/test_annual_accounts_delivery_schemas.py"
   },
   "compatibilityExceptions": []
 }
