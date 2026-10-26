@@ -290,6 +290,7 @@ const annualAccountsOperations = {
   workspace: ["/api/v1/annual-accounts/filing-workspace", "get", "annualAccountsGetFilingWorkspace"],
 };
 const companyTaxOperations = {
+  prepareDeliveryDraft: ["/api/v1/company-tax/delivery-drafts", "post", "companyTaxPrepareDeliveryDraft"],
   deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
   sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
@@ -910,6 +911,7 @@ const companyTaxSchemas = Object.fromEntries([
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
   "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxDeliveryDraftFactWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxDeliveryDraftOriginalWire", "CompanyTaxDeliveryDraftArchiveWire",
+  "CompanyTaxPrepareDeliveryDraftRequest", "CompanyTaxPreparedDeliveryDraftWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
   "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
   "CompanyTaxRecordedWire", "CompanyTaxOverrideRequest", "CompanyTaxReviewRequest", "CompanyTaxPermissionRequest", "CompanyTaxTestEvidenceRequest",
@@ -2926,6 +2928,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           || result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
           || (result.historyCoverage.status === "complete"
             && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxPrepareDeliveryDraft(
+      command: CompanyTaxPrepareDeliveryDraftRequest, request: TalliMutationOptions,
+    ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-drafts\`,
+        "POST", request, command, isCompanyTaxPreparedDeliveryDraftWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId) {
         throw new TalliApiError(502, undefined);
       }
       return result;

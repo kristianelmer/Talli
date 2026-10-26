@@ -201,6 +201,30 @@
       "to": "backend:company_tax_filing"
     },
     {
+      "from": "backend-system:company-tax-delivery-preparation",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-delivery-preparation",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:company-tax-delivery-preparation",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
       "from": "backend-system:company-tax-filing-preparation",
       "imports": [
         "talli_backend.modules.company_tax_filing.public"

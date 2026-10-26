@@ -3,13 +3,13 @@
 Status: deterministic XML accepted through TT02 signing, receipt, and archive; production adapters remain disabled
 
 Research date: 2026-06-16  
-Last updated: 2026-07-14
+Last updated: 2026-10-26
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
 Target issue: #86 (payload + validation, closed) / #87 (test-environment submission flow)  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
 
 Current delivery resource pin (verified 2026-10-26): tag `v1.62.126`, commit
-`74d9c7dd020aa4701034194630c1b16609154986`. All nine packaged resources were
+`74d9c7dd020aa4701034194630c1b16609154986`. All ten packaged resources, including the current-return response XSD, were
 compared at that immutable commit. Relative to the historical snapshot above,
 the sole changed 2025 catalog entry is other operating income `3890`, outside
 the supported holding-company projection; no codes were added or removed.
@@ -202,3 +202,17 @@ prove production authorization or deployed runtime integration. Deployed
 evidence import, structured final feedback/state, production permission and
 credentials, security/restore approval, and the approved
 `tax_return_authority` signoff keep `buildFilingReleaseGates` fail-closed.
+
+### Exact current-return intake (2026-10-26)
+
+The pinned `skattemeldingognaeringsspesifikasjonforespoerselresponse_v2_kompakt.xsd`
+validates the current-return envelope before extracting its reference, type,
+encoding and base64 Tax document. The 2025 AS Tax XSD validates that original;
+its year must match the server-owned request. The adapter retains exact response
+bytes, including an initial UTF-8 BOM, and rejects malformed UTF-8 without
+replacement. Locked fields, extended guidance and an existing business document
+are explicit unsupported prerequisites until their facts can be preserved.
+Unrepresented tax fields, including carryforwards, also block. Existing share
+facts must resolve unchanged in the generated return; a new complete return may
+not silently discard or alter them. Preparation's configured
+reader is absent by default and no live authority call is established here.

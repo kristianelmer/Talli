@@ -7,6 +7,7 @@ from datetime import datetime
 
 from talli_backend.application.company_tax_filing_session import CompanyTaxSession, CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
 from talli_backend.modules.audit.public import AuditEventDraft
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
@@ -19,6 +20,7 @@ from talli_backend.modules.company_tax_filing.public import (
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
+    PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -56,16 +58,27 @@ def _replayed(payload: Mapping[str, object], command: RecordTaxSettlementCommand
 
 
 class CompanyTaxApplication:
-    def __init__(self, sessions: CompanyTaxSessionFactory, ledger: Callable[[LedgerPersistence], LedgerCommands]):
+    def __init__(self, sessions: CompanyTaxSessionFactory, ledger: Callable[[LedgerPersistence], LedgerCommands],
+                 *, preparation: CompanyTaxDeliveryPreparation | None = None):
         self._sessions, self._ledger = sessions, ledger
+        self._preparation = preparation
 
     async def session(self, access_token: str) -> AuthenticatedCompanyTax:
-        return AuthenticatedCompanyTax(await self._sessions.session(access_token), self._ledger)
+        return AuthenticatedCompanyTax(await self._sessions.session(access_token), self._ledger,preparation=self._preparation)
 
 
 class AuthenticatedCompanyTax:
-    def __init__(self, session: CompanyTaxSession, ledger: Callable[[LedgerPersistence], LedgerCommands]):
+    def __init__(self, session: CompanyTaxSession, ledger: Callable[[LedgerPersistence], LedgerCommands],
+                 *, preparation: CompanyTaxDeliveryPreparation | None = None):
         self._session, self._ledger = session, ledger
+        self._preparation = preparation
+
+    async def prepare_delivery_draft(self, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        if self._preparation is None:
+            raise CompanyTaxError.unavailable()
+        return await self._preparation.prepare(self._session,command)
 
     @property
     def actor_id(self):

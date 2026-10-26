@@ -237,7 +237,7 @@ class FixedTransport:
     def safe(self, value, fallback=""):
         return text(value, fallback, secrets=self._secrets)
 
-    async def _request(self, url, method, token, *, accept="application/json", content_type=None, body=None, headers=None):
+    async def _request_bytes(self, url, method, token, *, accept="application/json", content_type=None, body=None, headers=None):
         request_headers = {"authorization": f"Bearer {opaque(token)}", "accept": accept}
         if content_type:
             request_headers["content-type"] = content_type
@@ -261,14 +261,27 @@ class FixedTransport:
                         if size > MAX_RESPONSE_BYTES:
                             raise self._error_type("Authority response is too large.", code=self._prefix+"_RESPONSE_TOO_LARGE")
                         chunks.append(chunk)
-                    # Fetch Response.text() strips one initial UTF-8 BOM and
-                    # replaces malformed sequences for JSON, XML and token text.
-                    raw = b"".join(chunks).decode("utf-8-sig", errors="replace")
+                    raw = b"".join(chunks)
         except (httpx.HTTPError, TimeoutError):
             raise self._error_type("Authority request failed before a response was received.",
                 code=self._prefix+"_NETWORK_ERROR", retryable=True) from None
-        if any(secret and secret in raw for secret in self._secrets):
+        if any(secret and secret.encode('utf-8') in raw for secret in self._secrets):
             raise self._error_type("Authority response contains reflected credentials.", code=self._prefix+"_RESPONSE_INVALID")
+        return raw, status, response_headers
+
+    async def _request_exact(self, url, method, token, **options):
+        raw, status, response_headers = await self._request_bytes(url,method,token,**options)
+        try:
+            raw.decode('utf-8',errors='strict')
+        except UnicodeDecodeError:
+            raise self._error_type("Authority response encoding is invalid.",code=self._prefix+"_RESPONSE_INVALID") from None
+        return raw, status, response_headers
+
+    async def _request(self, url, method, token, **options):
+        original, status, response_headers = await self._request_bytes(url,method,token,**options)
+        # Preserve the characterized legacy Response.text() behavior. Exact
+        # original readers opt into strict UTF-8 and retain the initial BOM.
+        raw = original.decode("utf-8-sig",errors="replace")
         try:
             parsed = _parse_json(raw) if raw else {}
         except ValueError:

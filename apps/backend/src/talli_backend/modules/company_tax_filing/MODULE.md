@@ -148,7 +148,7 @@ company/year/party/current-reference bindings. The shipped Apache-licensed
 resources retain their upstream license and provenance; runtime makes no fetch.
 
 The release-only `scripts/check_company_tax_schema_drift.py` resolves the fixed
-official branch once and checks all nine 2025 resources at that immutable commit.
+official branch once and checks all ten pinned delivery/current-response resources at that immutable commit.
 The launch rehearsal requires this gate: drift blocks, incomplete reads remain
 unavailable, and matching resources remain current when only other years change.
 Comments and processing instructions cannot hide code-list text; validation
@@ -221,7 +221,51 @@ Temporary trigger EXECUTE authority and role memberships are restored after DDL.
 New writes invalidate in-progress company exports; exact replay does not.
 Containment preserves originals and generation tracking.
 
+`PrepareTaxDeliveryDraft`, `TaxCurrentDocumentResponse`, `TaxCurrentDocument`,
+`TaxCurrentDocumentKind` and `CompanyTaxCurrentDocumentReader` support server-owned
+preparation. The fixed TT02 adapter exposes only a current-return GET through this
+port, retaining exact original bytes and rejecting malformed UTF-8; legacy
+transport text replacement remains characterized separately. The offline schema
+adapter additionally pins the current-response XSD, checks the supported 2025
+AS identity/year/reference, and refuses unrepresented tax fields, locked fields,
+guidance and existing business documents. It cannot discard or change current
+share facts while generating a complete new return.
+
+The named `company-tax-delivery-preparation` workflow reads all owning source
+contracts, closes SQL, rechecks current owner/MFA, then performs the authority
+GET outside SQL. After rendering it holds the READ COMMITTED company guard
+through a separate repeatable owner-source snapshot and draft persistence.
+Drift conflicts. A concurrent committed command is replayed under the final
+lock before comparing a regenerated observation timestamp. Authorized exact
+command replay precedes external access and returns the committed original after
+a lost response. Default application composition has no preparation reader; it
+remains unavailable. No caller supplies Annual/Ledger/Investment facts, party,
+current reference, XML, provider URL or credentials through the command.
+The strict `POST /api/v1/company-tax/delivery-drafts` route accepts company,
+2025 year and filing ID plus an idempotency header. Fresh canonical MFA is
+required before the current-return GET and again after the final company lock.
+Its response contains only immutable identifiers, hashes and server time; the
+separate fresh-MFA archive read returns originals. Default HTTP composition is
+unavailable until its preparation dependency is explicitly supplied.
+
+Storage codec V2 adds the inspected current response and its exact raw bytes.
+V1 keeps its original canonical field set and remains readable; it is never
+silently upgraded to current-authority preparation. Source V2 binds each exact
+canonical record digest and server time independently of Python class layout.
+The deferred `20261026074827_company_tax_current_draft_v2.sql` verifies its exact
+predecessor and shares one private store implementation behind version-specific
+RPCs. V2 has its own volatile post-lock containment fence; its rollback retains
+both codecs and preserves the V1 writer contract. The original global fence
+continues to contain both. These drafts are neither paid entitlement nor filing
+approval; provider mutation and default activation remain closed.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxCurrentDocumentReader"]}
+-->
+
 Reader-first rollout: deploy the compatible backend codec and web archive reader
 before enabling V2 draft writes. Keep these readers as the minimum application
 rollback target after any V2 record exists. Containment disables V2 writes but
 retains both codecs; rolling back to a V1-only reader is unsupported.
+The new V2 migration leaves its write fence closed. Only the owned loopback rehearsal
+explicitly opens it; hosted activation requires a separate reviewed rollout.

@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -43,7 +43,21 @@ try {
   } else {
     const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
-    if (direction === "delivery-expand") {
+    if (direction === "current-enable") {
+      // This entire entry point requires loopback PostgreSQL. Reuse the exact
+      // containment authority round-trip, opening only its one private fence
+      // and RPC privilege for the synthetic rehearsal. No hosted activation.
+      const rollback = await readFile(new URL("../supabase/rollback/20261026074827_company_tax_current_draft_v2.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      const revoked = "revoke execute on function company_tax_filing.store_delivery_draft_v2(text,text,text) from company_tax_filing_workflow_executor;";
+      if (rollback.split(closed).length !== 2 || rollback.split(revoked).length !== 2) {
+        throw new Error("current_draft_rehearsal_containment_changed");
+      }
+      await database.query(rollback.replace(closed, "begin return true; end; $function$;")
+        .replace(revoked, "grant execute on function company_tax_filing.store_delivery_draft_v2(text,text,text) to company_tax_filing_workflow_executor;"));
+    } else if (direction === "current-expand") {
+      await apply("contract-migrations/20261026074827_company_tax_current_draft_v2.sql");
+    } else if (direction === "delivery-expand") {
       await apply("contract-migrations/20261026062315_company_tax_delivery_journal.sql");
     } else if (direction === "filing-expand") {
       for (const name of ["20260914200000_company_tax_return_expand.sql", "20260914201000_company_tax_return_read_contracts.sql",

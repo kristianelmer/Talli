@@ -98,6 +98,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
 )
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
 from talli_backend.modules.company_tax_filing.public import (
     AnnualTaxEstimateSource, CompanyTaxReturnSource, assess_company_tax_readiness, estimate_annual_tax,
     CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
@@ -106,6 +107,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
+    PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -1551,6 +1553,24 @@ class CompanyTaxRecordedWire(TransportModel):
     record_id: UUID
     company_id: UUID
     income_year: int | None
+
+
+class CompanyTaxPrepareDeliveryDraftRequest(TransportModel):
+    model_config = ConfigDict(extra="forbid")
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2025, le=2025)]
+    filing_id: UUID
+
+
+class CompanyTaxPreparedDeliveryDraftWire(TransportModel):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    recorded_at: datetime
+    draft_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    review_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    schema_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    status: Literal["prepared_only"] = "prepared_only"
 
 
 class CompanyTaxOverrideRequest(TransportModel):
@@ -5418,6 +5438,7 @@ def create_app(
     validation_observer: PassiveValidationObserver | None = None,
     readiness_probe: ReadinessProbe | None = None,
     company_test_retention_session_factory: CompanyTestRetentionSessionFactory | None = None,
+    company_tax_delivery_preparation: CompanyTaxDeliveryPreparation | None = None,
 ) -> FastAPI:
     # Readiness follows the infrastructure selected here. Injected adapters own
     # their operational contract; unit/custom applications can inject a probe.
@@ -5484,7 +5505,8 @@ def create_app(
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
-    company_tax_application = compose_company_tax_application(company_tax_session_factory)
+    company_tax_application = compose_company_tax_application(company_tax_session_factory,
+        preparation=company_tax_delivery_preparation)
     annual_accounts_application = compose_annual_accounts_application(annual_accounts_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
@@ -11812,6 +11834,34 @@ def create_app(
                 )
             except ValidationError:
                 raise CompanyTaxError.unavailable() from None
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/delivery-drafts",
+        operation_id="companyTaxPrepareDeliveryDraft", response_model=CompanyTaxPreparedDeliveryDraftWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_prepare_delivery_draft(
+        request: Request,
+        command: CompanyTaxPrepareDeliveryDraftRequest,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxPreparedDeliveryDraftWire:
+        async def execute() -> CompanyTaxPreparedDeliveryDraftWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.prepare_delivery_draft(PrepareTaxDeliveryDraft(
+                CompanyId(str(command.company_id)), IncomeYear(command.income_year), session.actor_id,
+                TaxFilingSubmissionId(str(command.filing_id)), IdempotencyKey(idempotency_key),
+                ledger_correlation(request)))
+            draft = result.draft
+            # Ordinary replay returns identifiers/hashes only. Retained originals
+            # and their source facts remain behind the fresh-MFA archive read.
+            return CompanyTaxPreparedDeliveryDraftWire(company_id=command.company_id,
+                income_year=command.income_year, filing_id=UUID(draft.filing_id),
+                recorded_at=result.recorded_at.value, draft_sha256=draft.sha256,
+                review_sha256=draft.envelope.review_sha256, schema_sha256=draft.envelope.schema_sha256)
         return await company_tax_call(execute)
 
     @application.get(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+from datetime import UTC, datetime
 
 from talli_backend.authority_tools._filing import FixedTransport, data_id, instance_id, income_year, iso, obj, opaque, org_number, valid, xml
 
@@ -15,7 +16,9 @@ ENVELOPE = "skattemeldingOgNaeringsspesifikasjon"
 
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxAuthority, CompanyTaxReturnAuthorityError, company_tax_authority_adapter,
+    CompanyTaxCurrentDocumentReader, TaxCurrentDocumentResponse,
 )
+from talli_backend.shared.kernel import IncomeYear, Timestamp
 
 
 def _element(content, name):
@@ -34,6 +37,7 @@ async def exchange_maskinporten_for_altinn_token(token, *, environment="test", t
 
 
 @company_tax_authority_adapter(CompanyTaxAuthority)
+@company_tax_authority_adapter(CompanyTaxCurrentDocumentReader)
 class CompanyTaxTransport(FixedTransport):
     def __init__(self, tax_access_token, altinn_access_token=None, *, environment="test", transport=None, timeout_ms=20_000):
         if environment != "test":
@@ -71,6 +75,14 @@ class CompanyTaxTransport(FixedTransport):
         if not re.fullmatch(r"[0-9]{1,19}", party):
             raise CompanyTaxReturnAuthorityError("Current return has no usable party number.", code="COMPANY_TAX_CURRENT_PARTY_NUMBER_MISSING")
         return {"rawXml": raw, "documentReference": reference, "partyNumber": party}
+
+    async def fetch_current_document(self, *, income_year, company_org_number):
+        if type(income_year) is not int or income_year != 2025:
+            raise ValueError('Current Tax delivery requires the supported 2025 generation.')
+        case = self._case(income_year,company_org_number)
+        raw,_,_ = await self._request_exact(TAX_BASE+'/'+case,'GET',self._tax,accept='application/xml')
+        return TaxCurrentDocumentResponse(company_org_number,IncomeYear(income_year),
+            base64.b64encode(raw).decode('ascii'),Timestamp(datetime.now(UTC)))
 
     async def validate_test(self, *, income_year, company_org_number, envelope_xml):
         raw, _, _, _ = await self._request(TAX_BASE+"/validertest/"+self._case(income_year, company_org_number),

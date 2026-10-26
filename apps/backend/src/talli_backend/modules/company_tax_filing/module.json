@@ -16,7 +16,8 @@
       "ConfirmCompanyTaxPermission",
       "RecordCompanyTaxTestEvidence",
       "CompanyTaxRehearsalConfiguration",
-      "rehearse_company_tax_return"
+      "rehearse_company_tax_return",
+      "PrepareTaxDeliveryDraft"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -80,7 +81,9 @@
       "TaxDeliveryDraftFact",
       "decode_tax_delivery_draft",
       "TaxDeliveryDraftArchive",
-      "archive_tax_delivery_drafts"
+      "archive_tax_delivery_drafts",
+      "TaxCurrentDocumentResponse",
+      "TaxCurrentDocument"
     ],
     "events": [],
     "errors": [
@@ -112,7 +115,9 @@
       "TaxMutationDisposition",
       "TaxDeliverySchemaValidator",
       "tax_delivery_schema_adapter",
-      "TaxDeliveryDraftPersistence"
+      "TaxDeliveryDraftPersistence",
+      "TaxCurrentDocumentKind",
+      "CompanyTaxCurrentDocumentReader"
     ]
   },
   "owns": {
@@ -223,6 +228,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "CompanyTaxCurrentDocumentReader",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxCurrentDocumentReader",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
+      ]
     }
   ],
   "dependencies": [],
@@ -263,7 +277,11 @@
     "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py",
     "schemas": "apps/backend/tests/test_company_tax_schemas.py",
     "deliveryDraft": "apps/backend/tests/test_company_tax_delivery_draft.py",
-    "deliveryDraftDatabase": "apps/backend/tests/test_postgres_tax_delivery_draft.py"
+    "deliveryDraftDatabase": "apps/backend/tests/test_postgres_tax_delivery_draft.py",
+    "currentDocument": "apps/backend/tests/test_company_tax_current_document.py",
+    "deliveryPreparation": "apps/backend/tests/test_company_tax_delivery_preparation.py",
+    "currentDraftDatabase": "apps/backend/tests/test_postgres_tax_current_draft.py",
+    "currentPreparationDatabase": "apps/backend/tests/test_company_tax_current_preparation_database.py"
   },
   "compatibilityExceptions": []
 }

@@ -8,7 +8,7 @@ from typing import Protocol, TypeVar
 from types import MappingProxyType
 
 from talli_backend.shared.kernel import (
-    ActorId, CompanyId, CorrelationId, DomainError, ErrorCategory,
+    ActorId, ActorKind, CompanyId, CorrelationId, DomainError, ErrorCategory,
     IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp,
 )
 
@@ -89,6 +89,15 @@ class AccountingEntryReference(_UuidReference):
 
 
 class CompanyTaxError(DomainError):
+    @classmethod
+    def draft_conflict(cls) -> CompanyTaxError:
+        return cls(code='COMPANY_TAX_DRAFT_CONFLICT', category=ErrorCategory.CONFLICT)
+
+    @classmethod
+    def current_return_unsupported(cls) -> CompanyTaxError:
+        return cls(code='COMPANY_TAX_CURRENT_RETURN_UNSUPPORTED', category=ErrorCategory.PRECONDITION_FAILED,
+            message='Gjeldende skattemelding inneholder opplysninger som må behandles før nytt utkast kan lages.')
+
     @classmethod
     def hard_review_block(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
@@ -779,6 +788,25 @@ from .delivery import (
 )
 from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
+from .current_document import TaxCurrentDocument, TaxCurrentDocumentResponse, TaxCurrentDocumentKind
+
+
+@dataclass(frozen=True, slots=True)
+class PrepareTaxDeliveryDraft:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    filing_id: TaxFilingSubmissionId
+    command_key: IdempotencyKey
+    correlation_id: CorrelationId
+
+    def __post_init__(self):
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int or int(self.income_year) != 2025
+                or type(self.actor_id) is not ActorId or self.actor_id.kind is not ActorKind.USER
+                or type(self.filing_id) is not TaxFilingSubmissionId
+                or type(self.command_key) is not IdempotencyKey or type(self.correlation_id) is not CorrelationId):
+            raise ValueError('Tax preparation command scope is invalid.')
 
 
 @dataclass(frozen=True, slots=True)
@@ -804,7 +832,13 @@ class TaxDeliveryDraftPersistence(Protocol):
 class TaxDeliverySchemaValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
-    def validate(self, envelope: TaxDeliveryEnvelope) -> TaxSchemaValidation: ...
+    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None) -> TaxSchemaValidation: ...
+    def inspect_current(self, response: TaxCurrentDocumentResponse) -> TaxCurrentDocument: ...
+
+
+class CompanyTaxCurrentDocumentReader(Protocol):
+    async def fetch_current_document(self, *, income_year: int,
+                                     company_org_number: str) -> TaxCurrentDocumentResponse: ...
 
 
 def tax_delivery_schema_adapter(contract):
@@ -816,6 +850,8 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'PrepareTaxDeliveryDraft',
+    'TaxCurrentDocument', 'TaxCurrentDocumentResponse', 'TaxCurrentDocumentKind', 'CompanyTaxCurrentDocumentReader',
     'TaxDeliveryDraft', 'StoredTaxDeliveryDraft', 'TaxDeliveryDraftFact', 'decode_tax_delivery_draft', 'TaxDeliveryDraftPersistence',
     'TaxDeliveryDraftArchive', 'archive_tax_delivery_drafts',
     'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',

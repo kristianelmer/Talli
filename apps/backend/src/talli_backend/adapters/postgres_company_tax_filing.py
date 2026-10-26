@@ -18,6 +18,7 @@ from talli_backend.adapters.supabase_ledger import (
 from talli_backend.adapters.supabase_investments import SupabaseInvestmentsSnapshotQueries
 from talli_backend.application.annual_data_compatibility import decode_annual_interview_history
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
@@ -54,6 +55,7 @@ def _company_tax_database_error(error: psycopg.DatabaseError):
         'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
         'company_tax_return_hard_review_block': CompanyTaxError.hard_review_block,
         'company_tax_return_unavailable': CompanyTaxError.unavailable,
+        'company_tax_delivery_draft_conflict': CompanyTaxError.draft_conflict,
     }
     message = error.diag.message_primary or ''
     if message == 'company_tax_evidence_mfa_required':
@@ -191,7 +193,8 @@ class PostgresCompanyTaxTransaction:
         if draft.prepared_by != self.actor_id:
             raise CompanyTaxError.forbidden()
         row = await self._delivery_row(
-            'select company_tax_filing.store_delivery_draft_v1(%s::text,%s::text,%s::text) as result',
+            ('select company_tax_filing.store_delivery_draft_v2(%s::text,%s::text,%s::text) as result' if draft.current_document is not None else
+             'select company_tax_filing.store_delivery_draft_v1(%s::text,%s::text,%s::text) as result'),
             (draft.canonical_json, draft.sha256, str(self.actor_id.subject)))
         stored = self._delivery_draft(row['result'])
         if stored.draft != draft:
@@ -490,5 +493,7 @@ class PostgresCompanyTaxTransaction:
         return _posted_entry(row)
 
 
-def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None) -> CompanyTaxApplication:
-    return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService)
+def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None,
+                                   *, preparation: CompanyTaxDeliveryPreparation | None = None) -> CompanyTaxApplication:
+    return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService,
+                                 preparation=preparation)

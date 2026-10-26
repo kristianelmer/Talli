@@ -36,8 +36,8 @@ def test_complete_matching_resources_are_current_even_if_other_years_moved():
     assert result['status'] == 'current' and result['completeEnumeration'] is True
     assert result['observedSourceCommit'] == COMMIT
     assert result['observedSourceCommit'] != result['approvedSourceCommit']
-    assert len(source.calls) == len(source.resources)+1 == 10
-    assert len(result['files']) == 9 and all(row['matches'] for row in result['files'].values())
+    assert len(source.calls) == len(source.resources)+1 == 11
+    assert len(result['files']) == 10 and all(row['matches'] for row in result['files'].values())
 
 
 def test_one_changed_code_list_is_drift_not_a_current_or_incomplete_verdict():

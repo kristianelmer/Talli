@@ -578,6 +578,18 @@
       "routes": [
         "/api/v1/company-tax/archive-source/delivery-drafts-v1"
       ]
+    },
+    {
+      "name": "company-tax-delivery-preparation",
+      "purpose": "Prepare immutable drafts from complete owning sources and inspected current-authority originals outside SQL; exact authorized replay before GET and source drift rejection; no filing approval or provider mutation.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public",
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.investments.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/delivery-drafts"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1133,6 +1145,12 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "immutable exact Tax draft bytes with scope/actor/key replay; owner recheck after company lock; versioned V2 positive store coverage; no approval or provider authority"
+    },
+    {
+      "port": "CompanyTaxCurrentDocumentReader",
+      "adapter": "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
+      "owner": "backend-system",
+      "mode": "fixed TT02 current-return GET only; strict UTF-8 and exact original bytes; preparation remains unconfigured in default composition"
     }
   ],
   "allowedDependencies": {
@@ -1222,7 +1240,8 @@
       "talli_backend.application.shareholder_register_source_dispatch_v3",
       "talli_backend.adapters.dependency_readiness",
       "talli_backend.application.shareholder_register_company_test_retention_http",
-      "talli_backend.adapters.company_test_retention_runtime"
+      "talli_backend.adapters.company_test_retention_runtime",
+      "talli_backend.application.company_tax_delivery_preparation"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1249,7 +1268,8 @@
       "talli_backend.modules.validation_observation.public",
       "talli_backend.modules.audit.public",
       "talli_backend.application.corporate_register_evidence",
-      "talli_backend.application.shareholder_register_company_test_retention_http"
+      "talli_backend.application.shareholder_register_company_test_retention_http",
+      "talli_backend.application.company_tax_delivery_preparation"
     ],
     "adapters": [
       "__future__",

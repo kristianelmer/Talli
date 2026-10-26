@@ -1,0 +1,29 @@
+{
+  "schema": "company-tax-current-draft-reader-first-v1",
+  "compatibleReaderCommit": "f31ca2681815505fe52e9c6385133d64d92905ac",
+  "expansionMigration": "supabase/contract-migrations/20261026074827_company_tax_current_draft_v2.sql",
+  "expansionDefault": "v2_writes_closed",
+  "defaultApplicationComposition": "preparation_unconfigured",
+  "hostedActivation": "not_performed",
+  "rolloutOrder": [
+    "deploy compatible backend and web readers",
+    "verify V1 and V2 exact-original archive reads",
+    "apply closed V2 expansion",
+    "separately review any hosted activation"
+  ],
+  "rollback": [
+    "apply containment rollback to fence waiting and future V2 writes",
+    "retain V1/V2 originals",
+    "keep application readers at or after compatibleReaderCommit"
+  ],
+  "proofs": {
+    "isolatedReaderCommitTests": 28,
+    "newWriterArtifactReadByCompatibleCommit": "exact canonical bytes and current-response BOM retained",
+    "webReaderCases": "both codecs, unknown versions and changed digests"
+  },
+  "limits": [
+    "No deployment proof for new Tax code",
+    "No production/provider activation or filing approval",
+    "Read compatibility alone does not authorize V2 writes"
+  ]
+}
