@@ -105,7 +105,7 @@ def test_changed_manifest_schema_or_code_list_is_unavailable(monkeypatch,tmp_pat
 
 def test_bundle_manifest_reconciles_exact_resources_and_upstream_license():
     manifest = json.loads((schemas._BUNDLE/'manifest.json').read_bytes())
-    assert manifest['sourceCommit'] == '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'
+    assert manifest['sourceCommit'] == '74d9c7dd020aa4701034194630c1b16609154986'
     assert set(manifest['files']) | {'manifest.json'} == {path.name for path in schemas._BUNDLE.iterdir()}
     assert (schemas._BUNDLE/'LICENSE').read_text().lstrip().startswith('Apache License')
 
@@ -117,6 +117,14 @@ def test_validation_proof_cannot_be_reused_for_changed_source_with_identical_doc
     with pytest.raises(ValueError): proof.verify(replace(envelope,source=source))
     with pytest.raises(ValueError):
         proof.verify(replace(envelope,current_document_reference='changed-metadata-with-original-XML'))
+
+
+@pytest.mark.parametrize('value', ['9999<!--ignored-->', '999<!--ignored-->9', '9999<?ignored value?>',
+    '6700<!--ignored-->', '67<?ignored value?>00'])
+def test_comments_and_processing_instructions_cannot_hide_invalid_or_wrong_category_codes(validator,value):
+    envelope = prepared(validator)
+    changed = rewrap(envelope,business_xml=envelope.business_xml.replace('>1570<','>'+value+'<'))
+    with pytest.raises(CompanyTaxError): validator.validate(changed)
 
 
 def test_delivery_projection_groups_every_supported_cost_account_under_official_codes(validator):

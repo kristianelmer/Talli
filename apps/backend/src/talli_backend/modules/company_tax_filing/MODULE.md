@@ -147,6 +147,13 @@ unlisted business codes, substituted envelope bytes and inconsistent
 company/year/party/current-reference bindings. The shipped Apache-licensed
 resources retain their upstream license and provenance; runtime makes no fetch.
 
+The release-only `scripts/check_company_tax_schema_drift.py` resolves the fixed
+official branch once and checks all nine 2025 resources at that immutable commit.
+The launch rehearsal requires this gate: drift blocks, incomplete reads remain
+unavailable, and matching resources remain current when only other years change.
+Comments and processing instructions cannot hide code-list text; validation
+proofs continue to hash the exact original document bytes.
+
 The single calculator has a versioned authority-code projection. Historical
 characterization keeps its original Ledger-number labels. New delivery uses
 `company-tax-delivery-2025-v1`: Ledger cost accounts `6420`,

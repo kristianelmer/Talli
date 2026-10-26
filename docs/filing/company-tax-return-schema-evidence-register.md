@@ -8,6 +8,12 @@ Target launch filing: 2025 income-year `skattemelding` for simple Norwegian hold
 Target issue: #86 (payload + validation, closed) / #87 (test-environment submission flow)  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
 
+Current delivery resource pin (verified 2026-10-26): tag `v1.62.126`, commit
+`74d9c7dd020aa4701034194630c1b16609154986`. All nine packaged resources were
+compared at that immutable commit. Relative to the historical snapshot above,
+the sole changed 2025 catalog entry is other operating income `3890`, outside
+the supported holding-company projection; no codes were added or removed.
+
 ## Official Sources
 
 - Skatteetaten system-supplier repository: https://github.com/Skatteetaten/skattemeldingen
@@ -116,9 +122,20 @@ unchanged.
 
 The packaged resource manifest binds all three XSDs, the five consumed code
 lists, the upstream Apache license and commit
-`7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`. Runtime validation is offline,
+`74d9c7dd020aa4701034194630c1b16609154986`. Runtime validation is offline,
 denies DTD/external resources, and binds the exact source and two enclosed
 document bytes to the company/year/current authority document reference.
+
+`npm run check:company-tax-schemas` is mandatory in the launch rehearsal. It
+reads the official repository's current branch reference once, then compares
+every approved 2025 resource at that immutable reference. Changes to unrelated
+years do not invalidate matching resources. A changed resource blocks with a
+drift verdict; an incomplete or unavailable read cannot return current. The
+probe uses fixed public GitHub endpoints, refuses redirects and caller arguments,
+has a 45-second process deadline and uses no filing or GitHub credentials.
+Runtime validation makes no network requests. XML comments and processing
+instructions are excluded from the validation tree while proof hashes preserve
+the exact original bytes, including those constructs.
 
 ### Unsupported launch scope
 

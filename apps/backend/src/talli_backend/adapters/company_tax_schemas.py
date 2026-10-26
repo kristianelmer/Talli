@@ -14,8 +14,8 @@ from talli_backend.modules.company_tax_filing.public import (
 )
 
 
-_BUNDLE_SHA256 = '5ed465b10a64923577c6ca0fba15a57751a94d9a9de5e6c90f7f124d6c61108c'
-_COMMIT = '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'
+_BUNDLE_SHA256 = 'ea84cbee617e98a9b20a5fc08382d6076fafb64ca0a6b75fc8653462acdac851'
+_COMMIT = '74d9c7dd020aa4701034194630c1b16609154986'
 _BUNDLE = Path(__file__).resolve().parents[1] / 'modules/company_tax_filing/schemas/2025'
 _TAX_XSD = 'skattemeldingUpersonlig_v5_ekstern.xsd'
 _BUSINESS_XSD = 'naeringsspesifikasjon_v6_ekstern.xsd'
@@ -42,7 +42,7 @@ class _DenyExternalResources(etree.Resolver):
 
 def _parse(raw):
     parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True,
-        huge_tree=False, recover=False, remove_comments=False)
+        huge_tree=False, recover=False, remove_comments=True, remove_pis=True)
     parser.resolvers.add(_DenyExternalResources())
     root = etree.fromstring(raw, parser)
     if root.getroottree().docinfo.doctype:

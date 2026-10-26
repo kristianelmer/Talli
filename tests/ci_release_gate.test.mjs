@@ -950,6 +950,9 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
   assert.ok(tax.size >= 32);
+  assert.match(packageJson.scripts["check:company-tax-schemas"], /scripts\/check_company_tax_schema_drift\.py/u);
+  assert.ok(packageJson.scripts["test:launch-rehearsal"].includes("npm run check:company-tax-schemas &&"),
+    "the complete gate must check current official Tax schema/code-list resources");
   const accountsFiles = packageJson.scripts["test:annual-accounts-database"].match(/apps\/backend\/tests\/test_\w+\.py/gu);
   assert.deepEqual(accountsFiles, ["apps/backend/tests/test_annual_accounts_filing_lifecycle.py"]);
   const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);
