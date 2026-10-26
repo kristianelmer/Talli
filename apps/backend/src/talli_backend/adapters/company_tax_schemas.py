@@ -255,30 +255,35 @@ class PinnedTax2025Schemas:
                     if family is None or node.text not in self._result_codes[family]:
                         raise ValueError('Tax result/balance code is outside its occurrence category.')
 
-    def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None:
-        """Validate returned statutory documents without replacing reviewed bytes.
+    def _calculated_current(self,draft):
+        if (type(draft) is not TaxDeliveryDraft or draft.current_document is None
+                or draft.envelope.schema_sha256!=self.schema_sha256):raise ValueError()
+        current=self.inspect_current(draft.current_document.response,correction_parent=draft.correction_parent)
+        if current!=draft.current_document:raise ValueError()
+        self.validate(draft.envelope,current_document=current,correction_parent=draft.correction_parent)
+        return current
 
-        Calculated values may differ. The complete originals, including guidance
-        and deviations, must subsequently be shown and explicitly reviewed.
-        """
+    def _validate_calculated_statutory(self,document,*,current,income_year):
+        dispatch={'skattemeldingUpersonligEtterBeregning':(self._schemas[0],_TAX_NS,'partsnummer'),
+            'naeringsspesifikasjonEtterBeregning':(self._schemas[1],_BUSINESS_NS,'partsreferanse')}
+        schema,namespace,party=dispatch[document.document_type]
+        root=_parse(document.raw_bytes)
+        if root.getroottree().docinfo.encoding.upper().replace('-','')!='UTF8':raise ValueError()
+        schema.assertValid(root)
+        if root.findtext(namespace+party)!=current.party_number or root.findtext(namespace+'inntektsaar')!=str(int(income_year)):raise ValueError()
+        if document.document_type=='naeringsspesifikasjonEtterBeregning':self._validate_business_codes(root)
+
+    def validate_calculated_document(self,document,*,draft):
+        """Read-only single statutory projection; never a complete-pair proof."""
+        try:self._validate_calculated_statutory(document,current=self._calculated_current(draft),income_year=draft.envelope.source.income_year)
+        except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError):raise CompanyTaxError.unavailable() from None
+
+    def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None:
+        """Complete statutory pair remains mandatory for consequential stages."""
         try:
-            if (type(response) is not TaxValidationResponseInspection or type(draft) is not TaxDeliveryDraft
-                    or draft.current_document is None or draft.envelope.schema_sha256!=self.schema_sha256):raise ValueError()
-            # Reinspect the retained current original rather than trusting its
-            # cached party label as the scope for a consequential later stage.
-            current=self.inspect_current(draft.current_document.response,correction_parent=draft.correction_parent)
-            if current!=draft.current_document:raise ValueError()
-            self.validate(draft.envelope,current_document=current,correction_parent=draft.correction_parent)
-            documents={item.document_type:item.raw_bytes for item in response.calculated_documents}
-            tax=_parse(documents['skattemeldingUpersonligEtterBeregning'])
-            business=_parse(documents['naeringsspesifikasjonEtterBeregning'])
-            for schema,root in zip(self._schemas[:2],(tax,business)):
-                if root.getroottree().docinfo.encoding.upper().replace('-','')!='UTF8':raise ValueError()
-                schema.assertValid(root)
-            if (tax.findtext(_TAX_NS+'partsnummer')!=current.party_number
-                    or business.findtext(_BUSINESS_NS+'partsreferanse')!=current.party_number
-                    or any(root.findtext(ns+'inntektsaar')!=str(int(draft.envelope.source.income_year))
-                        for root,ns in ((tax,_TAX_NS),(business,_BUSINESS_NS)))):raise ValueError()
-            self._validate_business_codes(business)
-        except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError):
-            raise CompanyTaxError.unavailable() from None
+            if type(response) is not TaxValidationResponseInspection:raise ValueError()
+            current=self._calculated_current(draft)
+            documents={item.document_type:item for item in response.calculated_documents}
+            for kind in ('skattemeldingUpersonligEtterBeregning','naeringsspesifikasjonEtterBeregning'):
+                self._validate_calculated_statutory(documents[kind],current=current,income_year=draft.envelope.source.income_year)
+        except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError):raise CompanyTaxError.unavailable() from None

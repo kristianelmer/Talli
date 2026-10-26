@@ -1,0 +1,19 @@
+.panel { min-width: 0; }
+.panel code { overflow-wrap: anywhere; word-break: break-word; }
+.panel details { margin: 1rem 0; min-width: 0; }
+.panel summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; gap: .65rem; }
+.panel summary::before { content: "+"; width: 1rem; flex: 0 0 auto; }
+.panel details[open] > summary::before { content: "−"; }
+.panel label { display: flex; gap: .65rem; align-items: flex-start; padding: .65rem 0; min-height: 44px; }
+.panel input[type="checkbox"] { margin-top: .2rem; flex: 0 0 auto; }
+.fields { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.fields th, .fields td { text-align: left; vertical-align: top; padding: .6rem .4rem; border-bottom: 1px solid var(--border, #ddd); overflow-wrap: anywhere; font-size: .875rem; }
+.fields th:first-child { width: 65%; }
+.fields tbody th { font-weight: 400; }
+.pagination { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin: .8rem 0; }
+.pagination button { min-height: 44px; }
+.originals { display: grid; gap: .35rem; padding: 0; list-style: none; }
+.originals a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; }
+.reference { font-size: .8rem; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .fields th:first-child { width: 58%; } .fields th, .fields td { padding: .5rem .25rem; } }

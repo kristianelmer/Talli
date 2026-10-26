@@ -32,7 +32,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryOwnerReviewQuery,build_tax_delivery_owner_review,ConfirmTaxDeliverySubmission,
     confirm_tax_delivery_owner_review,bind_tax_delivery_submission_prerequisite,
     TaxDeliverySubmissionReadEvidence,reconcile_tax_delivery_submission,is_tax_delivery_submitted_instance,
-    TaxDeliveryFeedbackObservation,
+    TaxDeliveryFeedbackObservation,TaxDeliveryWorkspaceValidation,
 )
 
 
@@ -70,6 +70,29 @@ class CompanyTaxDeliverySubmission:
         self._runtime,self._authority,self._schemas=runtime,authority,schemas
         self._response_schemas=response_schemas
         self._calculated_schemas=calculated_schemas
+
+    def workspace_admission(self,session,draft) -> bool:
+        try:
+            self._runtime.assert_session(session)
+            self._runtime.authorize(draft,session.actor_id)
+        except CompanyTaxError:return False
+        return True
+
+    def workspace_validation(self,journal):
+        if self._response_schemas is None:return None
+        result=next((event.value for event in reversed(journal.events) if type(event.value) is TaxDeliveryValidationResultObservation),None)
+        if result is None:return None
+        try:response=self._response_schemas.review(result.original)
+        except (CompanyTaxError,ValueError):return None
+        calculated=None
+        if self._calculated_schemas is not None:
+            try:calculated=self._calculated_schemas.review_documents(result.original,draft=journal.draft)
+            except (CompanyTaxError,ValueError):pass
+        documents=() if calculated is None else calculated.documents
+        if calculated is None and self._calculated_schemas is not None:
+            try:documents=self._calculated_schemas.read_workspace_documents(result.original,draft=journal.draft)
+            except (CompanyTaxError,ValueError):pass
+        return TaxDeliveryWorkspaceValidation(response,calculated,documents)
 
     async def _history(self,transaction,query,filing_id):
         snapshot=await transaction.journal_history_snapshot(query)
@@ -576,6 +599,11 @@ class CompanyTaxDeliverySubmission:
         retained,_=await self._retain_read(session,query,command,instance)
         element=instance.inspection.feedback
         if not instance.inspection.known or element is None:return retained.mutation_progress(TaxMutationKind.CONFIRM_SUBMISSION)
+        # An unchanged metadata original already binds the exact retained receipt.
+        # A later archive/status change still requires its own matching read.
+        if any(type(event.value) is TaxDeliveryFeedbackObservation and event.value.instance_evidence_sha256==instance.evidence_sha256
+                and event.value.data_id==element.data_id for event in retained.events):
+            return retained.mutation_progress(TaxMutationKind.CONFIRM_SUBMISSION)
         try:
             feedback=await self._authority.observe_feedback(journal.approval,journal.draft,created,instance)
             if type(feedback) is not TaxDeliveryFeedbackObservation:raise ValueError()

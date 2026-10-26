@@ -16,6 +16,9 @@ class LoopbackCompanyTaxIntake:
         if type(runtime) is not TaxCurrentIntakeRehearsalRuntime:raise ValueError('Finite read-only intake runtime is required.')
         self._runtime=runtime;self._transport=transport
 
+    def available(self,query: TaxCurrentDocumentIntakeQuery) -> bool:
+        return self._runtime.available(query)
+
     async def read_current_document(self,query: TaxCurrentDocumentIntakeQuery) -> TaxCurrentDocumentResponse:
         self._runtime.consume(query);grant=self._runtime.admission
         raw,_=await read_tax_loopback_original(grant.origin,'/api/skattemelding/v2/2025/'+grant.organization_number,

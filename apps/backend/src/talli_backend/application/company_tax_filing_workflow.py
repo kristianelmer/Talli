@@ -22,7 +22,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
     TaxDeliveryJournalArchive, archive_tax_delivery_journal,
-    PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,
+    PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,TaxDeliveryWorkspace,project_tax_delivery_workspace,tax_delivery_workspace_originals,tax_delivery_snapshot_journal,
     ApproveTaxDeliveryDraft, AdvanceTaxDelivery,ConfirmTaxDeliverySubmission,TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
@@ -145,6 +145,42 @@ class AuthenticatedCompanyTax:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         if self._submission is None:raise CompanyTaxError.unavailable()
         return await self._submission.owner_review(self._session,query)
+
+    async def delivery_workspace(self,query: CompanyTaxSourceQuery) -> TaxDeliveryWorkspace:
+        from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as snapshot:
+                source=await read_company_tax_delivery_source(snapshot,query,correlation_id=CorrelationId('tax-workspace-source'))
+                history=await snapshot.journal_history_snapshot(query)
+            journals={row.draft.filing_id:tax_delivery_snapshot_journal(history,row.draft) for row in history.delivery_drafts}
+            preparation=self._preparation is not None and self._preparation.workspace_admission(self._session,source)
+            dispatch={filing:self._submission is not None and self._submission.workspace_admission(self._session,journal.draft)
+                for filing,journal in journals.items()}
+            correction={filing:self._preparation is not None and self._preparation.workspace_admission(self._session,source,journal)
+                for filing,journal in journals.items()}
+            validation={filing:self._submission.workspace_validation(journal) for filing,journal in journals.items()} if self._submission is not None else {}
+            result=project_tax_delivery_workspace(query,history,source,preparation_available=preparation,
+                dispatch_admissions=dispatch,correction_admissions=correction,validation=validation)
+            await guard.lock_delivery_draft_archive(query)
+        return result
+
+    async def delivery_original(self,query: CompanyTaxSourceQuery,filing_id: str,key: str):
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as snapshot:
+                history=await snapshot.journal_history_snapshot(query)
+            archive=archive_tax_delivery_journal(query,history,correction_evidence=True)
+            if history.contract_version!='company-tax-source-v9':raise CompanyTaxError.unavailable()
+            row=next((row for row in archive.drafts if row.draft.filing_id==filing_id),None)
+            if row is None:raise CompanyTaxError.not_found()
+            journal=tax_delivery_snapshot_journal(history,row.draft)
+            original=next((original for original in tax_delivery_workspace_originals(journal) if original.key==key),None)
+            if original is None:raise CompanyTaxError.not_found()
+            await guard.lock_delivery_draft_archive(query)
+        return original
 
     async def prepare_delivery_draft(self, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
         if command.actor_id != self.actor_id:

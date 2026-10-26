@@ -73,13 +73,26 @@ class TaxCurrentIntakeRehearsalRuntime:
         if type(value) is not Timestamp:raise CompanyTaxError.unavailable()
         return value
 
-    def consume(self,query: TaxCurrentDocumentIntakeQuery):
+    def _assert_scope(self,query: TaxCurrentDocumentIntakeQuery):
         grant=self.admission
         if type(query) is not TaxCurrentDocumentIntakeQuery:raise CompanyTaxError.invalid_input()
         if (query.company_id!=grant.company_id or query.income_year!=grant.income_year or query.actor_id!=grant.actor_id
                 or query.organization_number!=grant.organization_number or query.database_scope_sha256!=grant.database_scope_sha256):
             raise CompanyTaxError.forbidden()
+    def consume(self,query: TaxCurrentDocumentIntakeQuery):
+        self._assert_scope(query)
         with self._lock:
-            if not grant.issued_at.value<=self.now().value<grant.expires_at.value or self._requests>=grant.maximum_requests:
-                raise CompanyTaxError.unavailable()
+            self._assert_live()
             self._requests+=1
+
+    def _assert_live(self):
+        grant=self.admission
+        if not grant.issued_at.value<=self.now().value<grant.expires_at.value or self._requests>=grant.maximum_requests:
+            raise CompanyTaxError.unavailable()
+
+    def available(self,query: TaxCurrentDocumentIntakeQuery) -> bool:
+        try:
+            self._assert_scope(query)
+            with self._lock:self._assert_live()
+        except CompanyTaxError:return False
+        return True

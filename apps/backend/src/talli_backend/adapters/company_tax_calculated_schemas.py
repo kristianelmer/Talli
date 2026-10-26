@@ -58,6 +58,14 @@ class PinnedTax2025CalculatedSchemas:
     @property
     def schema_sha256(self) -> str:return _BUNDLE_SHA256
 
+    def _validate_optional_document(self,document,*,party_number,income_year):
+        node=_parse(document.raw_bytes)
+        if node.getroottree().docinfo.encoding.upper().replace('-','')!='UTF8':raise ValueError()
+        self._optional_schemas[document.document_type].assertValid(node)
+        if document.document_type=='summertSkattegrunnlagForVisningUpersonlig' and (
+                node.findtext(_SUMMARY_NS+'partsnummer')!=party_number
+                or node.findtext(_SUMMARY_NS+'inntektsaar')!=str(int(income_year))):raise ValueError()
+
     def inspect(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsInspection:
         """Derive scope without dropping unsupported or unparsed documents.
 
@@ -79,22 +87,16 @@ class PinnedTax2025CalculatedSchemas:
                 draft.envelope.source.income_year,draft.current_document.party_number,response)
             for document in response.calculated_documents:
                 if document.document_type not in self._optional_schemas:continue
-                node=_parse(document.raw_bytes)
-                if node.getroottree().docinfo.encoding.upper().replace('-','')!='UTF8':raise ValueError()
-                self._optional_schemas[document.document_type].assertValid(node)
-                if document.document_type=='summertSkattegrunnlagForVisningUpersonlig' and (
-                        node.findtext(_SUMMARY_NS+'partsnummer')!=result.party_number
-                        or node.findtext(_SUMMARY_NS+'inntektsaar')!=str(int(result.income_year))):raise ValueError()
+                self._validate_optional_document(document,party_number=result.party_number,income_year=result.income_year)
             result.assert_original(original,draft)
             return result
         except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError,RecursionError,OverflowError):
             raise CompanyTaxError.unavailable() from None
 
-    def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview:
-        inspection=self.inspect(original,draft=draft)
+    def _review_documents(self,documents):
         try:
             reviews=[];projection_bytes=0
-            for document in inspection.response.calculated_documents:
+            for document in documents:
                 root=_parse(document.raw_bytes);values=[]
                 def retain(path,value):
                     nonlocal projection_bytes
@@ -119,6 +121,29 @@ class PinnedTax2025CalculatedSchemas:
                             retain(path+'/'+name+'['+str(counts[name])+']/#tail',child.tail)
                 visit(root,'/'+etree.QName(root).localname+'[1]')
                 reviews.append(TaxCalculatedDocumentReview(document.document_type,sha256(document.raw_bytes).hexdigest(),tuple(values)))
-            return TaxCalculatedDocumentsReview(inspection,tuple(reviews))
+            return tuple(reviews)
         except (ValueError,TypeError,AttributeError,etree.LxmlError,RecursionError,OverflowError):
             raise CompanyTaxError.unavailable() from None
+
+    def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview:
+        inspection=self.inspect(original,draft=draft)
+        return TaxCalculatedDocumentsReview(inspection,self._review_documents(inspection.response.calculated_documents))
+
+    def read_workspace_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> tuple[TaxCalculatedDocumentReview,...]:
+        """Show supported individual results while complete-pair admission stays closed.
+
+        Missing/unsupported siblings never turn this read into an inspection or
+        a confirmation prerequisite. The outer original retains every document.
+        """
+        response=self._response.inspect(original);supported=[]
+        for document in response.calculated_documents:
+            try:
+                if document.document_type in ('skattemeldingUpersonligEtterBeregning','naeringsspesifikasjonEtterBeregning'):
+                    self._delivery.validate_calculated_document(document,draft=draft)
+                elif document.document_type in self._optional_schemas:
+                    self._validate_optional_document(document,party_number=draft.current_document.party_number,
+                        income_year=draft.envelope.source.income_year)
+                else:continue
+            except (CompanyTaxError,ValueError,TypeError,KeyError,AttributeError,etree.LxmlError,RecursionError,OverflowError):continue
+            supported.append(document)
+        return self._review_documents(supported)

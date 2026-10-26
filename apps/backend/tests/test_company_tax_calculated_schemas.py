@@ -40,6 +40,21 @@ def result(values,*,code='validertOK',after='',before=''):
         calculated(raw,kind=kind) for kind,raw in values.items())+'</dokumenter>'+before,after=after)+b'\n')
 
 
+@pytest.mark.parametrize('defect',['missing-mate','foreign-mate','invalid-mate','unsupported-regime'])
+def test_read_only_partial_projection_keeps_supported_fields_without_producing_complete_inspection(review_basis,validator,defect):
+    draft=review_basis['draft'];values=documents(draft);after=''
+    business='naeringsspesifikasjonEtterBeregning'
+    if defect=='missing-mate':del values[business]
+    elif defect=='foreign-mate':values[business]=values[business].replace(draft.current_document.party_number.encode(),b'999999999999')
+    elif defect=='invalid-mate':values[business]=b'<!DOCTYPE x [<!ENTITY forbidden "bad">]><x>&forbidden;</x>'
+    else:after='<informasjonOmUpersonligSkattesubjekt><harLeveringsfritak>true</harLeveringsfritak></informasjonOmUpersonligSkattesubjekt>'
+    original=result(values,code='validertMedFeil',after=after)
+    projected=validator.read_workspace_documents(original,draft=draft)
+    assert {item.document_type for item in projected}==set(documents(draft))-(set() if defect=='unsupported-regime' else {business})
+    assert all(item.fields and item.original_sha256==sha256(values[item.document_type]).hexdigest() for item in projected)
+    with pytest.raises(CompanyTaxError):validator.inspect(original,draft=draft)
+
+
 @pytest.mark.parametrize('optional',[False,True])
 @pytest.mark.parametrize('code',['validertOK','validertMedFeil'])
 def test_exact_calculated_pair_and_optional_display_documents_are_inspected_without_acceptance(review_basis,validator,optional,code):

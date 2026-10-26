@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime,UTC
-from talli_backend.shared.kernel import Timestamp
+from talli_backend.shared.kernel import Timestamp,CorrelationId
 
 from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
 from talli_backend.application.company_tax_filing_session import CompanyTaxSession
@@ -24,6 +24,15 @@ class CompanyTaxDeliveryPreparation:
         self._current, self._schemas = current, schemas
         self._intake=intake;self._parent_reader=parent_reader
         self._now=now or (lambda:Timestamp(datetime.now(UTC)))
+
+    def workspace_admission(self,session,source,parent=None) -> bool:
+        target=getattr(session,'delivery_rehearsal_target',None)
+        if target is None:return False
+        query=TaxCurrentDocumentIntakeQuery(source.company_id,source.income_year,session.actor_id,
+            source.organization_number,target,CorrelationId('tax-delivery-workspace'))
+        if self._intake is None or self._intake.available(query) is not True:return False
+        if parent is None:return True
+        return self._parent_reader is not None and self._parent_reader.available(query,parent) is True
 
     async def prepare(self, session: CompanyTaxSession, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
         if command.actor_id != session.actor_id:

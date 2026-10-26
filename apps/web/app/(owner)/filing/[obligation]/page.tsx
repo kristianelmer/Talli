@@ -41,6 +41,7 @@ import {
 } from "../_readiness";
 import { buildOwnerFilingPresentation } from "../_presentation";
 import { Rf1086ReconciliationControl } from "../_submission-presentation";
+import {TaxDeliveryPanel} from "../_tax-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -189,7 +190,7 @@ export default async function FilingObligationPage({
     </>
   );
 
-  // --- Skattemelding / Årsregnskap: readiness + honest placeholder. ---
+  // Tax delivery and Accounts retain the common Annual readiness checklist.
   if (obligation !== "aksjonaerregisteroppgaven") {
     return (
       <div>
@@ -217,6 +218,7 @@ export default async function FilingObligationPage({
             )}
           </div>
         </section>
+        {obligation === "skattemelding" ? <TaxDeliveryPanel companyId={input.company.id} incomeYear={input.incomeYear}/> : null}
         {obligation === "aarsregnskap" ? (
           <section className="filingStep">
             <div className="filingStepHead">
@@ -273,7 +275,7 @@ export default async function FilingObligationPage({
               </p>
             </div>
           </section>
-        ) : (
+        ) : obligation === "skattemelding" && input.incomeYear === 2025 ? null : (
           <section className="filingStep">
             <div className="filingStepHead">
               <h2 className="filingStepTitle">{f.preview.title}</h2>

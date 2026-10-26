@@ -1254,3 +1254,14 @@ after fresh terminal parent reads and complete owning-source rechecks.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/delivery-corrections"]}
 -->
+
+The authenticated `company-tax` delivery workflow supplies
+`/api/v1/company-tax/delivery-workspace` and `/api/v1/company-tax/delivery-original`.
+Workspace actions come from complete Source9 history, current owning sources and
+non-consuming finite runtime admission checks. Archive-only original reads retain
+owner/MFA checks without depending on current financial data or active grants.
+Neither read performs provider I/O or grants mutation authority.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/delivery-workspace","/api/v1/company-tax/delivery-original"]}
+-->

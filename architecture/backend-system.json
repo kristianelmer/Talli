@@ -612,7 +612,9 @@
         "/api/v1/company-tax/delivery-owner-review",
         "/api/v1/company-tax/delivery-submission-advances",
         "/api/v1/company-tax/delivery-submission-reconciliations",
-        "/api/v1/company-tax/delivery-feedback-reconciliations"
+        "/api/v1/company-tax/delivery-feedback-reconciliations",
+        "/api/v1/company-tax/delivery-workspace",
+        "/api/v1/company-tax/delivery-original"
       ]
     }
   ],

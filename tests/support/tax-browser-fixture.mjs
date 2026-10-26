@@ -3,17 +3,21 @@ import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { writeFile } from "node:fs/promises";
+import { mkdir,writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
-import { allocateLoopbackPort,startOwnedProcess,stopOwnedProcess,waitForOwnedReadiness } from "./owned-process-lifecycle.mjs";
+import { allocateLoopbackPort,ownedProcessDiagnostics,startOwnedProcess,stopOwnedProcess,waitForOwnedReadiness } from "./owned-process-lifecycle.mjs";
 import { isLoopbackPostgresUrl,isLoopbackSupabaseUrl } from "./supabase_fixture_safety.mjs";
 import { connectedWebMode } from "./connected-viewport.mjs";
 
-export async function startTaxBrowserFixture({incomeYear=2026}={}) {
+export async function startTaxBrowserFixture({incomeYear=2026,delivery=false,validationBlocked=false,partialCalculated=false}={}) {
   const webMode=connectedWebMode();
   assert.ok([2025,2026].includes(incomeYear));
+  assert.ok(!delivery || incomeYear===2025);
+  assert.ok(!validationBlocked || delivery);
+  assert.ok(!partialCalculated || validationBlocked);
+  const deliveryControlKey=delivery?randomUUID().replaceAll("-","")+randomUUID().replaceAll("-",""):null;
   const databaseUrl=process.env.DATABASE_URL;
   const supabaseUrl=process.env.SUPABASE_URL;
   const anonKey=process.env.SUPABASE_ANON_KEY;
@@ -24,13 +28,14 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
   const admin=createClient(supabaseUrl,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
   const roles=[];let owner,companyId,orgNumber,backend,web,proxy;
   const filingAuthorization=new Map();
-  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false,failAccountsReads:false,accountsReadFailures:[]};
+  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false,dropNextTaxSubmission:false,failAccountsReads:false,accountsReadFailures:[]};
   const baseEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG','LC_ALL'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
   const close=async()=>{
     const errors=[];const attempt=async(fn)=>{try{await fn();}catch(e){errors.push(e);}};
     await attempt(()=>stopOwnedProcess(web));await attempt(()=>stopOwnedProcess(backend));
     if(proxy)await attempt(()=>new Promise(resolve=>proxy.close(resolve)));
     for(const role of roles)await attempt(()=>db.query(`alter role ${role} nologin password null`));
+    if(companyId&&delivery)await attempt(()=>db.query("delete from public.annual_data where company_id=$1",[companyId]));
     if(companyId)await attempt(()=>{
       const result=spawnSync(process.execPath,['tests/support/tax-fixture-cleanup.mjs'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify([companyId]),encoding:'utf8'});
       assert.equal(result.status,0,result.stderr);
@@ -46,7 +51,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     const created=await admin.auth.admin.createUser({email,password,email_confirm:true});assert.ifError(created.error);
     owner={id:created.data.user.id,email,password};
     const python=process.env.TALLI_BACKEND_PYTHON_BIN||'apps/backend/.venv/bin/python';
-    const seed=spawnSync(python,['tests/fixtures/seed_tax_browser_company.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({owner:owner.id,incomeYear}),encoding:'utf8'});
+    const seed=spawnSync(python,['tests/fixtures/seed_tax_browser_company.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({owner:owner.id,incomeYear,delivery}),encoding:'utf8'});
     assert.equal(seed.status,0,seed.stderr);({companyId,orgNumber}=JSON.parse(seed.stdout));
     const urls={};
     for(const role of ['talli_company_access_backend','talli_ledger_backend','talli_banking_backend','talli_marketing_measurement_backend']){
@@ -58,11 +63,11 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     const backendPort=await allocateLoopbackPort(),webPort=await allocateLoopbackPort(),proxyPort=await allocateLoopbackPort();
     const backendOrigin=`http://127.0.0.1:${backendPort}`,siteOrigin=`http://127.0.0.1:${webPort}`;
     const nonce=randomUUID();
-    backend=startOwnedProcess({command:python,args:['tests/fixtures/start_rf1086_workspace_backend.py'],cwd:process.cwd(),readinessProof:`TALLI_BACKEND_BOUND:${nonce}`,env:{...baseEnv,
+    backend=startOwnedProcess({command:python,args:[delivery?'tests/fixtures/start_tax_delivery_workspace_backend.py':'tests/fixtures/start_rf1086_workspace_backend.py'],cwd:process.cwd(),readinessProof:`TALLI_BACKEND_BOUND:${nonce}`,env:{...baseEnv,
       SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,SUPABASE_SERVICE_ROLE_KEY:serviceKey,DATABASE_URL:databaseUrl,
       TALLI_LEDGER_DATABASE_URL:urls.talli_ledger_backend,TALLI_COMPANY_ACCESS_DATABASE_URL:urls.talli_company_access_backend,
       TALLI_BANKING_DATABASE_URL:urls.talli_banking_backend,TALLI_MARKETING_MEASUREMENT_DATABASE_URL:urls.talli_marketing_measurement_backend,TALLI_BACKEND_PORT:String(backendPort),TALLI_READINESS_NONCE:nonce,
-      TALLI_RF1086_PRODUCTION_ENABLED:'false',TALLI_AUTHORITY_OPS_ENABLED:'false'}});
+      TALLI_RF1086_PRODUCTION_ENABLED:'false',TALLI_AUTHORITY_OPS_ENABLED:'false',...(delivery?{TALLI_TAX_BROWSER_COMPANY_ID:companyId,TALLI_TAX_BROWSER_OWNER_ID:owner.id,TALLI_TAX_BROWSER_ORG:orgNumber,TALLI_TAX_BROWSER_CONTROL_KEY:deliveryControlKey,TALLI_TAX_BROWSER_VALIDATION_BLOCKED:String(validationBlocked),TALLI_TAX_BROWSER_PARTIAL_CALCULATED:String(partialCalculated)}:{})}});
     await waitForOwnedReadiness({process:backend,url:backendOrigin+'/health/ready'});
     proxy=createServer(async(req,res)=>{
       try{
@@ -78,6 +83,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
           filingAuthorization.set(req.url.split('/')[3],headers.get('authorization'));
           if(req.method==='POST'&&!req.url.endsWith('-previews')){
             controls.filingCalls.push({path:req.url,body:JSON.parse(body),status:response.status,response:JSON.parse(bytes.toString())});
+            if(req.url==='/api/v1/company-tax/delivery-submission-advances'&&controls.dropNextTaxSubmission&&response.ok){controls.dropNextTaxSubmission=false;res.destroy();return;}
             if(req.url==='/api/v1/company-tax/tt02-evidence-imports'&&controls.dropNextTaxImport&&response.ok){controls.dropNextTaxImport=false;res.destroy();return;}
           }
         }
@@ -105,8 +111,10 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     };
     const taxRequest=(path,options)=>filingRequest('company-tax',path,options);
     const accountsRequest=(path,options)=>filingRequest('annual-accounts',path,options);
-    return {siteOrigin,backendOrigin,owner,companyId,orgNumber,controls,db,close,taxRequest,accountsRequest};
-  }catch(error){try{await close();}catch(cleanup){throw new AggregateError([error,cleanup],'tax_browser_fixture_setup_failed');}throw error;}
+    const deliveryState=async()=>{assert.ok(delivery);const response=await fetch(backendOrigin+'/__fixture__/tax-delivery-state',{headers:{'X-Talli-Fixture-Key':deliveryControlKey}});assert.equal(response.status,200);return response.json();};
+    const seedCorrectionInterest=()=>{assert.ok(delivery);const seeded=spawnSync(python,['tests/fixtures/seed_tax_delivery_interest.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({companyId,owner:owner.id}),encoding:'utf8'});assert.equal(seeded.status,0,seeded.stderr);};
+    return {siteOrigin,backendOrigin,owner,companyId,orgNumber,controls,db,diagnostics:()=>ownedProcessDiagnostics(backend),close,taxRequest,accountsRequest,deliveryState,seedCorrectionInterest};
+  }catch(error){if(delivery&&process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR){try{await mkdir(process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR,{recursive:true,mode:0o700});await writeFile(process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR+'/startup-private.log',ownedProcessDiagnostics(backend)+'\n'+ownedProcessDiagnostics(web),{mode:0o600});}catch{ /* Diagnostics must never prevent owned cleanup. */ }}try{await close();}catch(cleanup){throw new AggregateError([error,cleanup],'tax_browser_fixture_setup_failed');}throw error;}
 }
 
 if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href){

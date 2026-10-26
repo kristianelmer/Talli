@@ -97,3 +97,23 @@ DTD, processing instructions, locked or unknown guidance cannot disappear. The
 SDK invokes this checker for the positive V9 contract, including direct callers.
 Web transport invokes the same checker for all supported journal generations.
 No receipt is classified as tax-assessment acceptance or amendment eligibility.
+
+The owner page `/filing/skattemelding` renders server-advertised delivery actions
+through authenticated server forms. `companyTaxGetDeliveryWorkspace` owns stage
+selection; `companyTaxGetDeliveryOriginal` supplies hash-verified bytes through
+`/api/company-tax/delivery-original`. Paginated fields show every retained value;
+all calculated documents, flags and review notes precede two explicit owner
+choices. The final action rereads the full artifact and checks its commitment.
+Mechanical transport delegates preparation, correction, review, dispatch and
+known read recovery to the generated SDK; no browser sequencing policy or
+caller-ready assertion is introduced.
+
+<!-- architecture-inventory
+{"routes": ["/filing/skattemelding", "/api/company-tax/delivery-original"], "apiOperations": ["companyTaxGetDeliveryWorkspace", "companyTaxGetDeliveryOriginal", "companyTaxPrepareDeliveryDraft", "companyTaxPrepareDeliveryCorrection", "companyTaxApproveDeliveryDraft", "companyTaxAdvanceDelivery", "companyTaxAdvanceDeliveryUpload", "companyTaxReconcileDeliveryUpload", "companyTaxAdvanceDeliveryValidation", "companyTaxReconcileDeliveryValidation", "companyTaxAdvanceDeliveryConfirmation", "companyTaxReconcileDeliveryConfirmation", "companyTaxConfirmDeliverySubmission", "companyTaxReconcileDeliverySubmission", "companyTaxReconcileDeliveryFeedback"]}
+-->
+
+Blocked validation displays all response findings and every supported parsed
+document even if the statutory pair is incomplete. Its download fallback selects
+the displayed response's exact original digest. Receipt possession before archive
+has its own state and archive-check label; only terminal archive evidence produces
+the final technical receipt state. Neither state classifies Tax acceptance.

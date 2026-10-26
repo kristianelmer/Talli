@@ -161,7 +161,17 @@
       "TaxDeliveryFeedbackObservation",
       "decode_tax_delivery_feedback_observation",
       "tax_delivery_event_format",
-      "TaxCurrentDocumentIntakeQuery"
+      "TaxCurrentDocumentIntakeQuery",
+      "TaxDeliveryWorkspaceState",
+      "TaxDeliveryAction",
+      "TaxDeliveryWorkspace",
+      "TaxDeliveryWorkspaceRow",
+      "TaxDeliveryWorkspaceField",
+      "TaxDeliveryWorkspaceOriginal",
+      "project_tax_delivery_workspace",
+      "tax_delivery_workspace_originals",
+      "tax_delivery_snapshot_journal",
+      "TaxDeliveryWorkspaceValidation"
     ],
     "events": [],
     "errors": [
@@ -472,7 +482,8 @@
     "currentIntakeTopology": "apps/backend/tests/test_company_tax_current_intake_database.py",
     "correction": "apps/backend/tests/test_company_tax_correction.py",
     "correctionDatabase": "apps/backend/tests/test_postgres_tax_correction.py",
-    "correctionTopology": "apps/backend/tests/test_company_tax_correction_database.py"
+    "correctionTopology": "apps/backend/tests/test_company_tax_correction_database.py",
+    "deliveryWorkspace": "apps/backend/tests/test_company_tax_delivery_workspace.py"
   },
   "compatibilityExceptions": []
 }

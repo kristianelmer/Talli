@@ -18,6 +18,9 @@ class LoopbackCompanyTaxParentRead:
         if type(runtime) is not TaxParentReadRehearsalRuntime:raise ValueError('Finite parent read runtime is required.')
         self._runtime=runtime;self._transport=transport
 
+    def available(self,query,journal) -> bool:
+        return self._runtime.available(query,journal)
+
     async def _read(self,query,journal,path,purpose):
         self._runtime.consume(query,journal);grant=self._runtime.admission.scope
         raw,media=await read_tax_loopback_original(grant.origin,path,

@@ -9,3 +9,7 @@ export { loadTaxDeliveryOwnerReview } from "./transport.ts";
 export type { CompanyTaxOwnerReviewArtifactWire } from "@talli/talli-api-client";
 export type { TaxDeliveryDraftArchiveProjection } from "./transport.ts";
 export type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest, CompanyTaxReadinessIssueWire, CompanyTaxReadinessPreviewWire, CompanyTaxAnnualEstimateWire } from "@talli/talli-api-client";
+
+export {taxDeliveryMfaRequired,loadTaxDeliveryWorkspace,loadTaxDeliveryOriginal,prepareTaxDeliveryDraft,prepareTaxDeliveryCorrection,
+  approveTaxDeliveryDraft,confirmTaxDeliverySubmission,advanceTaxDeliveryAction} from "./transport.ts";
+export type {CompanyTaxDeliveryWorkspaceWire,CompanyTaxDeliveryWorkspaceRowWire,TaxDeliveryAction,TaxDeliveryWorkspaceState} from "@talli/talli-api-client";

@@ -14,6 +14,7 @@ import json
 import re
 from urllib.parse import urlsplit
 from uuid import UUID
+from threading import Lock
 
 from talli_backend.modules.company_tax_filing.public import CompanyTaxError,TaxDeliveryDraft,tax_delivery_digest
 from talli_backend.shared.kernel import ActorId,ActorKind,CompanyId,IncomeYear,Timestamp,UserId
@@ -97,18 +98,21 @@ class TaxDeliveryRehearsalRuntime:
         if type(admission) is not TaxDeliveryRehearsalAdmission:raise ValueError('Tax rehearsal admission is required.')
         self.admission=admission
         self._now=now or (lambda:Timestamp(datetime.now(UTC)))
-        self._requests=0
+        self._requests=0;self._lock=Lock()
 
     def now(self) -> Timestamp:
         value=self._now()
         if type(value) is not Timestamp:raise CompanyTaxError.unavailable()
         return value
 
-    def assert_live(self) -> None:
+    def _assert_live(self) -> None:
         current=self.now().value
         if (not self.admission.issued_at.value<=current<self.admission.expires_at.value
                 or self._requests>=self.admission.maximum_requests):
             raise CompanyTaxError.unavailable()
+
+    def assert_live(self) -> None:
+        with self._lock:self._assert_live()
 
     def authorize(self,draft: TaxDeliveryDraft,actor_id: ActorId) -> str:
         grant=self.admission
@@ -130,9 +134,10 @@ class TaxDeliveryRehearsalRuntime:
         if (organization_number!=self.admission.organization_number or type(income_year) is not int
                 or income_year!=int(self.admission.income_year)):
             raise CompanyTaxError.forbidden()
-        self.assert_live()
-        self._requests+=1
+        with self._lock:
+            self._assert_live()
+            self._requests+=1
 
     @property
     def requests_used(self) -> int:
-        return self._requests
+        with self._lock:return self._requests

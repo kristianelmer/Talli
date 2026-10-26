@@ -1,5 +1,5 @@
 /** Exact retained Tax artifact verification shared by SDK and web readers. */
-import type {CompanyTaxDeliveryDraftArchiveWire,CompanyTaxDeliveryJournalArchiveWire,CompanyTaxOwnerReviewArtifactWire} from "./generated/client.ts";
+import type {CompanyTaxDeliveryOriginalWire,CompanyTaxDeliveryDraftArchiveWire,CompanyTaxDeliveryJournalArchiveWire,CompanyTaxOwnerReviewArtifactWire} from "./generated/client.ts";
 import {SaxesParser} from "saxes";
 
 async function taxTextSha(raw: string) {
@@ -819,3 +819,8 @@ async function verifyTaxCorrectionLineage(journal: CompanyTaxDeliveryJournalArch
   if (children.has(current) || seen.size!==participating.size) throw new Error("Tax correction history is cyclic or incomplete.");
 }
 
+
+export async function verifyCompanyTaxDeliveryOriginal(original: CompanyTaxDeliveryOriginalWire) {
+  const bytes=await taxEncodedBytes(original.bodyBase64);
+  if (bytes.sha256!==original.sha256 || original.key!==original.purpose+":"+original.sha256) throw new Error("Tax download original bytes differ from their retained commitment.");
+}

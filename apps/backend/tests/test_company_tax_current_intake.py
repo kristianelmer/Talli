@@ -120,3 +120,15 @@ def test_post_intake_access_loss_blocks_draft_storage():
     preparation=CompanyTaxDeliveryPreparation(None,PinnedTax2025Schemas(),intake=LoopbackCompanyTaxIntake(runtime,transport=httpx.MockTransport(handler)))
     with pytest.raises(CompanyTaxError):asyncio.run(preparation.prepare(session,command))
     assert session.stored is None
+
+
+def test_workspace_availability_never_consumes_or_renews_read_budget():
+    *_,runtime,clock,query=configured(maximum_requests=1)
+    assert all(runtime.available(query) for _ in range(100))
+    assert not runtime.available(replace(query,database_scope_sha256='d'*64))
+    runtime.consume(query)
+    assert not runtime.available(query)
+    with pytest.raises(CompanyTaxError):runtime.consume(query)
+    *_,runtime,clock,query=configured(maximum_requests=1)
+    clock[0]=runtime.admission.expires_at
+    assert not runtime.available(query)

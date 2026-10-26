@@ -128,6 +128,10 @@ export async function acknowledgeOwnedCompanyTaxComment(accessToken: string, com
   }
 }
 
+export function taxDeliveryMfaRequired(error: unknown): boolean {
+  return error instanceof TalliApiError && error.problem?.code === "COMPANY_TAX_MFA_REQUIRED";
+}
+
 export function companyTaxActionErrorMessage(error: unknown): string {
   if (error instanceof TalliApiError) {
     if (error.problem?.code === "COMPANY_TAX_MFA_REQUIRED") return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
@@ -158,4 +162,38 @@ export function previewCompanyTaxReadiness(accessToken: string, facts: CompanyTa
 
 export function previewAnnualTaxEstimate(accessToken: string, facts: CompanyTaxAssessmentFactsRequest) {
   return client(accessToken).companyTaxPreviewAnnualEstimate(facts, { signal: AbortSignal.timeout(10_000) });
+}
+
+export function loadTaxDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
+  return client(accessToken).companyTaxGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function loadTaxDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {
+  return client(accessToken).companyTaxGetDeliveryOriginal(companyId,incomeYear,filingId,key,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function prepareTaxDeliveryDraft(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxPrepareDeliveryDraftRequest,key: string) {
+  return client(accessToken).companyTaxPrepareDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function prepareTaxDeliveryCorrection(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxPrepareDeliveryCorrectionRequest,key: string) {
+  return client(accessToken).companyTaxPrepareDeliveryCorrection(command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
+}
+
+export function approveTaxDeliveryDraft(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxApproveDeliveryDraftRequest,key: string) {
+  return client(accessToken).companyTaxApproveDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function confirmTaxDeliverySubmission(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxConfirmSubmissionRequest,key: string) {
+  return client(accessToken).companyTaxConfirmDeliverySubmission(command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
+}
+
+export function advanceTaxDeliveryAction(accessToken: string,action: Exclude<import("@talli/talli-api-client").TaxDeliveryAction,"approve"|"submit"|"prepare_correction">,
+    command: import("@talli/talli-api-client").CompanyTaxAdvanceDeliveryRequest,key: string) {
+  const api=client(accessToken);
+  const methods={create:api.companyTaxAdvanceDelivery,upload:api.companyTaxAdvanceDeliveryUpload,reconcile_upload:api.companyTaxReconcileDeliveryUpload,
+    validate:api.companyTaxAdvanceDeliveryValidation,reconcile_validation:api.companyTaxReconcileDeliveryValidation,
+    prepare_confirmation:api.companyTaxAdvanceDeliveryConfirmation,reconcile_confirmation:api.companyTaxReconcileDeliveryConfirmation,
+    reconcile_submission:api.companyTaxReconcileDeliverySubmission,reconcile_feedback:api.companyTaxReconcileDeliveryFeedback};
+  return methods[action](command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
 }

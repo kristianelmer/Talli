@@ -257,7 +257,7 @@ TALLI_BACKEND_URL="http://127.0.0.1:8000" \
 NEXT_TELEMETRY_DISABLED=1 \
 npm run build:web
 
-for connected_journey in tests/browser_tax_filing.mjs tests/browser_annual_accounts_filing.mjs; do
+for connected_journey in tests/browser_tax_filing.mjs tests/browser_tax_delivery.mjs tests/browser_annual_accounts_filing.mjs; do
   SUPABASE_URL="$API_URL" \
   SUPABASE_ANON_KEY="$local_anon_key" \
   SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \

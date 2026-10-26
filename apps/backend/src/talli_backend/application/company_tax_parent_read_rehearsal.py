@@ -32,7 +32,7 @@ class TaxParentReadRehearsalRuntime:
 
     def now(self):return self._budget.now()
 
-    def consume(self,query,journal):
+    def _assert_parent(self,query,journal):
         grant=self.admission;approval=journal.approval
         created=next((e.value for e in journal.events if e.slot=='completion:create_instance'),None)
         submitted=next((e.value for e in journal.events if e.slot=='completion:confirm_submission'),None)
@@ -42,4 +42,12 @@ class TaxParentReadRehearsalRuntime:
                 or submitted.intent.kind is not TaxMutationKind.CONFIRM_SUBMISSION
                 or created.result['instanceId']!=grant.instance_id or submitted.result['instanceId']!=grant.instance_id):
             raise CompanyTaxError.forbidden()
+
+    def consume(self,query,journal):
+        self._assert_parent(query,journal)
         self._budget.consume(query)
+
+    def available(self,query,journal) -> bool:
+        try:self._assert_parent(query,journal)
+        except CompanyTaxError:return False
+        return self._budget.available(query)

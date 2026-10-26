@@ -392,16 +392,16 @@ def assert_tax_delivery_attempt_history(query,snapshot,filing_id: str) -> TaxDel
     if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8','company-tax-source-v9') or facts.history_coverage.status!='complete':
         raise CompanyTaxError.unavailable()
     from .delivery_correction import tax_delivery_lineage
-    journals=tuple(_snapshot_journal(snapshot,row.draft) for row in snapshot.delivery_drafts)
+    journals=tuple(tax_delivery_snapshot_journal(snapshot,row.draft) for row in snapshot.delivery_drafts)
     try:frontier=tax_delivery_lineage(journals)
     except ValueError:raise CompanyTaxError.draft_conflict() from None
     if frontier is not None and frontier!=filing_id:raise CompanyTaxError.draft_conflict()
     draft=next((row.draft for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
     if draft is None:raise CompanyTaxError.not_found()
-    return _snapshot_journal(snapshot,draft)
+    return tax_delivery_snapshot_journal(snapshot,draft)
 
 
-def _snapshot_journal(snapshot,draft):
+def tax_delivery_snapshot_journal(snapshot,draft):
     versions=('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5',
         'company-tax-source-v6','company-tax-source-v7','company-tax-source-v8','company-tax-source-v9')
     if snapshot.contract_version not in versions:raise ValueError('Tax journal source contract is unsupported.')

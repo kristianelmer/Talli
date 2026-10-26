@@ -828,6 +828,9 @@ from .delivery_journal import reconcile_tax_delivery_submission
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event,TaxDeliveryEventFormat,tax_delivery_event_format)
+from .delivery_events import tax_delivery_snapshot_journal
+from .delivery_workspace import (TaxDeliveryWorkspaceValidation,TaxDeliveryWorkspaceState,TaxDeliveryAction,TaxDeliveryWorkspace,TaxDeliveryWorkspaceRow,
+    TaxDeliveryWorkspaceField,TaxDeliveryWorkspaceOriginal,project_tax_delivery_workspace,tax_delivery_workspace_originals)
 from .delivery_archive import TaxDeliveryJournalArchive, archive_tax_delivery_journal
 
 
@@ -896,6 +899,7 @@ class TaxDeliveryDraftFact:
 
 
 class CompanyTaxTerminalParentReader(Protocol):
+    def available(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal) -> bool: ...
     async def read_parent_instance(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal) -> TaxDeliveryInstanceObservation: ...
     async def read_parent_feedback(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation: ...
     async def read_parent_envelope(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
@@ -962,6 +966,7 @@ class TaxCalculatedDocumentValidator(Protocol):
     def schema_sha256(self) -> str: ...
     def inspect(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsInspection: ...
     def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview: ...
+    def read_workspace_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> tuple[TaxCalculatedDocumentReview,...]: ...
 
 
 class CompanyTaxCurrentDocumentReader(Protocol):
@@ -970,6 +975,7 @@ class CompanyTaxCurrentDocumentReader(Protocol):
 
 
 class CompanyTaxCurrentDocumentIntake(Protocol):
+    def available(self, query: TaxCurrentDocumentIntakeQuery) -> bool: ...
     async def read_current_document(self,query: TaxCurrentDocumentIntakeQuery) -> TaxCurrentDocumentResponse: ...
 
 
@@ -1002,6 +1008,8 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'tax_delivery_snapshot_journal','TaxDeliveryWorkspaceValidation','TaxDeliveryWorkspaceState','TaxDeliveryAction','TaxDeliveryWorkspace','TaxDeliveryWorkspaceRow','TaxDeliveryWorkspaceField','TaxDeliveryWorkspaceOriginal',
+    'project_tax_delivery_workspace','tax_delivery_workspace_originals',
     'TaxDeliveryCorrectionParent','tax_delivery_lineage','bind_tax_delivery_correction_parent','CompanyTaxTerminalParentReader','PrepareTaxDeliveryCorrection',
     'ApproveTaxDeliveryDraft', 'AdvanceTaxDelivery', 'TaxDeliveryProgress', 'assert_tax_delivery_attempt_history',
     'TaxDeliveryMutationAuthority',

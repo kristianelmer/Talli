@@ -198,8 +198,8 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
                 'recordedBy':str(event.recorded_by.subject)} for event in events]
             for row in drafts:
                 retained=tuple(event for event in events if event.binding.filing_id==row.draft.filing_id)
-                from .delivery_events import _snapshot_journal
-                journal=_snapshot_journal(snapshot,row.draft)
+                from .delivery_events import tax_delivery_snapshot_journal
+                journal=tax_delivery_snapshot_journal(snapshot,row.draft)
                 if retained:
                     progress=journal.progress
                     journals.append(TaxDeliveryJournalFact(row.draft.filing_id,journal.approval.approved_by,
@@ -207,7 +207,7 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
                         progress.latest_event_sha256,progress.recorded_at))
         if snapshot.contract_version==_CORRECTION_VERSION:
             from .delivery_correction import tax_delivery_lineage
-            tax_delivery_lineage(tuple(_snapshot_journal(snapshot,row.draft) for row in drafts))
+            tax_delivery_lineage(tuple(tax_delivery_snapshot_journal(snapshot,row.draft) for row in drafts))
         digest = _digest(content)
         evidence = CompanyTaxSourceEvidence(query.company_id, query.income_year,
             f'company-tax:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)

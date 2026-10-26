@@ -1,2 +1,2 @@
 export * from "./generated/client.ts";
-export {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact} from "./tax-delivery-evidence.ts";
+export {verifyCompanyTaxDeliveryOriginal,verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact} from "./tax-delivery-evidence.ts";

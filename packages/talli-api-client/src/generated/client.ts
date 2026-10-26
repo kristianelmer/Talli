@@ -1,6 +1,6 @@
 // Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: 1.0.0
-import {verifyCompanyTaxDeliveryJournalArchive} from "../tax-delivery-evidence.ts";
+import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
 
 export interface SystemBoundaryStatus {
   apiVersion: string;
@@ -3506,6 +3506,75 @@ export interface CompanyTaxOwnerReviewArtifactWire {
   review: CompanyTaxOwnerReviewValue;
   version: "company-tax-delivery-owner-review-v1";
 }
+
+export interface CompanyTaxWorkspaceValidationWire {
+  calculationDeviations: CompanyTaxResponseReviewDeviationValue[];
+  documents: CompanyTaxCalculatedReviewDocumentValue[];
+  documentsAvailable: boolean;
+  failureReasons: string[];
+  guidance: CompanyTaxResponseReviewGuidanceValue[];
+  originalSha256: string;
+  resultCode: "validertOK" | "validertMedFeil";
+  subjectFlags: CompanyTaxResponseReviewSubjectFlagValue[];
+  validationDeviations: CompanyTaxResponseReviewDeviationValue[];
+}
+
+export interface CompanyTaxDeliveryWorkspaceWire {
+  companyId: string;
+  incomeYear: 2025;
+  observedAt: string;
+  preparationAvailable: boolean;
+  rows: CompanyTaxDeliveryWorkspaceRowWire[];
+  sourceSha256: string;
+  technicalMode: "finite_loopback" | "unavailable";
+  version: "company-tax-delivery-workspace-v1";
+}
+
+export interface CompanyTaxDeliveryWorkspaceRowWire {
+  actions: TaxDeliveryAction[];
+  approvalSha256: string | null;
+  draftSha256: string;
+  fields: CompanyTaxDeliveryWorkspaceFieldWire[];
+  filingId: string;
+  originals: CompanyTaxDeliveryOriginalRefWire[];
+  parentFilingId: string | null;
+  recordedAt: string;
+  reviewSha256: string;
+  sourceCurrent: boolean;
+  state: TaxDeliveryWorkspaceState;
+  validation: CompanyTaxWorkspaceValidationWire | null;
+}
+
+export interface CompanyTaxDeliveryWorkspaceFieldWire {
+  document: string;
+  path: string;
+  source: string;
+  value: string;
+}
+
+export interface CompanyTaxDeliveryOriginalRefWire {
+  key: string;
+  mediaType: "application/json" | "application/xml" | "text/xml";
+  purpose: string;
+  sha256: string;
+  sourceFilingId: string;
+}
+
+export interface CompanyTaxDeliveryOriginalWire {
+  bodyBase64: string;
+  companyId: string;
+  filingId: string;
+  incomeYear: 2025;
+  key: string;
+  mediaType: "application/json" | "application/xml" | "text/xml";
+  purpose: string;
+  sha256: string;
+  sourceFilingId: string;
+}
+
+export type TaxDeliveryAction = "approve" | "create" | "upload" | "reconcile_upload" | "validate" | "reconcile_validation" | "prepare_confirmation" | "reconcile_confirmation" | "submit" | "reconcile_submission" | "reconcile_feedback" | "prepare_correction";
+
+export type TaxDeliveryWorkspaceState = "prepared" | "legacy_prepared" | "reviewed" | "creation_uncertain" | "created" | "upload_uncertain" | "uploaded" | "validation_start_uncertain" | "validation_pending" | "validation_blocked" | "validated" | "confirmation_uncertain" | "owner_review" | "submission_uncertain" | "submitted_receipt_pending" | "submitted_receipt_recorded" | "submitted_receipted";
 
 export interface CompanyTaxPrepareDeliveryDraftRequest {
   companyId: string;
@@ -9747,6 +9816,103 @@ function isCompanyTaxOwnerReviewArtifactWire(value: unknown): value is CompanyTa
   );
 }
 
+function isCompanyTaxWorkspaceValidationWire(value: unknown): value is CompanyTaxWorkspaceValidationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["calculationDeviations","documents","documentsAvailable","failureReasons","guidance","originalSha256","resultCode","subjectFlags","validationDeviations"]) &&
+    Array.isArray(value.calculationDeviations) && value.calculationDeviations.every((item) => isCompanyTaxResponseReviewDeviationValue(item)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isCompanyTaxCalculatedReviewDocumentValue(item)) &&
+    typeof value.documentsAvailable === "boolean" &&
+    Array.isArray(value.failureReasons) && value.failureReasons.every((item) => (typeof item === "string" && item.length <= 8388608)) &&
+    Array.isArray(value.guidance) && value.guidance.every((item) => isCompanyTaxResponseReviewGuidanceValue(item)) &&
+    (typeof value.originalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.originalSha256)) &&
+    (value.resultCode === "validertOK" || value.resultCode === "validertMedFeil") &&
+    Array.isArray(value.subjectFlags) && value.subjectFlags.every((item) => isCompanyTaxResponseReviewSubjectFlagValue(item)) &&
+    Array.isArray(value.validationDeviations) && value.validationDeviations.every((item) => isCompanyTaxResponseReviewDeviationValue(item))
+  );
+}
+
+function isCompanyTaxDeliveryWorkspaceWire(value: unknown): value is CompanyTaxDeliveryWorkspaceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observedAt","preparationAvailable","rows","sourceSha256","technicalMode","version"]) &&
+    isUuid(value.companyId) &&
+    value.incomeYear === 2025 &&
+    isDateTime(value.observedAt) &&
+    typeof value.preparationAvailable === "boolean" &&
+    Array.isArray(value.rows) && value.rows.every((item) => isCompanyTaxDeliveryWorkspaceRowWire(item)) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256)) &&
+    (value.technicalMode === "finite_loopback" || value.technicalMode === "unavailable") &&
+    value.version === "company-tax-delivery-workspace-v1"
+  );
+}
+
+function isCompanyTaxDeliveryWorkspaceRowWire(value: unknown): value is CompanyTaxDeliveryWorkspaceRowWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actions","approvalSha256","draftSha256","fields","filingId","originals","parentFilingId","recordedAt","reviewSha256","sourceCurrent","state","validation"]) &&
+    Array.isArray(value.actions) && value.actions.every((item) => isTaxDeliveryAction(item)) &&
+    ((typeof value.approvalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.approvalSha256)) || value.approvalSha256 === null) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draftSha256)) &&
+    Array.isArray(value.fields) && value.fields.every((item) => isCompanyTaxDeliveryWorkspaceFieldWire(item)) &&
+    isUuid(value.filingId) &&
+    Array.isArray(value.originals) && value.originals.every((item) => isCompanyTaxDeliveryOriginalRefWire(item)) &&
+    (isUuid(value.parentFilingId) || value.parentFilingId === null) &&
+    isDateTime(value.recordedAt) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.reviewSha256)) &&
+    typeof value.sourceCurrent === "boolean" &&
+    isTaxDeliveryWorkspaceState(value.state) &&
+    (isCompanyTaxWorkspaceValidationWire(value.validation) || value.validation === null)
+  );
+}
+
+function isCompanyTaxDeliveryWorkspaceFieldWire(value: unknown): value is CompanyTaxDeliveryWorkspaceFieldWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["document","path","source","value"]) &&
+    typeof value.document === "string" &&
+    typeof value.path === "string" &&
+    typeof value.source === "string" &&
+    typeof value.value === "string"
+  );
+}
+
+function isCompanyTaxDeliveryOriginalRefWire(value: unknown): value is CompanyTaxDeliveryOriginalRefWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["key","mediaType","purpose","sha256","sourceFilingId"]) &&
+    (typeof value.key === "string" && new RegExp("^[a-z_]+:[0-9a-f]{64}$", "u").test(value.key)) &&
+    (value.mediaType === "application/json" || value.mediaType === "application/xml" || value.mediaType === "text/xml") &&
+    typeof value.purpose === "string" &&
+    (typeof value.sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sha256)) &&
+    isUuid(value.sourceFilingId)
+  );
+}
+
+function isCompanyTaxDeliveryOriginalWire(value: unknown): value is CompanyTaxDeliveryOriginalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bodyBase64","companyId","filingId","incomeYear","key","mediaType","purpose","sha256","sourceFilingId"]) &&
+    (typeof value.bodyBase64 === "string" && value.bodyBase64.length >= 1 && value.bodyBase64.length <= 12582912) &&
+    isUuid(value.companyId) &&
+    isUuid(value.filingId) &&
+    value.incomeYear === 2025 &&
+    (typeof value.key === "string" && new RegExp("^[a-z_]+:[0-9a-f]{64}$", "u").test(value.key)) &&
+    (value.mediaType === "application/json" || value.mediaType === "application/xml" || value.mediaType === "text/xml") &&
+    typeof value.purpose === "string" &&
+    (typeof value.sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sha256)) &&
+    isUuid(value.sourceFilingId)
+  );
+}
+
+function isTaxDeliveryAction(value: unknown): value is TaxDeliveryAction {
+  return value === "approve" || value === "create" || value === "upload" || value === "reconcile_upload" || value === "validate" || value === "reconcile_validation" || value === "prepare_confirmation" || value === "reconcile_confirmation" || value === "submit" || value === "reconcile_submission" || value === "reconcile_feedback" || value === "prepare_correction";
+}
+
+function isTaxDeliveryWorkspaceState(value: unknown): value is TaxDeliveryWorkspaceState {
+  return value === "prepared" || value === "legacy_prepared" || value === "reviewed" || value === "creation_uncertain" || value === "created" || value === "upload_uncertain" || value === "uploaded" || value === "validation_start_uncertain" || value === "validation_pending" || value === "validation_blocked" || value === "validated" || value === "confirmation_uncertain" || value === "owner_review" || value === "submission_uncertain" || value === "submitted_receipt_pending" || value === "submitted_receipt_recorded" || value === "submitted_receipted";
+}
+
 function isCompanyTaxPrepareDeliveryDraftRequest(value: unknown): value is CompanyTaxPrepareDeliveryDraftRequest {
   return (
     isRecord(value) &&
@@ -13719,6 +13885,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           || context.draft_sha256 !== approval.draft_sha256 || result.review.source_sha256 !== approval.source_sha256) {
         throw new TalliApiError(502, undefined);
       }
+      return result;
+    },
+
+    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(`${baseUrl}/api/v1/company-tax/delivery-workspace?${query}`,"GET",request,undefined,isCompanyTaxDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(original=>original.key)).size!==row.originals.length)
+          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async companyTaxGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(`${baseUrl}/api/v1/company-tax/delivery-original?${query}`,"GET",request,undefined,isCompanyTaxDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try { await verifyCompanyTaxDeliveryOriginal(result); } catch { throw new TalliApiError(502,undefined); }
       return result;
     },
 

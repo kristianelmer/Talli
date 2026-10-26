@@ -1264,7 +1264,7 @@ export const ownerCopy = {
         short: "Skattemelding",
         summary: "Selskapets skatt for året.",
         lede:
-          "Talli rydder grunnlaget for skattemeldingen. Selve forhåndsvisningen og innsendingen er under arbeid.",
+          "Kontroller grunnlaget for skattemeldingen, les de beregnede dokumentene og følg leveringsstatus når leveringsløpet er tilgjengelig.",
       },
       aarsregnskap: {
         label: "Årsregnskap",

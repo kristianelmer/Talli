@@ -10,7 +10,7 @@ import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import replace
+from dataclasses import asdict,replace
 from datetime import UTC, date, datetime, time as local_time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
@@ -109,7 +109,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
     ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,ConfirmTaxDeliverySubmission,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
-    PrepareTaxDeliveryDraft,PrepareTaxDeliveryCorrection, TaxFilingSubmissionId,
+    PrepareTaxDeliveryDraft,PrepareTaxDeliveryCorrection, TaxFilingSubmissionId,TaxDeliveryAction,TaxDeliveryWorkspaceState,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -1822,6 +1822,66 @@ class CompanyTaxPreparedDeliveryDraftWire(TransportModel):
     review_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
     schema_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
     status: Literal["prepared_only"] = "prepared_only"
+
+
+class CompanyTaxDeliveryWorkspaceFieldWire(TransportModel):
+    document: str
+    path: str
+    value: str
+    source: str
+
+
+class CompanyTaxDeliveryOriginalRefWire(TransportModel):
+    key: Annotated[str,Field(pattern=r'^[a-z_]+:[0-9a-f]{64}$')]
+    purpose: str
+    source_filing_id: UUID
+    sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    media_type: Literal['application/json','application/xml','text/xml']
+
+
+class CompanyTaxDeliveryOriginalWire(CompanyTaxDeliveryOriginalRefWire):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    body_base64: Annotated[str,Field(min_length=1,max_length=12582912)]
+
+
+class CompanyTaxWorkspaceValidationWire(TransportModel):
+    original_sha256: CompanyTaxReviewDigest
+    result_code: Literal['validertOK','validertMedFeil']
+    calculation_deviations: list[CompanyTaxResponseReviewDeviationValue]
+    validation_deviations: list[CompanyTaxResponseReviewDeviationValue]
+    guidance: list[CompanyTaxResponseReviewGuidanceValue]
+    failure_reasons: list[CompanyTaxReviewText]
+    subject_flags: list[CompanyTaxResponseReviewSubjectFlagValue]
+    documents_available: bool
+    documents: list[CompanyTaxCalculatedReviewDocumentValue]
+
+
+class CompanyTaxDeliveryWorkspaceRowWire(TransportModel):
+    filing_id: UUID
+    parent_filing_id: UUID | None
+    recorded_at: datetime
+    draft_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    review_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    approval_sha256: Annotated[str | None,Field(pattern=r'^[0-9a-f]{64}$')]
+    state: TaxDeliveryWorkspaceState
+    source_current: bool
+    actions: list[TaxDeliveryAction]
+    fields: list[CompanyTaxDeliveryWorkspaceFieldWire]
+    originals: list[CompanyTaxDeliveryOriginalRefWire]
+    validation: CompanyTaxWorkspaceValidationWire | None
+
+
+class CompanyTaxDeliveryWorkspaceWire(TransportModel):
+    version: Literal['company-tax-delivery-workspace-v1']
+    company_id: UUID
+    income_year: Literal[2025]
+    source_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    observed_at: datetime
+    technical_mode: Literal['finite_loopback','unavailable']
+    preparation_available: bool
+    rows: list[CompanyTaxDeliveryWorkspaceRowWire]
 
 
 class CompanyTaxOverrideRequest(TransportModel):
@@ -12067,6 +12127,55 @@ def create_app(
                 return company_tax_source_facts_wire(result,include_delivery_drafts=include_delivery_drafts)
             except ValidationError:
                 raise CompanyTaxError.unavailable() from None
+        return await company_tax_call(execute)
+
+    def company_tax_original_ref(original):
+        return dict(key=original.key,purpose=original.purpose,source_filing_id=UUID(original.source_filing_id),
+            sha256=original.sha256,media_type=original.media_type)
+
+    def company_tax_workspace_validation(value):
+        if value is None:return None
+        # Projection text is separate from the byte-committed confirmation
+        # artifact; a blocked response remains readable without enabling send.
+        response=company_tax_json_wire(asdict(value.response))
+        return CompanyTaxWorkspaceValidationWire(original_sha256=value.response.inspection.original_sha256,
+            result_code=value.response.inspection.result_code.value,
+            **{name:response[name] for name in ('calculation_deviations','validation_deviations','guidance','failure_reasons','subject_flags')},
+            documents_available=value.calculated is not None,documents=[company_tax_json_wire(asdict(document)) for document in value.documents])
+
+    @application.get('/api/v1/company-tax/delivery-workspace',operation_id='companyTaxGetDeliveryWorkspace',
+        response_model=CompanyTaxDeliveryWorkspaceWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_workspace(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxDeliveryWorkspaceWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            workspace=await session.delivery_workspace(CompanyTaxSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id))
+            return CompanyTaxDeliveryWorkspaceWire(version='company-tax-delivery-workspace-v1',company_id=company_id,income_year=income_year,
+                source_sha256=workspace.source_sha256,observed_at=workspace.observed_at.value,
+                technical_mode='finite_loopback' if workspace.preparation_available or any(row.actions for row in workspace.rows) else 'unavailable',
+                preparation_available=workspace.preparation_available,
+                rows=[CompanyTaxDeliveryWorkspaceRowWire(filing_id=UUID(row.filing_id),parent_filing_id=None if row.parent_filing_id is None else UUID(row.parent_filing_id),
+                    recorded_at=row.recorded_at.value,draft_sha256=row.draft_sha256,review_sha256=row.review_sha256,approval_sha256=row.approval_sha256,
+                    state=row.state,source_current=row.source_current,actions=list(row.actions),
+                    fields=[CompanyTaxDeliveryWorkspaceFieldWire(document=item.document,path=item.path,value=item.value,source=item.source) for item in row.fields],
+                    originals=[CompanyTaxDeliveryOriginalRefWire(**company_tax_original_ref(item)) for item in row.originals],
+                    validation=company_tax_workspace_validation(row.validation)) for row in workspace.rows])
+        return await company_tax_call(execute)
+
+    @application.get('/api/v1/company-tax/delivery-original',operation_id='companyTaxGetDeliveryOriginal',
+        response_model=CompanyTaxDeliveryOriginalWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_original(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],filing_id: Annotated[UUID,Query(alias='filingId')],
+        key: Annotated[str,Query(pattern=r'^[a-z_]+:[0-9a-f]{64}$',max_length=128)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxDeliveryOriginalWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            original=await session.delivery_original(CompanyTaxSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),str(filing_id),key)
+            return CompanyTaxDeliveryOriginalWire(**company_tax_original_ref(original),company_id=company_id,income_year=income_year,
+                filing_id=filing_id,body_base64=original.body_base64)
         return await company_tax_call(execute)
 
     @application.post(

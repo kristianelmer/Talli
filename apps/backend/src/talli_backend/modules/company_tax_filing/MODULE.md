@@ -672,3 +672,29 @@ The SQL fence defaults closed; rollback preserves readers and known results.
 `tax_delivery_lineage` verifies the complete immutable chain and reserved tip.
 
 `bind_tax_delivery_correction_parent` owns parent commitment construction and verification.
+
+The read-only `TaxDeliveryWorkspace`, `TaxDeliveryWorkspaceRow`,
+`TaxDeliveryWorkspaceField`, `TaxDeliveryWorkspaceOriginal`,
+`TaxDeliveryWorkspaceState` and `TaxDeliveryAction` types expose the owning
+`project_tax_delivery_workspace` projection. Complete Source9 history determines
+one correction frontier and each available action. Unknown creation/validation
+start never offers another external mutation; source drift closes new mutations
+while permitting known read recovery. Finite admission availability consumes no
+request and never substitutes for command authorization. The exact-byte
+`tax_delivery_workspace_originals` selector retains current/draft/calculated,
+scan/status/validation/feedback/receipt and inline parent/recovery originals.
+
+`tax_delivery_snapshot_journal` centralizes version-aware evidence capability
+mapping for owning projections and application composition.
+`TaxDeliveryWorkspaceValidation` retains every parsed deviation, guidance,
+failure reason and subject flag, plus supported calculated fields, even when
+validation blocks confirmation. Later independently retained Clean receipt
+observations update the technical receipt state without replacing completion.
+
+A known Clean receipt at Task_3 is displayed as receipt recorded, awaiting
+archive. Final receipted status still requires the terminal archived/process-ended
+metadata and matching exact receipt. Unchanged metadata reuses its retained
+receipt; status changes retain a fresh matching original. Partial calculated
+responses expose supported per-document fields through a separate read-only
+schema path. This does not relax the complete-pair inspector or any prerequisite.
+The UI's outer-response download is bound to the displayed response digest.

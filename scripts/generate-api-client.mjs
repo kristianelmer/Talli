@@ -297,6 +297,8 @@ const companyTaxOperations = {
   advanceDeliveryValidation: ["/api/v1/company-tax/delivery-validation-advances", "post", "companyTaxAdvanceDeliveryValidation"],
   reconcileDeliveryValidation: ["/api/v1/company-tax/delivery-validation-reconciliations", "post", "companyTaxReconcileDeliveryValidation"],
   reconcileDelivery: ["/api/v1/company-tax/delivery-reconciliations", "post", "companyTaxReconcileDelivery"],
+  deliveryWorkspace: ["/api/v1/company-tax/delivery-workspace", "get", "companyTaxGetDeliveryWorkspace"],
+  deliveryOriginal: ["/api/v1/company-tax/delivery-original", "get", "companyTaxGetDeliveryOriginal"],
   prepareDeliveryCorrection: ["/api/v1/company-tax/delivery-corrections", "post", "companyTaxPrepareDeliveryCorrection"],
   prepareDeliveryDraft: ["/api/v1/company-tax/delivery-drafts", "post", "companyTaxPrepareDeliveryDraft"],
   deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
@@ -926,6 +928,8 @@ const companyTaxSchemas = Object.fromEntries([
   "CompanyTaxCalculatedReviewOriginalValue", "CompanyTaxResponseReviewInspectionValue", "CompanyTaxResponseReviewDeviationValue",
   "CompanyTaxResponseReviewGuidanceValue", "CompanyTaxResponseReviewSubjectFlagValue", "CompanyTaxResponseReviewValue",
   "CompanyTaxResponseReviewOriginalValue", "CompanyTaxOwnerReviewValue", "CompanyTaxOwnerReviewArtifactWire",
+  "CompanyTaxWorkspaceValidationWire","CompanyTaxDeliveryWorkspaceWire","CompanyTaxDeliveryWorkspaceRowWire","CompanyTaxDeliveryWorkspaceFieldWire",
+  "CompanyTaxDeliveryOriginalRefWire","CompanyTaxDeliveryOriginalWire","TaxDeliveryAction","TaxDeliveryWorkspaceState",
   "CompanyTaxPrepareDeliveryDraftRequest", "CompanyTaxPrepareDeliveryCorrectionRequest", "CompanyTaxPreparedDeliveryDraftWire",
   "CompanyTaxApproveDeliveryDraftRequest", "CompanyTaxAdvanceDeliveryRequest", "CompanyTaxConfirmSubmissionRequest", "CompanyTaxDeliveryProgressWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
@@ -1109,7 +1113,7 @@ const problemSchema = resolveSchema(
 
 const source = `// Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: ${contract.info.version}
-import {verifyCompanyTaxDeliveryJournalArchive} from "../tax-delivery-evidence.ts";
+import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
 
 ${renderInterface("SystemBoundaryStatus", successSchema)}
 
@@ -3102,6 +3106,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           || context.draft_sha256 !== approval.draft_sha256 || result.review.source_sha256 !== approval.source_sha256) {
         throw new TalliApiError(502, undefined);
       }
+      return result;
+    },
+
+    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(\`\${baseUrl}/api/v1/company-tax/delivery-workspace?\${query}\`,"GET",request,undefined,isCompanyTaxDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(original=>original.key)).size!==row.originals.length)
+          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async companyTaxGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(\`\${baseUrl}/api/v1/company-tax/delivery-original?\${query}\`,"GET",request,undefined,isCompanyTaxDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try { await verifyCompanyTaxDeliveryOriginal(result); } catch { throw new TalliApiError(502,undefined); }
       return result;
     },
 
