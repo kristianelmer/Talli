@@ -1176,3 +1176,9 @@ external resources, alternate encodings, recovery and oversized originals.
 <!-- architecture-inventory
 {"ports":["TaxValidationResponseValidator"],"adapterBindings":["TaxValidationResponseValidator=>talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas"],"adapterBindingOwners":["TaxValidationResponseValidator=>backend-system"],"adapterBindingModes":["TaxValidationResponseValidator=>offline separately pinned common V2 validation-response XSD; exact original and decoded calculated-document bytes; no job scope or filing authority"]}
 -->
+
+The offline `TaxCalculatedDocumentValidator` validates the returned company statutory pair using the unchanged delivery XSD/code-list pin, and optional company tax-calculation/summary documents against a separate pinned bundle. Scope-bearing XML must match the re-inspected retained current-return party and 2025. Computed tax has no intrinsic scope fields; its context must subsequently come from the known-job binding and statutory pair. Unknown regimes or document types cannot be omitted. This adapter remains outside default composition until the guarded confirmation workflow is complete.
+
+<!-- architecture-inventory
+{"ports":["TaxCalculatedDocumentValidator"],"adapterBindings":["TaxCalculatedDocumentValidator=>talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas"],"adapterBindingOwners":["TaxCalculatedDocumentValidator=>backend-system"],"adapterBindingModes":["TaxCalculatedDocumentValidator=>offline pinned supported 2025 calculated statutory and display XML; exact original/draft and intrinsic party/year checks; no owner confirmation or filing authority"]}
+-->

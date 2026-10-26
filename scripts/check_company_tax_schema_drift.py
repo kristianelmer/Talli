@@ -10,6 +10,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from talli_backend.adapters.company_tax_schemas import PinnedTax2025Schemas
 from talli_backend.adapters.company_tax_response_schemas import PinnedTaxValidationResponseSchemas
+from talli_backend.adapters.company_tax_calculated_schemas import PinnedTax2025CalculatedSchemas
 
 
 HEAD = 'https://api.github.com/repos/Skatteetaten/skattemeldingen/git/ref/heads/master'
@@ -35,6 +36,7 @@ def _fetch(url):
 def verify_current(fetch=_fetch):
     validator = PinnedTax2025Schemas()  # Verify the local pin before any network.
     response_validator = PinnedTaxValidationResponseSchemas()
+    calculated_validator = PinnedTax2025CalculatedSchemas()
     bundle = files('talli_backend.modules.company_tax_filing')/'schemas'/'2025'
     manifest_raw = (bundle/'manifest.json').read_bytes()
     if sha256(manifest_raw).hexdigest() != validator.schema_sha256:
@@ -45,6 +47,11 @@ def verify_current(fetch=_fetch):
     if sha256(response_raw).hexdigest() != response_validator.schema_sha256:
         raise ValueError('Response schema pin changed during the probe.')
     response_manifest = json.loads(response_raw)
+    calculated_bundle = files('talli_backend.modules.company_tax_filing')/'schemas'/'calculated-2025'
+    calculated_raw = (calculated_bundle/'manifest.json').read_bytes()
+    if sha256(calculated_raw).hexdigest() != calculated_validator.schema_sha256:
+        raise ValueError('Calculated schema pin changed during the probe.')
+    calculated_manifest = json.loads(calculated_raw)
     observed = json.loads(fetch(HEAD))
     if (not isinstance(observed, dict) or observed.get('ref') != 'refs/heads/master'
             or not isinstance(observed.get('object'), dict)
@@ -70,14 +77,17 @@ def verify_current(fetch=_fetch):
         return evidence
     evidence = inspect(manifest)
     response_evidence = inspect(response_manifest)
-    return {'schema':'company-tax-schema-drift-v2',
-        'status':'current' if all(row['matches'] for group in (evidence,response_evidence) for row in group.values()) else 'drift',
+    calculated_evidence = inspect(calculated_manifest)
+    return {'schema':'company-tax-schema-drift-v3',
+        'status':'current' if all(row['matches'] for group in (evidence,response_evidence,calculated_evidence) for row in group.values()) else 'drift',
         'checkedAt':datetime.now(timezone.utc).isoformat(),
         'incomeYear':2025, 'schemaSha256':validator.schema_sha256,
         'approvedSourceCommit':manifest['sourceCommit'], 'observedSourceCommit':current,
         'completeEnumeration':True, 'files':evidence,
         'validationResponse':{'schemaSha256':response_validator.schema_sha256,
-            'approvedSourceCommit':response_manifest['sourceCommit'],'files':response_evidence}}
+            'approvedSourceCommit':response_manifest['sourceCommit'],'files':response_evidence},
+        'calculatedDocuments':{'schemaSha256':calculated_validator.schema_sha256,
+            'approvedSourceCommit':calculated_manifest['sourceCommit'],'files':calculated_evidence}}
 
 
 def main():
@@ -95,7 +105,7 @@ def main():
     except Exception:
         # No upstream response bytes, XML, URLs from redirects or credential
         # configuration enter the release log on a failed/incomplete check.
-        print(json.dumps({'schema':'company-tax-schema-drift-v2','status':'unavailable',
+        print(json.dumps({'schema':'company-tax-schema-drift-v3','status':'unavailable',
             'reason':'source_check_incomplete','completeEnumeration':False}))
         return 2
     finally:

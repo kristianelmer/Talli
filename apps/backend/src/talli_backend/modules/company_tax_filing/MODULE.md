@@ -533,3 +533,9 @@ syntax and requires closed V3 request and new observation roots, scope wrappers
 and time wrappers. No extra readiness field can extend a retained codec.
 
 Finite envelope uploads follow the pinned authority API instructions: `Content-Type: text/xml` and `Content-Disposition: attachment; filename=skattemelding.xml`. The exact approved request body and stored request codecs remain unchanged. Both workflow and real HTTP/Postgres fixtures assert these fixed headers. Source: [official API V2 upload contract](https://github.com/Skatteetaten/skattemeldingen/blob/74d9c7dd020aa4701034194630c1b16609154986/docs/api-v2/README.md#last-opp-skattemeldingdata-skattemeldingxml-til-instansen).
+
+`TaxCalculatedDocumentValidator` returns a derived `TaxCalculatedDocumentsInspection` for the exact retained response and draft. It requires the returned 2025 company Tax/business pair, validates their XSDs and existing pinned business-code categories, re-inspects the retained current-return party, and checks party/year on every scope-bearing document. Optional ordinary company computed-tax and display-summary documents use a separate integrity-checked bundle with exact packaged type-catalog imports. Personal, Svalbard, Petroleum, SDF and unhandled special regimes cannot be silently omitted. Computed tax carries no intrinsic party/year fields; the known-job chain must supply its context. Rejected result codes, deviations, guidance and exact decoded bytes remain visible; this inspection is not an owner review or submission permission. Both previous schema pins and original codecs remain unchanged.
+
+<!-- architecture-inventory
+{"ports":["TaxCalculatedDocumentValidator"]}
+-->

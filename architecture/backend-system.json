@@ -1174,6 +1174,12 @@
       "adapter": "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas",
       "owner": "backend-system",
       "mode": "offline separately pinned common V2 validation-response XSD; exact original and decoded calculated-document bytes; no job scope or filing authority"
+    },
+    {
+      "port": "TaxCalculatedDocumentValidator",
+      "adapter": "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas",
+      "owner": "backend-system",
+      "mode": "offline pinned supported 2025 calculated statutory and display XML; exact original/draft and intrinsic party/year checks; no owner confirmation or filing authority"
     }
   ],
   "allowedDependencies": {

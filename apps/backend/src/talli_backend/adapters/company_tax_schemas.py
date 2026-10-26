@@ -15,6 +15,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError, TaxDeliveryEnvelope, TaxDeliverySchemaValidator,
     TaxSchemaValidation, tax_delivery_schema_adapter,
     TaxCurrentDocumentResponse, TaxCurrentDocument, TaxCurrentDocumentKind,
+    TaxValidationResponseInspection,TaxDeliveryDraft,
 )
 
 
@@ -217,15 +218,7 @@ class PinnedTax2025Schemas:
                         or node.findtext(_ENVELOPE_NS+'encoding') != 'utf-8'
                         or base64.b64decode(node.findtext(_ENVELOPE_NS+'content') or '', validate=True) != expected):
                     raise ValueError('Tax envelope does not contain the exact reviewed document bytes.')
-            for name, allowed in self._codes.items():
-                for node in business.iter(_BUSINESS_NS+name):
-                    if len(node) == 0 and node.text not in allowed:
-                        raise ValueError('Tax business document uses a code outside the pinned list.')
-                    if name == 'resultatOgBalanseregnskapstype' and len(node) == 0:
-                        family = next((etree.QName(parent).localname for parent in node.iterancestors()
-                            if etree.QName(parent).localname in _RESULT_FAMILIES), None)
-                        if family is None or node.text not in self._result_codes[family]:
-                            raise ValueError('Tax result/balance code is outside its occurrence category.')
+            self._validate_business_codes(business)
             proof = TaxSchemaValidation(self.schema_sha256, envelope.source.source_sha256,
                 envelope.review_sha256, *(sha256(value).hexdigest() for value in raw))
             proof.verify(envelope)
@@ -233,3 +226,42 @@ class PinnedTax2025Schemas:
         except (ValueError, TypeError, AttributeError, etree.LxmlError):
             # Do not disclose XML, source values, parser paths or parser logs.
             raise CompanyTaxError.invalid_input() from None
+
+    def _validate_business_codes(self,business):
+        for name,allowed in self._codes.items():
+            for node in business.iter(_BUSINESS_NS+name):
+                if len(node)==0 and node.text not in allowed:
+                    raise ValueError('Tax business document uses a code outside the pinned list.')
+                if name=='resultatOgBalanseregnskapstype' and len(node)==0:
+                    family=next((etree.QName(parent).localname for parent in node.iterancestors()
+                        if etree.QName(parent).localname in _RESULT_FAMILIES),None)
+                    if family is None or node.text not in self._result_codes[family]:
+                        raise ValueError('Tax result/balance code is outside its occurrence category.')
+
+    def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None:
+        """Validate returned statutory documents without replacing reviewed bytes.
+
+        Calculated values may differ. The complete originals, including guidance
+        and deviations, must subsequently be shown and explicitly reviewed.
+        """
+        try:
+            if (type(response) is not TaxValidationResponseInspection or type(draft) is not TaxDeliveryDraft
+                    or draft.current_document is None or draft.envelope.schema_sha256!=self.schema_sha256):raise ValueError()
+            # Reinspect the retained current original rather than trusting its
+            # cached party label as the scope for a consequential later stage.
+            current=self.inspect_current(draft.current_document.response)
+            if current!=draft.current_document:raise ValueError()
+            self.validate(draft.envelope,current_document=current)
+            documents={item.document_type:item.raw_bytes for item in response.calculated_documents}
+            tax=_parse(documents['skattemeldingUpersonligEtterBeregning'])
+            business=_parse(documents['naeringsspesifikasjonEtterBeregning'])
+            for schema,root in zip(self._schemas[:2],(tax,business)):
+                if root.getroottree().docinfo.encoding.upper().replace('-','')!='UTF8':raise ValueError()
+                schema.assertValid(root)
+            if (tax.findtext(_TAX_NS+'partsnummer')!=current.party_number
+                    or business.findtext(_BUSINESS_NS+'partsreferanse')!=current.party_number
+                    or any(root.findtext(ns+'inntektsaar')!=str(int(draft.envelope.source.income_year))
+                        for root,ns in ((tax,_TAX_NS),(business,_BUSINESS_NS)))):raise ValueError()
+            self._validate_business_codes(business)
+        except (ValueError,TypeError,KeyError,AttributeError,etree.LxmlError):
+            raise CompanyTaxError.unavailable() from None

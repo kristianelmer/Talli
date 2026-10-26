@@ -126,7 +126,9 @@
       "TaxDeliveryValidationJobObservation",
       "decode_tax_delivery_validation_job_observation",
       "TaxDeliveryValidationResultObservation",
-      "decode_tax_delivery_validation_result_observation"
+      "decode_tax_delivery_validation_result_observation",
+      "TaxCalculatedDocumentValidator",
+      "TaxCalculatedDocumentsInspection"
     ],
     "events": [],
     "errors": [
@@ -313,6 +315,15 @@
       "adapters": [
         "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas"
       ]
+    },
+    {
+      "name": "TaxCalculatedDocumentValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxCalculatedDocumentValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas"
+      ]
     }
   ],
   "dependencies": [],
@@ -388,7 +399,8 @@
     "validationWorkflow": "apps/backend/tests/test_company_tax_delivery_validation_workflow.py",
     "validationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_validation_submission.py",
     "validationApi": "apps/backend/tests/test_company_tax_delivery_validation_api.py",
-    "validationTopology": "apps/backend/tests/test_company_tax_validation_database.py"
+    "validationTopology": "apps/backend/tests/test_company_tax_validation_database.py",
+    "calculatedDocumentSchemas": "apps/backend/tests/test_company_tax_calculated_schemas.py"
   },
   "compatibilityExceptions": []
 }

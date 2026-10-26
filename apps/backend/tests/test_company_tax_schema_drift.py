@@ -7,6 +7,7 @@ import pytest
 
 from talli_backend.adapters.company_tax_schemas import _BUNDLE
 from talli_backend.adapters import company_tax_response_schemas as response_resource
+from talli_backend.adapters import company_tax_calculated_schemas as calculated_resource
 
 
 spec = importlib.util.spec_from_file_location('tax_schema_drift',
@@ -26,6 +27,9 @@ class Source:
         self.response_manifest = json.loads((response_resource._BUNDLE/'manifest.json').read_bytes())
         self.resources.update({probe.RAW+COMMIT+'/'+entry['sourcePath']:(response_resource._BUNDLE/name).read_bytes()
             for name,entry in self.response_manifest['files'].items()})
+        self.calculated_manifest = json.loads((calculated_resource._BUNDLE/'manifest.json').read_bytes())
+        self.resources.update({probe.RAW+COMMIT+'/'+entry['sourcePath']:(calculated_resource._BUNDLE/name).read_bytes()
+            for name,entry in self.calculated_manifest['files'].items()})
 
     def fetch(self,url):
         self.calls.append(url)
@@ -40,11 +44,13 @@ def test_complete_matching_resources_are_current_even_if_other_years_moved():
     assert result['status'] == 'current' and result['completeEnumeration'] is True
     assert result['observedSourceCommit'] == COMMIT
     assert result['observedSourceCommit'] != result['approvedSourceCommit']
-    assert len(source.calls) == len(source.resources)+1 == 12
+    assert len(source.calls) == len(source.resources)+1 == 15
     assert len(result['files']) == 10 and all(row['matches'] for row in result['files'].values())
-    assert result['schema'] == 'company-tax-schema-drift-v2'
+    assert result['schema'] == 'company-tax-schema-drift-v3'
     assert len(result['validationResponse']['files']) == 2
     assert all(row['matches'] for row in result['validationResponse']['files'].values())
+    assert len(result['calculatedDocuments']['files']) == 4
+    assert all(row['matches'] for row in result['calculatedDocuments']['files'].values())
 
 
 def test_one_changed_code_list_is_drift_not_a_current_or_incomplete_verdict():
@@ -92,3 +98,22 @@ def test_unavailable_local_response_pin_prevents_every_network_read(tmp_path,mon
     monkeypatch.setattr(response_resource,'_BUNDLE',tmp_path/'missing-bundle')
     with pytest.raises(Exception):probe.verify_current(source.fetch)
     assert source.calls == []
+
+
+@pytest.mark.parametrize('resource',[calculated_resource._COMPUTED_XSD,calculated_resource._SUMMARY_XSD,
+    'typekatalog/typekatalog_v2.xsd'])
+def test_calculated_dependency_drift_or_incomplete_read_cannot_be_hidden(resource):
+    source=Source();key=next(url for url in source.resources if url.endswith('/'+resource))
+    source.resources[key]+=b'\n'
+    result=probe.verify_current(source.fetch)
+    assert result['status']=='drift' and result['completeEnumeration'] is True
+    assert all(row['matches'] for row in result['files'].values())
+    assert any(not row['matches'] for row in result['calculatedDocuments']['files'].values())
+    del source.resources[key]
+    with pytest.raises(KeyError):probe.verify_current(source.fetch)
+
+
+def test_unavailable_local_calculated_pin_prevents_every_network_read(tmp_path,monkeypatch):
+    source=Source();monkeypatch.setattr(calculated_resource,'_BUNDLE',tmp_path/'missing-bundle')
+    with pytest.raises(Exception):probe.verify_current(source.fetch)
+    assert source.calls==[]

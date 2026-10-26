@@ -805,6 +805,7 @@ from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryU
     bind_tax_delivery_upload_prerequisite)
 from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
 from .delivery_validation_response import (TaxValidationResultCode,TaxValidationCalculatedDocument,TaxValidationResponseInspection)
+from .delivery_calculated_documents import TaxCalculatedDocumentsInspection
 from .delivery_validation_prerequisite import (TaxDeliveryValidationPrerequisite,bind_tax_delivery_validation_prerequisite)
 from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobInspection,TaxDeliveryValidationJobObservation,
     decode_tax_delivery_validation_job_observation)
@@ -897,12 +898,19 @@ class TaxDeliverySchemaValidator(Protocol):
     def schema_sha256(self) -> str: ...
     def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None) -> TaxSchemaValidation: ...
     def inspect_current(self, response: TaxCurrentDocumentResponse) -> TaxCurrentDocument: ...
+    def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None: ...
 
 
 class TaxValidationResponseValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
     def inspect(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseInspection: ...
+
+
+class TaxCalculatedDocumentValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def inspect(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsInspection: ...
 
 
 class CompanyTaxCurrentDocumentReader(Protocol):
@@ -958,6 +966,7 @@ __all__ = [
     'plan_tax_mutation', 'verify_tax_review',
     'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
     'TaxValidationResponseValidator','TaxValidationResultCode','TaxValidationCalculatedDocument','TaxValidationResponseInspection',
+    'TaxCalculatedDocumentValidator','TaxCalculatedDocumentsInspection',
     'TaxDeliveryValidationPrerequisite','bind_tax_delivery_validation_prerequisite',
     'TaxValidationJobStatus','TaxValidationJobInspection','TaxDeliveryValidationJobObservation','decode_tax_delivery_validation_job_observation',
     'TaxDeliveryValidationResultObservation','decode_tax_delivery_validation_result_observation',
