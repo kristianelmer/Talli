@@ -628,3 +628,24 @@ codec family once. Persistence maps this closed domain value to a fixed RPC and
 reader capabilities; compatibility negotiation uses the same family predicates.
 Receipt `assert_metadata` owns draft-independent scope/file binding for both
 submission proofs and original-actor late retention.
+
+
+`TaxCurrentDocumentIntakeQuery` and `CompanyTaxCurrentDocumentIntake` publish a
+separate read-only preparation seam before any draft exists. The application
+derives actor/company/year/organization and restricted database identity from
+the verified session and complete owning source; the HTTP command supplies no
+origin, credential, admission or placeholder draft hash. A finite loopback
+adapter accepts only its declared scope, a bounded lifetime and request count,
+and performs one fixed current-document GET. It preserves exact original bytes;
+the existing offline schema/scope inspection remains authoritative. Preparation
+retains current owner/MFA and source checks on both sides of I/O and exact
+committed replay before any new GET, even after intake admission expires.
+
+The intake grants no instance creation, upload, validation, confirmation,
+submission, Billing or live-provider authority. A separate dispatch admission
+requires the actual retained draft SHA. Existing preparation compositions and
+V2 draft bytes remain unchanged; default composition remains unconfigured.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxCurrentDocumentIntake"]}
+-->

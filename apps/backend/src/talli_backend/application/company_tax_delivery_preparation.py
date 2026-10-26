@@ -8,12 +8,16 @@ from talli_backend.modules.company_tax_filing.public import (
     PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft, TaxDeliveryDraft,
     TaxDeliverySchemaValidator, prepare_tax_delivery,
     TaxCurrentDocument, CompanyTaxReturnAuthorityError,
+    CompanyTaxCurrentDocumentIntake,TaxCurrentDocumentIntakeQuery,
 )
 
 
 class CompanyTaxDeliveryPreparation:
-    def __init__(self, current: CompanyTaxCurrentDocumentReader, schemas: TaxDeliverySchemaValidator):
+    def __init__(self, current: CompanyTaxCurrentDocumentReader | None, schemas: TaxDeliverySchemaValidator,
+            *,intake: CompanyTaxCurrentDocumentIntake | None=None):
+        if (current is None)==(intake is None):raise ValueError('Tax preparation needs exactly one current-document reader.')
         self._current, self._schemas = current, schemas
+        self._intake=intake
 
     async def prepare(self, session: CompanyTaxSession, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
         if command.actor_id != session.actor_id:
@@ -40,8 +44,12 @@ class CompanyTaxDeliveryPreparation:
         if stored is not None:
             return _replayed(stored,command)
         try:
-            response = await self._current.fetch_current_document(income_year=int(command.income_year),
-                company_org_number=source.organization_number)
+            if self._intake is not None:
+                response=await self._intake.read_current_document(TaxCurrentDocumentIntakeQuery(command.company_id,command.income_year,
+                    command.actor_id,source.organization_number,getattr(session,'delivery_rehearsal_target',None),command.correlation_id))
+            else:
+                response = await self._current.fetch_current_document(income_year=int(command.income_year),
+                    company_org_number=source.organization_number)
         except (CompanyTaxReturnAuthorityError, ValueError):
             raise CompanyTaxError.unavailable() from None
         current = self._schemas.inspect_current(response)

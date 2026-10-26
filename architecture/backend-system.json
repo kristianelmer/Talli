@@ -1186,6 +1186,12 @@
       "adapter": "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas",
       "owner": "backend-system",
       "mode": "offline pinned supported 2025 calculated statutory and display XML; exact original/draft and intrinsic party/year checks; no owner confirmation or filing authority"
+    },
+    {
+      "port": "CompanyTaxCurrentDocumentIntake",
+      "adapter": "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake",
+      "owner": "backend-system",
+      "mode": "Separately finite read-only loopback current GET before a draft exists; exact actor/company/year/organization/restricted database scope, no placeholder draft hash, no dispatch authority."
     }
   ],
   "allowedDependencies": {

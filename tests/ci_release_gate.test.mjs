@@ -967,10 +967,11 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
     "apps/backend/tests/test_company_tax_validation_database.py",
     "apps/backend/tests/test_company_tax_confirmation_database.py",
     "apps/backend/tests/test_company_tax_final_submission_database.py",
+    "apps/backend/tests/test_company_tax_current_intake_database.py",
   ], "Tax must retain settlement expansion/runtime and filing lifecycle coverage");
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
-  assert.ok(tax.size >= 190);
+  assert.ok(tax.size >= 194);
   for (const file of ["tests/contract/company_tax_journal_archive_client.test.mjs", "tests/contract/company_tax_finite_delivery_client.test.mjs"]) {
     assert.ok(packageJson.scripts["test:boundary-contract"].split(/\s+/u).includes(file), "Tax guarded readers and upload methods must run in the contract lane");
   }

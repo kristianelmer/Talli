@@ -156,7 +156,8 @@
       "reconcile_tax_delivery_submission",
       "TaxDeliveryFeedbackObservation",
       "decode_tax_delivery_feedback_observation",
-      "tax_delivery_event_format"
+      "tax_delivery_event_format",
+      "TaxCurrentDocumentIntakeQuery"
     ],
     "events": [],
     "errors": [
@@ -353,6 +354,15 @@
       "adapters": [
         "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas"
       ]
+    },
+    {
+      "name": "CompanyTaxCurrentDocumentIntake",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxCurrentDocumentIntake",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake"
+      ]
     }
   ],
   "dependencies": [],
@@ -444,7 +454,9 @@
     "finalSubmissionApi": "apps/backend/tests/test_company_tax_delivery_final_submission_api.py",
     "submissionEvidenceDatabase": "apps/backend/tests/test_postgres_tax_submission_evidence.py",
     "finalSubmissionHttpDatabase": "apps/backend/tests/test_postgres_tax_final_submission.py",
-    "finalSubmissionTopology": "apps/backend/tests/test_company_tax_final_submission_database.py"
+    "finalSubmissionTopology": "apps/backend/tests/test_company_tax_final_submission_database.py",
+    "currentIntake": "apps/backend/tests/test_company_tax_current_intake.py",
+    "currentIntakeTopology": "apps/backend/tests/test_company_tax_current_intake_database.py"
   },
   "compatibilityExceptions": []
 }

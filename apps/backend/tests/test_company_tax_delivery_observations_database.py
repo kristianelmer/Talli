@@ -34,14 +34,16 @@ pytestmark=pytest.mark.company_tax_database
 
 
 @contextmanager
-def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=False,submission=False):
+def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=False,submission=False,prepared_current=None):
     confirmation=confirmation or submission
     validation=validation or confirmation
     upload=upload or validation
     connection,token,aal1=signed_runtime;url,backend,cid,actor,sessions=connection
-    app,command,_,original=configured(connection);app._sessions=sessions
-    async def prepare():return await (await app.session(token)).prepare_delivery_draft(command)
-    draft=asyncio.run(prepare()).draft
+    if prepared_current is None:
+        app,command,_,original=configured(connection);app._sessions=sessions
+        async def prepare():return await (await app.session(token)).prepare_delivery_draft(command)
+        draft=asyncio.run(prepare()).draft
+    else:command,draft,original=prepared_current
     state={'calls':[],'grant':None,'revoke':False,'uploaded':None,'lostUpload':False,
         'fileBytes':None,'onFile':lambda:None,'errors':[],
         'scan':'Clean' if validation else 'Pending','validationPosts':0,'lostValidation':False,

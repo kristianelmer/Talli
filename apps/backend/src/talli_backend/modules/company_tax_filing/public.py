@@ -792,6 +792,7 @@ from .delivery import (
 from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
 from .current_document import TaxCurrentDocument, TaxCurrentDocumentResponse, TaxCurrentDocumentKind
+from .current_document_intake import TaxCurrentDocumentIntakeQuery
 from .delivery_approval import (TaxDeliveryAuthorityMode, TaxDeliveryReviewApproval,
     approve_tax_delivery_review, decode_tax_delivery_review_approval)
 
@@ -947,6 +948,10 @@ class CompanyTaxCurrentDocumentReader(Protocol):
                                      company_org_number: str) -> TaxCurrentDocumentResponse: ...
 
 
+class CompanyTaxCurrentDocumentIntake(Protocol):
+    async def read_current_document(self,query: TaxCurrentDocumentIntakeQuery) -> TaxCurrentDocumentResponse: ...
+
+
 class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
     async def execute(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
                       draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
@@ -994,6 +999,7 @@ __all__ = [
     'decode_tax_delivery_review_approval',
     'PrepareTaxDeliveryDraft',
     'TaxCurrentDocument', 'TaxCurrentDocumentResponse', 'TaxCurrentDocumentKind', 'CompanyTaxCurrentDocumentReader',
+    'TaxCurrentDocumentIntakeQuery','CompanyTaxCurrentDocumentIntake',
     'TaxDeliveryDraft', 'StoredTaxDeliveryDraft', 'TaxDeliveryDraftFact', 'decode_tax_delivery_draft', 'TaxDeliveryDraftPersistence',
     'TaxDeliveryDraftArchive', 'archive_tax_delivery_drafts',
     'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',

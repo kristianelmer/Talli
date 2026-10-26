@@ -29,6 +29,15 @@ def loopback_tax_database_scope(host,port,database,user) -> str | None:
     return tax_delivery_digest({'version':'tax-loopback-database-v1','host':host,'port':port,'database':database,'user':user})
 
 
+def _loopback_origin(value):
+    if type(value) is not str:raise ValueError('Finite Tax loopback origin is invalid.')
+    origin=urlsplit(value)
+    if (origin.scheme!='http' or origin.hostname!='127.0.0.1' or origin.port is None
+            or not 1024<=origin.port<=65535 or value!='http://127.0.0.1:'+str(origin.port)):
+        raise ValueError('Finite Tax loopback origin is invalid.')
+    return value
+
+
 @dataclass(frozen=True,slots=True)
 class TaxDeliveryRehearsalAdmission:
     run_id: str
@@ -62,10 +71,7 @@ class TaxDeliveryRehearsalAdmission:
                     or type(self.database_scope_sha256) is not str or re.fullmatch('[0-9a-f]{64}',self.database_scope_sha256) is None
                     or type(self.origin) is not str):
                 raise ValueError()
-            origin=urlsplit(self.origin)
-            if (origin.scheme!='http' or origin.hostname!='127.0.0.1' or origin.port is None
-                    or not 1024<=origin.port<=65535 or self.origin!='http://127.0.0.1:'+str(origin.port)):
-                raise ValueError()
+            _loopback_origin(self.origin)
         except (ValueError,TypeError,AttributeError):
             raise ValueError('Tax rehearsal admission is invalid.') from None
 

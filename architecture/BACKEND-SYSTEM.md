@@ -1218,3 +1218,20 @@ prior operation-specific replay behavior. Default composition remains closed.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/delivery-submission-advances","/api/v1/company-tax/delivery-submission-reconciliations","/api/v1/company-tax/delivery-feedback-reconciliations"]}
 -->
+
+
+The optional `CompanyTaxCurrentDocumentIntake` binding confines preparation's
+initial read to a separately admitted finite loopback scope. It has no draft SHA
+because the draft does not exist yet. The application supplies verified actor,
+company/year, owning organization and restricted local database identity. The
+adapter admits only one fixed GET, without redirects, environment proxies or
+production credentials; lifetime, byte count, deadline and request count are
+bounded. The unchanged preparation endpoint still rechecks owner/MFA and source
+before storage. Delivery authority is issued separately for the exact retained
+draft; the intake itself enables no mutation or provider activation.
+
+The read-only binding is `talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake`.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxCurrentDocumentIntake"],"adapterBindings":["CompanyTaxCurrentDocumentIntake=>talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake"],"adapterBindingOwners":["CompanyTaxCurrentDocumentIntake=>backend-system"],"adapterBindingModes":["CompanyTaxCurrentDocumentIntake=>Separately finite read-only loopback current GET before a draft exists; exact actor/company/year/organization/restricted database scope, no placeholder draft hash, no dispatch authority."]}
+-->
