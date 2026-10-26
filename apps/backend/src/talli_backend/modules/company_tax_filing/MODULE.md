@@ -99,6 +99,23 @@ Source readiness is currently blocked by the existing disabled Tax production im
 
 The deferred `20260914022608_company_tax_return_source_contract.sql` follows the four filing expansion contracts in the explicit runner. Its function remains unavailable before cutover and after full rollback. Source evidence verification rereads a fresh snapshot and rejects scope/version/digest drift, future evidence times or incomplete coverage. The evidence scope is Talli-recorded Company Tax, not all external authority filings.
 
+`TaxDeliverySource`, `TaxDeliveryEnvelope`, `tax_delivery_digest`,
+`prepare_tax_delivery` and `verify_tax_review` bind a complete, company/year-scoped
+Annual/Ledger/Investments read to immutable statutory documents, the current
+authority document reference and the schema pin. Preparation requires an explicit
+no-additional-attachments answer and typed annual prerequisites; a caller-fact
+assessment preview cannot establish that persisted source. Changed source,
+schema or review bindings invalidate review.
+
+`TaxMutationKind`, `TaxMutationIntent`, `TaxMutationRecord`,
+`TaxMutationDisposition` and `plan_tax_mutation` define submit-once operation
+policy. Persistence must atomically commit a unique new intent before execution.
+An existing uncertain operation requires read-only reconciliation; expiry or a
+changed request never permits another POST. Completed results have a closed,
+operation-specific shape. These policy contracts do not yet constitute a
+persisted delivery workflow, enable a provider or replace the disabled-production
+source gate above.
+
 <!-- architecture-inventory
 {"ports": ["CompanyTaxSourcePersistence"]}
 -->

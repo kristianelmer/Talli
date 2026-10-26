@@ -764,7 +764,17 @@ def verify_company_tax_source(
     return verify(query, evidence, snapshot)
 
 
+from .delivery import (
+    TaxDeliverySource, TaxDeliveryEnvelope, TaxMutationKind, TaxMutationDisposition,
+    TaxMutationIntent, TaxMutationRecord, tax_delivery_digest, prepare_tax_delivery,
+    plan_tax_mutation, verify_tax_review,
+)
+
+
 __all__ = [
+    'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',
+    'TaxMutationIntent', 'TaxMutationRecord', 'tax_delivery_digest', 'prepare_tax_delivery',
+    'plan_tax_mutation', 'verify_tax_review',
     "CompanyTaxSourceQuery",
     "CompanyTaxSourceSnapshot",
     "CompanyTaxSourceEvidence",
