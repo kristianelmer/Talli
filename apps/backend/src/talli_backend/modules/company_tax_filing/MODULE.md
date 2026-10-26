@@ -170,3 +170,53 @@ not constitute code-list validation or authorization for new delivery.
 <!-- architecture-inventory
 {"ports": ["CompanyTaxSourcePersistence"]}
 -->
+
+`TaxDeliveryDraft`, `StoredTaxDeliveryDraft`, `TaxDeliveryDraftFact`,
+`decode_tax_delivery_draft` and `TaxDeliveryDraftPersistence` retain exact
+versioned draft bytes, source/review/schema proofs, company/year, actor,
+command identity and server time. Duplicate keys, noncanonical JSON, lossy XML,
+changed scope/proofs and unknown versions are rejected on read. Exact concurrent
+replay returns the same original; a changed binding conflicts. Drafts grant no
+Annual readiness, Billing entitlement, approval, dispatch or authority outcome.
+
+The deferred `20261026062315_company_tax_delivery_journal.sql` adds the owned
+append-only `delivery_drafts` store after the Tax predecessor is contracted.
+Its full owned relation is `company_tax_filing.delivery_drafts`.
+Restricted runtime roles receive only exact RPC access. Forced RLS permits the
+accepted owner to read/insert; no update/delete policy exists. Writes require
+READ COMMITTED and recheck owner/phase after the published company lock.
+Rollback closes a volatile write fence checked after the company lock and revokes
+the write RPC, including containment of calls already waiting. Originals and
+source reads remain available. Reopening requires restoring the private fence
+helper to true and the original exact EXECUTE grant.
+
+Source V2 positively enumerates all eight declared Tax tables and every retained
+draft, including per-draft digests/count, without altering V1's seven-table
+extent. V1 correctly becomes incomplete. The adapter selects installed V2; if
+it is missing, V1 cannot conceal an added store. Unknown extra stores, incomplete
+enumeration and mismatched draft bindings prevent complete coverage. Read bounds
+(1,000 drafts/64 MiB per scope) fail unavailable, never truncate. V2 observation
+time is read after enumeration,
+so a valid draft committed between transaction begin and its first repeatable
+snapshot cannot be rejected as future evidence. Historical production-labelled rows remain unknown; prepared drafts stay out of submission
+and outcome history. No hosted migration, provider call or public draft-write
+route is enabled by these internal contracts.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliveryDraftPersistence"],"ownedTables":["company_tax_filing.delivery_drafts"]}
+-->
+
+`TaxDeliveryDraftArchive` and `archive_tax_delivery_drafts` preserve every exact
+canonical draft and its retained actor, scope, source/review/schema bindings and
+server time. The original reader refuses invalid enumeration. Unknown effects
+on a retained legacy submission do not erase otherwise positively covered draft
+originals. The API `/api/v1/company-tax/archive-source/delivery-drafts-v1` returns
+these originals only through the canonical fresh-MFA policy. A short READ
+COMMITTED company guard encloses the separate repeatable source read and
+rechecks current owner/MFA after it; no provider I/O occurs while it is held.
+
+The draft table installs the existing Company Access archive-generation trigger.
+Its exact enabled function/arguments are included in positive V2 coverage.
+Temporary trigger EXECUTE authority and role memberships are restored after DDL.
+New writes invalidate in-progress company exports; exact replay does not.
+Containment preserves originals and generation tracking.

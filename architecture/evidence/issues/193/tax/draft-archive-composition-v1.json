@@ -1,0 +1,20 @@
+{
+  "schema": "talli-bounded-tax-draft-archive-composition-v1",
+  "baselineRevision": "a237e6af",
+  "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+  "operation": "GET",
+  "prior": {
+    "sourceDigest": "sha256:bde3c921d3577fc26c45d149f93be44a3a4e80110465aedc3b44949d1127e3aa",
+    "occurrences": 0
+  },
+  "candidate": {
+    "sourceDigest": "sha256:053f390fbc7a43671c3f6bbd9c3d4d505172410241ba4e6a5d68bb35efb7ad2c",
+    "occurrences": 0
+  },
+  "exactAdditions": [
+    "  const taxDeliveryDrafts = await loadTaxDeliveryDraftArchiveSource(accessToken, companyId, incomeYear);\n  if (taxDeliveryDrafts.error || !taxDeliveryDrafts.data) return new Response(\"Kunne ikke lese komplett arkivgrunnlag\", { status: 503 });\n",
+    "    taxDeliveryDrafts: taxDeliveryDrafts.data,\n",
+    "\n      && (taxDeliveryDrafts.data.originals?.recordCount ?? 0) === 0"
+  ],
+  "scope": "Add owned immutable Tax draft originals under the existing company export generation boundary; no new legacy persistence, compatibility removal or provider authority. Existing sibling persistence chains remain checked against the frozen predecessor."
+}

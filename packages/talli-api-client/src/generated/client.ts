@@ -3305,8 +3305,19 @@ export interface CompanyTaxCorrectionLinkWire {
   supersedesSourceId: string;
 }
 
+export interface CompanyTaxDeliveryDraftFactWire {
+  draftSha256: string;
+  filingId: string;
+  preparedBy: string;
+  recordedAt: string;
+  reviewSha256: string;
+  schemaSha256: string;
+  status: "prepared_only";
+}
+
 export interface CompanyTaxSourceFactsWire {
   correctionLinks: CompanyTaxCorrectionLinkWire[];
+  deliveryDrafts?: CompanyTaxDeliveryDraftFactWire[];
   evidence: CompanyTaxSourceEvidenceWire;
   hardBlocks: string[];
   historyCoverage: CompanyTaxHistoryCoverageWire;
@@ -3315,6 +3326,24 @@ export interface CompanyTaxSourceFactsWire {
   productionAttempts: CompanyTaxSubmissionFactWire[];
   readinessStatus: "blocked" | "unavailable";
   recordedSubmissions: CompanyTaxSubmissionFactWire[];
+}
+
+export interface CompanyTaxDeliveryDraftOriginalWire {
+  canonicalJson: string;
+  draftSha256: string;
+  filingId: string;
+  recordedAt: string;
+}
+
+export interface CompanyTaxDeliveryDraftArchiveWire {
+  codec: "company-tax-delivery-draft-archive-v1";
+  companyId: string;
+  coverage: "complete";
+  incomeYear: number;
+  observedAt: string;
+  recordCount: number;
+  records: CompanyTaxDeliveryDraftOriginalWire[];
+  sourceSha256: string;
 }
 
 export interface CompanyTaxAssessmentFactsRequest {
@@ -9198,11 +9227,26 @@ function isCompanyTaxCorrectionLinkWire(value: unknown): value is CompanyTaxCorr
   );
 }
 
+function isCompanyTaxDeliveryDraftFactWire(value: unknown): value is CompanyTaxDeliveryDraftFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draftSha256","filingId","preparedBy","recordedAt","reviewSha256","schemaSha256","status"]) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    isUuid(value.preparedBy) &&
+    isDateTime(value.recordedAt) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.reviewSha256)) &&
+    (typeof value.schemaSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.schemaSha256)) &&
+    value.status === "prepared_only"
+  );
+}
+
 function isCompanyTaxSourceFactsWire(value: unknown): value is CompanyTaxSourceFactsWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["correctionLinks","evidence","hardBlocks","historyCoverage","incidents","outcomes","productionAttempts","readinessStatus","recordedSubmissions"]) &&
+    hasOnlyProperties(value, ["correctionLinks","deliveryDrafts","evidence","hardBlocks","historyCoverage","incidents","outcomes","productionAttempts","readinessStatus","recordedSubmissions"]) &&
     Array.isArray(value.correctionLinks) && value.correctionLinks.every((item) => isCompanyTaxCorrectionLinkWire(item)) &&
+    (value.deliveryDrafts === undefined || Array.isArray(value.deliveryDrafts) && value.deliveryDrafts.every((item) => isCompanyTaxDeliveryDraftFactWire(item))) &&
     isCompanyTaxSourceEvidenceWire(value.evidence) &&
     Array.isArray(value.hardBlocks) && value.hardBlocks.every((item) => typeof item === "string") &&
     isCompanyTaxHistoryCoverageWire(value.historyCoverage) &&
@@ -9211,6 +9255,32 @@ function isCompanyTaxSourceFactsWire(value: unknown): value is CompanyTaxSourceF
     Array.isArray(value.productionAttempts) && value.productionAttempts.every((item) => isCompanyTaxSubmissionFactWire(item)) &&
     (value.readinessStatus === "blocked" || value.readinessStatus === "unavailable") &&
     Array.isArray(value.recordedSubmissions) && value.recordedSubmissions.every((item) => isCompanyTaxSubmissionFactWire(item))
+  );
+}
+
+function isCompanyTaxDeliveryDraftOriginalWire(value: unknown): value is CompanyTaxDeliveryDraftOriginalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["canonicalJson","draftSha256","filingId","recordedAt"]) &&
+    typeof value.canonicalJson === "string" &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    isDateTime(value.recordedAt)
+  );
+}
+
+function isCompanyTaxDeliveryDraftArchiveWire(value: unknown): value is CompanyTaxDeliveryDraftArchiveWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["codec","companyId","coverage","incomeYear","observedAt","recordCount","records","sourceSha256"]) &&
+    value.codec === "company-tax-delivery-draft-archive-v1" &&
+    isUuid(value.companyId) &&
+    value.coverage === "complete" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isDateTime(value.observedAt) &&
+    (typeof value.recordCount === "number" && Number.isInteger(value.recordCount) && value.recordCount >= 0 && value.recordCount <= 1000) &&
+    Array.isArray(value.records) && value.records.every((item) => isCompanyTaxDeliveryDraftOriginalWire(item)) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256))
   );
 }
 
@@ -12923,15 +12993,34 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyTaxGetSourceFacts(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+      includeDeliveryDrafts = false,
     ): Promise<CompanyTaxSourceFactsWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      if (includeDeliveryDrafts) query.set("includeDeliveryDrafts", "true");
       const result = await executeJson(
         `${baseUrl}/api/v1/company-tax/source-facts?${query}`,
         "GET", request, undefined, isCompanyTaxSourceFactsWire,
       );
-      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+      if ((includeDeliveryDrafts && result.deliveryDrafts === undefined)
+          || result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
           || (result.historyCoverage.status === "complete"
             && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryDraftArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryDraftArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/archive-source/delivery-drafts-v1?${query}`,
+        "GET", request, undefined, isCompanyTaxDeliveryDraftArchiveWire,
+      );
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || result.recordCount !== result.records.length
+          || new Set(result.records.map(row => row.filingId)).size !== result.records.length) {
         throw new TalliApiError(502, undefined);
       }
       return result;

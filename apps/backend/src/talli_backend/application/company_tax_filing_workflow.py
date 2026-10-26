@@ -18,6 +18,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, TaxDeliverySource, project_company_tax_source, verify_company_tax_source,
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
+    TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -136,6 +137,18 @@ class AuthenticatedCompanyTax:
             raise CompanyTaxError.forbidden()
         async with self._session.transaction(snapshot=True) as transaction:
             return await read_company_tax_delivery_source(transaction, query, correlation_id=correlation_id)
+
+    async def delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> TaxDeliveryDraftArchive:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        # The short READ COMMITTED guard observes current revocation after a
+        # wait. Keep the separate repeatable source read coherent under it.
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as transaction:
+                result = archive_tax_delivery_drafts(query, await transaction.delivery_draft_archive_snapshot(query))
+            await guard.lock_delivery_draft_archive(query)
+            return result
 
     async def verify_filing_source(self, query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence) -> bool:
         if query.actor_id != self.actor_id:

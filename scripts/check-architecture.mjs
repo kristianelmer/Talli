@@ -196,6 +196,11 @@ const TAX_SOURCE_COMPOSITION_DIGESTS = new Map([["apps/web/app/actions.ts\u0000r
 // still compared with its frozen predecessor below. No persistence is added.
 const RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST =
   "sha256:bde3c921d3577fc26c45d149f93be44a3a4e80110465aedc3b44949d1127e3aa";
+// #193 retains Tax's new immutable draft originals inside the same export
+// generation boundary. Only this exact additive composition is admitted; all
+// frozen sibling persistence chains are still compared below.
+const TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST =
+  "sha256:053f390fbc7a43671c3f6bbd9c3d4d505172410241ba4e6a5d68bb35efb7ad2c";
 // #152 routes Tax through its declared API while preserving every retained
 // Accounts and Audit chain. This pins behavior, not a new persistence exception.
 const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
@@ -2296,7 +2301,8 @@ export function validateCompatibilityRegistry(path, {
       && (exitedCapabilities.has("annual_accounts_filing")
         || (currentCapability === "annual_accounts_filing" && registry.migration?.currentIssue === "#153"))
       && !registry.records.some(record => ["compat-annual-accounts-persistence", "compat-company-tax-persistence"].includes(record.id))
-      && analysis?.state === "found" && analysis.sourceDigest === RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST
+      && analysis?.state === "found"
+      && [RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST,TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST].includes(analysis.sourceDigest)
       && resources.every(resource => resourceOwner?.(resource) === "backend:annual_accounts_filing"
         && (analysis.persistenceOccurrences.get(resource) ?? 0) === 0)
       && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));

@@ -568,6 +568,16 @@
       "routes": [
         "/api/v1/shareholder-register-filings/company-test-retention/stream-v1"
       ]
+    },
+    {
+      "name": "company-tax-delivery-draft-archive",
+      "purpose": "Read exact retained Tax draft originals through current owner and canonical fresh MFA; positive source coverage and no provider outcome.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/archive-source/delivery-drafts-v1"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1117,6 +1127,12 @@
       "adapter": "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas",
       "owner": "backend-system",
       "mode": "offline pinned official 2025 XSD/code-list validation; exact source and document/envelope bindings; no provider authority"
+    },
+    {
+      "port": "TaxDeliveryDraftPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "immutable exact Tax draft bytes with scope/actor/key replay; owner recheck after company lock; versioned V2 positive store coverage; no approval or provider authority"
     }
   ],
   "allowedDependencies": {

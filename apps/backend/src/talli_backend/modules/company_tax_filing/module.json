@@ -74,7 +74,13 @@
       "prepare_tax_delivery",
       "plan_tax_mutation",
       "verify_tax_review",
-      "TaxSchemaValidation"
+      "TaxSchemaValidation",
+      "TaxDeliveryDraft",
+      "StoredTaxDeliveryDraft",
+      "TaxDeliveryDraftFact",
+      "decode_tax_delivery_draft",
+      "TaxDeliveryDraftArchive",
+      "archive_tax_delivery_drafts"
     ],
     "events": [],
     "errors": [
@@ -105,7 +111,8 @@
       "TaxMutationKind",
       "TaxMutationDisposition",
       "TaxDeliverySchemaValidator",
-      "tax_delivery_schema_adapter"
+      "tax_delivery_schema_adapter",
+      "TaxDeliveryDraftPersistence"
     ]
   },
   "owns": {
@@ -119,7 +126,8 @@
       "company_tax_filing.filing_overrides",
       "company_tax_filing.filing_review_comments",
       "company_tax_filing.authority_permissions",
-      "company_tax_filing.authority_test_runs"
+      "company_tax_filing.authority_test_runs",
+      "company_tax_filing.delivery_drafts"
     ],
     "storageBuckets": [],
     "projections": [],
@@ -206,6 +214,15 @@
       "adapters": [
         "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas"
       ]
+    },
+    {
+      "name": "TaxDeliveryDraftPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryDraftPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
     }
   ],
   "dependencies": [],
@@ -244,7 +261,9 @@
     "deliveryPolicy": "apps/backend/tests/test_company_tax_delivery.py",
     "deliverySource": "apps/backend/tests/test_company_tax_delivery_source.py",
     "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py",
-    "schemas": "apps/backend/tests/test_company_tax_schemas.py"
+    "schemas": "apps/backend/tests/test_company_tax_schemas.py",
+    "deliveryDraft": "apps/backend/tests/test_company_tax_delivery_draft.py",
+    "deliveryDraftDatabase": "apps/backend/tests/test_postgres_tax_delivery_draft.py"
   },
   "compatibilityExceptions": []
 }

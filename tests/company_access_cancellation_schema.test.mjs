@@ -282,6 +282,7 @@ test("archive route and generation triggers share one complete source inventory"
     "loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear)",
     "loadArchiveRf1086(accessToken, companyId, incomeYear)",
     "loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear)",
+    "loadTaxDeliveryDraftArchiveSource(accessToken, companyId, incomeYear)",
     "loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear)",
     "loadPresentedAnnualAccountsSource(accessToken, [companyId])",
   ]) {

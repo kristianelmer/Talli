@@ -1042,6 +1042,34 @@ class CompanyTaxCorrectionLinkWire(TransportModel):
     supersedes_source_id: UUID
 
 
+class CompanyTaxDeliveryDraftFactWire(TransportModel):
+    filing_id: UUID
+    prepared_by: UUID
+    recorded_at: datetime
+    draft_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    review_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    schema_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    status: Literal['prepared_only']
+
+
+class CompanyTaxDeliveryDraftOriginalWire(TransportModel):
+    filing_id: UUID
+    recorded_at: datetime
+    canonical_json: str
+    draft_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CompanyTaxDeliveryDraftArchiveWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    codec: Literal['company-tax-delivery-draft-archive-v1']
+    coverage: Literal['complete']
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    observed_at: datetime
+    record_count: int = Field(ge=0, le=1000)
+    records: list[CompanyTaxDeliveryDraftOriginalWire]
+
+
 class CompanyTaxSourceFactsWire(TransportModel):
     evidence: CompanyTaxSourceEvidenceWire
     readiness_status: Literal["blocked", "unavailable"]
@@ -1052,6 +1080,7 @@ class CompanyTaxSourceFactsWire(TransportModel):
     correction_links: list[CompanyTaxCorrectionLinkWire]
     incidents: list[CompanyTaxIncidentFactWire]
     outcomes: list[CompanyTaxOutcomeFactWire]
+    delivery_drafts: list[CompanyTaxDeliveryDraftFactWire] = Field(default_factory=list)
 
 
 class AnnualAccountsSourceEvidenceWire(TransportModel):
@@ -11745,12 +11774,14 @@ def create_app(
     @application.get(
         "/api/v1/company-tax/source-facts",
         operation_id="companyTaxGetSourceFacts", response_model=CompanyTaxSourceFactsWire,
+        response_model_exclude_unset=True,
         responses=ledger_errors, tags=["company-tax"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def company_tax_source_facts(
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        include_delivery_drafts: Annotated[bool, Query(alias="includeDeliveryDrafts")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxSourceFactsWire:
         async def execute() -> CompanyTaxSourceFactsWire:
@@ -11773,9 +11804,37 @@ def create_app(
                     correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
                     incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
                     outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+                    **({'delivery_drafts': [CompanyTaxDeliveryDraftFactWire(
+                        filing_id=row.filing_id, prepared_by=str(row.prepared_by.subject),
+                        recorded_at=row.recorded_at.value, draft_sha256=row.draft_sha256,
+                        review_sha256=row.review_sha256, schema_sha256=row.schema_sha256,
+                        status=row.status) for row in result.delivery_drafts]} if include_delivery_drafts else {}),
                 )
             except ValidationError:
                 raise CompanyTaxError.unavailable() from None
+        return await company_tax_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/archive-source/delivery-drafts-v1",
+        operation_id="companyTaxGetDeliveryDraftArchive", response_model=CompanyTaxDeliveryDraftArchiveWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_delivery_draft_archive(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryDraftArchiveWire:
+        async def execute() -> CompanyTaxDeliveryDraftArchiveWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.delivery_draft_archive(CompanyTaxSourceQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id))
+            return CompanyTaxDeliveryDraftArchiveWire(company_id=str(result.company_id), income_year=int(result.income_year),
+                codec='company-tax-delivery-draft-archive-v1', coverage='complete', source_sha256=result.source_sha256,
+                observed_at=result.observed_at.value, record_count=len(result.drafts),
+                records=[CompanyTaxDeliveryDraftOriginalWire(filing_id=row.draft.filing_id,
+                    recorded_at=row.recorded_at.value, canonical_json=row.draft.canonical_json,
+                    draft_sha256=row.draft.sha256) for row in result.drafts])
         return await company_tax_call(execute)
 
     @application.get(

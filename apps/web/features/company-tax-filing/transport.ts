@@ -1,4 +1,4 @@
-import type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest } from "@talli/talli-api-client";
+import type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest, CompanyTaxSourceFactsWire, CompanyTaxDeliveryDraftArchiveWire } from "@talli/talli-api-client";
 import { createTalliApiClient, TalliApiError, type CompanyTaxOverrideRequest, type CompanyTaxReviewRequest, type CompanyTaxPermissionRequest, type CompanyTaxTestEvidenceRequest, type CompanyTaxEvidenceImportRequest, type LedgerTaxSettlementWire, type TaxSettlementPreviewInputWire } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -39,6 +39,41 @@ export async function loadTaxSettlementArchiveSource(accessToken: string, compan
     return { data: result.settlements, error: null };
   } catch {
     return { data: [], error: { message: "Kunne ikke lese skatteoppgjørene." } };
+  }
+}
+
+export type TaxDeliveryDraftArchiveProjection = {
+  sourceFacts: CompanyTaxSourceFactsWire;
+  originals: CompanyTaxDeliveryDraftArchiveWire | null;
+};
+
+export async function loadTaxDeliveryDraftArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const api = client(accessToken);
+    const request = { signal: AbortSignal.timeout(10_000) };
+    const source = await api.companyTaxGetSourceFacts(companyId,incomeYear,request);
+    // A complete V1 source positively proves the original seven-table extent,
+    // including absence of the new store. This supports frontend-first rollout.
+    if (/^company-tax-source-v1:[0-9a-f]{64}$/u.test(source.evidence.version)
+        && source.historyCoverage.status === "complete") {
+      return { data: { sourceFacts: source, originals: null } satisfies TaxDeliveryDraftArchiveProjection, error: null };
+    }
+    if (!/^company-tax-source-v2:[0-9a-f]{64}$/u.test(source.evidence.version)) throw new Error("Unknown Tax archive source.");
+    const originals = await api.companyTaxGetDeliveryDraftArchive(companyId,incomeYear,request);
+    if (originals.sourceSha256 !== source.evidence.digest) throw new Error("Tax archive source changed.");
+    for (const record of originals.records) {
+      const bytes = new TextEncoder().encode(record.canonicalJson);
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)))
+        .map(byte => byte.toString(16).padStart(2,"0")).join("");
+      const value = JSON.parse(record.canonicalJson);
+      if (digest !== record.draftSha256 || value.version !== "company-tax-delivery-draft-v1"
+          || value.draft?.filing_id !== record.filingId
+          || value.draft?.envelope?.source?.company_id?.value !== companyId
+          || value.draft?.envelope?.source?.income_year?.value !== incomeYear) throw new Error("Tax draft original mismatch.");
+    }
+    return { data: { sourceFacts: source, originals } satisfies TaxDeliveryDraftArchiveProjection, error: null };
+  } catch {
+    return { data: null, error: { message: "Kunne ikke lese komplette skattemeldingsutkast." } };
   }
 }
 

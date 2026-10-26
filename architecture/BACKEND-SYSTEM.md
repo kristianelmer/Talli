@@ -1074,3 +1074,31 @@ with explicit local authority doubles. The unchanged actual database regressions
 `test_actual_postwait_history_wins_before_current_policy_and_revoked_original_owner_still_denies`
 in `test_rf1086_source_operation_v3_database.py` exercise real membership and
 post-wait revocation using this same SQL body; no reexecution is claimed here.
+
+# Retained Tax drafts
+
+`TaxDeliveryDraftPersistence` binds to
+`talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction`.
+It stores exact immutable drafts and reads the positively covered V2 source;
+it grants no approval or provider authority. Existing source-facts HTTP, with explicit `includeDeliveryDrafts=true`, exposes
+only draft identity, actor/time and digests with `prepared_only` status, never
+original XML or a submission outcome. The migration is deferred until after Tax
+contract; containment rollback fences waiting writes and preserves originals.
+Default responses keep the old property set for strict older clients; new clients
+require positive draft enumeration only when explicitly requested.
+
+<!-- architecture-inventory
+{"ports":["TaxDeliveryDraftPersistence"],"adapterBindings":["TaxDeliveryDraftPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"],"adapterBindingOwners":["TaxDeliveryDraftPersistence=>backend-system"],"adapterBindingModes":["TaxDeliveryDraftPersistence=>immutable exact Tax draft bytes with scope/actor/key replay; owner recheck after company lock; versioned V2 positive store coverage; no approval or provider authority"]}
+-->
+
+The `company-tax-delivery-draft-archive` workflow publishes
+`/api/v1/company-tax/archive-source/delivery-drafts-v1` through
+`talli_backend.modules.company_tax_filing.public`. It holds the current company
+read guard across a separate repeatable snapshot, then rechecks current owner
+and canonical fresh MFA before releasing original bytes. Company archive embeds
+these exact bytes and their source proof; the shared generation tracker rejects
+an export that raced a new draft.
+
+<!-- architecture-inventory
+{"workflows": ["company-tax-delivery-draft-archive"], "workflowPurposes": ["company-tax-delivery-draft-archive=>Read exact retained Tax draft originals through current owner and canonical fresh MFA; positive source coverage and no provider outcome."], "routes": ["/api/v1/company-tax/archive-source/delivery-drafts-v1"]}
+-->

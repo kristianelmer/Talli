@@ -290,6 +290,7 @@ const annualAccountsOperations = {
   workspace: ["/api/v1/annual-accounts/filing-workspace", "get", "annualAccountsGetFilingWorkspace"],
 };
 const companyTaxOperations = {
+  deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
   sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
   annualEstimatePreview: ["/api/v1/company-tax/annual-estimate-previews", "post", "companyTaxPreviewAnnualEstimate"],
@@ -907,7 +908,8 @@ const companyTaxSchemas = Object.fromEntries([
   "AnnualAccountsSourceEvidenceWire", "AnnualAccountsHistoryCoverageWire", "AnnualAccountsSubmissionFactWire",
   "AnnualAccountsIncidentFactWire", "AnnualAccountsOutcomeFactWire", "AnnualAccountsCorrectionLinkWire", "AnnualAccountsSourceFactsWire",
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
-  "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxSourceFactsWire",
+  "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxDeliveryDraftFactWire", "CompanyTaxSourceFactsWire",
+  "CompanyTaxDeliveryDraftOriginalWire", "CompanyTaxDeliveryDraftArchiveWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
   "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
   "CompanyTaxRecordedWire", "CompanyTaxOverrideRequest", "CompanyTaxReviewRequest", "CompanyTaxPermissionRequest", "CompanyTaxTestEvidenceRequest",
@@ -2912,15 +2914,34 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyTaxGetSourceFacts(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+      includeDeliveryDrafts = false,
     ): Promise<CompanyTaxSourceFactsWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      if (includeDeliveryDrafts) query.set("includeDeliveryDrafts", "true");
       const result = await executeJson(
         \`\${baseUrl}/api/v1/company-tax/source-facts?\${query}\`,
         "GET", request, undefined, isCompanyTaxSourceFactsWire,
       );
-      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+      if ((includeDeliveryDrafts && result.deliveryDrafts === undefined)
+          || result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
           || (result.historyCoverage.status === "complete"
             && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryDraftArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryDraftArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-drafts-v1?\${query}\`,
+        "GET", request, undefined, isCompanyTaxDeliveryDraftArchiveWire,
+      );
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || result.recordCount !== result.records.length
+          || new Set(result.records.map(row => row.filingId)).size !== result.records.length) {
         throw new TalliApiError(502, undefined);
       }
       return result;

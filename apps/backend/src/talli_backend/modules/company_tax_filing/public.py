@@ -661,9 +661,12 @@ class CompanyTaxSourceSnapshot:
     coverage: Mapping[str, object] | None
     as_of: Timestamp
     complete_enumeration: bool
+    contract_version: str = 'company-tax-source-v1'
+    delivery_drafts: tuple[StoredTaxDeliveryDraft, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze_return_fact(self.coverage))
+        object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
 
 
 @dataclass(frozen=True, slots=True)
@@ -749,6 +752,7 @@ class CompanyTaxSourceFacts:
     correction_links: tuple[CompanyTaxCorrectionLink, ...]
     incidents: tuple[CompanyTaxIncidentFact, ...]
     outcomes: tuple[CompanyTaxOutcomeFact, ...]
+    delivery_drafts: tuple[TaxDeliveryDraftFact, ...] = ()
 
 
 class CompanyTaxSourcePersistence(Protocol):
@@ -773,6 +777,28 @@ from .delivery import (
     plan_tax_mutation, verify_tax_review,
     TaxSchemaValidation,
 )
+from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
+    TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
+
+
+@dataclass(frozen=True, slots=True)
+class TaxDeliveryDraftFact:
+    filing_id: str
+    prepared_by: ActorId
+    recorded_at: Timestamp
+    draft_sha256: str
+    review_sha256: str
+    schema_sha256: str
+    status: str = 'prepared_only'
+
+
+class TaxDeliveryDraftPersistence(Protocol):
+    async def store_delivery_draft(self, draft: TaxDeliveryDraft) -> StoredTaxDeliveryDraft: ...
+    async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery,
+                                    command_key: IdempotencyKey) -> StoredTaxDeliveryDraft | None: ...
+    async def delivery_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+    async def delivery_draft_archive_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+    async def lock_delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> None: ...
 
 
 class TaxDeliverySchemaValidator(Protocol):
@@ -790,6 +816,8 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'TaxDeliveryDraft', 'StoredTaxDeliveryDraft', 'TaxDeliveryDraftFact', 'decode_tax_delivery_draft', 'TaxDeliveryDraftPersistence',
+    'TaxDeliveryDraftArchive', 'archive_tax_delivery_drafts',
     'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',
     'TaxMutationIntent', 'TaxMutationRecord', 'tax_delivery_digest', 'prepare_tax_delivery',
     'plan_tax_mutation', 'verify_tax_review',

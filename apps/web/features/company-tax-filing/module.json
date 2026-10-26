@@ -29,7 +29,9 @@
     "companyTaxConfirmPermission",
     "companyTaxRecordTestEvidence",
     "companyTaxPreviewReadiness",
-    "companyTaxPreviewAnnualEstimate"
+    "companyTaxPreviewAnnualEstimate",
+    "companyTaxGetSourceFacts",
+    "companyTaxGetDeliveryDraftArchive"
   ],
   "dependencies": [],
   "allowedImports": [

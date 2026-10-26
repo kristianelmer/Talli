@@ -1,4 +1,5 @@
 import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch } from "./rf1086-original-integrity.ts";
+import type { TaxDeliveryDraftArchiveProjection } from "../../features/company-tax-filing";
 import type {
   AuthorityPermissionRow,
   AuthorityTestRunRow,
@@ -80,6 +81,7 @@ export function firstArchiveSourceError(
 }
 
 export function buildPersistedCompanyArchive(input: {
+  taxDeliveryDrafts?: TaxDeliveryDraftArchiveProjection;
   company: CompanyWorkspaceRow;
   incomeYear: number;
   setups: OpeningBalanceSetupRow[];
@@ -285,6 +287,7 @@ export function buildPersistedCompanyArchive(input: {
     // Canonical immutable records, separate from historical simulation shapes.
     rf1086Production: input.rf1086Production ?? null,
     rf1086ProductionEvidenceAvailability: input.rf1086Production ? "included" : "unavailable",
+    companyTaxDeliveryDrafts: input.taxDeliveryDrafts ?? null,
     companyTaxSubmissions: input.filingSubmissions
       .filter(
         (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",

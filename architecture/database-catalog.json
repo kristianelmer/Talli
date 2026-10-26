@@ -339,6 +339,12 @@
       "owner": "backend:company_tax_filing"
     },
     {
+      "name": "company_tax_filing.delivery_drafts",
+      "kind": "capability-business",
+      "owner": "backend:company_tax_filing",
+      "compatibilityResources": []
+    },
+    {
       "name": "company_tax_filing.filing_overrides",
       "kind": "capability-business",
       "owner": "backend:company_tax_filing"

@@ -35,3 +35,17 @@ The readiness and annual-estimate transports send caller facts to the canonical 
 <!-- architecture-inventory
 {"apiOperations":["companyTaxPreviewReadiness","companyTaxPreviewAnnualEstimate"]}
 -->
+
+`loadTaxDeliveryDraftArchiveSource` and `TaxDeliveryDraftArchiveProjection` compose
+`companyTaxGetSourceFacts` and `companyTaxGetDeliveryDraftArchive`. A complete V1
+source positively proves the old seven-table extent and permits frontend-first
+rollout without inventing a missing archive response. V2 requires the exact
+originals, unchanged source digest, per-record UTF-8 SHA-256, and matching
+company/year/filing identity. Unknown versions, missing originals and changed
+bytes remain unavailable. Company export retains the source facts and exact
+canonical draft strings inside its existing generation boundary. Drafts remain
+prepared-only; these reads decide no filing readiness or authority outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetSourceFacts","companyTaxGetDeliveryDraftArchive"]}
+-->

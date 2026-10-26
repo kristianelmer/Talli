@@ -1,6 +1,6 @@
 import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";
 import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";
-import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";
+import { loadTaxSettlementArchiveSource, loadTaxDeliveryDraftArchiveSource } from "../../../../../features/company-tax-filing";
 import { createHash } from "node:crypto";
 
 import {
@@ -359,10 +359,13 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   const rf1086 = await loadArchiveRf1086(accessToken, companyId, incomeYear);
   const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
   if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
+  const taxDeliveryDrafts = await loadTaxDeliveryDraftArchiveSource(accessToken, companyId, incomeYear);
+  if (taxDeliveryDrafts.error || !taxDeliveryDrafts.data) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 503 });
   const taxEvidenceIds = new Set(taxSource.submissions.filter((row) => row.mode === "test_authority")
     .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
   if (!submissions?.length && !rf1086.data?.submissions.length
-      && !rf1086.data?.production?.productionSubmissions.length && !taxSource.submissions.length) {
+      && !rf1086.data?.production?.productionSubmissions.length && !taxSource.submissions.length
+      && (taxDeliveryDrafts.data.originals?.recordCount ?? 0) === 0) {
     if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
@@ -442,6 +445,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ),
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
+    taxDeliveryDrafts: taxDeliveryDrafts.data,
     authorityPermissions: mergeArchiveRfRows(mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []), taxSource.authorityPermissions),
     authorityTestRuns: mergeArchiveRfRows(mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []), taxSource.authorityTestRuns.filter((row) => taxEvidenceIds.has(row.id))),
     auditEvents: auditEvents ?? [],

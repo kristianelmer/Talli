@@ -78,6 +78,9 @@ class TaxDeliverySource:
 
     def __post_init__(self):
         from .public import _freeze_return_fact
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int):
+            raise ValueError('Tax source scope is invalid.')
         if type(self.organization_number) is not str or re.fullmatch(r'[0-9]{9}', self.organization_number) is None:
             raise ValueError('Tax organization number is invalid.')
         if (not isinstance(self.annual_data, Mapping)
@@ -118,6 +121,8 @@ class TaxDeliveryEnvelope:
     schema_sha256: str
 
     def __post_init__(self):
+        if type(self.source) is not TaxDeliverySource:
+            raise ValueError('Tax delivery source is invalid.')
         _reference(self.current_document_reference, 'current document reference')
         _digest(self.schema_sha256)
         for value in (self.tax_xml, self.business_xml, self.envelope_xml):

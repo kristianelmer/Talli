@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 import { previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage } from "../features/company-tax-filing/index.ts";
 
@@ -269,4 +270,41 @@ test("generated Tax source client refuses incomplete shapes and mismatched scope
     const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json(value) });
     await assert.rejects(api.companyTaxGetSourceFacts(companyId, 2025), error => error instanceof TalliApiError && error.status === 502);
   }
+});
+
+test("older backend positively proves no delivery store without a newer archive request", async t => {
+  environment(t);
+  const { loadTaxDeliveryDraftArchiveSource } = await import("../features/company-tax-filing/index.ts");
+  let calls=0; const source=sourceFacts();
+  t.mock.method(globalThis,"fetch",async()=>{calls++;return Response.json(source);});
+  assert.deepEqual(await loadTaxDeliveryDraftArchiveSource("owner",companyId,2025),
+    {data:{sourceFacts:source,originals:null},error:null});
+  assert.equal(calls,1);
+  source.historyCoverage.status="incomplete";
+  assert.ok((await loadTaxDeliveryDraftArchiveSource("owner",companyId,2025)).error);
+  assert.equal(calls,2);
+});
+
+test("company archive preserves exact retained draft bytes and rejects changed originals or source", async t => {
+  environment(t);
+  const { loadTaxDeliveryDraftArchiveSource } = await import("../features/company-tax-filing/index.ts");
+  const source=sourceFacts(); source.evidence.version=source.evidence.version.replace("v1:","v2:");
+  const raw=JSON.stringify({version:"company-tax-delivery-draft-v1",draft:{filing_id:operationId,
+    envelope:{source:{company_id:{value:companyId},income_year:{value:2025}}}}});
+  const original={filingId:operationId,recordedAt:"2026-09-14T00:00:00Z",canonicalJson:raw,
+    draftSha256:createHash("sha256").update(raw).digest("hex")};
+  const baseline={companyId,incomeYear:2025,codec:"company-tax-delivery-draft-archive-v1",coverage:"complete",
+    sourceSha256:source.evidence.digest,observedAt:"2026-09-14T00:00:00Z",recordCount:1,records:[original]};
+  let archive=baseline;
+  t.mock.method(globalThis,"fetch",async url=>Response.json(new URL(url).pathname.endsWith("source-facts")?source:archive));
+  const result=await loadTaxDeliveryDraftArchiveSource("owner",companyId,2025);
+  assert.equal(result.error,null); assert.equal(result.data.originals.records[0].canonicalJson,raw);
+  for(const changed of [
+    {...baseline,sourceSha256:"f".repeat(64)},
+    {...baseline,records:[{...original,canonicalJson:raw+" "}]},
+    {...baseline,records:[{...original,canonicalJson:raw.replace(companyId,operationId),
+      draftSha256:createHash("sha256").update(raw.replace(companyId,operationId)).digest("hex")}]},
+    {...baseline,recordCount:2},
+    {...baseline,records:[original,original],recordCount:2},
+  ]) {archive=changed; assert.ok((await loadTaxDeliveryDraftArchiveSource("owner",companyId,2025)).error);}
 });

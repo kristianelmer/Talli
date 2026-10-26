@@ -26,6 +26,7 @@ from talli_backend.modules.banking.public import (
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
+    TaxDeliveryDraft, StoredTaxDeliveryDraft, TaxDeliveryDraftPersistence, decode_tax_delivery_draft,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
     AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
@@ -146,6 +147,7 @@ class PostgresCompanyTaxSession:
             raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(TaxDeliveryDraftPersistence)
 @tax_settlement_persistence_adapter(CompanyTaxSourcePersistence)
 @tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
 @audit_inclusion_adapter(AuditInclusion)
@@ -165,6 +167,51 @@ class PostgresCompanyTaxTransaction:
     @property
     def actor_id(self):
         return self._verified.actor_id
+
+    def _delivery_draft(self, value):
+        try:
+            draft = decode_tax_delivery_draft(value['canonical_json'], value['draft_sha256'])
+            source = draft.envelope.source
+            if (value['id'] != draft.filing_id or value['company_id'] != str(source.company_id)
+                    or type(value['income_year']) is not int or value['income_year'] != int(source.income_year)
+                    or value['prepared_by'] != str(draft.prepared_by.subject)
+                    or value['command_key'] != str(draft.command_key)):
+                raise ValueError()
+            return StoredTaxDeliveryDraft(draft, Timestamp(datetime.fromisoformat(value['recorded_at'])))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def _delivery_row(self, query, parameters):
+        try:
+            return await self._one_idempotent_row(query, parameters)
+        except LedgerError:
+            raise CompanyTaxError.unavailable() from None
+
+    async def store_delivery_draft(self, draft: TaxDeliveryDraft) -> StoredTaxDeliveryDraft:
+        if draft.prepared_by != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._delivery_row(
+            'select company_tax_filing.store_delivery_draft_v1(%s::text,%s::text,%s::text) as result',
+            (draft.canonical_json, draft.sha256, str(self.actor_id.subject)))
+        stored = self._delivery_draft(row['result'])
+        if stored.draft != draft:
+            raise CompanyTaxError.unavailable()
+        return stored
+
+    async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery, command_key) -> StoredTaxDeliveryDraft | None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._delivery_row(
+            'select company_tax_filing.read_delivery_draft_v1(%s::uuid,%s::integer,%s::text,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(command_key), str(self.actor_id.subject)))
+        if row['result'] is None:
+            return None
+        stored = self._delivery_draft(row['result'])
+        if (stored.draft.envelope.source.company_id != query.company_id
+                or stored.draft.envelope.source.income_year != query.income_year
+                or stored.draft.prepared_by != query.actor_id or stored.draft.command_key != command_key):
+            raise CompanyTaxError.unavailable()
+        return stored
 
     @property
     def delivery_ledger_queries(self):
@@ -332,10 +379,32 @@ class PostgresCompanyTaxTransaction:
             raise CompanyTaxError.unavailable() from None
 
     async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        # Prefer the installed versioned successor. A missing successor never
+        # hides an added store: the unchanged V1 exact-extent proof fails closed.
+        row = await self._delivery_row(
+            "select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v2(uuid,integer,text)') is not null as installed", ())
+        return await self._filing_source_snapshot(query, delivery=row['installed'])
+
+    async def delivery_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query, delivery=True)
+
+    async def delivery_draft_archive_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query, delivery=True, archive=True)
+
+    async def lock_delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> None:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
-        row = await self._one_idempotent_row(
-            'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+        await self._delivery_row(
+            'select company_tax_filing.lock_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text)',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)))
+
+    async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False) -> CompanyTaxSourceSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await (self._delivery_row if delivery else self._one_idempotent_row)(
+            ('select company_tax_filing.read_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text) as result' if archive else
+             'select company_tax_filing.read_source_snapshot_v2(%s::uuid,%s::integer,%s::text) as result' if delivery else
+             'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result'),
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
         )
         value = row.get('result')
@@ -348,7 +417,9 @@ class PostgresCompanyTaxTransaction:
                 **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
                     'review_comments', 'permissions', 'test_evidence')})
             return CompanyTaxSourceSnapshot(rows, value['coverage'],
-                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
+                value['contractVersion'] if delivery else 'company-tax-source-v1',
+                tuple(self._delivery_draft(row) for row in value['deliveryDrafts']) if delivery else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise CompanyTaxError.unavailable() from None
 

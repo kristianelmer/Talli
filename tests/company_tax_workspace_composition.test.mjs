@@ -144,6 +144,7 @@ function consumerSetup(failed = false) {
       data: [], projection: { companyId, incomeYear, objects: [] }, error: null,
     }),
     loadTaxSettlementArchiveSource: async () => ({ data: [], error: null }),
+    loadTaxDeliveryDraftArchiveSource: async () => ({ data: { sourceFacts: {}, originals: null }, error: null }),
     loadArchiveBilling: async () => ({ data: [], error: null }),
     loadArchiveInvestments: async () => ({ data: null, error: null }),
     loadArchiveCorporateLifecycle: async () => ({ data: null, error: null }),
@@ -207,6 +208,30 @@ test("Archive source failure returns unavailable before building an archive or r
   const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2025" }) });
   assert.equal(response.status, 500);
   assert.equal(effects.some(item => ["archive", "company_archive_complete_export"].includes(item.name)), false);
+});
+
+test("Archive retains validated draft originals inside its generation receipt", async () => {
+  const { effects, dependencies, taxSource } = consumerSetup();
+  taxSource.submissions=[];
+  const original={sourceFacts:{retained:"source"},originals:{recordCount:1,records:[{canonicalJson:'{"exact":"ø\\n"}',draftSha256:"retained"}]}};
+  dependencies.loadTaxDeliveryDraftArchiveSource=async(...args)=>{
+    assert.deepEqual(args,["token","company",2025]);return{data:original,error:null};
+  };
+  const get=functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts","GET",dependencies);
+  const response=await get(new Request("https://example.test/archive"),{params:Promise.resolve({companyId:"company",incomeYear:"2025"})});
+  assert.equal(response.status,200,await response.clone().text());
+  assert.deepEqual(effects.find(row=>row.name==="archive").body.taxDeliveryDrafts,original);
+  assert.deepEqual(effects.find(row=>row.name==="archive").body.filingSubmissions,[]);
+  assert.equal(effects.filter(row=>row.name==="company_archive_complete_export").length,1);
+});
+
+test("Missing draft originals cannot publish a partial archive or complete its receipt", async () => {
+  const { effects, dependencies } = consumerSetup();
+  dependencies.loadTaxDeliveryDraftArchiveSource=async()=>({data:null,error:{message:"unavailable"}});
+  const get=functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts","GET",dependencies);
+  const response=await get(new Request("https://example.test/archive"),{params:Promise.resolve({companyId:"company",incomeYear:"2025"})});
+  assert.equal(response.status,503);
+  assert.equal(effects.some(row=>["archive","company_archive_complete_export"].includes(row.name)),false);
 });
 for (const failed of [false, true]) test(`readiness refresh ${failed ? "stops without snapshot or Audit writes on Tax failure" : "uses every owned Tax readiness family"}`, async () => {
   const { effects, dependencies, taxSource } = consumerSetup(failed);

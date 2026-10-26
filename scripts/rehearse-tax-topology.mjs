@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract", "filing-expand", "filing-contract"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -43,7 +43,9 @@ try {
   } else {
     const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
-    if (direction === "filing-expand") {
+    if (direction === "delivery-expand") {
+      await apply("contract-migrations/20261026062315_company_tax_delivery_journal.sql");
+    } else if (direction === "filing-expand") {
       for (const name of ["20260914200000_company_tax_return_expand.sql", "20260914201000_company_tax_return_read_contracts.sql",
         "20260914202000_company_tax_return_import_contract.sql", "20260914203000_company_tax_return_preparation_contracts.sql",
         "20260914022608_company_tax_return_source_contract.sql"]) {

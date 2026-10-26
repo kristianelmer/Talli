@@ -4,4 +4,6 @@ export { importCompanyTaxTt02Evidence, taxEvidenceImportErrorMessage } from "./t
 export { findCompanyTaxPreview, acknowledgeOwnedCompanyTaxComment, companyTaxActionErrorMessage, companyTaxRecordOverride, companyTaxAddReviewComment, companyTaxConfirmPermission, companyTaxRecordTestEvidence } from "./transport.ts";
 export { presentCompanyTaxPreview, presentCompanyTaxSubmission, presentCompanyTaxOverride, presentCompanyTaxComment, presentCompanyTaxPermission, presentCompanyTaxTestEvidence } from "./presentation.ts";
 export { previewCompanyTaxReadiness, previewAnnualTaxEstimate } from "./transport.ts";
+export { loadTaxDeliveryDraftArchiveSource } from "./transport.ts";
+export type { TaxDeliveryDraftArchiveProjection } from "./transport.ts";
 export type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest, CompanyTaxReadinessIssueWire, CompanyTaxReadinessPreviewWire, CompanyTaxAnnualEstimateWire } from "@talli/talli-api-client";
