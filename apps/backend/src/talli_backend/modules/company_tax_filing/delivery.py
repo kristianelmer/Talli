@@ -136,6 +136,8 @@ class TaxDeliveryEnvelope:
 def prepare_tax_delivery(source: TaxDeliverySource, *, party_number: str,
                          current_document_reference: str, schema_sha256: str) -> TaxDeliveryEnvelope:
     from .public import CompanyTaxEnvelopeInput, CompanyTaxReturnSource, prepare_company_tax_return, render_company_tax_envelope
+    if int(source.income_year) != 2025:
+        raise ValueError('Tax delivery requires the supported 2025 schema/code-list generation.')
     _reference(current_document_reference, 'current document reference')
     if type(party_number) is not str or re.fullmatch(r'[0-9]{1,19}', party_number) is None:
         raise ValueError('Tax party number is invalid.')

@@ -52,6 +52,9 @@ try {
     } else {
       await apply("contract-migrations/20260914012503_company_tax_return_cutover.sql");
       await apply("contract-migrations/20260914012930_company_tax_return_contract.sql");
+      // Governance's predecessor rehearsal can recreate the frozen Annual
+      // reader. Restore Tax's exact successor read admission after that lane.
+      await apply("migrations/20261026043538_company_tax_delivery_annual_read_admission.sql");
     }
   }
   console.log(`Company Tax local topology ${direction} completed`);

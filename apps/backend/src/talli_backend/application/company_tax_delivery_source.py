@@ -12,7 +12,7 @@ from talli_backend.modules.investments.public import (
     InvestmentActivityView, InvestmentLifecycleEventView, InvestmentsQueries,
     InvestmentsError, read_investment_reporting_snapshot,
 )
-from talli_backend.modules.ledger.public import LedgerQueries, LedgerError, LedgerEntryKind, LedgerEntryPage, LedgerEntryView, LedgerCursor
+from talli_backend.modules.ledger.public import LedgerQueries, LedgerError, LedgerEntryAmendment, LedgerEntryKind, LedgerEntryPage, LedgerEntryView, LedgerCursor
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
 
 
@@ -72,6 +72,33 @@ def _investment_action(row: InvestmentActivityView | InvestmentLifecycleEventVie
         'risk_level': 'info', 'payload': payload}
 
 
+def _entry_type(row):
+    return 'admin_cost' if row.entry_kind is LedgerEntryKind.ADMINISTRATIVE_COST else row.entry_kind.value.lower()
+
+
+def _ledger_reversals(entries, amendments, company_id):
+    indexed = {row.entry_id: row for row in entries}
+    originals, reversals = set(), {}
+    if not isinstance(amendments, tuple):
+        raise ValueError('Ledger amendment enumeration is incomplete.')
+    for amendment in amendments:
+        if not isinstance(amendment, LedgerEntryAmendment) or amendment.company_id != company_id:
+            raise ValueError('Ledger amendment scope is invalid.')
+        original, reversal = indexed.get(amendment.original_entry_id), indexed.get(amendment.reversal_entry_id)
+        replacement = indexed.get(amendment.replacement_entry_id) if amendment.replacement_entry_id else None
+        if (original is None or reversal is None or original.entry_id in originals
+                or reversal.entry_id in reversals or original.entry_id == reversal.entry_id
+                or reversal.entry_kind is not LedgerEntryKind.CORRECTION_REVERSAL
+                or original.income_year != amendment.income_year or reversal.income_year != amendment.income_year
+                or (amendment.replacement_entry_id is not None and
+                    (replacement is None or replacement.income_year != amendment.income_year
+                     or replacement.entry_id in (original.entry_id, reversal.entry_id)))):
+            raise ValueError('Ledger correction lineage is incomplete or ambiguous.')
+        originals.add(original.entry_id)
+        reversals[reversal.entry_id] = original
+    return reversals
+
+
 async def read_company_tax_delivery_source(inputs: TaxDeliverySourceInputs,
         query: CompanyTaxSourceQuery, *, correlation_id: CorrelationId) -> TaxDeliverySource:
     if inputs.actor_id != query.actor_id:
@@ -83,6 +110,9 @@ async def read_company_tax_delivery_source(inputs: TaxDeliverySourceInputs,
                 or annual.company_id != query.company_id or annual.income_year != query.income_year):
             raise ValueError('Tax annual source is missing or outside its scope.')
         entries = await _ledger_entries(inputs.delivery_ledger_queries, query, correlation_id)
+        amendments = await inputs.delivery_ledger_queries.list_entry_amendments(actor_id=query.actor_id,
+            company_id=query.company_id, correlation_id=correlation_id)
+        reversals = _ledger_reversals(entries, amendments, query.company_id)
         investments = await read_investment_reporting_snapshot(inputs.delivery_investments_queries,
             actor_id=query.actor_id, company_id=query.company_id, income_year=query.income_year,
             correlation_id=correlation_id)
@@ -93,7 +123,9 @@ async def read_company_tax_delivery_source(inputs: TaxDeliverySourceInputs,
             'completed_at': annual.completed_at, 'updated_at': annual.updated_at}
         ledger = tuple({'id': str(row.entry_id), 'company_id': str(row.company_id),
             'income_year': int(row.income_year),
-            'entry_type': 'admin_cost' if row.entry_kind is LedgerEntryKind.ADMINISTRATIVE_COST else row.entry_kind.value.lower(),
+            'entry_type': _entry_type(row),
+            **({'reversal_of': str(reversals[row.entry_id].entry_id),
+                'reversed_entry_type': _entry_type(reversals[row.entry_id])} if row.entry_id in reversals else {}),
             'memo': row.memo, 'lines': tuple({'account': line.account, 'description': line.description,
                 'debit': format(line.debit.amount, 'f'), 'credit': format(line.credit.amount, 'f')}
                 for line in row.lines), 'risk_flags': tuple(flag.code.value for flag in row.risk_flags),
@@ -101,7 +133,7 @@ async def read_company_tax_delivery_source(inputs: TaxDeliverySourceInputs,
             for row in entries if row.income_year == query.income_year)
         return TaxDeliverySource(query.company_id, query.income_year, company.organization_number,
             annual_data, ledger, tuple(_investment_action(row) for row in investments.active_events),
-            {'annual': tax_delivery_digest(annual), 'ledger': tax_delivery_digest(entries),
+            {'annual': tax_delivery_digest(annual), 'ledger': tax_delivery_digest({'entries': entries, 'amendments': amendments}),
              'investments': investments.source_sha256})
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError, InvestmentsError, LedgerError):
         raise CompanyTaxError.unavailable() from None

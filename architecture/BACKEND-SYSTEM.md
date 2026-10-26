@@ -849,7 +849,8 @@ an exact, read-only grant to `company_tax_filing_workflow_executor`. Its reversi
 admission migration grants schema usage and only that function's execution,
 preserving every pre-existing role membership option and grantor. The internal
 `company_tax_delivery_source` workflow composes Annual, Ledger and Investments
-public facts on one verified read-only repeatable snapshot. Bound Ledger and
+public facts on one verified repeatable snapshot without business writes; its
+existing migration-fence row locks remain supported. Bound Ledger and
 Investments query adapters borrow existing executor roles in savepoints and
 restore the caller role on completion, SQL failure or cancellation. No new
 foreign table grant, business writer, HTTP route, or provider activation is added.

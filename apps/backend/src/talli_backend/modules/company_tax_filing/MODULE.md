@@ -120,13 +120,22 @@ source gate above.
 
 The internal `CompanyTaxApplication` delivery-source read now composes the
 existing exact-year Annual interview contract, every Ledger entry page, and
-Investments' complete reporting snapshot in one verified, read-only repeatable
-transaction. Owning adapters borrow only existing executor memberships, enforce
+Investments' complete reporting snapshot in one verified repeatable transaction
+with no business writes. Existing migration-fence row locks remain supported.
+Owning adapters borrow only existing executor memberships, enforce
 the verified subject/claims and isolation binding, and restore the Tax role on
 success, SQL error or cancellation. The source keeps all upstream digests while
 projecting selected-year facts into the characterized Tax calculator. Missing
 interviews, malformed pages and unresolved source lineage fail closed. This
 preparation seam has no public HTTP route, stored approval or authority effect.
+
+Ledger's published amendment references identify administrative-cost reversals
+for the distinct entry-based annual estimate. Statutory expenses and share losses
+use net account balances, so full reversal/replacement chains do not double-count.
+Unsettled investment-income and sale receivables (`1530`/`1570`) map to the pinned
+2025 business code `1570` (other current receivables); settled balances cancel.
+Current-asset occurrences reserve distinct paths for securities, bank and
+receivables instead of colliding when the only investment is a current asset.
 
 <!-- architecture-inventory
 {"ports": ["CompanyTaxSourcePersistence"]}

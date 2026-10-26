@@ -942,12 +942,14 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const taxFiles = packageJson.scripts["test:company-tax-database"].match(/apps\/backend\/tests\/test_\w+\.py/gu);
   assert.deepEqual(taxFiles, [
     "apps/backend/tests/test_company_tax_filing_database.py",
+    "apps/backend/tests/test_postgres_tax_source_snapshot.py",
     "apps/backend/tests/test_company_tax_filing_runtime.py",
     "apps/backend/tests/test_company_tax_return_lifecycle.py",
+    "apps/backend/tests/test_company_tax_delivery_database.py",
   ], "Tax must retain settlement expansion/runtime and filing lifecycle coverage");
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
-  assert.ok(tax.size >= 21);
+  assert.ok(tax.size >= 32);
   const accountsFiles = packageJson.scripts["test:annual-accounts-database"].match(/apps\/backend\/tests\/test_\w+\.py/gu);
   assert.deepEqual(accountsFiles, ["apps/backend/tests/test_annual_accounts_filing_lifecycle.py"]);
   const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);

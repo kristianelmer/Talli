@@ -133,7 +133,6 @@ class PostgresCompanyTaxSession:
             ) as connection, connection.transaction():
                 if snapshot:
                     await connection.execute('set transaction isolation level repeatable read')
-                    await connection.execute('set transaction read only')
                 await connection.execute('set local role company_tax_filing_workflow_executor')
                 await connection.execute("select set_config('talli.verified_actor_id', %s, true)", (str(self.actor_id.subject),))
                 await connection.execute("select set_config('talli.verified_actor_claims', %s, true)", (self._verified.claims_json,))

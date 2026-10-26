@@ -88,6 +88,24 @@ Skatteetaten validation service and completed the TT02 submission flow on
 
 ## Unsupported/Escalation Decisions
 
+### Complete-source corrections and receivables (2026-10-26)
+
+The owned delivery source includes recognition before cash settlement and full
+Ledger reversal/replacement history. Statutory cost and share-loss aggregation
+therefore uses net debits less credits. Annual estimates retain their separate
+entry-based scope and consume Ledger's published amendment references when
+netting an administrative-cost reversal.
+
+Ledger accounts `1530` (investment income receivable) and `1570` (investment sale
+or tax receivable) map to business balance code `1570`, **Andre kortsiktige
+fordringer**. The authority's code `1530` describes accrued operating revenue,
+so matching the Ledger account number would misclassify investment income.
+Evidence: the pinned [2025 result/balance code list](https://github.com/Skatteetaten/skattemeldingen/blob/7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba/src/resources/kodeliste/2025/2025_resultatregnskapOgBalanse.xml).
+These are local schema/mapping decisions; provider conformance and activation
+remain separate gates.
+
+### Unsupported launch scope
+
 Block before tax-return payload generation:
 
 - Foreign dividends, foreign withholding tax, credit deduction, NOKUS, or low-tax-country cases.

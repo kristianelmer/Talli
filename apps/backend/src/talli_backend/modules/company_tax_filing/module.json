@@ -229,7 +229,9 @@
     "policy": "apps/backend/tests/test_company_tax_filing.py",
     "architecture": "tests/architecture_foundation.test.mjs",
     "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py",
-    "deliveryPolicy": "apps/backend/tests/test_company_tax_delivery.py"
+    "deliveryPolicy": "apps/backend/tests/test_company_tax_delivery.py",
+    "deliverySource": "apps/backend/tests/test_company_tax_delivery_source.py",
+    "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py"
   },
   "compatibilityExceptions": []
 }

@@ -95,6 +95,15 @@ def test_document_preparation_does_not_decide_common_annual_readiness():
     assert envelope.source.annual_data['answers']['has_unpaid_items'] is True
 
 
+def test_delivery_does_not_apply_2025_schemas_and_codes_to_a_different_income_year():
+    values = raw_source()
+    values['income_year'] = IncomeYear(2026)
+    for row in (values['annual_data'], *values['ledger_entries'], *values['holding_actions']):
+        row['income_year'] = 2026
+    with pytest.raises(ValueError, match='2025 schema'):
+        prepared(TaxDeliverySource(**values))
+
+
 @pytest.mark.parametrize('answer', [None, True, False, '', 'unknown', 'required', 'NONE', ['none']])
 def test_attachments_never_default_or_coerce_to_supported(answer):
     values = raw_source(); values['annual_data']['answers']['company_tax_additional_attachments'] = answer
