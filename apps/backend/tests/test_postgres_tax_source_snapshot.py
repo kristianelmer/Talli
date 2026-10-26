@@ -75,8 +75,11 @@ def database():
                 create role company_tax_filing_workflow_executor nologin noinherit;
                 create role investments_executor nologin noinherit;
                 create role ledger_executor nologin noinherit;
+                create role corporate_governance_workflow_executor nologin noinherit;
+                create role annual_accounts_filing_workflow_executor nologin noinherit;
                 create role snapshot_runtime login noinherit;
-                grant company_tax_filing_workflow_executor, investments_executor, ledger_executor
+                grant company_tax_filing_workflow_executor, investments_executor, ledger_executor,
+                  corporate_governance_workflow_executor, annual_accounts_filing_workflow_executor
                   to snapshot_runtime with inherit false, set true;
                 create schema backend_system authorization ledger_store_owner;
                 grant usage on schema backend_system to backend_system_annual_data_reader;
@@ -95,7 +98,10 @@ def database():
                 create policy own on snapshot_facts.rows for select
                   using(subject = current_setting('talli.verified_actor_id',true)::uuid);
                 grant usage on schema snapshot_facts to investments_executor,ledger_executor;
-                grant select on snapshot_facts.rows to investments_executor,ledger_executor;
+                grant select on snapshot_facts.rows to investments_executor,ledger_executor,corporate_governance_workflow_executor;
+                grant usage on schema snapshot_facts to corporate_governance_workflow_executor;
+                grant usage on schema backend_system to corporate_governance_workflow_executor;
+                grant execute on function backend_system.list_annual_data_legacy_v1(uuid,integer,text) to corporate_governance_workflow_executor;
             ''')
             yield dict(host='127.0.0.1', port=port, dbname='postgres', sslmode='disable')
     finally:
@@ -114,7 +120,7 @@ async def bind(connection, *, isolation='repeatable read', subject=None):
         (subject or str(ACTOR.subject), verified().claims_json))
 
 
-@pytest.mark.parametrize('executor', ['investments_executor', 'ledger_executor'])
+@pytest.mark.parametrize('executor', ['investments_executor', 'ledger_executor', 'corporate_governance_workflow_executor'])
 def test_snapshot_read_enforces_rls_and_restores_caller_role(database, executor):
     async def exercise():
         async with await psycopg.AsyncConnection.connect(**database, user='snapshot_runtime', row_factory=dict_row) as connection:

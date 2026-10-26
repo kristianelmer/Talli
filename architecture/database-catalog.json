@@ -21,6 +21,18 @@
       ]
     },
     {
+      "name": "annual_accounts_filing.delivery_drafts",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "annual_accounts_filing.delivery_events",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": []
+    },
+    {
       "name": "annual_accounts_filing.filing_overrides",
       "kind": "capability-business",
       "owner": "backend:annual_accounts_filing",

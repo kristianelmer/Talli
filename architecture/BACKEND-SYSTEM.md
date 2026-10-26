@@ -1276,3 +1276,17 @@ validation, owner/person signing and runtime filing admission.
 <!-- architecture-inventory
 {"ports": ["AnnualAccountsSchemaValidator"], "adapterBindings": ["AnnualAccountsSchemaValidator=>talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas"], "adapterDependencies": ["talli_backend.adapters.annual_accounts_schemas"], "adapterBindingOwners": ["AnnualAccountsSchemaValidator=>backend-system"], "adapterBindingModes": ["AnnualAccountsSchemaValidator=>Offline exact public RR0002 JSON models/BPMN/application metadata; derived strict XML constraints and supported AS/NOK profile, exact raw document hashes; no upstream XSD or runtime acceptance claim and no person-signing authority."]}
 -->
+
+## Accounts source-bound preparation and retention
+
+`AnnualAccountsDeliveryDraftPersistence` retains exact source-bound RR0002
+drafts behind owner/MFA checks and the published company archive guard. The
+reader-first migration declares the eight-table Accounts extent, immutable
+originals and a reserved closed event journal. Source v2 positively covers every
+retained draft; its empty-event requirement prevents a later journal from being
+silently omitted. Rollback closes draft writes and preserves originals/readers.
+The current preparation stage performs no provider I/O or person signing.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql","supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql"],"ports":["AnnualAccountsDeliveryDraftPersistence"],"adapterBindings":["AnnualAccountsDeliveryDraftPersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"],"adapterBindingOwners":["AnnualAccountsDeliveryDraftPersistence=>backend-system"],"adapterBindingModes":["AnnualAccountsDeliveryDraftPersistence=>Exact immutable Accounts drafts in a default-closed reader-first source-v2 store; current owner/MFA and published company guard, no dispatch or authority permission."]}
+-->

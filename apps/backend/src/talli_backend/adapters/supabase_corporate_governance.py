@@ -18,6 +18,7 @@ from talli_backend.adapters.supabase_ledger import (
     SupabaseLedgerAdapter,
     SupabaseLedgerSession,
     SupabaseLedgerWorkflowTransaction,
+    _verified_snapshot_rows,
     _VerifiedActor,
     _actor as _ledger_actor,
     _line_payload,
@@ -1664,6 +1665,20 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         return _posted_entry(row)
 
 
+
+class SupabaseCorporateGovernanceSnapshotQueries(SupabaseCorporateGovernanceTransaction):
+    """Corporate owning reads on an existing verified repeatable snapshot."""
+
+    async def _database_rows(self, query, parameters=()):
+        try:
+            return await _verified_snapshot_rows(self._verified, self._connection,
+                'corporate_governance_workflow_executor', query, parameters)
+        except (ValueError, KeyError, TypeError, psycopg.OperationalError):
+            raise CorporateGovernanceError.unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_governance_database_error(str(error)) from None
+
+
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
@@ -1681,5 +1696,6 @@ __all__ = [
     "SupabaseCorporateGovernanceAdapter",
     "SupabaseCorporateGovernanceSession",
     "SupabaseCorporateGovernanceTransaction",
+    "SupabaseCorporateGovernanceSnapshotQueries",
     "compose_corporate_governance_application",
 ]

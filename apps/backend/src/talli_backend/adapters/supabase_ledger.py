@@ -2254,7 +2254,7 @@ async def _verified_snapshot_rows(verified, connection, executor_role, query, pa
     A savepoint restores transaction-local role state even on cancellation or a
     failed query. The supplied connection must have one sequential owner.
     """
-    if executor_role not in ('ledger_executor', 'investments_executor'):
+    if executor_role not in ('ledger_executor', 'investments_executor', 'corporate_governance_workflow_executor'):
         raise ValueError('Unsupported snapshot read role.')
     async with connection.transaction():
         cursor = await connection.execute("""

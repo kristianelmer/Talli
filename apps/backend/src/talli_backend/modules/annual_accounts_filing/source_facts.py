@@ -11,10 +11,11 @@ import re
 from .public import (
     AnnualAccountsError, AnnualAccountsSourceQuery, AnnualAccountsSourceSnapshot, AnnualAccountsSourceEvidence,
     AnnualAccountsHistoryCoverage, AnnualAccountsSubmissionFact, AnnualAccountsIncidentFact, AnnualAccountsOutcomeFact,
-    AnnualAccountsCorrectionLink, AnnualAccountsSourceFacts,
+    AnnualAccountsCorrectionLink, AnnualAccountsSourceFacts, StoredAnnualAccountsDeliveryDraft, AnnualAccountsDeliveryDraftFact,
 )
 
 _VERSION = 'annual-accounts-source-v1'
+_DELIVERY_VERSION = 'annual-accounts-source-v2'
 _FAMILIES = {
     'filing_previews': 'previews', 'filing_submissions': 'submissions',
     'filing_overrides': 'overrides', 'filing_review_comments': 'review_comments',
@@ -85,7 +86,8 @@ def _coverage(query, snapshot, evidence_reference):
             reasons.append('canonical_source_unavailable')
         if not re.fullmatch('[0-9a-f]{40}', str(proof.get('sourceRevision', ''))):
             reasons.append('migration_source_version_missing')
-        for flag in ('inventoryValid', 'quarantineClear', 'sourceRowsValid', 'legacyFencesValid', 'modeChecksValid', 'declaredExtentValid'):
+        for flag in ('inventoryValid', 'quarantineClear', 'sourceRowsValid', 'legacyFencesValid', 'modeChecksValid',
+                     *(() if snapshot.contract_version==_DELIVERY_VERSION else ('declaredExtentValid',))):
             if proof.get(flag) is not True:
                 reasons.append(flag + '_unproven')
         if set(proof.get('reconciledFamilies', ())) != set(_FAMILIES):
@@ -110,6 +112,20 @@ def _coverage(query, snapshot, evidence_reference):
         if (not isinstance(retained, (list, tuple)) or len(set(retained)) != len(retained)
                 or not set(retained).issubset(current_ids)):
             reasons.append('retained_submission_history_missing')
+        if snapshot.contract_version==_DELIVERY_VERSION:
+            if (proof.get('contractVersion')!=_DELIVERY_VERSION or proof.get('declaredExtentValid') is not False
+                    or proof.get('declaredDeliveryExtentValid') is not True
+                    or proof.get('declaredTables')!=tuple(sorted((*_FAMILIES,'delivery_drafts','delivery_events')))):
+                reasons.append('delivery_extent_unproven')
+            if any(proof.get(flag) is not True for flag in ('deliveryArchiveTrackingValid','deliveryImmutableValid','deliveryKeysValid')):
+                reasons.append('delivery_retention_unproven')
+            if (type(proof.get('deliveryDraftCount')) is not int or proof['deliveryDraftCount']!=len(snapshot.delivery_drafts)
+                    or proof.get('deliveryDraftDigests')!={row.draft.filing_id:row.draft.sha256 for row in snapshot.delivery_drafts}):
+                reasons.append('delivery_draft_enumeration_incomplete')
+            # V2 has a reserved event store but no event codec/append runtime.
+            # A nonempty journal requires its successor before history is complete.
+            if type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=0:
+                reasons.append('delivery_event_codec_unavailable')
     if snapshot.complete_enumeration is not True:
         reasons.append('source_enumeration_incomplete')
     if any(_potential_production(row) for row in snapshot.rows.submissions):
@@ -130,10 +146,21 @@ def project(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnap
     if rows.company_id != query.company_id or rows.income_year != query.income_year:
         raise AnnualAccountsError.unavailable()
     try:
-        digest = _digest({'version': _VERSION, 'rows': rows, 'coverage': snapshot.coverage,
-                          'completeEnumeration': snapshot.complete_enumeration})
+        if snapshot.contract_version not in (_VERSION,_DELIVERY_VERSION):raise ValueError('Unknown Accounts source contract.')
+        if snapshot.contract_version==_VERSION and snapshot.delivery_drafts:raise ValueError('Legacy source cannot cover delivery drafts.')
+        identities=set();total_bytes=0
+        for stored in snapshot.delivery_drafts:
+            if (type(stored) is not StoredAnnualAccountsDeliveryDraft or stored.draft.filing_id in identities
+                    or stored.draft.source.company_id!=query.company_id or stored.draft.source.income_year!=query.income_year
+                    or stored.recorded_at.value>snapshot.as_of.value):raise ValueError('Retained Accounts draft scope or identity differs.')
+            identities.add(stored.draft.filing_id);total_bytes+=len(stored.draft.canonical_json.encode('utf-8'))
+        if len(identities)>1000 or total_bytes>67108864:raise ValueError('Accounts retained extent exceeds its bound.')
+        value={'version':snapshot.contract_version,'rows':rows,'coverage':snapshot.coverage,
+               'completeEnumeration':snapshot.complete_enumeration}
+        if snapshot.contract_version==_DELIVERY_VERSION:value['deliveryDrafts']=snapshot.delivery_drafts
+        digest = _digest(value)
         evidence = AnnualAccountsSourceEvidence(query.company_id, query.income_year,
-            f'annual-accounts:{query.company_id}:{int(query.income_year)}', _VERSION + ':' + digest, digest, snapshot.as_of)
+            f'annual-accounts:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)
         coverage = _coverage(query, snapshot, evidence.reference)
         submissions, attempts, incidents, outcomes, corrections = [], [], [], [], []
         for row in rows.submissions:
@@ -170,7 +197,9 @@ def project(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnap
         status = 'unavailable' if coverage.status == 'unavailable' else 'blocked'
         blocks = ('annual_accounts_production_disabled',) if status == 'blocked' else ('annual_accounts_source_unavailable',)
         return AnnualAccountsSourceFacts(evidence, status, blocks, coverage, tuple(submissions), tuple(attempts),
-            tuple(corrections), tuple(incidents), tuple(outcomes))
+            tuple(corrections), tuple(incidents), tuple(outcomes),tuple(AnnualAccountsDeliveryDraftFact(
+                row.draft.filing_id,row.draft.prepared_by,row.draft.sha256,row.draft.source.sha256,row.recorded_at)
+                for row in snapshot.delivery_drafts))
     except (KeyError, TypeError, ValueError, AttributeError, RecursionError):
         raise AnnualAccountsError.unavailable() from None
 

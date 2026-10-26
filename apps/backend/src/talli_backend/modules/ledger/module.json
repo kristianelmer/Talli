@@ -45,7 +45,9 @@
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
       "ReversedLedgerEntry",
-      "preview_tax_settlement_lines"
+      "preview_tax_settlement_lines",
+      "LedgerReportingSnapshot",
+      "read_ledger_reporting_snapshot"
     ],
     "events": [],
     "errors": [
@@ -208,7 +210,8 @@
     "policy": "apps/backend/tests/test_ledger.py",
     "database": "tests/ledger_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs",
-    "governanceEntryAssertion": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py"
+    "governanceEntryAssertion": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+    "reporting": "apps/backend/tests/test_ledger_reporting_snapshot.py"
   },
   "compatibilityExceptions": [
     "compat-ledger-persistence"

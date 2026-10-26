@@ -162,13 +162,14 @@ def test_source_adapter_validates_scope_and_snapshot_shape_before_projection():
             return self
 
         async def fetchall(self):
+            if 'to_regprocedure' in self.calls[-1][0]:return [{'installed':False}]
             return [{'result': self.result}]
 
     connection = Connection()
     transaction = PostgresAnnualAccountsTransaction(SimpleNamespace(actor_id=query.actor_id), connection)
     snapshot = asyncio.run(transaction.filing_source_snapshot(query))
     assert project_annual_accounts_source(query, snapshot).history_coverage.status == 'complete'
-    assert connection.calls[0][1] == (str(query.company_id), int(query.income_year), str(query.actor_id.subject))
+    assert connection.calls[1][1] == (str(query.company_id), int(query.income_year), str(query.actor_id.subject))
     for mutation in [dict(companyId='foreign'), dict(incomeYear=True), dict(completeEnumeration=1),
                      dict(asOf='2025-01-01T00:00:00'), dict(workspace={}), dict(asOf='invalid')]:
         connection.result = {**source(), **mutation}

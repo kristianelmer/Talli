@@ -638,3 +638,10 @@ It rechecks original actor and current OWNER and only reads/locks; the eight
 other new entrypoints and all seven superseded writers close. This is not
 pre-contract ACL restoration. The backend-system document names the actual
 consumers and unchanged real revocation regressions.
+
+The application exposes `read_readiness_in_transaction` for current owning reads
+on a caller's verified repeatable snapshot. `read_readiness` delegates to this
+same policy path. It checks actor/owner scope, bounded progressing opening and
+ledger pages, current decision facts, and annual-close finalization links to the
+exact signed artifact hashes. Corrupt or incomplete retained links are unavailable.
+No external session or provider I/O occurs in that read.

@@ -16,6 +16,7 @@ class AnnualAccountsDocumentsInspection:
     def __post_init__(self):
         if (type(self.organization_number) is not str or re.fullmatch('[0-9]{9}',self.organization_number) is None
                 or type(self.income_year) is not int or self.income_year!=2025
+                or self.schema_sha256!='04653f5ef226df749e5d9cd7a66dd5c061de85c2c1a7f44ce7c12cea3e1faa49'
                 or any(type(value) is not str or re.fullmatch('[0-9a-f]{64}',value) is None for value in
                     (self.schema_sha256,self.main_form_sha256,self.company_accounts_sha256))):
             raise ValueError('Annual Accounts document inspection scope is invalid.')

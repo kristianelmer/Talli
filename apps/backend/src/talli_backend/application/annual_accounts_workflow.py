@@ -16,20 +16,26 @@ from talli_backend.modules.annual_accounts_filing.public import (
 
 
 class AnnualAccountsApplication:
-    def __init__(self, sessions: AnnualAccountsSessionFactory):
+    def __init__(self, sessions: AnnualAccountsSessionFactory, *, preparation=None):
         self._sessions = sessions
+        self._preparation = preparation
 
     async def session(self, access_token: str) -> AuthenticatedAnnualAccounts:
-        return AuthenticatedAnnualAccounts(await self._sessions.session(access_token))
+        return AuthenticatedAnnualAccounts(await self._sessions.session(access_token),preparation=self._preparation)
 
 
 class AuthenticatedAnnualAccounts:
-    def __init__(self, session: AnnualAccountsSession):
+    def __init__(self, session: AnnualAccountsSession, *, preparation=None):
         self._session = session
+        self._preparation = preparation
 
     @property
     def actor_id(self):
         return self._session.actor_id
+
+    async def prepare_delivery_draft(self,command):
+        if self._preparation is None:raise AnnualAccountsError.unavailable()
+        return await self._preparation.prepare(self._session,command)
 
     async def filing_workspace(self, query: AnnualAccountsWorkspaceQuery) -> AnnualAccountsFilingRows:
         if query.actor_id != self.actor_id:

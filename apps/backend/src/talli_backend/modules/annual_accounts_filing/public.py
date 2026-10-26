@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
 
-from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, CorrelationId, DomainError, ErrorCategory, IdempotencyKey, IncomeYear, Timestamp
 from .delivery_documents import AnnualAccountsDocumentsInspection
+from .delivery import (AnnualAccountsDeliverySource, AnnualAccountsDeliveryDraft, StoredAnnualAccountsDeliveryDraft, annual_accounts_delivery_digest,
+    prepare_annual_accounts_delivery, decode_annual_accounts_delivery_draft)
 
 
 def _freeze(value):
@@ -302,6 +304,10 @@ async def prepare_annual_accounts_for_signing(
 
 class AnnualAccountsError(DomainError):
     @classmethod
+    def draft_conflict(cls) -> AnnualAccountsError:
+        return cls(code='ANNUAL_ACCOUNTS_DELIVERY_DRAFT_CONFLICT',category=ErrorCategory.CONFLICT)
+
+    @classmethod
     def hard_review_block(cls) -> AnnualAccountsError:
         return cls(code="ANNUAL_ACCOUNTS_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
             message="Hard review-blokk kan ikke acknowledges som advisory.")
@@ -509,9 +515,13 @@ class AnnualAccountsSourceSnapshot:
     coverage: Mapping[str, object] | None
     as_of: Timestamp
     complete_enumeration: bool
+    contract_version: str = 'annual-accounts-source-v1'
+    delivery_drafts: tuple[StoredAnnualAccountsDeliveryDraft,...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze(self.coverage))
+        if not isinstance(self.delivery_drafts,(list,tuple)):raise AnnualAccountsError.unavailable()
+        object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
 
 
 @dataclass(frozen=True, slots=True)
@@ -597,6 +607,44 @@ class AnnualAccountsSourceFacts:
     correction_links: tuple[AnnualAccountsCorrectionLink, ...]
     incidents: tuple[AnnualAccountsIncidentFact, ...]
     outcomes: tuple[AnnualAccountsOutcomeFact, ...]
+    delivery_drafts: tuple[AnnualAccountsDeliveryDraftFact,...] = ()
+
+
+@dataclass(frozen=True,slots=True)
+class AnnualAccountsDeliveryDraftFact:
+    filing_id: str
+    prepared_by: ActorId
+    draft_sha256: str
+    source_sha256: str
+    recorded_at: Timestamp
+    status: str = 'prepared_only'
+
+
+@dataclass(frozen=True,slots=True)
+class PrepareAnnualAccountsDeliveryDraft:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    filing_id: AnnualAccountsRecordId
+    command_key: IdempotencyKey
+    correlation_id: CorrelationId
+    contact_email: str
+    confirming_representative: str
+
+    def __post_init__(self):
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int or int(self.income_year)!=2025
+                or type(self.actor_id) is not ActorId or self.actor_id.kind is not ActorKind.USER
+                or type(self.filing_id) is not AnnualAccountsRecordId or type(self.command_key) is not IdempotencyKey
+                or type(self.correlation_id) is not CorrelationId
+                or any(type(value) is not str or not value.strip() or len(value)>1000
+                       for value in (self.contact_email,self.confirming_representative))):raise AnnualAccountsError.invalid_input()
+
+
+class AnnualAccountsDeliveryDraftPersistence(Protocol):
+    async def delivery_draft_by_key(self,query: AnnualAccountsSourceQuery,key: IdempotencyKey) -> StoredAnnualAccountsDeliveryDraft | None: ...
+    async def lock_delivery_archive(self,query: AnnualAccountsSourceQuery) -> None: ...
+    async def store_delivery_draft(self,draft: AnnualAccountsDeliveryDraft) -> StoredAnnualAccountsDeliveryDraft: ...
 
 
 class AnnualAccountsSourcePersistence(Protocol):
@@ -627,6 +675,9 @@ def annual_accounts_schema_adapter(contract: type[object]):
 
 
 __all__ = [
+    "StoredAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftFact","PrepareAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftPersistence",
+    "AnnualAccountsDeliverySource", "AnnualAccountsDeliveryDraft", "annual_accounts_delivery_digest",
+    "prepare_annual_accounts_delivery", "decode_annual_accounts_delivery_draft",
     "AnnualAccountsDocumentsInspection","AnnualAccountsSchemaValidator","annual_accounts_schema_adapter",
     "AnnualAccountsSourceQuery",
     "AnnualAccountsSourceSnapshot",

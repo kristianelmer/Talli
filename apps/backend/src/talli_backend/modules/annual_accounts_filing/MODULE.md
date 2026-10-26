@@ -276,3 +276,55 @@ existing renderer and its frozen byte contract remain unchanged.
 <!-- architecture-inventory
 {"ports":["AnnualAccountsSchemaValidator"]}
 -->
+
+## Complete local preparation
+
+`AnnualAccountsDeliverySource` retains complete owning Annual history, Ledger
+reporting history including amendments and effective entries, and Corporate
+current-source readiness plus lifecycle evidence from one verified repeatable
+snapshot. `annual_accounts_delivery_digest` binds immutable canonical facts.
+Accounts does not reproduce Annual's common readiness or Corporate's lifecycle
+policy. Corporate reuses its owner-authorized current-source query on the same
+connection; the adapter borrows only the existing restricted read roles and
+restores them through savepoints. No session or provider HTTP occurs in that read.
+
+`prepare_annual_accounts_delivery` derives the approval date from the current
+finalized signed annual-close decision and renders the unchanged RR0002 pair.
+Its narrow projection rejects unknown accounts, missing workforce, unsupported
+regimes or attachments, unreviewed warnings, fractional net account balances,
+contra expenses and amounts outside its declared precision bound. Ledger owns
+which amended entries remain effective; Accounts nets these effective account
+movements before using the frozen calculator, retaining every original.
+
+`AnnualAccountsDeliveryDraft` binds exact rendered XML, source, owner command and
+local schema inspection. `decode_annual_accounts_delivery_draft` rejects changed
+bytes, duplicate or unknown keys/versions, noncanonical JSON, wrong scope, invalid
+actors and mismatched source/document hashes. A draft is prepared evidence only.
+It grants no common readiness, runtime admission, signature or filing permission.
+The durable journal, finite system/person ports and owner delivery UI are still
+required before this capability's delivery journey is complete.
+
+## Reader-first delivery retention
+
+`PrepareAnnualAccountsDeliveryDraft`, `StoredAnnualAccountsDeliveryDraft` and
+`AnnualAccountsDeliveryDraftPersistence` bind a command to one exact draft. The
+`AnnualAccountsDeliveryDraftFact` source projection says `prepared_only`.
+`annual_accounts_filing.delivery_drafts` and the reserved
+`annual_accounts_filing.delivery_events` extent are immutable, RLS protected and
+archive tracked. Source v2 requires positive exact eight-table coverage, retained
+counts and hashes, unchanged retention guards/keys, and an empty event journal.
+Nonempty events require a successor codec; they are never silently omitted.
+Source v1 keeps its bytes and cannot cover the added stores.
+
+The deferred CLI-created contract
+`supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql`
+starts draft writes closed. Its same-named rollback closes writes while preserving
+all originals, immutable guards and readers. Preparation performs authorized exact
+replay first, then reads current owning source in a repeatable snapshot while the
+published company write guard is held, and rechecks current owner/MFA before
+storage. There is no provider I/O, event append, signature or dispatch in this
+stage; no runtime API is wired by default.
+
+<!-- architecture-inventory
+{"ownedTables":["annual_accounts_filing.delivery_drafts","annual_accounts_filing.delivery_events"],"ports":["AnnualAccountsDeliveryDraftPersistence"]}
+-->

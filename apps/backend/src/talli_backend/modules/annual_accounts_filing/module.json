@@ -10,7 +10,8 @@
   "exports": {
     "commands": [
       "rehearse_annual_accounts",
-      "prepare_annual_accounts_for_signing"
+      "prepare_annual_accounts_for_signing",
+      "PrepareAnnualAccountsDeliveryDraft"
     ],
     "queries": [
       "AnnualAccountsSource",
@@ -56,7 +57,14 @@
       "AnnualAccountsSourceFacts",
       "project_annual_accounts_source",
       "verify_annual_accounts_source",
-      "AnnualAccountsDocumentsInspection"
+      "AnnualAccountsDocumentsInspection",
+      "AnnualAccountsDeliverySource",
+      "AnnualAccountsDeliveryDraft",
+      "annual_accounts_delivery_digest",
+      "prepare_annual_accounts_delivery",
+      "decode_annual_accounts_delivery_draft",
+      "StoredAnnualAccountsDeliveryDraft",
+      "AnnualAccountsDeliveryDraftFact"
     ],
     "events": [],
     "errors": [
@@ -74,7 +82,8 @@
       "annual_accounts_persistence_adapter",
       "AnnualAccountsSourcePersistence",
       "AnnualAccountsSchemaValidator",
-      "annual_accounts_schema_adapter"
+      "annual_accounts_schema_adapter",
+      "AnnualAccountsDeliveryDraftPersistence"
     ]
   },
   "owns": {
@@ -84,6 +93,8 @@
     "tables": [
       "annual_accounts_filing.authority_permissions",
       "annual_accounts_filing.authority_test_runs",
+      "annual_accounts_filing.delivery_drafts",
+      "annual_accounts_filing.delivery_events",
       "annual_accounts_filing.filing_overrides",
       "annual_accounts_filing.filing_previews",
       "annual_accounts_filing.filing_review_comments",
@@ -156,6 +167,15 @@
       "adapters": [
         "talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas"
       ]
+    },
+    {
+      "name": "AnnualAccountsDeliveryDraftPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsDeliveryDraftPersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
     }
   ],
   "dependencies": [],
@@ -187,7 +207,11 @@
     "policy": "apps/backend/tests/test_annual_accounts_filing.py",
     "architecture": "tests/architecture_foundation.test.mjs",
     "offline": "tests/test_annual_accounts_offline_migration.py",
-    "deliverySchemas": "apps/backend/tests/test_annual_accounts_delivery_schemas.py"
+    "deliverySchemas": "apps/backend/tests/test_annual_accounts_delivery_schemas.py",
+    "deliverySource": "apps/backend/tests/test_annual_accounts_delivery_source.py",
+    "deliveryDraft": "apps/backend/tests/test_annual_accounts_delivery_draft.py",
+    "deliveryPreparation": "apps/backend/tests/test_annual_accounts_delivery_preparation.py",
+    "deliveryStore": "apps/backend/tests/test_annual_accounts_delivery_store_database.py"
   },
   "compatibilityExceptions": []
 }

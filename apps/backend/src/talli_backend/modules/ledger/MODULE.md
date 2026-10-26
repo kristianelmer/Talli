@@ -406,3 +406,13 @@ consumer grants, including test-only grants; a future activating owner migration
 must reapply its narrow grant after this staged predecessor. Only PostgreSQL's
 inherent sealed function-owner authority remains. Retentive rollback preserves
 this contract for later explicit dependencies without altering historical facts.
+
+## Complete reporting snapshot
+
+`read_ledger_reporting_snapshot` returns the immutable `LedgerReportingSnapshot`
+through `LedgerQueries`. It enumerates every bounded page and all amendments,
+retains original entries across years, and identifies current-year effective
+entries. Missing references, duplicate identities, forks or cycles, orphan
+reversals, wrong scope, and reversals that do not cancel exact per-account and
+currency debit/credit totals are unavailable. Filing capabilities own the
+projection of these facts into their supported reporting models.

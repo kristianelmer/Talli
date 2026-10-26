@@ -487,55 +487,90 @@ class CorporateGovernanceApplication:
     ) -> CorporateDocumentReadiness:
         session = await self._session_factory.session(access_token)
         async with session.transaction() as transaction:
-            await self._require_owner(transaction, company_id)
-            snapshot = await transaction.list_lifecycle((company_id,))
-            readiness = self._service.assess_lifecycle(
-                snapshot,
-                company_id=company_id,
-                income_year=income_year,
-                decision_kind=decision_kind,
-            )
-            if readiness.decision_id is None:
-                return readiness
-            if readiness.state in {
-                OwnerDividendState.REJECTED,
-                OwnerDividendState.SUPERSEDED,
-            }:
-                return readiness
-            facts = await self._derive_decision_facts_in_transaction(
-                transaction,
-                access_token=access_token,
-                actor_id=session.actor_id,
-                company_id=company_id,
-                income_year=income_year,
-                decision_kind=decision_kind,
+            readiness, _ = await self.read_readiness_in_transaction(
+                transaction, actor_id=session.actor_id, company_id=company_id,
+                income_year=income_year, decision_kind=decision_kind,
                 correlation_id=correlation_id,
             )
-            current_source_hash = self._service.source_hash(
-                CorporateReadinessSource(
-                    source_id=facts.annual_basis.source_id,
-                    annual_data_sha256=facts.annual_basis.annual_data_sha256,
-                    governance_basis_sha256=(
-                        facts.annual_basis.governance_basis_sha256
-                    ),
-                )
-            )
-            readiness = self._service.assess_lifecycle(
-                snapshot,
-                company_id=company_id,
-                income_year=income_year,
-                decision_kind=decision_kind,
-                current_source_hash=current_source_hash,
-                current_facts_match=self._service.current_facts_match(
-                    next(
-                        item
-                        for item in snapshot.decisions
-                        if item.decision_id == readiness.decision_id
-                    ),
-                    facts,
+            return readiness
+
+    async def read_readiness_in_transaction(
+        self, transaction: CorporateGovernanceWorkflowTransaction, *, actor_id: ActorId,
+        company_id: CompanyId, income_year: IncomeYear, decision_kind: CorporateDecisionKind,
+        correlation_id: CorrelationId,
+    ) -> tuple[CorporateDocumentReadiness, CorporateLifecycleSnapshot]:
+        """Reuse Corporate's current-source policy in a caller-owned SQL snapshot.
+
+        The supplied transaction must be bound to the same verified actor. This
+        performs only owning queries; it opens no session and makes no HTTP call.
+        """
+        if transaction.actor_id != actor_id:
+            raise CorporateGovernanceError.forbidden()
+        await self._require_owner(transaction, company_id)
+        snapshot = await transaction.list_lifecycle((company_id,))
+        if any(item.company_id != company_id for rows in (
+            snapshot.decisions, snapshot.document_sets, snapshot.artifacts,
+            snapshot.events, snapshot.finalizations,
+        ) for item in rows):
+            raise CorporateGovernanceError.unavailable()
+        readiness = self._service.assess_lifecycle(
+            snapshot,
+            company_id=company_id,
+            income_year=income_year,
+            decision_kind=decision_kind,
+        )
+        if readiness.decision_id is None:
+            return readiness, snapshot
+        if readiness.state in {
+            OwnerDividendState.REJECTED,
+            OwnerDividendState.SUPERSEDED,
+        }:
+            return readiness, snapshot
+        facts = await self._derive_decision_facts_in_transaction(
+            transaction,
+            access_token="",
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            decision_kind=decision_kind,
+            correlation_id=correlation_id,
+        )
+        current_source_hash = self._service.source_hash(
+            CorporateReadinessSource(
+                source_id=facts.annual_basis.source_id,
+                annual_data_sha256=facts.annual_basis.annual_data_sha256,
+                governance_basis_sha256=(
+                    facts.annual_basis.governance_basis_sha256
                 ),
             )
-            return readiness
+        )
+        readiness = self._service.assess_lifecycle(
+            snapshot,
+            company_id=company_id,
+            income_year=income_year,
+            decision_kind=decision_kind,
+            current_source_hash=current_source_hash,
+            current_facts_match=self._service.current_facts_match(
+                next(
+                    item
+                    for item in snapshot.decisions
+                    if item.decision_id == readiness.decision_id
+                ),
+                facts,
+            ),
+        )
+        if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE and readiness.finalized:
+            retained = [item for item in snapshot.finalizations
+                if item.finalization_id == readiness.finalization_id]
+            decision = next(item for item in snapshot.decisions if item.decision_id == readiness.decision_id)
+            if (len(retained) != 1 or retained[0].company_id != company_id
+                    or retained[0].income_year != income_year or retained[0].decision_id != readiness.decision_id
+                    or retained[0].decision_hash != readiness.decision_hash
+                    or retained[0].annual_close_source_id != decision.annual_close_source_id
+                    or not retained[0].signed_artifact_hashes
+                    or retained[0].signed_artifact_hashes != readiness.signed_artifact_hashes):
+                raise CorporateGovernanceError.unavailable()
+        return readiness, snapshot
 
     async def _session(self, access_token: str, actor_id):
         session = await self._session_factory.session(access_token)
@@ -565,6 +600,7 @@ class CorporateGovernanceApplication:
         company = await transaction.read_company_facts(company_id)
         opening_snapshots = []
         opening_cursor = None
+        opening_cursors = set()
         while True:
             opening_page = await transaction.list_opening_snapshots(
                 actor_id=actor_id,
@@ -573,12 +609,19 @@ class CorporateGovernanceApplication:
                 cursor=opening_cursor,
                 limit=100,
             )
+            if (type(opening_page.has_more) is not bool or len(opening_page.items) > 100
+                    or opening_page.has_more != (opening_page.next_cursor is not None)):
+                raise CorporateGovernanceError.unavailable()
             opening_snapshots.extend(opening_page.items)
             if not opening_page.has_more:
                 break
-            if opening_page.next_cursor is None:
+            if (not opening_page.items or str(opening_page.next_cursor) in opening_cursors
+                    or len(opening_cursors) >= 10000):
                 raise CorporateGovernanceError.unavailable()
             opening_cursor = opening_page.next_cursor
+            opening_cursors.add(str(opening_cursor))
+        if sum(item.company_id == company_id and item.income_year == income_year for item in opening_snapshots) > 1:
+            raise CorporateGovernanceError.unavailable()
         opening = next(
             (
                 item
@@ -628,6 +671,7 @@ class CorporateGovernanceApplication:
         ledger = self._ledger_facade_factory(transaction)
         entries = []
         cursor: LedgerCursor | None = None
+        cursors = set()
         while True:
             page = await ledger.list_entries(
                 actor_id=actor_id,
@@ -636,12 +680,16 @@ class CorporateGovernanceApplication:
                 cursor=cursor,
                 limit=100,
             )
+            if (type(page.page.has_more) is not bool or len(page.items) > 100
+                    or page.page.has_more != (page.page.next_cursor is not None)):
+                raise CorporateGovernanceError.unavailable()
             entries.extend(page.items)
             if not page.page.has_more:
                 break
-            if page.page.next_cursor is None:
+            if not page.items or str(page.page.next_cursor) in cursors or len(cursors) >= 10000:
                 raise CorporateGovernanceError.unavailable()
             cursor = page.page.next_cursor
+            cursors.add(str(cursor))
         lines = tuple(
             CorporateAccountMovementFacts(
                 income_year=entry.income_year,

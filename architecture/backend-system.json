@@ -758,7 +758,9 @@
       "supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql",
       "supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql",
       "supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql",
-      "supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql"
+      "supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql",
+      "supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql",
+      "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1207,6 +1209,12 @@
       "adapter": "talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas",
       "owner": "backend-system",
       "mode": "Offline exact public RR0002 JSON models/BPMN/application metadata; derived strict XML constraints and supported AS/NOK profile, exact raw document hashes; no upstream XSD or runtime acceptance claim and no person-signing authority."
+    },
+    {
+      "port": "AnnualAccountsDeliveryDraftPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "Exact immutable Accounts drafts in a default-closed reader-first source-v2 store; current owner/MFA and published company guard, no dispatch or authority permission."
     }
   ],
   "allowedDependencies": {

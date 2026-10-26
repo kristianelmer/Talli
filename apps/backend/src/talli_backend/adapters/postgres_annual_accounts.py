@@ -12,8 +12,9 @@ import psycopg
 from psycopg.rows import dict_row
 
 from talli_backend.adapters.supabase_ledger import (
-    LedgerSupabaseConfiguration, SupabaseLedgerAdapter, _VerifiedActor,
+    LedgerSupabaseConfiguration, SupabaseLedgerAdapter, _VerifiedActor, SupabaseLedgerSnapshotQueries, _verified_snapshot_rows,
 )
+from talli_backend.adapters.supabase_corporate_governance import SupabaseCorporateGovernanceSnapshotQueries
 from talli_backend.application.annual_accounts_session import AnnualAccountsSessionFactory
 from talli_backend.application.annual_accounts_workflow import AnnualAccountsApplication
 from talli_backend.modules.annual_accounts_filing.public import (
@@ -24,6 +25,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsPreparationPersistence,
     AnnualAccountsError, AnnualAccountsWorkspacePersistence, AnnualAccountsWorkspaceQuery,
     AnnualAccountsFilingRows, annual_accounts_persistence_adapter,
+    AnnualAccountsDeliveryDraftPersistence, StoredAnnualAccountsDeliveryDraft, decode_annual_accounts_delivery_draft,
 )
 from talli_backend.modules.ledger.public import LedgerError
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
@@ -39,6 +41,7 @@ def _accounts_database_error(error: psycopg.DatabaseError):
         'annual_accounts_not_found': AnnualAccountsError.not_found,
         'annual_accounts_invalid_input': AnnualAccountsError.invalid_input,
         'annual_accounts_unavailable': AnnualAccountsError.unavailable,
+        'annual_accounts_delivery_draft_conflict': AnnualAccountsError.draft_conflict,
     }.get(error.diag.message_primary or '', AnnualAccountsError.unavailable)
     return factory()
 
@@ -94,6 +97,7 @@ class PostgresAnnualAccountsSession:
 @annual_accounts_persistence_adapter(AnnualAccountsEvidencePersistence)
 @annual_accounts_persistence_adapter(AnnualAccountsWorkspacePersistence)
 @annual_accounts_persistence_adapter(AnnualAccountsPreparationPersistence)
+@annual_accounts_persistence_adapter(AnnualAccountsDeliveryDraftPersistence)
 class PostgresAnnualAccountsTransaction:
     def __init__(self, verified: _VerifiedActor, connection: psycopg.AsyncConnection):
         self._verified, self._connection = verified, connection
@@ -101,6 +105,28 @@ class PostgresAnnualAccountsTransaction:
     @property
     def actor_id(self):
         return self._verified.actor_id
+
+    @property
+    def delivery_ledger_queries(self):
+        return SupabaseLedgerSnapshotQueries('', self._verified, self._connection)
+
+    @property
+    def delivery_corporate_queries(self):
+        return SupabaseCorporateGovernanceSnapshotQueries('', self._verified, self._connection)
+
+    async def delivery_annual_interview_history(self, query):
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        try:
+            rows = await _verified_snapshot_rows(self._verified, self._connection,
+                'corporate_governance_workflow_executor',
+                'select backend_system.list_annual_data_legacy_v1(%s::uuid,%s::integer,%s::text) as items',
+                (str(query.company_id), int(query.income_year), str(self.actor_id.subject)))
+            if len(rows) != 1 or type(rows[0]['items']) is not list:
+                raise ValueError()
+            return rows[0]['items']
+        except (ValueError, KeyError, TypeError, psycopg.DatabaseError):
+            raise AnnualAccountsError.unavailable() from None
 
     async def _database_rows(self, query: str, parameters: tuple[object, ...] = ()):
         try:
@@ -137,8 +163,12 @@ class PostgresAnnualAccountsTransaction:
     async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise AnnualAccountsError.forbidden()
+        installed=await self._one_row("select pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v2(uuid,integer,text)') is not null as installed",())
+        if type(installed.get('installed')) is not bool:raise AnnualAccountsError.unavailable()
+        successor=installed['installed'] is True
         row = await self._one_row(
-            'select annual_accounts_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+            ('select annual_accounts_filing.read_source_snapshot_v2(%s::uuid,%s::integer,%s::text) as result' if successor else
+             'select annual_accounts_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result'),
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
         )
         value = row.get('result')
@@ -147,13 +177,52 @@ class PostgresAnnualAccountsTransaction:
                     or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
                     or type(value['completeEnumeration']) is not bool):
                 raise ValueError()
+            if successor and (value.get('contractVersion')!='annual-accounts-source-v2'
+                    or type(value.get('deliveryDrafts')) is not list):raise ValueError()
             rows = AnnualAccountsFilingRows(query.company_id, query.income_year,
                 **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
                     'review_comments', 'permissions', 'test_evidence')})
             return AnnualAccountsSourceSnapshot(rows, value['coverage'],
-                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
+                value['contractVersion'] if successor else 'annual-accounts-source-v1',
+                tuple(self._stored_delivery_draft(row) for row in value['deliveryDrafts']) if successor else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise AnnualAccountsError.unavailable() from None
+
+    @staticmethod
+    def _stored_delivery_draft(row):
+        try:
+            if (not isinstance(row,Mapping) or set(row)!={'id','company_id','income_year','prepared_by',
+                    'command_key','canonical_json','draft_sha256','recorded_at'} or type(row['income_year']) is not int):raise ValueError()
+            draft=decode_annual_accounts_delivery_draft(row['canonical_json'],row['draft_sha256'])
+            if (row['id']!=draft.filing_id or row['company_id']!=str(draft.source.company_id)
+                    or row['income_year']!=int(draft.source.income_year) or row['prepared_by']!=str(draft.prepared_by.subject)
+                    or row['command_key']!=str(draft.command_key)):raise ValueError()
+            return StoredAnnualAccountsDeliveryDraft(draft,Timestamp(datetime.fromisoformat(row['recorded_at'].replace('Z','+00:00'))))
+        except (ValueError,TypeError,KeyError,AttributeError):raise AnnualAccountsError.unavailable() from None
+
+    async def lock_delivery_archive(self,query):
+        if query.actor_id!=self.actor_id:raise AnnualAccountsError.forbidden()
+        await self._one_row('select annual_accounts_filing.lock_delivery_archive_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id),int(query.income_year),str(query.actor_id.subject)))
+
+    async def delivery_draft_by_key(self,query,key):
+        if query.actor_id!=self.actor_id:raise AnnualAccountsError.forbidden()
+        row=await self._one_row('select annual_accounts_filing.read_delivery_draft_v1(%s::uuid,%s::integer,%s::text,%s::text) as result',
+            (str(query.company_id),int(query.income_year),str(key),str(query.actor_id.subject)))
+        if row['result'] is None:return None
+        stored=self._stored_delivery_draft(row['result']);draft=stored.draft
+        if (draft.source.company_id!=query.company_id or draft.source.income_year!=query.income_year
+                or draft.prepared_by!=query.actor_id or draft.command_key!=key):raise AnnualAccountsError.unavailable()
+        return stored
+
+    async def store_delivery_draft(self,draft):
+        if draft.prepared_by!=self.actor_id:raise AnnualAccountsError.forbidden()
+        row=await self._one_row('select annual_accounts_filing.store_delivery_draft_v1(%s::text,%s::text,%s::text) as result',
+            (draft.canonical_json,draft.sha256,str(self.actor_id.subject)))
+        stored=self._stored_delivery_draft(row['result'])
+        if stored.draft!=draft:raise AnnualAccountsError.unavailable()
+        return stored
 
     async def filing_preview(self, query: AnnualAccountsRecordQuery) -> Mapping[str, object] | None:
         if query.actor_id != self.actor_id:
@@ -256,5 +325,6 @@ class PostgresAnnualAccountsTransaction:
 
 def compose_annual_accounts_application(
     sessions: AnnualAccountsSessionFactory | None = None,
+    *, preparation=None,
 ) -> AnnualAccountsApplication:
-    return AnnualAccountsApplication(sessions if sessions is not None else PostgresAnnualAccountsAdapter.from_environment())
+    return AnnualAccountsApplication(sessions if sessions is not None else PostgresAnnualAccountsAdapter.from_environment(),preparation=preparation)
