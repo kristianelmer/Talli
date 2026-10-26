@@ -275,7 +275,10 @@ def complete_tax_delivery_mutation(request: TaxDeliveryMutationRequest, approval
         raise ValueError('Tax response original exceeds its limit.')
     value=_response_object(response_bytes)
     kind=request.kind
-    if kind is TaxMutationKind.CREATE_INSTANCE:result={'instanceId':value.get('id')}
+    if kind is TaxMutationKind.CREATE_INSTANCE:
+        result={'instanceId':value.get('id')}
+        if draft.correction_parent is not None and result['instanceId']==draft.correction_parent.terminal.instance.instance_id:
+            raise ValueError('Tax correction creation returned its parent instance.')
     elif kind is TaxMutationKind.UPLOAD_ENVELOPE:
         result={'instanceId':request.target_instance,'dataId':value.get('id'),
             'envelopeSha256':hashlib.sha256(request.body_bytes).hexdigest()}

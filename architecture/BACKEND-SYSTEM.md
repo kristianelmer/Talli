@@ -1235,3 +1235,22 @@ The read-only binding is `talli_backend.adapters.loopback_company_tax_intake.Loo
 <!-- architecture-inventory
 {"ports":["CompanyTaxCurrentDocumentIntake"],"adapterBindings":["CompanyTaxCurrentDocumentIntake=>talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake"],"adapterBindingOwners":["CompanyTaxCurrentDocumentIntake=>backend-system"],"adapterBindingModes":["CompanyTaxCurrentDocumentIntake=>Separately finite read-only loopback current GET before a draft exists; exact actor/company/year/organization/restricted database scope, no placeholder draft hash, no dispatch authority."]}
 -->
+
+
+Correction preparation uses a separate finite `CompanyTaxTerminalParentReader`
+for known-instance metadata, receipt and file GETs. The read-only adapter is
+`talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead`.
+Shared bounded GET transport lives in `talli_backend.adapters.company_tax_loopback_read`.
+Owner/MFA guards separate every read; no SQL transaction spans HTTP. The
+parent submission grant is never renewed or used to authorize the child.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxTerminalParentReader"],"adapterBindings":["CompanyTaxTerminalParentReader=>talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead"],"adapterBindingOwners":["CompanyTaxTerminalParentReader=>backend-system"],"adapterBindingModes":["CompanyTaxTerminalParentReader=>Separate finite read-only known-parent metadata and exact receipt/file GETs; no dispatch capability or extension of the parent mutation grant."],"adapterDependencies":["talli_backend.adapters.company_tax_loopback_read"]}
+-->
+
+`/api/v1/company-tax/delivery-corrections` prepares a complete linked child only
+after fresh terminal parent reads and complete owning-source rechecks.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/delivery-corrections"]}
+-->

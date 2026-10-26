@@ -20,7 +20,11 @@
       "PrepareTaxDeliveryDraft",
       "ApproveTaxDeliveryDraft",
       "AdvanceTaxDelivery",
-      "ConfirmTaxDeliverySubmission"
+      "ConfirmTaxDeliverySubmission",
+      "TaxDeliveryCorrectionParent",
+      "PrepareTaxDeliveryCorrection",
+      "tax_delivery_lineage",
+      "bind_tax_delivery_correction_parent"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -363,6 +367,15 @@
       "adapters": [
         "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake"
       ]
+    },
+    {
+      "name": "CompanyTaxTerminalParentReader",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxTerminalParentReader",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead"
+      ]
     }
   ],
   "dependencies": [],
@@ -456,7 +469,10 @@
     "finalSubmissionHttpDatabase": "apps/backend/tests/test_postgres_tax_final_submission.py",
     "finalSubmissionTopology": "apps/backend/tests/test_company_tax_final_submission_database.py",
     "currentIntake": "apps/backend/tests/test_company_tax_current_intake.py",
-    "currentIntakeTopology": "apps/backend/tests/test_company_tax_current_intake_database.py"
+    "currentIntakeTopology": "apps/backend/tests/test_company_tax_current_intake_database.py",
+    "correction": "apps/backend/tests/test_company_tax_correction.py",
+    "correctionDatabase": "apps/backend/tests/test_postgres_tax_correction.py",
+    "correctionTopology": "apps/backend/tests/test_company_tax_correction_database.py"
   },
   "compatibilityExceptions": []
 }

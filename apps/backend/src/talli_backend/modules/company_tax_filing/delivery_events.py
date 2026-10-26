@@ -163,10 +163,13 @@ class TaxDeliveryJournal:
     validation_evidence: bool=False
     confirmation_evidence: bool=False
     submission_evidence: bool=False
+    correction_evidence: bool=False
 
     def __post_init__(self):
         if (type(self.draft) is not TaxDeliveryDraft or type(self.read_evidence) is not bool or type(self.guarded_upload) is not bool
                 or type(self.validation_evidence) is not bool or type(self.confirmation_evidence) is not bool
+                or type(self.correction_evidence) is not bool or self.correction_evidence and not self.submission_evidence
+                or self.draft.correction_parent is not None and not self.correction_evidence
                 or type(self.submission_evidence) is not bool or self.submission_evidence and not self.confirmation_evidence
                 or self.confirmation_evidence and not self.validation_evidence or self.validation_evidence and not self.guarded_upload
                 or self.guarded_upload and not self.read_evidence):raise ValueError('Tax journal draft is invalid.')
@@ -288,6 +291,9 @@ class TaxDeliveryJournal:
                 else:
                     if value.intent.kind not in requests:raise ValueError('Tax result has no committed request.')
                     value.assert_request(requests[value.intent.kind],approval)
+                    if (value.intent.kind is TaxMutationKind.CREATE_INSTANCE and self.draft.correction_parent is not None
+                            and value.result['instanceId']==self.draft.correction_parent.terminal.instance.instance_id):
+                        raise ValueError('Tax correction creation reused its parent instance.')
                     if value.upload_read_evidence is not None and value.upload_read_evidence.instance.observed_at.value<request_times[value.intent.kind].value:
                         raise ValueError('Tax upload recovery read predates its committed request.')
                     if value.confirmation_read_evidence is not None and value.confirmation_read_evidence.instance.observed_at.value<request_times[value.intent.kind].value:
@@ -341,7 +347,7 @@ class TaxDeliveryJournal:
             recorded_at=(Timestamp(max(proof.observed_until.value,self.events[-1].recorded_at.value))
                 if proof is not None else self.events[-1].recorded_at)
             TaxDeliveryJournal(self.draft,self.events+(StoredTaxDeliveryEvent(request,recorded_at,self.approval.approved_by),),
-                self.read_evidence,self.guarded_upload,self.validation_evidence,self.confirmation_evidence,self.submission_evidence)
+                self.read_evidence,self.guarded_upload,self.validation_evidence,self.confirmation_evidence,self.submission_evidence,self.correction_evidence)
             return plan_tax_mutation(intent,None)
         completion=next((event.value for event in self.events if event.slot=='completion:'+request.kind.value),None)
         record=TaxMutationRecord(prior.intent(self.approval),'completed' if completion else 'uncertain',
@@ -383,14 +389,22 @@ def assert_tax_delivery_attempt_history(query,snapshot,filing_id: str) -> TaxDel
     """
     from .public import CompanyTaxError,project_company_tax_source
     facts=project_company_tax_source(query,snapshot)
-    if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8') or facts.history_coverage.status!='complete':
+    if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8','company-tax-source-v9') or facts.history_coverage.status!='complete':
         raise CompanyTaxError.unavailable()
-    if any(event.binding.filing_id!=filing_id for event in snapshot.delivery_events):
-        raise CompanyTaxError.draft_conflict()
+    from .delivery_correction import tax_delivery_lineage
+    journals=tuple(_snapshot_journal(snapshot,row.draft) for row in snapshot.delivery_drafts)
+    try:frontier=tax_delivery_lineage(journals)
+    except ValueError:raise CompanyTaxError.draft_conflict() from None
+    if frontier is not None and frontier!=filing_id:raise CompanyTaxError.draft_conflict()
     draft=next((row.draft for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
     if draft is None:raise CompanyTaxError.not_found()
-    return TaxDeliveryJournal(draft,tuple(event for event in snapshot.delivery_events if event.binding.filing_id==filing_id),
-        snapshot.contract_version in ('company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8'),
-        snapshot.contract_version in ('company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8'),
-        snapshot.contract_version in ('company-tax-source-v6','company-tax-source-v7','company-tax-source-v8'),
-        snapshot.contract_version in ('company-tax-source-v7','company-tax-source-v8'),snapshot.contract_version=='company-tax-source-v8')
+    return _snapshot_journal(snapshot,draft)
+
+
+def _snapshot_journal(snapshot,draft):
+    versions=('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5',
+        'company-tax-source-v6','company-tax-source-v7','company-tax-source-v8','company-tax-source-v9')
+    if snapshot.contract_version not in versions:raise ValueError('Tax journal source contract is unsupported.')
+    level=versions.index(snapshot.contract_version)
+    return TaxDeliveryJournal(draft,tuple(e for e in snapshot.delivery_events if e.binding.filing_id==draft.filing_id),
+        *(level>=n for n in range(1,7)))

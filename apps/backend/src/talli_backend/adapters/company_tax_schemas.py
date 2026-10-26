@@ -123,15 +123,15 @@ class PinnedTax2025Schemas:
     def schema_sha256(self):
         return _BUNDLE_SHA256
 
-    def inspect_current(self, response: TaxCurrentDocumentResponse) -> TaxCurrentDocument:
+    def inspect_current(self, response: TaxCurrentDocumentResponse, *, correction_parent=None) -> TaxCurrentDocument:
         """Inspect the original response, retaining all bytes before parsing.
 
         Unhandled locked, guidance or existing business facts cannot disappear
         when a new complete delivery is generated from the owning ledgers.
         """
-        return self._inspect_current(response)[0]
+        return self._inspect_current(response,correction_parent=correction_parent)[0]
 
-    def _inspect_current(self, response):
+    def _inspect_current(self, response, *, correction_parent=None):
         try:
             if type(response) is not TaxCurrentDocumentResponse:
                 raise ValueError('Current Tax response type is invalid.')
@@ -146,21 +146,38 @@ class PinnedTax2025Schemas:
                 raise ValueError('Current Tax document is missing.')
             locked = root.find(_CURRENT_NS+'laasteFelt')
             if ((locked is not None and len(locked))
-                    or documents.find(_CURRENT_NS+'utvidetVeiledningdokument') is not None
-                    or documents.find(_CURRENT_NS+'naeringsspesifikasjondokument') is not None):
+                    or documents.find(_CURRENT_NS+'utvidetVeiledningdokument') is not None):
                 raise CompanyTaxError.current_return_unsupported()
+            business_node=documents.find(_CURRENT_NS+'naeringsspesifikasjondokument')
+            if correction_parent is None and business_node is not None:
+                raise CompanyTaxError.current_return_unsupported()
+            if correction_parent is not None:
+                from talli_backend.modules.company_tax_filing.public import TaxDeliveryCorrectionParent
+                if type(correction_parent) is not TaxDeliveryCorrectionParent or business_node is None:
+                    raise CompanyTaxError.current_return_unsupported()
+                if business_node.findtext(_CURRENT_NS+'encoding')!='utf-8':raise ValueError()
+                business_raw=base64.b64decode(re.sub(r'[\t\n\r ]+','',business_node.findtext(_CURRENT_NS+'content') or ''),validate=True)
+                if sha256(business_raw).hexdigest()!=correction_parent.calculated_business_sha256:
+                    raise CompanyTaxError.current_return_unsupported()
+                business=_parse(business_raw)
+                self._schemas[1].assertValid(business);self._validate_business_codes(business)
             node = documents.find(_CURRENT_NS+'skattemeldingdokument')
             if node is None:
                 raise ValueError('Current Tax document is missing.')
             reference = node.findtext(_CURRENT_NS+'id') or ''
             if reference != reference.strip():
                 raise ValueError('Current Tax document reference is ambiguous.')
+            if correction_parent is not None and (node.find(_CURRENT_NS+'navneromVedForhaandsfastsetting') is not None
+                    or business_node.find(_CURRENT_NS+'navneromVedForhaandsfastsetting') is not None):
+                raise CompanyTaxError.current_return_unsupported()
             kind = TaxCurrentDocumentKind(node.findtext(_CURRENT_NS+'type'))
             if node.findtext(_CURRENT_NS+'encoding') != 'utf-8':
                 raise ValueError('Current Tax document encoding is unsupported.')
             encoded = re.sub(r'[\t\n\r ]+','',node.findtext(_CURRENT_NS+'content') or '')
             tax_bytes = base64.b64decode(encoded,validate=True)
             tax_bytes.decode('utf-8',errors='strict')
+            if correction_parent is not None and sha256(tax_bytes).hexdigest()!=correction_parent.calculated_tax_sha256:
+                raise CompanyTaxError.current_return_unsupported()
             tax = _parse(tax_bytes)
             if tax.getroottree().docinfo.encoding.upper().replace('-','') != 'UTF8':
                 raise ValueError('Current Tax document encoding is unsupported.')
@@ -175,7 +192,7 @@ class PinnedTax2025Schemas:
         except (ValueError, TypeError, AttributeError, etree.LxmlError):
             raise CompanyTaxError.unavailable() from None
 
-    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None) -> TaxSchemaValidation:
+    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None, correction_parent=None) -> TaxSchemaValidation:
         try:
             if not isinstance(envelope, TaxDeliveryEnvelope) or envelope.schema_sha256 != self.schema_sha256:
                 raise ValueError('Tax documents use a different schema pin.')
@@ -188,7 +205,7 @@ class PinnedTax2025Schemas:
             if current_document is not None:
                 if type(current_document) is not TaxCurrentDocument:
                     raise ValueError('Current Tax document type is invalid.')
-                inspected,original=self._inspect_current(current_document.response)
+                inspected,original=self._inspect_current(current_document.response,correction_parent=correction_parent)
                 if (inspected!=current_document or inspected.schema_sha256!=envelope.schema_sha256
                         or inspected.document_reference!=envelope.current_document_reference
                         or inspected.response.organization_number!=envelope.source.organization_number
@@ -249,9 +266,9 @@ class PinnedTax2025Schemas:
                     or draft.current_document is None or draft.envelope.schema_sha256!=self.schema_sha256):raise ValueError()
             # Reinspect the retained current original rather than trusting its
             # cached party label as the scope for a consequential later stage.
-            current=self.inspect_current(draft.current_document.response)
+            current=self.inspect_current(draft.current_document.response,correction_parent=draft.correction_parent)
             if current!=draft.current_document:raise ValueError()
-            self.validate(draft.envelope,current_document=current)
+            self.validate(draft.envelope,current_document=current,correction_parent=draft.correction_parent)
             documents={item.document_type:item.raw_bytes for item in response.calculated_documents}
             tax=_parse(documents['skattemeldingUpersonligEtterBeregning'])
             business=_parse(documents['naeringsspesifikasjonEtterBeregning'])

@@ -237,7 +237,7 @@ class AuthenticatedCompanyTax:
             return result
 
     async def delivery_journal_archive(self, query: CompanyTaxSourceQuery, *, read_evidence: bool=False,guarded_upload: bool=False,
-            validation_evidence: bool=False,confirmation_evidence: bool=False,submission_evidence: bool=False) -> TaxDeliveryJournalArchive:
+            validation_evidence: bool=False,confirmation_evidence: bool=False,submission_evidence: bool=False,correction_evidence: bool=False) -> TaxDeliveryJournalArchive:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         # The current guard spans the separate repeatable source snapshot. The
         # late guard evaluates ownership/MFA after all enumeration and waits.
@@ -246,7 +246,7 @@ class AuthenticatedCompanyTax:
             async with self._session.transaction(snapshot=True) as transaction:
                 result=archive_tax_delivery_journal(query,await transaction.journal_history_snapshot(query),
                     read_evidence=read_evidence,guarded_upload=guarded_upload,validation_evidence=validation_evidence,
-                    confirmation_evidence=confirmation_evidence,submission_evidence=submission_evidence)
+                    confirmation_evidence=confirmation_evidence,submission_evidence=submission_evidence,correction_evidence=correction_evidence)
             await guard.lock_delivery_draft_archive(query)
             return result
 

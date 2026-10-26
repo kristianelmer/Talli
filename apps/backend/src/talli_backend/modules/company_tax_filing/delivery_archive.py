@@ -23,16 +23,22 @@ class TaxDeliveryJournalArchive:
 
 
 def archive_tax_delivery_journal(query, snapshot, *, read_evidence: bool=True,guarded_upload: bool=True,
-        validation_evidence: bool=True,confirmation_evidence: bool=True,submission_evidence: bool=True) -> TaxDeliveryJournalArchive:
+        validation_evidence: bool=True,confirmation_evidence: bool=True,submission_evidence: bool=True,correction_evidence: bool=True) -> TaxDeliveryJournalArchive:
     from .public import CompanyTaxError, project_company_tax_source
     facts=project_company_tax_source(query,snapshot)
     # An unresolved predecessor effect does not erase retained originals. Every
     # extent, enumeration, linkage, tracking and scope failure still blocks.
-    if (snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8')
+    if (snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6','company-tax-source-v7','company-tax-source-v8','company-tax-source-v9')
             or facts.history_coverage.status=='unavailable'
             or set(facts.history_coverage.reasons)-{'production_journal_unavailable'}):
         raise CompanyTaxError.unavailable()
-    if any(type(value) is not bool for value in (read_evidence,guarded_upload,validation_evidence,confirmation_evidence,submission_evidence)):raise CompanyTaxError.invalid_input()
+    if any(type(value) is not bool for value in (read_evidence,guarded_upload,validation_evidence,confirmation_evidence,submission_evidence,correction_evidence)):raise CompanyTaxError.invalid_input()
+    if snapshot.contract_version=='company-tax-source-v9' and not (read_evidence and guarded_upload and validation_evidence and confirmation_evidence and submission_evidence and correction_evidence):
+        if any(row.draft.correction_parent is not None for row in snapshot.delivery_drafts):raise CompanyTaxError.unavailable()
+        proof=dict(snapshot.coverage)|{'contractVersion':'company-tax-source-v8'}
+        proof.pop('declaredCorrectionExtentValid',None);proof.pop('correctionCodecVersion',None)
+        snapshot=replace(snapshot,contract_version='company-tax-source-v8',coverage=proof)
+        facts=project_company_tax_source(query,snapshot)
     if snapshot.contract_version=='company-tax-source-v8' and not (read_evidence and guarded_upload and validation_evidence and confirmation_evidence and submission_evidence):
         if any(_submission_value(event.value) for event in snapshot.delivery_events):raise CompanyTaxError.unavailable()
         proof=dict(snapshot.coverage)|{'contractVersion':'company-tax-source-v7'}

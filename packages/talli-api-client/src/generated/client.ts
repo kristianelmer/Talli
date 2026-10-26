@@ -1,5 +1,6 @@
 // Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: 1.0.0
+import {verifyCompanyTaxDeliveryJournalArchive} from "../tax-delivery-evidence.ts";
 
 export interface SystemBoundaryStatus {
   apiVersion: string;
@@ -3510,6 +3511,15 @@ export interface CompanyTaxPrepareDeliveryDraftRequest {
   companyId: string;
   filingId: string;
   incomeYear: number;
+}
+
+export interface CompanyTaxPrepareDeliveryCorrectionRequest {
+  companyId: string;
+  filingId: string;
+  incomeYear: number;
+  parentApprovalSha256: string;
+  parentDraftSha256: string;
+  parentFilingId: string;
 }
 
 export interface CompanyTaxPreparedDeliveryDraftWire {
@@ -9747,6 +9757,19 @@ function isCompanyTaxPrepareDeliveryDraftRequest(value: unknown): value is Compa
   );
 }
 
+function isCompanyTaxPrepareDeliveryCorrectionRequest(value: unknown): value is CompanyTaxPrepareDeliveryCorrectionRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","filingId","incomeYear","parentApprovalSha256","parentDraftSha256","parentFilingId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025) &&
+    (typeof value.parentApprovalSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.parentApprovalSha256)) &&
+    (typeof value.parentDraftSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.parentDraftSha256)) &&
+    isUuid(value.parentFilingId)
+  );
+}
+
 function isCompanyTaxPreparedDeliveryDraftWire(value: unknown): value is CompanyTaxPreparedDeliveryDraftWire {
   return (
     isRecord(value) &&
@@ -13713,6 +13736,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async companyTaxPrepareDeliveryCorrection(
+      command: CompanyTaxPrepareDeliveryCorrectionRequest, request: TalliMutationOptions,
+    ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/delivery-corrections`,
+        "POST", request, command, isCompanyTaxPreparedDeliveryDraftWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async companyTaxGetDeliveryDraftArchive(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<CompanyTaxDeliveryDraftArchiveWire> {
@@ -13732,7 +13769,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     async companyTaxGetDeliveryJournalArchive(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
-      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2", validationEvidence: "true", confirmationEvidence: "true", submissionEvidence: "true" });
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2", validationEvidence: "true", confirmationEvidence: "true", submissionEvidence: "true", correctionEvidence: "true" });
       const result = await executeJson(
         `${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?${query}`,
         "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
@@ -13741,7 +13778,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const draftIds = new Set(result.drafts.map(row => row.filingId));
       if (result.companyId !== companyId || result.incomeYear !== incomeYear
           || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
-          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:","company-tax-source-v6:","company-tax-source-v7:","company-tax-source-v8:"].some(version => source.evidence.version === version + result.sourceSha256)
+          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:","company-tax-source-v6:","company-tax-source-v7:","company-tax-source-v8:","company-tax-source-v9:"].some(version => source.evidence.version === version + result.sourceSha256)
           || source.evidence.digest !== result.sourceSha256
           || source.evidence.evaluatedAt !== result.observedAt
           || source.historyCoverage.evidenceReference !== source.evidence.reference
@@ -13758,6 +13795,16 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           || source.deliveryDrafts.some(row => !result.drafts.some(original =>
             original.filingId === row.filingId && original.draftSha256 === row.draftSha256))) {
         throw new TalliApiError(502, undefined);
+      }
+      // V9 explicitly requires complete correction-original verification. Older
+      // SDK wire contracts retain their released transport behavior.
+      const correctionOriginals=source.evidence.version.startsWith("company-tax-source-v9:") || result.drafts.some(row=>{
+        try { const value=JSON.parse(row.canonicalJson);return value?.version==="company-tax-delivery-draft-v3" || Object.hasOwn(value?.draft ?? {},"correction_parent"); }
+        catch { return true; }
+      });
+      if (correctionOriginals) {
+        try { await verifyCompanyTaxDeliveryJournalArchive(result,companyId,incomeYear); }
+        catch { throw new TalliApiError(502, undefined); }
       }
       return result;
     },

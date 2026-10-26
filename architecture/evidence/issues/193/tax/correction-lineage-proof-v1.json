@@ -1,0 +1,161 @@
+{
+  "version": "tax-correction-lineage-proof-v1",
+  "baselineRevision": "4c29fd5fcd24ba93bbaa9d3c30689fddec9fabfe",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "V3 immutable complete correction draft binds the exact parent draft, owner approval, submission intent and completed known result. V1/V2 canonical draft bytes are preserved.",
+    "Fresh terminal metadata, exact known Clean opaque receipt and exact approved envelope are retained inline. Known parent calculated statutory hashes bind the fresh current authority response. No active, uncertain or unrelated parent can be replaced.",
+    "Separate finite known-parent read-only admission: <=300 seconds, <=4 GETs, exact actor/company/year/organization/restricted database identity and known parent draft/approval/instance; no parent mutation grant renewal or generic mutation method.",
+    "Current owner/MFA is checked between metadata, receipt, envelope and current-document reads and again before storage. Full owning Annual/Ledger/Investments source is independently read and rechecked. No SQL transaction spans HTTP.",
+    "Source9/journal7 positively enumerate the same nine stores and correction codec. CLI-created deferred migration defaults closed, serializes company scope, elects one child, rejects forks/unrelated effects/parent-instance reuse, bounds the chain to 64 and rechecks the fence after waiting. Containment preserves installed readers and original-actor known results.",
+    "One additive strict correction-preparation route; actor derives from verified JWT. Separate child review and an independently issued draft-bound finite dispatch grant remain required.",
+    "Shared SDK/web checker hashes exact retained originals and source/review JSON subtrees without normalizing numeric spellings. Bounded pinned saxes parsing binds actual current statutory pair/year/party/reference and actual complete-request reference; locked, guidance, special namespace, DTD, processing instruction, unknown and altered evidence fail closed. No Tax business/XSD policy is inferred in the browser.",
+    "Direct SDK Source9 and mislabeled V3/correction bytes invoke the shared checker. Predecessor transport behavior remains otherwise unchanged; older-reader negotiation never omits a V3 correction.",
+    "Actual signed fixture: real initial HTTP intake and restricted owning reads, parent review/submission/terminal receipt, fresh parent/current GETs, owning-ledger interest changes from zero to 100, distinct complete child packet, its own review/new instance/submission/terminal receipt, both exact generations read through API/SDK/web. The ledger mutation is explicitly synthetic fixture setup with grants restored and triggers retained."
+  ],
+  "validation": {
+    "ordinaryTaxRegression": {
+      "passed": 1525,
+      "databaseDeselected": 216,
+      "privateLog": "correction-unit-regression-v1.log",
+      "timing": "Before mechanical parent-factory and SDK extraction fixes."
+    },
+    "focusedReviewFixBackend": {
+      "passed": 91,
+      "privateLog": "correction-review-fix-unit-v1.log"
+    },
+    "nativeRestrictedPostgres": {
+      "passed": 17,
+      "privateLogs": [
+        "correction-native-v3.log",
+        "correction-native-positive-extent-v1.log"
+      ],
+      "detail": "Sixteen cases passed the full fresh final migration. The disabled-trigger case was then rerun with the established incomplete-coverage expectation and confirmed attempt admission rejects it."
+    },
+    "actualSignedFullOwningAndHttp": {
+      "passed": 6,
+      "privateLogs": [
+        "correction-signed-topology-v1.log",
+        "correction-signed-topology-v9.log"
+      ],
+      "detail": "Five access-gap/unresolved-parent cases passed v1; final changed-source complete child case passed v9 after all reader fixes."
+    },
+    "legacySignedOwnerReviewRegression": {
+      "passed": 3,
+      "privateLog": "correction-owner-review-regression-v1.log"
+    },
+    "rehashedPreparedChildCorruptions": {
+      "cases": 30,
+      "surfaces": [
+        "shared pure checker",
+        "direct generated SDK",
+        "web loader"
+      ],
+      "preserves": "Exact envelope/source numeric bytes remain unchanged while each targeted child proof is altered and its outer draft digest updated."
+    },
+    "clientRegression": {
+      "passed": 255,
+      "privateLog": "correction-clients-v4.log"
+    },
+    "typecheck": "PASS correction-typecheck-v4.log",
+    "architecture": "PASS correction-architecture-v6.log; dependency evidence unchanged",
+    "mandatoryPartition": {
+      "status": "PASS",
+      "minimumTaxCases": 217,
+      "markerParity": true,
+      "privateLog": "correction-partition-v3.log"
+    },
+    "generatedArtifacts": "OpenAPI/SDK --check PASS",
+    "whitespace": "PASS",
+    "companyExportBytes": "Frozen company export file unchanged",
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    },
+    "secretEnvironmentRemoved": true
+  },
+  "review": {
+    "initialStandardsHeuristics": 2,
+    "initialSpecFindings": 2,
+    "followupSpecFindings": 1,
+    "fixed": [
+      "Tax-owned parent commitment factory",
+      "Shared private SQL V2/V3 review implementation with V2-only predecessor entry",
+      "Actual retained current XML verification",
+      "Direct SDK correction verification including predecessor-label downgrade rejection",
+      "Closed validation/schema bindings and exact source/review/document commitment verification"
+    ],
+    "finalStandardsFindings": 0,
+    "finalSpecFindings": 0,
+    "allReviewAgentsClosed": true,
+    "limitation": "Independent reviews were static; runtime counts are the main agent pinned-runtime proofs."
+  },
+  "references": [
+    {
+      "url": "https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/selskap/",
+      "support": "A correction uses a new complete packet for the same income year."
+    },
+    {
+      "url": "https://www.skatteetaten.no/rettskilder/type/handboker/skatteforvaltningshandboken/gjeldende/kapittel-9-fastsetting/ID-9-5.001/ID-9-5.003/",
+      "qualification": "Technical delivery evidence does not establish legal amendment eligibility."
+    }
+  ],
+  "closedGates": [
+    "Real provider activation",
+    "Live filing",
+    "Production/public launch",
+    "Paid operations and Billing",
+    "Original Model3/P-H compatibility"
+  ],
+  "remaining": [
+    "Actual signed-JWT desktop/touch durable Tax interface",
+    "Accounts completion and actual signed-JWT desktop/touch flow"
+  ],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/adapters/company_tax_loopback_read.py": "31a7b5240c727caafa0b695cb1c0c604f52e3d068f7599c8cd9630f31b32bebf",
+    "apps/backend/src/talli_backend/adapters/company_tax_schemas.py": "c9d01b1b52a94d97aaedbe6e00085b0e027c5c55936cf1f2ad4da171b9485ea3",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_intake.py": "76a86884267d26909d9f5baf653faa5ca5ab5f62ea6de31acd2c702da8b5483f",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_parent_read.py": "8d5b44eef480af0e0f07911106c8ebd29c1f27afa3cd889a55261612a1c9b9a0",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "20b842425e5e5ca84b3eea304862979a3659817a901857f961080cc39591866b",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_preparation.py": "cee0f48fd5df0b03935c4d598e8a165a35d0a21f348a09aa22ef693787c88634",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "3f1c12c3157a05662a642f86364786d9c7755daf0cdc5e6fdcbb3091c6076025",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "7d6b377b69ea321d02ec0868388eb9d78cf27f8f94dd516e6fef64901a1e98c3",
+    "apps/backend/src/talli_backend/application/company_tax_parent_read_rehearsal.py": "9b63599988bd227d004fd498be4c35ac0c9db9323f8a24dc9e0c7de3a7fe1066",
+    "apps/backend/src/talli_backend/main.py": "62a069c72a511184a48b29fbab82d3060c1925f86cb75cfe8d0d0325f721634c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7565e288669788f742210be2a2128a106e30c2c805ceb05edc1ccce2458d6cba",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_archive.py": "d2c14f8be4878eec424869eb5c95fcf631f5e746a7b51170a242c87e0e706ea6",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_correction.py": "9dd4170757be97d4dee277d51ea2dd23b9fae259fa1639c49fb84267b2e8af6f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_draft.py": "cb23533dfcb8fc0f17fa67a0222f51fe21cb5e4b536c40e662f0b384534cbe8c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "c913af13ac00c297593ea2021555342728dc5ec0be9cf5a6e01e6257f3e757fe",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_journal.py": "6013a4a62b3f3612505ae66ba0c11e245d2ffc595768de3efbf29c6722e9f087",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "c50641ca6f4b682566ddb97ce7f99fec89dad44f02ba886371188da3ff262462",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "d20004152b75dc36aee45a2881a7a08128ab28fb57f7a840e5d66d2dbcb4c5ee",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "a1e88ead92a0e284b813e772efcfa71fe238276b46dfdcdbe0577c0db690aa57",
+    "apps/backend/tests/test_company_tax_correction.py": "172fabb8c17dbeb4e269ca13d32e037495eedbe803f81bc4677ed9c51e11f4e3",
+    "apps/backend/tests/test_company_tax_correction_database.py": "41053dac764ca91e1032aa3ecacf8445ba344567f95dfc1132d29aad242632a5",
+    "apps/backend/tests/test_company_tax_delivery_observations_database.py": "9f9a2d8fde9a1d35dd732f4b9157b016ecab0c95b683f131cd1f7d040d45d509",
+    "apps/backend/tests/test_postgres_tax_correction.py": "fbc1a501efc2fbbf4c12d27aaad7b494a85c8f4650a757dec9c020584f82cabf",
+    "apps/web/features/company-tax-filing/MODULE.md": "3d42bf16fee3b71021bf2bc70f9ce1184082654c8e0c95df29017cd5545d07ed",
+    "apps/web/features/company-tax-filing/transport.ts": "1075bb31973b13b2709feb1ff7d9d88c124494727d7531808242a030066e322e",
+    "architecture/BACKEND-SYSTEM.md": "6dbbd00ced17203d99af364d3e4e8f296c92c97c22f4003746259cb96cc736de",
+    "architecture/backend-system.json": "0d04d10bfb7855db6df14d330903dbf51131f63c74be648db0e32eec0e18542c",
+    "contracts/openapi/talli-v1.json": "55e038a8d3a6e10ca6116dc72840e23c28d9b7b30b15d840dc4a8f23d101c49d",
+    "package-lock.json": "219dd0c70891a8fe11f60c17a5a04742697e913815a32551326b14d950c7a82c",
+    "package.json": "7b7c0bccac8b26afbcc2684eeb4ad51ad2417336e037247d96031f1eb44a42e6",
+    "packages/talli-api-client/package.json": "16a8525202df8357fdcc6cfff36dbedcaa8686abfcd72b23e8af73a247fbf0e4",
+    "packages/talli-api-client/src/generated/client.ts": "a7d5ac45dc3cf13f54ef3589c9c3b25829a293085a2e62a5cff9b33c8580f5e6",
+    "packages/talli-api-client/src/index.ts": "42cdfd2a0ea38262a5b0600bdc8b48ae9ef27c8aa911aa239b26e6153745ba0d",
+    "packages/talli-api-client/src/tax-delivery-evidence.ts": "1cd7ea41a676a9fb73ec0e7ebab8364e14cac2852112719cd52f9b46b48724af",
+    "scripts/generate-api-client.mjs": "1810a91bd16a9f5bd61bbd13133016026960e09fe166c3a3dbd2fb676167d89c",
+    "scripts/rehearse-tax-topology.mjs": "a50a6ac0782eb2c9c0a0a743df221c5e09c4f025db61bf8d0fc35be27531381c",
+    "supabase/contract-migrations/20261026192349_company_tax_correction_lineage_v1.sql": "220cc413f4191d3c82da53639f035c345930434279260bc6c4fd294b4975c57e",
+    "supabase/rollback/20261026192349_company_tax_correction_lineage_v1.sql": "1b63423684aba58dc0e9f6bdf5acf177bbe4306fa55ca3aabbb3e5b1bd6f2d91",
+    "tests/ci_release_gate.test.mjs": "c3f0220cbb502996620875ab429a5175c2c91b4da3ba3997ddb82dd92da2d56b",
+    "tests/contract/company_tax_finite_delivery_client.test.mjs": "7882089dcb55518883e02a9cccceb1bc90a8ed43f49af5d8b1d5005dd3c71f71",
+    "tests/contract/company_tax_journal_archive_client.test.mjs": "7c9cb7e3a5d25f882b601468d28483fcdaf5c1d4f3d966458194249ce480f034",
+    "tests/support/check-tax-journal-client.mjs": "3a3fb7780529661467ed863b64994bf7d82de6b5c5b739a5dba43ab1f348c156",
+    "tests/support/check-tax-owner-review-client.mjs": "1b32a61ef094a076963bd01825559b0a9ecc4c2acfb5d23da0c3ea6c1e0b40f2"
+  }
+}

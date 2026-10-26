@@ -26,6 +26,29 @@ const operations=[
   ["companyTaxReconcileDeliveryFeedback","delivery-feedback-reconciliations",advance],
 ];
 
+test("correction preparation preserves exact parent commitments and never retries a lost response",async()=>{
+  const command={...scope,parentFilingId:approvalId,parentDraftSha256:"a".repeat(64),parentApprovalSha256:"b".repeat(64)};
+  const expected={...scope,recordedAt:progress.recordedAt,draftSha256:"c".repeat(64),reviewSha256:"d".repeat(64),schemaSha256:"e".repeat(64)};
+  let calls=0;
+  const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async(url,request)=>{
+    calls++;assert.equal(url,"https://backend.example/api/v1/company-tax/delivery-corrections");
+    assert.equal(request.method,"POST");assert.deepEqual(JSON.parse(request.body),command);
+    assert.equal(new Headers(request.headers).get("Idempotency-Key"),"one-correction-key-v1");
+    return Response.json(expected);
+  }});
+  assert.deepEqual(await api.companyTaxPrepareDeliveryCorrection(command,{idempotencyKey:"one-correction-key-v1"}),expected);
+  assert.equal(calls,1);
+  for(const change of [{companyId:filingId},{incomeYear:2026},{filingId:companyId},{credential:"private"},{parentReady:true}]) {
+    const wrong=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...expected,...change})});
+    await assert.rejects(wrong.companyTaxPrepareDeliveryCorrection(command,{idempotencyKey:"one-correction-key-v1"}),
+      error=>error instanceof TalliApiError&&error.status===502);
+  }
+  calls=0;
+  const lost=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>{calls++;throw new TypeError("response lost");}});
+  await assert.rejects(lost.companyTaxPrepareDeliveryCorrection(command,{idempotencyKey:"one-correction-key-v1"}),TypeError);
+  assert.equal(calls,1);
+});
+
 for(const [method,path,command] of operations) {
   const expected=method.endsWith("Submission")||method.endsWith("Feedback")?{...progress,status:"uncertain",mutationKind:"confirm_submission"}:method.endsWith("Confirmation")?{...progress,status:"uncertain",mutationKind:"prepare_confirmation"}:method.endsWith("Upload")?{...progress,status:"uncertain",mutationKind:"upload_envelope"}:method.endsWith("Validation")?{...progress,status:"uncertain",mutationKind:"start_validation"}:progress;
   test(`${method} sends only bound scope and immutable review identity`,async()=>{

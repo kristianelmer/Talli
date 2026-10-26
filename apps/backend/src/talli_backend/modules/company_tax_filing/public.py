@@ -789,6 +789,7 @@ from .delivery import (
     plan_tax_mutation, verify_tax_review,
     TaxSchemaValidation,
 )
+from .delivery_correction import TaxDeliveryCorrectionParent, tax_delivery_lineage, bind_tax_delivery_correction_parent
 from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
     TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
 from .current_document import TaxCurrentDocument, TaxCurrentDocumentResponse, TaxCurrentDocumentKind
@@ -894,6 +895,26 @@ class TaxDeliveryDraftFact:
     status: str = 'prepared_only'
 
 
+class CompanyTaxTerminalParentReader(Protocol):
+    async def read_parent_instance(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal) -> TaxDeliveryInstanceObservation: ...
+    async def read_parent_feedback(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation: ...
+    async def read_parent_envelope(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
+
+
+@dataclass(frozen=True,slots=True)
+class PrepareTaxDeliveryCorrection(PrepareTaxDeliveryDraft):
+    parent_filing_id: TaxFilingSubmissionId
+    expected_parent_draft_sha256: str
+    expected_parent_approval_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        if type(self.parent_filing_id) is not TaxFilingSubmissionId or self.parent_filing_id==self.filing_id:
+            raise ValueError('Tax correction requires a different known parent filing.')
+        _digest(self.expected_parent_draft_sha256);_digest(self.expected_parent_approval_sha256)
+
+
 class TaxDeliveryDraftPersistence(Protocol):
     async def store_delivery_draft(self, draft: TaxDeliveryDraft) -> StoredTaxDeliveryDraft: ...
     async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery,
@@ -924,8 +945,8 @@ class TaxDeliveryJournalFact:
 class TaxDeliverySchemaValidator(Protocol):
     @property
     def schema_sha256(self) -> str: ...
-    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None) -> TaxSchemaValidation: ...
-    def inspect_current(self, response: TaxCurrentDocumentResponse) -> TaxCurrentDocument: ...
+    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None, correction_parent: TaxDeliveryCorrectionParent | None=None) -> TaxSchemaValidation: ...
+    def inspect_current(self, response: TaxCurrentDocumentResponse, *, correction_parent: TaxDeliveryCorrectionParent | None=None) -> TaxCurrentDocument: ...
     def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None: ...
 
 
@@ -981,6 +1002,7 @@ def tax_delivery_schema_adapter(contract):
 
 
 __all__ = [
+    'TaxDeliveryCorrectionParent','tax_delivery_lineage','bind_tax_delivery_correction_parent','CompanyTaxTerminalParentReader','PrepareTaxDeliveryCorrection',
     'ApproveTaxDeliveryDraft', 'AdvanceTaxDelivery', 'TaxDeliveryProgress', 'assert_tax_delivery_attempt_history',
     'TaxDeliveryMutationAuthority',
     'TaxDeliveryOriginalPurpose', 'TaxDeliveryReadOriginal', 'TaxDeliveryAdmissionEvidence',

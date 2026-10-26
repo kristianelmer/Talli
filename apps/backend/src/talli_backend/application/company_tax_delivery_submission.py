@@ -10,6 +10,7 @@ provider operations remain confined to the independently admitted loopback run.
 from __future__ import annotations
 
 import base64
+from dataclasses import replace
 from uuid import NAMESPACE_URL,uuid5
 
 from talli_backend.application.company_tax_delivery_rehearsal import TaxDeliveryRehearsalRuntime
@@ -52,7 +53,7 @@ def _review_replay(journal,command):
             or approval.draft_sha256!=command.expected_draft_sha256
             or approval.review_sha256!=command.expected_review_sha256):
         raise CompanyTaxError.draft_conflict()
-    return TaxDeliveryJournal(journal.draft,(journal.events[0],)).progress
+    return replace(journal,events=(journal.events[0],)).progress
 
 
 def _approved(journal,command):
@@ -96,7 +97,7 @@ class CompanyTaxDeliverySubmission:
         try:
             response=await self._authority.fetch_current_document(income_year=int(source.income_year),
                 company_org_number=source.organization_number)
-            return self._schemas.inspect_current(response)
+            return self._schemas.inspect_current(response,**({'correction_parent':journal.draft.correction_parent} if journal.draft.correction_parent is not None else {}))
         except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
             raise CompanyTaxError.unavailable() from None
 
@@ -113,7 +114,7 @@ class CompanyTaxDeliverySubmission:
     def _append(journal,result,value):
         if type(result) is not TaxDeliveryEventAppend or result.event.value!=value:raise CompanyTaxError.unavailable()
         return TaxDeliveryJournal(journal.draft,journal.events+(result.event,),journal.read_evidence,journal.guarded_upload,
-            journal.validation_evidence,journal.confirmation_evidence,journal.submission_evidence)
+            journal.validation_evidence,journal.confirmation_evidence,journal.submission_evidence,journal.correction_evidence)
 
     def _admission(self,journal):
         approval=journal.approval
@@ -150,7 +151,7 @@ class CompanyTaxDeliverySubmission:
                 if prior!=result.event:raise CompanyTaxError.unavailable()
                 return latest,result.event.value
             retained=TaxDeliveryJournal(latest.draft,latest.events+(result.event,),latest.read_evidence,latest.guarded_upload,
-                latest.validation_evidence,latest.confirmation_evidence,latest.submission_evidence)
+                latest.validation_evidence,latest.confirmation_evidence,latest.submission_evidence,latest.correction_evidence)
         return retained,result.event.value
 
     @staticmethod

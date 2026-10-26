@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import hashlib
 import json
 from uuid import UUID
@@ -10,8 +11,12 @@ from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, Idempoten
 from .delivery import TaxDeliveryEnvelope, TaxDeliverySource, TaxSchemaValidation, _json
 from .current_document import TaxCurrentDocument, _decode_current_document
 
+if TYPE_CHECKING:
+    from .delivery_correction import TaxDeliveryCorrectionParent
+
 _VERSION = 'company-tax-delivery-draft-v1'
 _CURRENT_VERSION = 'company-tax-delivery-draft-v2'
+_CORRECTION_VERSION = 'company-tax-delivery-draft-v3'
 _MAX_BYTES = 32 * 1024 * 1024
 
 
@@ -33,6 +38,7 @@ class TaxDeliveryDraft:
     envelope: TaxDeliveryEnvelope
     validation: TaxSchemaValidation
     current_document: TaxCurrentDocument | None = None
+    correction_parent: TaxDeliveryCorrectionParent | None = None
 
     def __post_init__(self):
         if (type(self.filing_id) is not str or str(UUID(self.filing_id)) != self.filing_id
@@ -52,12 +58,21 @@ class TaxDeliveryDraft:
                     or current.schema_sha256 != self.envelope.schema_sha256):
                 raise ValueError('Current Tax original does not match the prepared delivery.')
 
+        if self.correction_parent is not None:
+            from .delivery_correction import TaxDeliveryCorrectionParent
+            if type(self.correction_parent) is not TaxDeliveryCorrectionParent:
+                raise ValueError('Tax correction parent type is invalid.')
+            self.correction_parent.assert_child(self)
+
     @property
     def canonical_json(self) -> str:
         value = _json(self)
+        value.pop('correction_parent')
+        if self.correction_parent is not None:
+            value['correction_parent']=self.correction_parent.canonical_value
         if self.current_document is None:
             value.pop('current_document')
-        raw = _canonical({'version': _CURRENT_VERSION if self.current_document is not None else _VERSION, 'draft': value})
+        raw = _canonical({'version': _CORRECTION_VERSION if self.correction_parent is not None else _CURRENT_VERSION if self.current_document is not None else _VERSION, 'draft': value})
         if len(raw.encode('utf-8')) > _MAX_BYTES:
             raise ValueError('Tax draft exceeds the retained-byte limit.')
         return raw
@@ -91,7 +106,7 @@ def archive_tax_delivery_drafts(query, snapshot) -> TaxDeliveryDraftArchive:
     facts = project_company_tax_source(query, snapshot)
     # Unknown effects on a retained legacy submission do not erase original
     # drafts. Every enumeration/migration/scope failure still blocks the export.
-    if (snapshot.contract_version != 'company-tax-source-v2'
+    if (snapshot.contract_version not in ('company-tax-source-v2','company-tax-source-v9')
             or facts.history_coverage.status == 'unavailable'
             or set(facts.history_coverage.reasons) - {'production_journal_unavailable'}):
         raise CompanyTaxError.unavailable()
@@ -117,11 +132,12 @@ def decode_tax_delivery_draft(raw: str, expected_sha256: str) -> TaxDeliveryDraf
                 or hashlib.sha256(raw.encode('utf-8')).hexdigest() != expected_sha256):
             raise ValueError()
         root = _object(json.loads(raw, object_pairs_hook=pairs, parse_constant=constant), ('version', 'draft'))
-        if root['version'] not in (_VERSION, _CURRENT_VERSION):
+        if root['version'] not in (_VERSION, _CURRENT_VERSION, _CORRECTION_VERSION):
             raise ValueError()
-        current = root['version'] == _CURRENT_VERSION
+        current = root['version'] in (_CURRENT_VERSION,_CORRECTION_VERSION)
+        correction = root['version'] == _CORRECTION_VERSION
         keys = ('filing_id', 'command_key', 'prepared_by', 'envelope', 'validation')
-        value = _object(root['draft'], (*keys, 'current_document') if current else keys)
+        value = _object(root['draft'], (*keys,'current_document','correction_parent') if correction else (*keys,'current_document') if current else keys)
         actor = _object(value['prepared_by'], ('kind', 'subject'))
         subject = _object(actor['subject'], ('value',))
         key = _object(value['command_key'], ('value',))
@@ -137,10 +153,12 @@ def decode_tax_delivery_draft(raw: str, expected_sha256: str) -> TaxDeliveryDraf
             'tax_xml_sha256', 'business_xml_sha256', 'envelope_xml_sha256'))
         source = TaxDeliverySource(**(source | {'company_id': CompanyId(company['value']),
             'income_year': IncomeYear(year['value'])}))
+        from .delivery_correction import decode_tax_delivery_correction_parent
         draft = TaxDeliveryDraft(value['filing_id'], IdempotencyKey(key['value']),
             ActorId(ActorKind(actor['kind']), UserId(subject['value'])),
             TaxDeliveryEnvelope(**(envelope | {'source': source})), TaxSchemaValidation(**proof),
-            _decode_current_document(value['current_document']) if current else None)
+            _decode_current_document(value['current_document']) if current else None,
+            decode_tax_delivery_correction_parent(value['correction_parent']) if correction else None)
         if draft.canonical_json != raw:
             raise ValueError()
         return draft

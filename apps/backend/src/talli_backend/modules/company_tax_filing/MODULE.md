@@ -649,3 +649,26 @@ V2 draft bytes remain unchanged; default composition remains unconfigured.
 <!-- architecture-inventory
 {"ports":["CompanyTaxCurrentDocumentIntake"]}
 -->
+
+
+Correction preparation retains a V3 draft with `TaxDeliveryCorrectionParent`,
+linking the exact known parent draft/approval/submission intent/result, its
+terminal metadata, Clean receipt and exact approved file. A receipt remains
+unclassified. `PrepareTaxDeliveryCorrection` requires fresh owning source and
+current authority statutory documents matching the parent calculated pair.
+No correction over uncertainty, unrelated roots, cycles or competing children
+is admitted. V1/V2 draft bytes and prior request codecs are unchanged.
+
+`CompanyTaxTerminalParentReader` provides three bounded known-parent reads
+under a separate finite read-only grant; current owner/MFA is checked between
+reads. The optional port is closed in ordinary composition. Source V9 and
+journal V7 positively enumerate the same nine stores and correction codec.
+The SQL fence defaults closed; rollback preserves readers and known results.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxTerminalParentReader"]}
+-->
+
+`tax_delivery_lineage` verifies the complete immutable chain and reserved tip.
+
+`bind_tax_delivery_correction_parent` owns parent commitment construction and verification.

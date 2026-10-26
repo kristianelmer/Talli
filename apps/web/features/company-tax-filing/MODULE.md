@@ -88,3 +88,12 @@ feedback originals retain arbitrary original bytes, metadata scope and identity;
 they are never decoded with a guessed receipt schema or classified as Tax
 acceptance. Old codecs retain their checks and byte contracts. Unknown/partial
 successor reads remain unavailable.
+
+Correction originals use the shared public API-client evidence checker. It
+hashes every original, verifies one terminal-parent lineage and parses the
+retained current XML with the existing pinned saxes parser. Current statutory
+bytes, company/year/party/reference, and complete request reference must match;
+DTD, processing instructions, locked or unknown guidance cannot disappear. The
+SDK invokes this checker for the positive V9 contract, including direct callers.
+Web transport invokes the same checker for all supported journal generations.
+No receipt is classified as tax-assessment acceptance or amendment eligibility.

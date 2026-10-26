@@ -589,7 +589,8 @@
         "talli_backend.modules.investments.public"
       ],
       "routes": [
-        "/api/v1/company-tax/delivery-drafts"
+        "/api/v1/company-tax/delivery-drafts",
+        "/api/v1/company-tax/delivery-corrections"
       ]
     },
     {
@@ -1192,6 +1193,12 @@
       "adapter": "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake",
       "owner": "backend-system",
       "mode": "Separately finite read-only loopback current GET before a draft exists; exact actor/company/year/organization/restricted database scope, no placeholder draft hash, no dispatch authority."
+    },
+    {
+      "port": "CompanyTaxTerminalParentReader",
+      "adapter": "talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead",
+      "owner": "backend-system",
+      "mode": "Separate finite read-only known-parent metadata and exact receipt/file GETs; no dispatch capability or extension of the parent mutation grant."
     }
   ],
   "allowedDependencies": {
@@ -1394,7 +1401,8 @@
       "typing",
       "urllib.error",
       "urllib.parse",
-      "urllib.request"
+      "urllib.request",
+      "talli_backend.adapters.company_tax_loopback_read"
     ]
   }
 }

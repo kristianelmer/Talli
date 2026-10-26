@@ -109,7 +109,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
     ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,ConfirmTaxDeliverySubmission,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
-    PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
+    PrepareTaxDeliveryDraft,PrepareTaxDeliveryCorrection, TaxFilingSubmissionId,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -1805,6 +1805,12 @@ class CompanyTaxPrepareDeliveryDraftRequest(TransportModel):
     company_id: UUID
     income_year: Annotated[int, Field(strict=True, ge=2025, le=2025)]
     filing_id: UUID
+
+
+class CompanyTaxPrepareDeliveryCorrectionRequest(CompanyTaxPrepareDeliveryDraftRequest):
+    parent_filing_id: UUID = Field(alias='parentFilingId')
+    parent_draft_sha256: str = Field(alias='parentDraftSha256',pattern=r'^[0-9a-f]{64}$')
+    parent_approval_sha256: str = Field(alias='parentApprovalSha256',pattern=r'^[0-9a-f]{64}$')
 
 
 class CompanyTaxPreparedDeliveryDraftWire(TransportModel):
@@ -12091,6 +12097,23 @@ def create_app(
                 review_sha256=draft.envelope.review_sha256, schema_sha256=draft.envelope.schema_sha256)
         return await company_tax_call(execute)
 
+    @application.post('/api/v1/company-tax/delivery-corrections',operation_id='companyTaxPrepareDeliveryCorrection',
+        response_model=CompanyTaxPreparedDeliveryDraftWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_prepare_delivery_correction(request: Request,command: CompanyTaxPrepareDeliveryCorrectionRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxPreparedDeliveryDraftWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            result=await session.prepare_delivery_draft(PrepareTaxDeliveryCorrection(CompanyId(str(command.company_id)),
+                IncomeYear(command.income_year),session.actor_id,TaxFilingSubmissionId(str(command.filing_id)),IdempotencyKey(idempotency_key),
+                ledger_correlation(request),TaxFilingSubmissionId(str(command.parent_filing_id)),command.parent_draft_sha256,command.parent_approval_sha256))
+            draft=result.draft
+            return CompanyTaxPreparedDeliveryDraftWire(company_id=command.company_id,income_year=command.income_year,
+                filing_id=UUID(draft.filing_id),recorded_at=result.recorded_at.value,draft_sha256=draft.sha256,
+                review_sha256=draft.envelope.review_sha256,schema_sha256=draft.envelope.schema_sha256)
+        return await company_tax_call(execute)
+
     async def company_tax_delivery_action(request,credentials,command,idempotency_key,action):
         async def execute():
             session=await company_tax_application.session(bearer_token(credentials))
@@ -12312,6 +12335,7 @@ def create_app(
         validation_evidence: Annotated[bool, Query(alias="validationEvidence")] = False,
         confirmation_evidence: Annotated[bool, Query(alias="confirmationEvidence")] = False,
         submission_evidence: Annotated[bool, Query(alias="submissionEvidence")] = False,
+        correction_evidence: Annotated[bool, Query(alias="correctionEvidence")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxDeliveryJournalArchiveWire:
         async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
@@ -12321,7 +12345,8 @@ def create_app(
                 guarded_upload=read_evidence and read_evidence_version==2,
                 validation_evidence=read_evidence and read_evidence_version==2 and validation_evidence,
                 confirmation_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence,
-                submission_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence)
+                submission_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence,
+                correction_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence and correction_evidence)
             facts=result.source_facts
             try:
                 return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),

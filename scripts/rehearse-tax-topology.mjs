@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable", "journal-expand", "journal-enable", "observation-expand", "observation-enable", "guarded-upload-expand", "guarded-upload-enable", "validation-expand", "validation-enable", "confirmation-expand", "confirmation-enable", "submission-expand", "submission-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable", "journal-expand", "journal-enable", "observation-expand", "observation-enable", "guarded-upload-expand", "guarded-upload-enable", "validation-expand", "validation-enable", "confirmation-expand", "confirmation-enable", "submission-expand", "submission-enable", "correction-expand", "correction-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -43,7 +43,14 @@ try {
   } else {
     const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
-    if (direction === "submission-expand") {
+    if (direction === "correction-expand") {
+      await apply("contract-migrations/20261026192349_company_tax_correction_lineage_v1.sql");
+    } else if (direction === "correction-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026192349_company_tax_correction_lineage_v1.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_correction_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "submission-expand") {
       await apply("contract-migrations/20261026180325_company_tax_submission_evidence_v1.sql");
     } else if (direction === "submission-enable") {
       const rollback = await readFile(new URL("../supabase/rollback/20261026180325_company_tax_submission_evidence_v1.sql", import.meta.url), "utf8");

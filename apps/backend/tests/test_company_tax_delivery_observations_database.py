@@ -34,7 +34,8 @@ pytestmark=pytest.mark.company_tax_database
 
 
 @contextmanager
-def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=False,submission=False,prepared_current=None):
+def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=False,submission=False,prepared_current=None,instance_id=None):
+    instance_id=instance_id or INSTANCE
     confirmation=confirmation or submission
     validation=validation or confirmation
     upload=upload or validation
@@ -63,8 +64,16 @@ def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=Fals
             self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
         def check_request(self):
             grant=state['grant']
-            assert self.headers['X-Talli-Rehearsal-Run']==grant.run_id
-            assert self.headers['X-Talli-Rehearsal-Key']==grant.credential
+            if self.headers.get('X-Talli-Parent-Run') is not None:
+                read=state['parentReadGrant'];assert self.command=='GET'
+                assert self.headers['X-Talli-Parent-Run']==read.scope.run_id and self.headers['X-Talli-Parent-Key']==read.scope.credential
+            elif self.headers.get('X-Talli-Intake-Run') is not None:
+                read=state['intakeGrant'];assert self.command=='GET'
+                assert self.headers['X-Talli-Intake-Run']==read.run_id and self.headers['X-Talli-Intake-Key']==read.credential
+                assert self.path=='/api/skattemelding/v2/2025/'+read.organization_number
+            else:
+                assert self.headers['X-Talli-Rehearsal-Run']==grant.run_id
+                assert self.headers['X-Talli-Rehearsal-Key']==grant.credential
             assert self.headers.get('Authorization') is None
             with psycopg.connect(url,autocommit=True) as db:
                 assert db.execute("select count(*) from pg_stat_activity where usename=%s and state in ('active','idle in transaction')",(user,)).fetchone()==(0,)
@@ -73,23 +82,24 @@ def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=Fals
             self.check_request()
             if self.path=='/api/skattemelding/v2/2025/'+draft.envelope.source.organization_number:
                 state.get('onCurrent',lambda:None)()
-                return self.respond(200,original.raw_bytes)
+                return self.respond(200,state.get('currentBytes',original.raw_bytes),'application/xml')
             if validation and self.path.endswith('/'+state['jobId']+'/status'):
                 state['onJob']()
                 return self.respond(200,json.dumps({'jobbStatus':state['jobStatus'],'forrigeStatus':'KJOERER',
                     'sekunderSidenOpprettelse':0,'sekunderSidenEndring':0}).encode())
             if validation and self.path.endswith('/'+state['jobId']+'/resultat'):
                 return self.respond(200,state['validationResult'],'application/xml')
-            if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data/'+DATA:
+            if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+instance_id+'/data/'+DATA:
                 state['onFile']()
                 return self.respond(200,state['uploaded'] if state['fileBytes'] is None else state['fileBytes'],'application/xml')
             if submission and state.get('receiptBytes') is not None and self.path.endswith('/data/00000000-0000-4000-8000-000000009999'):
                 state['onFeedback']();return self.respond(200,state['receiptBytes'],'text/xml')
-            assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE
+            assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+instance_id
+            state.get('onInstance',lambda:None)()
             if state['revoke']:
                 with psycopg.connect(url) as db:
                     db.execute('update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s',(cid,str(actor.subject)))
-            value={'id':INSTANCE,'appId':'skd/formueinntekt-skattemelding-v2',
+            value={'id':instance_id,'appId':'skd/formueinntekt-skattemelding-v2',
                 'instanceOwner':{'organisationNumber':draft.envelope.source.organization_number},
                 'dataValues':{'inntektsaar':2025},'process':{'currentTask':{'altinnTaskType':'data'}},
                 'status':{'isArchived':False},'data':[]}
@@ -109,7 +119,7 @@ def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=Fals
             self.respond(200,state['original'])
         def do_PUT(self):
             self.check_request();body=self.rfile.read(int(self.headers['Content-Length']))
-            assert confirmation and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
+            assert confirmation and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+instance_id+'/process/next'
             assert body==b'' and self.headers['Content-Type']=='application/json'
             if submission:
                 with psycopg.connect(url) as db:
@@ -140,13 +150,13 @@ def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=Fals
                     assert rows[-1][0]=='intent:start_validation'
                     assert json.loads(rows[-1][1])['version']=='company-tax-delivery-mutation-request-v3'
                     assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body
-                    assert json.loads(body)=={'appId':'skd/formueinntekt-skattemelding-v2','instansId':INSTANCE}
+                    assert json.loads(body)=={'appId':'skd/formueinntekt-skattemelding-v2','instansId':instance_id}
                     state['validationPosts']+=1;state['onValidation']()
                     if state['lostValidation']:
                         self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
                     state['startOriginal']=b'\xef\xbb\xbf \n'+json.dumps({'jobbId':state['jobId'],'jobbStatus':'OPPRETTET'}).encode()+b'\n'
                     return self.respond(200,state['startOriginal'])
-                if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data?dataType=skattemeldingOgNaeringsspesifikasjon':
+                if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+instance_id+'/data?dataType=skattemeldingOgNaeringsspesifikasjon':
                     assert rows[-1][0]=='intent:upload_envelope'
                     assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body==draft.envelope.envelope_xml.encode()
                     assert sum(row[0]=='intent:upload_envelope' for row in rows)==1
@@ -157,7 +167,7 @@ def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=Fals
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'
                 assert [row[0] for row in rows]==['review','admission','intent:create_instance']
                 assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body
-            self.respond(201,('\ufeff{"id":"'+INSTANCE+'"}\n').encode())
+            self.respond(201,('\ufeff{"id":"'+instance_id+'"}\n').encode())
     server=ThreadingHTTPServer(('127.0.0.1',0),Authority);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
     try:
         target=conninfo_to_dict(backend)

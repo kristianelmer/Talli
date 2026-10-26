@@ -8,5 +8,8 @@
   },
   "files": [
     "src"
-  ]
+  ],
+  "dependencies": {
+    "saxes": "6.0.0"
+  }
 }
