@@ -59,6 +59,8 @@ def upload_workflow(workflow):
             assert request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data'
             assert request.url.params['dataType']=='skattemeldingOgNaeringsspesifikasjon'
             assert request.content==session.draft.envelope.envelope_xml.encode()
+            assert request.headers['content-type']=='text/xml'
+            assert request.headers['content-disposition']=='attachment; filename=skattemelding.xml'
             assert any(event.slot=='intent:upload_envelope' for event in session.events)
             state['uploadPosts']+=1;state['uploaded']=request.content;state['on_upload']()
             if state['lost']:raise httpx.ReadTimeout('synthetic upload acknowledgement lost',request=request)

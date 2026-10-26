@@ -38,11 +38,12 @@ class LoopbackCompanyTaxDelivery:
         self._transport=transport
 
     async def _request(self,method: str,path: str,*,body: bytes | None=None,content_type: str | None=None,
-            expected_statuses=(200,201),response_types=()) -> _AuthorityResponse:
+            content_disposition: str | None=None,expected_statuses=(200,201),response_types=()) -> _AuthorityResponse:
         grant=self._runtime.admission
         self._runtime.consume(organization_number=grant.organization_number,income_year=int(grant.income_year))
         headers={'X-Talli-Rehearsal-Run':grant.run_id,'X-Talli-Rehearsal-Key':grant.credential}
         if content_type is not None:headers['Content-Type']=content_type
+        if content_disposition is not None:headers['Content-Disposition']=content_disposition
         try:
             async with asyncio.timeout(_AUTHORITY_DEADLINE_SECONDS):
                 async with httpx.AsyncClient(base_url=grant.origin,timeout=5,follow_redirects=False,
@@ -86,7 +87,8 @@ class LoopbackCompanyTaxDelivery:
             try:request.upload_prerequisite.assert_current(self._runtime.now())
             except ValueError:raise CompanyTaxError.unavailable() from None
             response=await self._request('POST',_APP_PATH+'/instances/'+request.target_instance+'/data?dataType=skattemeldingOgNaeringsspesifikasjon',
-                body=request.body_bytes,content_type='application/xml',response_types=('application/json',))
+                body=request.body_bytes,content_type='text/xml',
+                content_disposition='attachment; filename=skattemelding.xml',response_types=('application/json',))
         elif request.kind is TaxMutationKind.START_VALIDATION:
             if request.validation_prerequisite is None:raise CompanyTaxError.unavailable()
             try:request.validation_prerequisite.assert_current(self._runtime.now())

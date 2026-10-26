@@ -531,3 +531,5 @@ all original bytes; a second BOM remains unknown and cannot authorize a result.
 The web reader rejects recognizable foreign job identity before checking timing
 syntax and requires closed V3 request and new observation roots, scope wrappers
 and time wrappers. No extra readiness field can extend a retained codec.
+
+Finite envelope uploads follow the pinned authority API instructions: `Content-Type: text/xml` and `Content-Disposition: attachment; filename=skattemelding.xml`. The exact approved request body and stored request codecs remain unchanged. Both workflow and real HTTP/Postgres fixtures assert these fixed headers. Source: [official API V2 upload contract](https://github.com/Skatteetaten/skattemeldingen/blob/74d9c7dd020aa4701034194630c1b16609154986/docs/api-v2/README.md#last-opp-skattemeldingdata-skattemeldingxml-til-instansen).

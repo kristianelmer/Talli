@@ -96,6 +96,8 @@ def upload_http(upload_database,current_draft,monkeypatch):
                     return self.respond(200,b'\xef\xbb\xbf \n'+json.dumps({'jobbId':NATIVE_JOB,'jobbStatus':'OPPRETTET'}).encode()+b'\n')
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data?dataType=skattemeldingOgNaeringsspesifikasjon'
                 assert raw==value.envelope.envelope_xml.encode()
+                assert self.headers['Content-Type']=='text/xml'
+                assert self.headers['Content-Disposition']=='attachment; filename=skattemelding.xml'
                 with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:
                     assert db.execute("select count(*) from company_tax_filing.delivery_events where filing_id=%s and slot='intent:upload_envelope' and canonical_json::jsonb->>'version'='company-tax-delivery-mutation-request-v2'",(value.filing_id,)).fetchone()==(1,)
                 state['uploadPosts']+=1;state['uploaded']=raw;state['on_upload']()
