@@ -23,7 +23,9 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryEnvelopeObservation,TaxDeliveryUploadReadEvidence,bind_tax_delivery_upload_prerequisite,reconcile_tax_delivery_upload,
     TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxValidationJobStatus,
     bind_tax_delivery_validation_prerequisite,
-    TaxValidationResponseValidator,
+    TaxValidationResponseValidator,TaxCalculatedDocumentValidator,TaxDeliveryProcessAcknowledgment,
+    bind_tax_delivery_confirmation_prerequisite,TaxDeliveryConfirmationReadEvidence,reconcile_tax_delivery_confirmation,
+    is_tax_delivery_owner_confirmation_instance,
 )
 
 
@@ -55,10 +57,12 @@ def _approved(journal,command):
 
 class CompanyTaxDeliverySubmission:
     def __init__(self,runtime: TaxDeliveryRehearsalRuntime,authority: TaxDeliveryMutationAuthority,
-                 schemas: TaxDeliverySchemaValidator,*,response_schemas: TaxValidationResponseValidator | None=None):
+                 schemas: TaxDeliverySchemaValidator,*,response_schemas: TaxValidationResponseValidator | None=None,
+                 calculated_schemas: TaxCalculatedDocumentValidator | None=None):
         if type(runtime) is not TaxDeliveryRehearsalRuntime:raise ValueError('Finite Tax runtime is required.')
         self._runtime,self._authority,self._schemas=runtime,authority,schemas
         self._response_schemas=response_schemas
+        self._calculated_schemas=calculated_schemas
 
     async def _history(self,transaction,query,filing_id):
         snapshot=await transaction.journal_history_snapshot(query)
@@ -102,7 +106,7 @@ class CompanyTaxDeliverySubmission:
     @staticmethod
     def _append(journal,result,value):
         if type(result) is not TaxDeliveryEventAppend or result.event.value!=value:raise CompanyTaxError.unavailable()
-        return TaxDeliveryJournal(journal.draft,journal.events+(result.event,),journal.read_evidence,journal.guarded_upload,journal.validation_evidence)
+        return TaxDeliveryJournal(journal.draft,journal.events+(result.event,),journal.read_evidence,journal.guarded_upload,journal.validation_evidence,journal.confirmation_evidence)
 
     def _admission(self,journal):
         approval=journal.approval
@@ -138,7 +142,7 @@ class CompanyTaxDeliverySubmission:
             if prior is not None:
                 if prior!=result.event:raise CompanyTaxError.unavailable()
                 return latest,result.event.value
-            retained=TaxDeliveryJournal(latest.draft,latest.events+(result.event,),latest.read_evidence,latest.guarded_upload,latest.validation_evidence)
+            retained=TaxDeliveryJournal(latest.draft,latest.events+(result.event,),latest.read_evidence,latest.guarded_upload,latest.validation_evidence,latest.confirmation_evidence)
         return retained,result.event.value
 
     @staticmethod
@@ -155,12 +159,14 @@ class CompanyTaxDeliverySubmission:
         if type(value) is not TaxDeliveryMutationCompletion:raise CompanyTaxError.draft_conflict()
         return value
 
-    async def _record_upload_completion(self,session,query,command,retained,request,completion):
+    async def _record_read_completion(self,session,query,command,retained,request,completion):
+        kind=request.kind
+        if kind not in (TaxMutationKind.UPLOAD_ENVELOPE,TaxMutationKind.PREPARE_CONFIRMATION):raise CompanyTaxError.invalid_input()
         try:
             async with session.transaction() as transaction:
                 result=await transaction.append_delivery_event(completion)
                 completed=self._append(retained,result,completion)
-            return completed.mutation_progress(TaxMutationKind.UPLOAD_ENVELOPE)
+            return completed.mutation_progress(kind)
         except CompanyTaxError as error:
             if error.code not in ('COMPANY_TAX_INVALID_INPUT','COMPANY_TAX_DRAFT_CONFLICT'):raise
             # Another caller can have committed different exact read originals
@@ -168,9 +174,9 @@ class CompanyTaxDeliverySubmission:
             # them: only a separate current owner/MFA history read may do so.
             latest=await self._guarded_history(session,query,command.filing_id)
             _approved(latest,command)
-            if (self._upload_original(latest)!=request
-                    or not any(event.slot=='completion:upload_envelope' for event in latest.events)):raise
-            return latest.mutation_progress(TaxMutationKind.UPLOAD_ENVELOPE)
+            if (next((event.value for event in latest.events if event.slot=='intent:'+kind.value),None)!=request
+                    or not any(event.slot=='completion:'+kind.value for event in latest.events)):raise
+            return latest.mutation_progress(kind)
 
     async def approve(self,session: CompanyTaxSession,command: ApproveTaxDeliveryDraft):
         if type(command) is not ApproveTaxDeliveryDraft:raise CompanyTaxError.invalid_input()
@@ -365,7 +371,7 @@ class CompanyTaxDeliverySubmission:
             completion.assert_request(request,retained.approval)
         except (CompanyTaxReturnAuthorityError,CompanyTaxError,ValueError,TypeError,RecursionError,OverflowError):
             return retained.mutation_progress(TaxMutationKind.UPLOAD_ENVELOPE)
-        return await self._record_upload_completion(session,query,command,retained,request,completion)
+        return await self._record_read_completion(session,query,command,retained,request,completion)
 
     async def reconcile_upload(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
         if type(command) is not AdvanceTaxDelivery:raise CompanyTaxError.invalid_input()
@@ -405,7 +411,7 @@ class CompanyTaxDeliverySubmission:
         # These exact provided originals prove a result of the original actor's
         # committed request. Ownership/MFA changes during the final GET cannot
         # discard it; the narrow RPC permits no unrelated historical read.
-        return await self._record_upload_completion(session,query,command,retained,request,completion)
+        return await self._record_read_completion(session,query,command,retained,request,completion)
 
     async def advance_validation(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
         if type(command) is not AdvanceTaxDelivery:raise CompanyTaxError.invalid_input()
@@ -516,3 +522,151 @@ class CompanyTaxDeliverySubmission:
         try:value.inspect(self._response_schemas)
         except (ValueError,TypeError,CompanyTaxError):raise CompanyTaxError.unavailable() from None
         return retained.mutation_progress(TaxMutationKind.START_VALIDATION)
+
+    @staticmethod
+    def _confirmation_original(journal):
+        return next((event.value for event in journal.events if event.slot=='intent:prepare_confirmation'),None)
+
+    async def advance_confirmation(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
+        """Enter the owner-review stage once. This does not submit a filing."""
+        if type(command) is not AdvanceTaxDelivery:raise CompanyTaxError.invalid_input()
+        self._runtime.assert_session(session);query=_query(session,command)
+        journal=await self._guarded_history(session,query,command.filing_id);_approved(journal,command)
+        if self._confirmation_original(journal) is not None:return journal.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        if not journal.confirmation_evidence or self._response_schemas is None or self._calculated_schemas is None:
+            raise CompanyTaxError.unavailable()
+        created=self._created(journal);start_request=self._validation_original(journal)
+        started=next((event.value for event in journal.events if event.slot=='completion:start_validation'),None)
+        if start_request is None or started is None:raise CompanyTaxError.draft_conflict()
+        context=self._admit(journal,session.actor_id)
+        if context!=journal.approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        source=await self._source(session,query,command)
+        if source!=journal.draft.envelope.source:raise CompanyTaxError.draft_conflict()
+        latest=await self._guarded_history(session,query,command.filing_id);_approved(latest,command)
+        if self._confirmation_original(latest) is not None:return latest.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        if self._admit(latest,session.actor_id)!=context:raise CompanyTaxError.forbidden()
+        current=await self._current(journal)
+        if self._review(journal,source,current,actor=session.actor_id,approval_id=journal.approval.approval_id,context=context)!=journal.approval:
+            raise CompanyTaxError.draft_conflict()
+        async with session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with session.transaction(snapshot=True) as snapshot:latest=await self._history(snapshot,query,command.filing_id)
+            _approved(latest,command)
+            if self._confirmation_original(latest) is not None:return latest.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+            if self._admit(latest,session.actor_id)!=context:raise CompanyTaxError.forbidden()
+            await guard.lock_delivery_draft_archive(query)
+            await self._retain_admission(guard,latest)
+        began=self._runtime.now()
+        try:
+            job=await self._authority.observe_validation_job(journal.approval,journal.draft,start_request,started)
+            if type(job) is not TaxDeliveryValidationJobObservation:raise ValueError()
+            job.assert_started(journal.approval,journal.draft,start_request,started)
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        retained,first_job=await self._retain_read(session,query,command,job)
+        if self._confirmation_original(retained) is not None:return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        if not job.inspection.known or job.inspection.status is not TaxValidationJobStatus.FINISHED:raise CompanyTaxError.draft_conflict()
+        try:
+            response=await self._authority.observe_validation_result(journal.approval,journal.draft,start_request,started,job,
+                schema_sha256=self._response_schemas.schema_sha256)
+            if type(response) is not TaxDeliveryValidationResultObservation:raise ValueError()
+            response.assert_status(journal.approval,journal.draft,start_request,started,job)
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        retained,first_result=await self._retain_read(session,query,command,response)
+        if self._confirmation_original(retained) is not None:return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        calculated=self._calculated_schemas.inspect(response.original,draft=journal.draft)
+        file_began=self._runtime.now()
+        try:
+            instance=await self._authority.observe_instance(journal.approval,journal.draft,created)
+            if type(instance) is not TaxDeliveryInstanceObservation:raise ValueError()
+            instance.assert_approval(journal.approval,journal.draft,created.result['instanceId'])
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        retained,first_instance=await self._retain_read(session,query,command,instance)
+        if self._confirmation_original(retained) is not None:return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        inspection=instance.inspection
+        if (not inspection.known or inspection.process_task!='data' or inspection.envelope is None
+                or inspection.envelope.scan_result!='Clean' or len(inspection.data)!=1):raise CompanyTaxError.draft_conflict()
+        try:
+            envelope=await self._authority.observe_envelope(journal.approval,journal.draft,created,instance)
+            if type(envelope) is not TaxDeliveryEnvelopeObservation:raise ValueError()
+            envelope.assert_instance(journal.approval,journal.draft,instance)
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        retained,first_envelope=await self._retain_read(session,query,command,envelope)
+        if self._confirmation_original(retained) is not None:return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        try:
+            clean=bind_tax_delivery_validation_prerequisite(retained.approval,retained.draft,
+                retained_instance=first_instance,retained_envelope=first_envelope,fresh_instance=instance,fresh_envelope=envelope,
+                observed_from=file_began,observed_until=self._runtime.now())
+            proof=bind_tax_delivery_confirmation_prerequisite(retained.approval,retained.draft,start_request,started,
+                retained_job=first_job,retained_result=first_result,fresh_job=job,fresh_result=response,calculated=calculated,
+                clean_file=clean,retained_instance=first_instance,retained_envelope=first_envelope,
+                observed_from=began,observed_until=self._runtime.now())
+        except (ValueError,TypeError):raise CompanyTaxError.draft_conflict() from None
+        request=build_tax_delivery_mutation_request(retained.approval,retained.draft,TaxMutationKind.PREPARE_CONFIRMATION,
+            target_instance=created.result['instanceId'],confirmation_prerequisite=proof)
+        async with session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with session.transaction(snapshot=True) as snapshot:
+                latest=await self._history(snapshot,query,command.filing_id);_approved(latest,command)
+                if self._confirmation_original(latest) is not None:return latest.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+                fresh=await read_company_tax_delivery_source(snapshot,query,correlation_id=command.correlation_id)
+            if fresh!=source or latest.draft!=journal.draft:raise CompanyTaxError.draft_conflict()
+            if self._admit(latest,session.actor_id)!=context:raise CompanyTaxError.forbidden()
+            try:proof.assert_current(self._runtime.now())
+            except ValueError:raise CompanyTaxError.unavailable() from None
+            if latest.plan(request) is not TaxMutationDisposition.EXECUTE:raise CompanyTaxError.draft_conflict()
+            await guard.lock_delivery_draft_archive(query)
+            result=await guard.append_delivery_event(request);retained=self._append(latest,result,request)
+        if not result.inserted:return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        try:
+            self._admit(retained,session.actor_id);proof.assert_current(self._runtime.now())
+            acknowledgment=await self._authority.prepare_confirmation(request,retained.approval,retained.draft)
+            if type(acknowledgment) is not TaxDeliveryProcessAcknowledgment:raise ValueError()
+            acknowledgment.assert_request(request,retained.approval,retained.draft)
+        except (CompanyTaxReturnAuthorityError,CompanyTaxError,ValueError,TypeError,RecursionError,OverflowError):
+            return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        async with session.transaction() as transaction:
+            result=await transaction.append_delivery_event(acknowledgment)
+            retained=self._append(retained,result,acknowledgment)
+        # Even a successful process response is only an acknowledgment. A
+        # separate read-only reconciliation proves the owner confirmation task.
+        return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+
+    async def reconcile_confirmation(self,session: CompanyTaxSession,command: AdvanceTaxDelivery):
+        if type(command) is not AdvanceTaxDelivery:raise CompanyTaxError.invalid_input()
+        self._runtime.assert_session(session);query=_query(session,command)
+        journal=await self._guarded_history(session,query,command.filing_id);_approved(journal,command)
+        request=self._confirmation_original(journal)
+        if request is None:raise CompanyTaxError.draft_conflict()
+        if any(event.slot=='completion:prepare_confirmation' for event in journal.events):
+            return journal.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        if not journal.confirmation_evidence:raise CompanyTaxError.unavailable()
+        if self._admit(journal,session.actor_id)!=journal.approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        created=self._created(journal)
+        try:
+            instance=await self._authority.observe_instance(journal.approval,journal.draft,created)
+            if type(instance) is not TaxDeliveryInstanceObservation:raise ValueError()
+            instance.assert_approval(journal.approval,journal.draft,created.result['instanceId'])
+        except (CompanyTaxReturnAuthorityError,ValueError,TypeError,RecursionError,OverflowError):
+            raise CompanyTaxError.unavailable() from None
+        retained,_=await self._retain_read(session,query,command,instance)
+        if any(event.slot=='completion:prepare_confirmation' for event in retained.events):
+            return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        if not is_tax_delivery_owner_confirmation_instance(instance):return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        try:
+            envelope=await self._authority.observe_envelope(journal.approval,journal.draft,created,instance)
+            if type(envelope) is not TaxDeliveryEnvelopeObservation:raise ValueError()
+            envelope.assert_instance(journal.approval,journal.draft,instance)
+            completion=reconcile_tax_delivery_confirmation(request,journal.approval,journal.draft,
+                evidence=TaxDeliveryConfirmationReadEvidence(instance,envelope),observed_at=self._runtime.now())
+        except CompanyTaxReturnAuthorityError:raise CompanyTaxError.unavailable() from None
+        except (ValueError,TypeError,RecursionError,OverflowError):
+            # A scoped changed file is retained as drift, never as permission to
+            # repeat this PUT or to perform the later submission transition.
+            if 'envelope' in locals() and type(envelope) is TaxDeliveryEnvelopeObservation:
+                retained,_=await self._retain_read(session,query,command,envelope)
+            return retained.mutation_progress(TaxMutationKind.PREPARE_CONFIRMATION)
+        return await self._record_read_completion(session,query,command,retained,request,completion)

@@ -34,7 +34,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryJournalPersistence, StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryReviewApproval, TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion, decode_tax_delivery_event,
     TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation,
-    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,
+    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryProcessAcknowledgment,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
     AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
@@ -222,10 +222,11 @@ class PostgresCompanyTaxTransaction:
             raise CompanyTaxError.unavailable()
         return stored
 
-    def _delivery_event(self, value,*,guarded_upload=False,validation_evidence=False):
+    def _delivery_event(self, value,*,guarded_upload=False,validation_evidence=False,confirmation_evidence=False):
         try:
             event=decode_tax_delivery_event(value['canonical_json'],value['event_sha256'],
-                Timestamp(datetime.fromisoformat(value['recorded_at'])),ActorId(ActorKind.USER,UserId(value['recorded_by'])),guarded_upload=guarded_upload,validation_evidence=validation_evidence)
+                Timestamp(datetime.fromisoformat(value['recorded_at'])),ActorId(ActorKind.USER,UserId(value['recorded_by'])),
+                guarded_upload=guarded_upload,validation_evidence=validation_evidence,confirmation_evidence=confirmation_evidence)
             binding=event.binding
             if (value['filing_id']!=binding.filing_id or value['company_id']!=str(binding.company_id)
                     or type(value['income_year']) is not int or value['income_year']!=int(binding.income_year)
@@ -238,24 +239,28 @@ class PostgresCompanyTaxTransaction:
             raise CompanyTaxError.unavailable() from None
 
     async def append_delivery_event(self, value) -> TaxDeliveryEventAppend:
-        validation=(type(value) in (TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
+        confirmation=(type(value) is TaxDeliveryProcessAcknowledgment
+            or type(value) is TaxDeliveryMutationRequest and value.confirmation_prerequisite is not None
+            or type(value) is TaxDeliveryMutationCompletion and value.confirmation_read_evidence is not None)
+        validation=(confirmation or type(value) in (TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
             or type(value) is TaxDeliveryMutationRequest and value.validation_prerequisite is not None)
         guarded=(validation or type(value) is TaxDeliveryEnvelopeObservation
             or type(value) is TaxDeliveryMutationRequest and value.upload_prerequisite is not None
             or type(value) is TaxDeliveryMutationCompletion and value.upload_read_evidence is not None)
         observation=type(value) in (TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation)
-        if type(value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion,TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation):
+        if type(value) not in (TaxDeliveryReviewApproval,TaxDeliveryMutationRequest,TaxDeliveryMutationCompletion,TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryProcessAcknowledgment):
             raise CompanyTaxError.invalid_input()
         binding=value.intent if type(value) is TaxDeliveryMutationCompletion else value
         if type(value) is not TaxDeliveryMutationRequest and binding.approved_by!=self.actor_id:
             raise CompanyTaxError.forbidden()
-        row=await self._delivery_row(('select company_tax_filing.append_delivery_validation_event_v1(%s::text,%s::text,%s::text) as result' if validation else
+        row=await self._delivery_row(('select company_tax_filing.append_delivery_confirmation_event_v1(%s::text,%s::text,%s::text) as result' if confirmation else
+            'select company_tax_filing.append_delivery_validation_event_v1(%s::text,%s::text,%s::text) as result' if validation else
             'select company_tax_filing.append_delivery_guarded_event_v2(%s::text,%s::text,%s::text) as result' if guarded else
             'select company_tax_filing.append_delivery_observation_v1(%s::text,%s::text,%s::text) as result' if observation else
             'select company_tax_filing.append_delivery_event_v1(%s::text,%s::text,%s::text) as result'),
             (value.canonical_json,value.sha256,str(self.actor_id.subject)))
         try:
-            result=row['result'];event=self._delivery_event(result['event'],guarded_upload=guarded,validation_evidence=validation)
+            result=row['result'];event=self._delivery_event(result['event'],guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation)
             same=(event.value==value or (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
                 and type(event.value) is type(value) and result['inserted'] is False
                 and event.value.evidence_sha256==value.evidence_sha256 and event.value.original==value.original))
@@ -266,13 +271,16 @@ class PostgresCompanyTaxTransaction:
 
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v5(uuid,integer,uuid,text)') is not null as installed",())
+        confirmation=installed['installed'] is True
         installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v4(uuid,integer,uuid,text)') is not null as installed",())
-        validation=installed['installed'] is True
+        validation=confirmation or installed['installed'] is True
         installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v3(uuid,integer,uuid,text)') is not null as installed",())
         guarded=validation or installed['installed'] is True
         installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v2(uuid,integer,uuid,text)') is not null as installed",())
         successor=guarded or installed['installed'] is True
-        row=await self._delivery_row(('select company_tax_filing.read_delivery_journal_v4(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if validation else
+        row=await self._delivery_row(('select company_tax_filing.read_delivery_journal_v5(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if confirmation else
+            'select company_tax_filing.read_delivery_journal_v4(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if validation else
             'select company_tax_filing.read_delivery_journal_v3(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if guarded else
             'select company_tax_filing.read_delivery_journal_v2(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if successor else
             'select company_tax_filing.read_delivery_journal_v1(%s::uuid,%s::integer,%s::uuid,%s::text) as result'),
@@ -282,11 +290,12 @@ class PostgresCompanyTaxTransaction:
             if successor and result['observationCodecVersion']!='tax-read-evidence-v1':raise ValueError()
             if guarded and result['guardedUploadCodecVersion']!='tax-guarded-upload-v1':raise ValueError()
             if validation and result['validationCodecVersion']!='tax-validation-evidence-v1':raise ValueError()
+            if confirmation and result['confirmationCodecVersion']!='tax-confirmation-evidence-v1':raise ValueError()
             if (result['completeEnumeration'] is not True or draft.filing_id!=filing_id
                     or draft.envelope.source.company_id!=query.company_id or draft.envelope.source.income_year!=query.income_year):
                 raise ValueError()
-            events=tuple(self._delivery_event(value,guarded_upload=guarded,validation_evidence=validation) for value in result['events'])
-            journal=TaxDeliveryJournal(draft,events,successor,guarded,validation)
+            events=tuple(self._delivery_event(value,guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation) for value in result['events'])
+            journal=TaxDeliveryJournal(draft,events,successor,guarded,validation,confirmation)
             if any(value['recorded_by']!=str(journal.approval.approved_by.subject) for value in result['events']):raise ValueError()
             return journal
         except (KeyError,TypeError,ValueError,AttributeError):
@@ -498,16 +507,19 @@ class PostgresCompanyTaxTransaction:
     async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False, journal: bool = False) -> CompanyTaxSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
-        successor=False;guarded=False;validation=False
+        successor=False;guarded=False;validation=False;confirmation=False
         if journal:
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v7(uuid,integer,text)') is not null as installed",())
+            confirmation=installed['installed'] is True
             installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v6(uuid,integer,text)') is not null as installed",())
-            validation=installed['installed'] is True
+            validation=confirmation or installed['installed'] is True
             installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v5(uuid,integer,text)') is not null as installed",())
             guarded=validation or installed['installed'] is True
             installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v4(uuid,integer,text)') is not null as installed",())
             successor=guarded or installed['installed'] is True
         row = await (self._delivery_row if delivery else self._one_idempotent_row)(
-            ('select company_tax_filing.read_source_snapshot_v6(%s::uuid,%s::integer,%s::text) as result' if validation else
+            ('select company_tax_filing.read_source_snapshot_v7(%s::uuid,%s::integer,%s::text) as result' if confirmation else
+             'select company_tax_filing.read_source_snapshot_v6(%s::uuid,%s::integer,%s::text) as result' if validation else
              'select company_tax_filing.read_source_snapshot_v5(%s::uuid,%s::integer,%s::text) as result' if guarded else
              'select company_tax_filing.read_source_snapshot_v4(%s::uuid,%s::integer,%s::text) as result' if successor else
              'select company_tax_filing.read_source_snapshot_v3(%s::uuid,%s::integer,%s::text) as result' if journal else
@@ -518,7 +530,7 @@ class PostgresCompanyTaxTransaction:
         )
         value = row.get('result')
         try:
-            if journal and value['contractVersion']!=('company-tax-source-v6' if validation else 'company-tax-source-v5' if guarded else 'company-tax-source-v4' if successor else 'company-tax-source-v3'):raise ValueError()
+            if journal and value['contractVersion']!=('company-tax-source-v7' if confirmation else 'company-tax-source-v6' if validation else 'company-tax-source-v5' if guarded else 'company-tax-source-v4' if successor else 'company-tax-source-v3'):raise ValueError()
             if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
                     or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
                     or type(value['completeEnumeration']) is not bool):
@@ -530,7 +542,7 @@ class PostgresCompanyTaxTransaction:
                 Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
                 value['contractVersion'] if delivery else 'company-tax-source-v1',
                 tuple(self._delivery_draft(row) for row in value['deliveryDrafts']) if delivery else (),
-                tuple(self._delivery_event(row,guarded_upload=guarded,validation_evidence=validation) for row in value['deliveryEvents']) if journal else ())
+                tuple(self._delivery_event(row,guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation) for row in value['deliveryEvents']) if journal else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise CompanyTaxError.unavailable() from None
 

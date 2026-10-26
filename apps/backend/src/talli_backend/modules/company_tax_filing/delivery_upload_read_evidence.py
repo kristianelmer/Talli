@@ -20,24 +20,27 @@ if TYPE_CHECKING:
     from .delivery_journal import TaxDeliveryMutationRequest
 
 
+def _assert_file_read_pair(instance,envelope):
+    if type(instance) is not TaxDeliveryInstanceObservation or type(envelope) is not TaxDeliveryEnvelopeObservation:
+        raise ValueError('Tax upload reconciliation requires complete read originals.')
+    element=instance.inspection.envelope
+    if (not instance.inspection.known or element is None or element.data_id!=envelope.data_id
+            or element.content_type.split(';',1)[0].strip().lower() not in ('application/xml','text/xml')
+            or element.size_bytes!=len(envelope.original.raw_bytes)
+            or envelope.observed_at.value<instance.observed_at.value
+            or envelope.instance_evidence_sha256!=instance.evidence_sha256
+            or any(getattr(instance,name)!=getattr(envelope,name) for name in
+                ('filing_id','company_id','income_year','approved_by','approval_sha256','organization_number','instance_id'))):
+        raise ValueError('Tax upload reconciliation originals differ in scope or file identity.')
+
+
 @dataclass(frozen=True,slots=True)
 class TaxDeliveryUploadReadEvidence:
     instance: TaxDeliveryInstanceObservation
     envelope: TaxDeliveryEnvelopeObservation
 
     def __post_init__(self):
-        if type(self.instance) is not TaxDeliveryInstanceObservation or type(self.envelope) is not TaxDeliveryEnvelopeObservation:
-            raise ValueError('Tax upload reconciliation requires complete read originals.')
-        instance,envelope=self.instance,self.envelope
-        element=instance.inspection.envelope
-        if (not instance.inspection.known or element is None or element.data_id!=envelope.data_id
-                or element.content_type.split(';',1)[0].strip().lower() not in ('application/xml','text/xml')
-                or element.size_bytes!=len(envelope.original.raw_bytes)
-                or envelope.observed_at.value<instance.observed_at.value
-                or envelope.instance_evidence_sha256!=instance.evidence_sha256
-                or any(getattr(instance,name)!=getattr(envelope,name) for name in
-                    ('filing_id','company_id','income_year','approved_by','approval_sha256','organization_number','instance_id'))):
-            raise ValueError('Tax upload reconciliation originals differ in scope or file identity.')
+        _assert_file_read_pair(self.instance,self.envelope)
 
     @property
     def canonical_value(self):

@@ -1158,7 +1158,7 @@ mode is synthetic engineering authority. Real filing and all later unimplemented
 provider stages remain closed.
 
 <!-- architecture-inventory
-{"workflows":["company-tax-finite-delivery"],"workflowPurposes":["company-tax-finite-delivery=>Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload/validation intents before fixed-path local authority I/O; retains bound results after revocation, resolves unknown uploads only through exact known-instance metadata/file reads, and polls only retained known validation-job IDs. Default composition is disabled."],"routes":["/api/v1/company-tax/delivery-reviews","/api/v1/company-tax/delivery-advances","/api/v1/company-tax/delivery-reconciliations","/api/v1/company-tax/delivery-upload-advances","/api/v1/company-tax/delivery-upload-reconciliations","/api/v1/company-tax/delivery-validation-advances","/api/v1/company-tax/delivery-validation-reconciliations"]}
+{"workflows":["company-tax-finite-delivery"],"workflowPurposes":["company-tax-finite-delivery=>Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload/validation/confirmation-preparation intents before fixed-path local authority I/O; retains bound results after revocation, resolves unknown uploads only through exact known-instance metadata/file reads, polls only retained known validation-job IDs, and proves owner-confirmation entry only through complete known-instance Clean/file originals. No submission transition; default composition is disabled."],"routes":["/api/v1/company-tax/delivery-reviews","/api/v1/company-tax/delivery-advances","/api/v1/company-tax/delivery-reconciliations","/api/v1/company-tax/delivery-upload-advances","/api/v1/company-tax/delivery-upload-reconciliations","/api/v1/company-tax/delivery-validation-advances","/api/v1/company-tax/delivery-validation-reconciliations"]}
 -->
 
 <!-- architecture-inventory
@@ -1181,4 +1181,10 @@ The offline `TaxCalculatedDocumentValidator` validates the returned company stat
 
 <!-- architecture-inventory
 {"ports":["TaxCalculatedDocumentValidator"],"adapterBindings":["TaxCalculatedDocumentValidator=>talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas"],"adapterBindingOwners":["TaxCalculatedDocumentValidator=>backend-system"],"adapterBindingModes":["TaxCalculatedDocumentValidator=>offline pinned supported 2025 calculated statutory and display XML; exact original/draft and intrinsic party/year checks; no owner confirmation or filing authority"]}
+-->
+
+Confirmation preparation remains separate from owner confirmation and submission. Source V7 / Journal V5 retain a V4 committed intent, an exact process acknowledgment that makes no stage claim, and a V3 complete read-result proof. A lost PUT acknowledgment never elects another PUT. Original-actor late results use only the committed request, preserving owner-only draft RLS; narrow acknowledgment insertion does not grant direct runtime table access. The archive negotiates additive `confirmationEvidence=true` beside existing bounded options, and never omits unsupported originals.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/delivery-confirmation-advances","/api/v1/company-tax/delivery-confirmation-reconciliations"]}
 -->

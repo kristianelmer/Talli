@@ -55,6 +55,14 @@ def upload_workflow(workflow):
             state['validationPosts']+=1;state['on_validation']()
             if state['lostValidation']:raise httpx.ReadTimeout('synthetic validation start acknowledgement lost',request=request)
             return httpx.Response(200,json={'jobbId':'storeDokument-workflow-v1','jobbStatus':state['startStatus']})
+        if request.method=='PUT':
+            assert request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
+            assert request.content==b'' and request.headers['content-type']=='application/json'
+            assert any(event.slot=='intent:prepare_confirmation' for event in session.events)
+            state['confirmationPuts']+=1;state['processTask']='confirmation';state['processElement']='Task_2';state['processFlow']=2
+            state['on_confirmation']()
+            if state['lostPreparation']:raise httpx.ReadTimeout('synthetic preparation acknowledgment lost',request=request)
+            return httpx.Response(200,content=state['processResponse'],headers={'content-type':'application/json'})
         if request.method=='POST':
             assert request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data'
             assert request.url.params['dataType']=='skattemeldingOgNaeringsspesifikasjon'
@@ -71,6 +79,8 @@ def upload_workflow(workflow):
         state['on_metadata']()
         if state['metadata'] is not None:return httpx.Response(200,content=state['metadata'],headers={'content-type':'application/json'})
         value=instance_document(session.draft)
+        if 'processTask' in state:value['process']['currentTask']|={'altinnTaskType':state['processTask'],
+            'elementId':state['processElement'],'flow':state['processFlow']}
         if state['uploaded'] is not None:value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
             'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
         return httpx.Response(200,json=value)

@@ -22,8 +22,9 @@ const api=createTalliApiClient({baseUrl:"https://finite-client.invalid",fetch:as
 const exports={};
 const dependencies={backendBaseUrl:()=>"https://finite-client.invalid",TalliApiError,createTalliApiClient:()=>api};
 const source=readFileSync(new URL("../../apps/web/features/company-tax-filing/transport.ts",import.meta.url),"utf8");
-vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
+vm.runInNewContext(ts.transpileModule(source+"\nexport {verifyTaxJournalOriginals};",{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
   {exports,require:()=>dependencies,AbortSignal,TextEncoder,TextDecoder,atob,btoa,crypto:webcrypto});
+await exports.verifyTaxJournalOriginals(value,value.companyId,value.incomeYear);
 const result=await exports.loadTaxDeliveryDraftArchiveSource("synthetic-local-check",value.companyId,value.incomeYear);
 assert.equal(result.error,null,"actual retained archive must survive the browser reader");
 assert.equal(JSON.stringify(result.data.journal),JSON.stringify(value));

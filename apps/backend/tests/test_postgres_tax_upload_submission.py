@@ -78,9 +78,24 @@ def upload_http(upload_database,current_draft,monkeypatch):
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE
                 if state['parallel'] and state['uploaded'] is None:state['barrier'].wait(timeout=5)
                 body=instance_document(value)
+                if 'processTask' in state:body['process']['currentTask']|={'altinnTaskType':state['processTask'],
+                    'elementId':state['processElement'],'flow':state['processFlow']}
                 if state['uploaded'] is not None:body['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
                     'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
                 self.respond(200,b'\xef\xbb\xbf'+json.dumps(body).encode()+b'\n')
+            except Exception as error:state['errors'].append(type(error).__name__);self.respond(500,b'{}')
+        def do_PUT(self):
+            try:
+                self.check();raw=self.rfile.read(int(self.headers['Content-Length']))
+                assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
+                assert raw==b'' and self.headers['Content-Type']=='application/json'
+                with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:
+                    assert db.execute("select count(*) from company_tax_filing.delivery_events where filing_id=%s and slot='intent:prepare_confirmation' and canonical_json::jsonb->>'version'='company-tax-delivery-mutation-request-v4'",(value.filing_id,)).fetchone()==(1,)
+                state['confirmationPuts']+=1;state.update(processTask='confirmation',processElement='Task_2',processFlow=2)
+                state['on_confirmation']()
+                if state['lostPreparation']:
+                    self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                self.respond(200,state['processResponse'])
             except Exception as error:state['errors'].append(type(error).__name__);self.respond(500,b'{}')
         def do_POST(self):
             try:

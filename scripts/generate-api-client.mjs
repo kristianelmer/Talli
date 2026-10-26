@@ -3020,6 +3020,28 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async companyTaxAdvanceDeliveryConfirmation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-confirmation-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryConfirmation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-confirmation-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async companyTaxPrepareDeliveryDraft(
       command: CompanyTaxPrepareDeliveryDraftRequest, request: TalliMutationOptions,
     ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
@@ -3053,7 +3075,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     async companyTaxGetDeliveryJournalArchive(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
-      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2", validationEvidence: "true" });
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2", validationEvidence: "true", confirmationEvidence: "true" });
       const result = await executeJson(
         \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?\${query}\`,
         "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
@@ -3062,7 +3084,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const draftIds = new Set(result.drafts.map(row => row.filingId));
       if (result.companyId !== companyId || result.incomeYear !== incomeYear
           || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
-          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:","company-tax-source-v6:"].some(version => source.evidence.version === version + result.sourceSha256)
+          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:","company-tax-source-v6:","company-tax-source-v7:"].some(version => source.evidence.version === version + result.sourceSha256)
           || source.evidence.digest !== result.sourceSha256
           || source.evidence.evaluatedAt !== result.observedAt
           || source.historyCoverage.evidenceReference !== source.evidence.reference

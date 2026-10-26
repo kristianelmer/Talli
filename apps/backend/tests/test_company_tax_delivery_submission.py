@@ -56,7 +56,7 @@ class Session:
                 assert session.active==[False]
                 recorded=(session.current_time() if session.current_time is not None else Timestamp(session.base.as_of.value+timedelta(microseconds=len(session.events)+1)))
                 event=StoredTaxDeliveryEvent(value,recorded,session.actor_id)
-                if not event.slot.startswith('completion:'):
+                if not event.slot.startswith('completion:') and event.slot!='acknowledgment:prepare_confirmation':
                     if not session.owner:raise CompanyTaxError.not_found()
                     if not session.fresh:raise CompanyTaxError.mfa_required()
                 prior=next((row for row in session.events if row.slot==event.slot and row.binding.filing_id==event.binding.filing_id),None)

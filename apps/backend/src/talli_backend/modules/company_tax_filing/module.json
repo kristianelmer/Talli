@@ -128,7 +128,14 @@
       "TaxDeliveryValidationResultObservation",
       "decode_tax_delivery_validation_result_observation",
       "TaxCalculatedDocumentValidator",
-      "TaxCalculatedDocumentsInspection"
+      "TaxCalculatedDocumentsInspection",
+      "TaxDeliveryConfirmationPrerequisite",
+      "bind_tax_delivery_confirmation_prerequisite",
+      "is_tax_delivery_owner_confirmation_instance",
+      "TaxDeliveryConfirmationReadEvidence",
+      "reconcile_tax_delivery_confirmation",
+      "TaxDeliveryProcessAcknowledgment",
+      "decode_tax_delivery_process_acknowledgment"
     ],
     "events": [],
     "errors": [
@@ -400,7 +407,13 @@
     "validationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_validation_submission.py",
     "validationApi": "apps/backend/tests/test_company_tax_delivery_validation_api.py",
     "validationTopology": "apps/backend/tests/test_company_tax_validation_database.py",
-    "calculatedDocumentSchemas": "apps/backend/tests/test_company_tax_calculated_schemas.py"
+    "calculatedDocumentSchemas": "apps/backend/tests/test_company_tax_calculated_schemas.py",
+    "confirmationPrerequisite": "apps/backend/tests/test_company_tax_confirmation_prerequisite.py",
+    "confirmationWorkflow": "apps/backend/tests/test_company_tax_delivery_confirmation_workflow.py",
+    "confirmationApi": "apps/backend/tests/test_company_tax_delivery_confirmation_api.py",
+    "confirmationEvidenceDatabase": "apps/backend/tests/test_postgres_tax_confirmation_evidence.py",
+    "confirmationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_confirmation_submission.py",
+    "confirmationTopology": "apps/backend/tests/test_company_tax_confirmation_database.py"
   },
   "compatibilityExceptions": []
 }

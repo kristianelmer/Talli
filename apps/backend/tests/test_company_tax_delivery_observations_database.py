@@ -34,7 +34,8 @@ pytestmark=pytest.mark.company_tax_database
 
 
 @contextmanager
-def finite_http(signed_runtime,*,upload=False,validation=False):
+def finite_http(signed_runtime,*,upload=False,validation=False,confirmation=False):
+    validation=validation or confirmation
     upload=upload or validation
     connection,token,aal1=signed_runtime;url,backend,cid,actor,sessions=connection
     app,command,_,original=configured(connection);app._sessions=sessions
@@ -45,6 +46,11 @@ def finite_http(signed_runtime,*,upload=False,validation=False):
         'scan':'Clean' if validation else 'Pending','validationPosts':0,'lostValidation':False,
         'onValidation':lambda:None,'onJob':lambda:None,'jobStatus':'FERDIG','jobId':'storeDokument-signed-http-v1',
         'validationResult':b'\xef\xbb\xbf<skattemeldingOgNaeringsspesifikasjonResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:response:v2"><veiledningEtterKontroll><veiledning><veiledningstype>guidance</veiledningstype><hjelpetekst>Kontroller bel\xc3\xb8pet</hjelpetekst></veiledning></veiledningEtterKontroll><resultatAvValidering>validertOK</resultatAvValidering></skattemeldingOgNaeringsspesifikasjonResponse>\n'}
+    if confirmation:
+        from test_company_tax_calculated_schemas import documents,result
+        state.update(validationResult=result(documents(draft)).raw_bytes,processTask='data',processElement='Task_1',processFlow=1,
+            confirmationPuts=0,lostPreparation=False,onConfirmation=lambda:None,
+            processResponse=b'\xef\xbb\xbf {"currentTask":{"altinnTaskType":"confirmation"}}\n')
     user=conninfo_to_dict(backend)['user']
     class Authority(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
@@ -80,12 +86,26 @@ def finite_http(signed_runtime,*,upload=False,validation=False):
                 'instanceOwner':{'organisationNumber':draft.envelope.source.organization_number},
                 'dataValues':{'inntektsaar':2025},'process':{'currentTask':{'altinnTaskType':'data'}},
                 'status':{'isArchived':False},'data':[]}
+            if confirmation:value['process']['currentTask']|={'altinnTaskType':state['processTask'],
+                'elementId':state['processElement'],'flow':state['processFlow']}
             if upload and state['uploaded'] is not None:
                 raw=state['uploaded'] if state['fileBytes'] is None else state['fileBytes']
                 value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
                     'contentType':'application/xml','size':len(raw),'fileScanResult':state['scan']}]
             state['original']=b'\xef\xbb\xbf'+json.dumps(value,indent=2).encode()+b'\n'
             self.respond(200,state['original'])
+        def do_PUT(self):
+            self.check_request();body=self.rfile.read(int(self.headers['Content-Length']))
+            assert confirmation and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/process/next'
+            assert body==b'' and self.headers['Content-Type']=='application/json'
+            with psycopg.connect(url) as db:
+                rows=db.execute("select canonical_json from company_tax_filing.delivery_events where filing_id=%s and slot='intent:prepare_confirmation'",(draft.filing_id,)).fetchall()
+                assert len(rows)==1 and json.loads(rows[0][0])['version']=='company-tax-delivery-mutation-request-v4'
+            state['confirmationPuts']+=1;state.update(processTask='confirmation',processElement='Task_2',processFlow=2)
+            state['onConfirmation']()
+            if state['lostPreparation']:
+                self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+            self.respond(200,state['processResponse'])
         def do_POST(self):
             self.check_request()
             body=self.rfile.read(int(self.headers['Content-Length']))
@@ -126,6 +146,9 @@ def finite_http(signed_runtime,*,upload=False,validation=False):
         runtime=TaxDeliveryRehearsalRuntime(grant)
         submission=CompanyTaxDeliverySubmission(runtime,LoopbackCompanyTaxDelivery(runtime),PinnedTax2025Schemas(),
             response_schemas=PinnedTaxValidationResponseSchemas() if validation else None)
+        if confirmation:
+            from talli_backend.adapters.company_tax_calculated_schemas import PinnedTax2025CalculatedSchemas
+            submission._calculated_schemas=PinnedTax2025CalculatedSchemas()
         client=TestClient(create_app(company_tax_session_factory=sessions,company_tax_delivery_submission=submission))
         yield client,draft,state,token,aal1
     finally:

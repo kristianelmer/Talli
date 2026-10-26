@@ -46,10 +46,11 @@ function feature(api) {
   return exports;
 }
 
-function readBundle(envelopeXml) {
+function readBundle(envelopeXml,partyNumber) {
   const value=bundle();const draft=JSON.parse(value.drafts[0].canonicalJson);
   draft.draft.envelope.source.organization_number="999888777";
   if(envelopeXml!==undefined)draft.draft.envelope.envelope_xml=envelopeXml;
+  if(partyNumber!==undefined)draft.draft.current_document.party_number=partyNumber;
   value.drafts[0].canonicalJson=JSON.stringify(draft);value.drafts[0].draftSha256=hash(value.drafts[0].canonicalJson);
   value.sourceFacts.deliveryDrafts[0].draftSha256=value.drafts[0].draftSha256;
   const context={version:"tax-loopback-admission-v1",runId:filing,companyId:company,incomeYear:2025,actorId:actor,
@@ -80,8 +81,8 @@ function readBundle(envelopeXml) {
   return value;
 }
 
-function guardedBundle({complete=true,fileBody="<approved/>"}={}) {
-  const wire="<approved/>";const value=readBundle(wire);
+function guardedBundle({complete=true,fileBody="<approved/>",partyNumber}={}) {
+  const wire="<approved/>";const value=readBundle(wire,partyNumber);
   const approval=value.events[0].eventSha256;const instance=JSON.parse(value.events[3].canonicalJson).completion.result.instanceId;
   const data="10000000-0000-4000-8000-000000000005";
   const binding={...scope,approved_by:{kind:"USER",subject:{value:actor}},approval_sha256:approval,organization_number:"999888777",instance_id:instance};
@@ -117,8 +118,8 @@ function guardedBundle({complete=true,fileBody="<approved/>"}={}) {
 
 function validationBundle({known=true,status="FERDIG",scan="Clean",fileBody="<approved/>",jobBody,
   includeResult=known&&status==="FERDIG",schema="eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1",
-  resultStatusReference,resultJob,resultAt=3,jobAt=2,startStatus="OPPRETTET",resultBody="<unknown-result/>"}={}) {
-  const value=guardedBundle();const previous=JSON.parse(value.events.find(row=>row.slot.startsWith("observation:envelope:")).canonicalJson).observation;
+  resultStatusReference,resultJob,resultAt=3,jobAt=2,startStatus="OPPRETTET",resultBody="<unknown-result/>",partyNumber}={}) {
+  const value=guardedBundle({partyNumber});const previous=JSON.parse(value.events.find(row=>row.slot.startsWith("observation:envelope:")).canonicalJson).observation;
   const {original,observed_at,data_id,instance_evidence_sha256,...binding}=previous;
   const time=seconds=>new Date(Date.parse(observedAt)+seconds*1000).toISOString();
   const event=(slot,payload,seconds)=>{const raw=JSON.stringify(payload);return{filingId:filing,slot,recordedBy:actor,recordedAt:time(seconds),canonicalJson:raw,eventSha256:hash(raw)};};
@@ -163,6 +164,100 @@ function validationBundle({known=true,status="FERDIG",scan="Clean",fileBody="<ap
   Object.assign(value.journals[0],{status:known?"mutation_completed":"uncertain",mutationKind:"start_validation",latestEventSha256:value.events.at(-1).eventSha256,recordedAt:value.events.at(-1).recordedAt});
   return value;
 }
+
+// Client binding fixture only. Native/signed tests separately run the actual
+// pinned XSD adapter and storage's XML projection checks.
+function confirmationBundle({complete=true,acknowledgment=true,task="confirmation",element="Task_2",flow=2,
+  flowLiteral,scan="Clean",fileBody="<approved/>",ackBody="\ufeff not JSON\n",editProof}={}) {
+  const docs=["skattemeldingUpersonligEtterBeregning","naeringsspesifikasjonEtterBeregning"].map(kind=>({
+    document_type:kind,body_base64:Buffer.from("<scoped-calculated-document/>").toString("base64")}));
+  const responseBody='<skattemeldingOgNaeringsspesifikasjonResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:response:v2"><dokumenter>'+
+    docs.map(doc=>'<dokument><type>'+doc.document_type+'</type><encoding>utf-8</encoding><content>'+doc.body_base64+'</content></dokument>').join("")+
+    '</dokumenter><resultatAvValidering>validertOK</resultatAvValidering></skattemeldingOgNaeringsspesifikasjonResponse>';
+  const value=validationBundle({partyNumber:"123456",resultBody:responseBody});
+  const firstJob=value.events.find(row=>row.slot.startsWith("observation:validation-job:"));
+  const firstResult=value.events.find(row=>row.slot.startsWith("observation:validation-result:"));
+  const jobId=firstJob.slot.split(":")[2];const resultId=firstResult.slot.split(":")[2];
+  const {job_id,start_request_sha256,job_status_evidence_sha256,schema_sha256,original,observed_at,...binding}=JSON.parse(firstResult.canonicalJson).observation;
+  const time=n=>new Date(Date.parse(observedAt)+n*1000).toISOString();
+  const event=(slot,payload,n)=>{const raw=JSON.stringify(payload);return{filingId:filing,slot,recordedBy:actor,recordedAt:time(n),canonicalJson:raw,eventSha256:hash(raw)};};
+  const data="10000000-0000-4000-8000-000000000005";
+  function reads(task,element,flow,scan,fileBody,n,flowLiteral) {
+    let raw="\ufeff"+JSON.stringify({id:binding.instance_id,appId:"skd/formueinntekt-skattemelding-v2",instanceOwner:{organisationNumber:"999888777"},
+      dataValues:{inntektsaar:2025},process:{currentTask:{altinnTaskType:task,elementId:element,flow}},status:{isArchived:false},data:[{id:data,
+        dataType:"skattemeldingOgNaeringsspesifikasjon",contentType:"text/xml",size:Buffer.byteLength(fileBody),fileScanResult:scan}]})+"\n";
+    if(flowLiteral)raw=raw.replace('"flow":'+flow,'"flow":'+flowLiteral);
+    const identity=hash(JSON.stringify(["tax-instance-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,hash(raw)]));
+    const metadata=event("observation:instance:"+identity,{version:"company-tax-delivery-instance-observation-v1",observation:{...binding,
+      observed_at:{value:time(n)},original:{purpose:"instance",body_base64:Buffer.from(raw).toString("base64"),content_type:"application/json",http_status:200}}},n+.01);
+    const fileIdentity=hash(JSON.stringify(["tax-envelope-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,data,identity,hash(fileBody)]));
+    const envelope=event("observation:envelope:"+fileIdentity,{version:"company-tax-delivery-envelope-observation-v1",observation:{...binding,
+      data_id:data,instance_evidence_sha256:identity,observed_at:{value:time(n+.1)},original:{purpose:"envelope",body_base64:Buffer.from(fileBody).toString("base64"),content_type:"application/xml",http_status:200}}},n+.11);
+    return{metadata,envelope,identity,fileIdentity};
+  }
+  const before=reads("data","Task_1",1,"Clean","<approved/>",4.3);
+  value.events.push(before.metadata,before.envelope);
+  const proof={clean_file:{instance_id:binding.instance_id,data_id:data,
+    instance_read:{event_sha256:before.metadata.eventSha256,evidence_sha256:before.identity,observed_at:{value:time(4.3)}},
+    envelope_read:{event_sha256:before.envelope.eventSha256,evidence_sha256:before.fileIdentity,observed_at:{value:time(4.4)}},
+    observed_from:{value:time(4.2)},observed_until:{value:time(4.5)}},envelope_sha256:hash("<approved/>"),
+    job_read:{event_sha256:firstJob.eventSha256,evidence_sha256:jobId,observed_at:{value:time(4)}},
+    result_read:{event_sha256:firstResult.eventSha256,evidence_sha256:resultId,observed_at:{value:time(4.1)}},
+    calculated:{schema_sha256:"c9631dcb56397a2e9632f9a8339d4060aa8f3ae6f58c7bf35b7cc19df5e77769",draft_sha256:value.drafts[0].draftSha256,
+      company_id:{value:company},income_year:{value:2025},party_number:"123456",response:{schema_sha256,
+        original_sha256:hash(Buffer.from(original.body_base64,"base64")),result_code:"validertOK",calculation_deviation_count:0,
+        validation_deviation_count:0,guidance_count:0,failure_reason_count:0,calculated_documents:docs}},
+    observed_from:{value:time(4)},observed_until:{value:time(4.6)}};
+  if(editProof)editProof(proof);
+  const request=event("intent:prepare_confirmation",{version:"company-tax-delivery-mutation-request-v4",request:{...scope,
+    organization_number:"999888777",approval_sha256:binding.approval_sha256,kind:"prepare_confirmation",target_instance:binding.instance_id,
+    body_base64:"",confirmation_prerequisite:proof}},4.7);
+  value.events.push(request);
+  if(acknowledgment)value.events.push(event("acknowledgment:prepare_confirmation",{version:"company-tax-delivery-process-acknowledgment-v1",acknowledgment:{...binding,
+    request_sha256:request.eventSha256,observed_at:{value:time(4.8)},original:{purpose:"process_response",body_base64:Buffer.from(ackBody).toString("base64"),content_type:"application/json",http_status:200}}},4.9));
+  if(complete) {
+    const after=reads(task,element,flow,scan,fileBody,5,flowLiteral);
+    value.events.push(event("completion:prepare_confirmation",{version:"company-tax-delivery-mutation-completion-v3",completion:{
+      intent:{...scope,approved_by:binding.approved_by,approval_sha256:binding.approval_sha256,kind:"prepare_confirmation",request_sha256:request.eventSha256},
+      result:{instanceId:binding.instance_id,processTask:"confirmation"},observed_at:{value:time(5.2)},origin:"confirmation_read",
+      confirmation_read_evidence:{instance_canonical_json:after.metadata.canonicalJson,instance_sha256:after.metadata.eventSha256,
+        envelope_canonical_json:after.envelope.canonicalJson,envelope_sha256:after.envelope.eventSha256}}},5.3));
+  }
+  value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v6:","v7:");value.eventCount=value.events.length;
+  value.observedAt=time(6);value.sourceFacts.evidence.evaluatedAt=time(6);value.sourceFacts.historyCoverage.asOf=time(6);
+  Object.assign(value.journals[0],{status:complete?"mutation_completed":"uncertain",mutationKind:"prepare_confirmation",
+    latestEventSha256:value.events.at(-1).eventSha256,recordedAt:value.events.at(-1).recordedAt});
+  return value;
+}
+
+for(const [name,options] of [["known preparation",{}],["opaque acknowledgment only",{complete:false}],
+  ["missing acknowledgment, known read result",{acknowledgment:false}]])test(`confirmation archive retains ${name} without submission claims`,async()=>{
+  const value=confirmationBundle(options);const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  const projected=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+  assert.equal(projected.error,null);assert.deepEqual(projected.data.journal.events,value.events);
+});
+
+for(const [name,options] of [
+  ["auditor stage",{element:"Task_2Revisor"}],["feedback stage",{task:"feedback",element:"Task_3"}],
+  ["pending scan",{scan:"Pending"}],["drifted file",{fileBody:"<different/>"}],
+  ["boolean flow",{flow:true}],["float flow",{flowLiteral:"2.0"}],["exponent flow",{flowLiteral:"2e0"}],
+  ["foreign calculated party",{editProof:p=>p.calculated.party_number="other"}],
+  ["foreign calculated year",{editProof:p=>p.calculated.income_year.value=2026}],
+  ["wrong calculated pin",{editProof:p=>p.calculated.schema_sha256="d".repeat(64)}],
+  ["wrong response pin",{editProof:p=>p.calculated.response.schema_sha256="d".repeat(64)}],
+  ["wrong result original",{editProof:p=>p.calculated.response.original_sha256="d".repeat(64)}],
+  ["hard validation error",{editProof:p=>p.calculated.response.validation_deviation_count=1}],
+  ["rejected validation",{editProof:p=>p.calculated.response.result_code="validertMedFeil"}],
+  ["borrowed job original",{editProof:p=>p.job_read.event_sha256="d".repeat(64)}],
+  ["stale job read",{editProof:p=>p.job_read.observed_at.value="2026-10-26T09:59:59Z"}],
+  ["extra prerequisite flag",{editProof:p=>p.ready=true}],
+  ["extra calculated field",{editProof:p=>p.calculated.response.calculated_documents[0].ready=true}],
+])test(`confirmation archive refuses consistently hashed ${name}`,async()=>{
+  const value=confirmationBundle(options);const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  assert.equal((await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025)).data,null);
+});
 
 for(const [name,options] of [
   ["unknown start",{known:false}],["running known job",{status:"KJOERER"}],["finished known result",{}],

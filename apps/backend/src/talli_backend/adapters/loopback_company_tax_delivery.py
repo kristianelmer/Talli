@@ -16,6 +16,7 @@ from talli_backend.modules.company_tax_filing.public import (
     build_tax_delivery_mutation_request,
     TaxDeliveryEnvelopeObservation,
     TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxValidationJobStatus,
+    TaxDeliveryProcessAcknowledgment,
 )
 from talli_backend.shared.kernel import IncomeYear
 
@@ -101,6 +102,27 @@ class LoopbackCompanyTaxDelivery:
                 observed_at=self._runtime.now(),origin=TaxDeliveryCompletionOrigin.MUTATION_RESPONSE)
         except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
             raise CompanyTaxReturnAuthorityError('Finite Tax mutation result is unknown.',
+                code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
+
+    async def prepare_confirmation(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+            draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment:
+        request.assert_draft(approval,draft)
+        if request.kind is not TaxMutationKind.PREPARE_CONFIRMATION or request.confirmation_prerequisite is None:
+            raise CompanyTaxError.unavailable()
+        if self._runtime.authorize(draft,approval.approved_by)!=approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        try:request.confirmation_prerequisite.assert_current(self._runtime.now())
+        except ValueError:raise CompanyTaxError.unavailable() from None
+        response=await self._request('PUT',_APP_PATH+'/instances/'+request.target_instance+'/process/next',
+            body=request.body_bytes,content_type='application/json',expected_statuses=(200,),response_types=('application/json',))
+        try:
+            result=TaxDeliveryProcessAcknowledgment(draft.filing_id,approval.company_id,approval.income_year,approval.approved_by,
+                approval.sha256,draft.envelope.source.organization_number,request.target_instance,request.sha256,
+                TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.PROCESS_RESPONSE,base64.b64encode(response.raw_bytes).decode('ascii'),
+                    response.media_type,response.status),self._runtime.now())
+            result.assert_request(request,approval,draft)
+            return result
+        except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
+            raise CompanyTaxReturnAuthorityError('Finite Tax process acknowledgment is unknown.',
                 code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
 
     async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,

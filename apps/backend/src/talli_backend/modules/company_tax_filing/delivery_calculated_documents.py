@@ -15,6 +15,8 @@ from .delivery import _digest,_json
 from .delivery_draft import TaxDeliveryDraft,_canonical
 from .delivery_observation import TaxDeliveryReadOriginal
 from .delivery_validation_response import TaxValidationResponseInspection
+from .delivery_validation_response import TaxValidationCalculatedDocument,TaxValidationResultCode
+from .delivery_draft import _object
 
 
 CALCULATED_STATUTORY_TYPES=frozenset({'skattemeldingUpersonligEtterBeregning','naeringsspesifikasjonEtterBeregning'})
@@ -56,3 +58,16 @@ class TaxCalculatedDocumentsInspection:
                 or self.income_year!=draft.envelope.source.income_year
                 or self.party_number!=draft.current_document.party_number):
             raise ValueError('Tax calculated documents differ from the retained draft scope.')
+
+
+def _decode_calculated_inspection(value):
+    body=_object(value,('schema_sha256','draft_sha256','company_id','income_year','party_number','response'))
+    company=_object(body['company_id'],('value',));year=_object(body['income_year'],('value',))
+    response=_object(body['response'],('schema_sha256','original_sha256','result_code','calculation_deviation_count',
+        'validation_deviation_count','guidance_count','failure_reason_count','calculated_documents'))
+    if type(response['calculated_documents']) is not list:raise ValueError('Tax calculated documents shape is invalid.')
+    documents=tuple(TaxValidationCalculatedDocument(**_object(item,('document_type','body_base64')))
+        for item in response['calculated_documents'])
+    return TaxCalculatedDocumentsInspection(**(body|{'company_id':CompanyId(company['value']),
+        'income_year':IncomeYear(year['value']),'response':TaxValidationResponseInspection(**(response|{
+            'result_code':TaxValidationResultCode(response['result_code']),'calculated_documents':documents}))}))

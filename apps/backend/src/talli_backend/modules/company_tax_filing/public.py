@@ -806,6 +806,11 @@ from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryU
 from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
 from .delivery_validation_response import (TaxValidationResultCode,TaxValidationCalculatedDocument,TaxValidationResponseInspection)
 from .delivery_calculated_documents import TaxCalculatedDocumentsInspection
+from .delivery_confirmation_prerequisite import (TaxDeliveryConfirmationPrerequisite,bind_tax_delivery_confirmation_prerequisite,
+    is_tax_delivery_owner_confirmation_instance)
+from .delivery_confirmation_read_evidence import TaxDeliveryConfirmationReadEvidence
+from .delivery_process_acknowledgment import TaxDeliveryProcessAcknowledgment,decode_tax_delivery_process_acknowledgment
+from .delivery_journal import reconcile_tax_delivery_confirmation
 from .delivery_validation_prerequisite import (TaxDeliveryValidationPrerequisite,bind_tax_delivery_validation_prerequisite)
 from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobInspection,TaxDeliveryValidationJobObservation,
     decode_tax_delivery_validation_job_observation)
@@ -921,6 +926,8 @@ class CompanyTaxCurrentDocumentReader(Protocol):
 class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
     async def execute(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
                       draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
+    async def prepare_confirmation(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment: ...
     async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
                                created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
     async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
@@ -967,6 +974,10 @@ __all__ = [
     'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
     'TaxValidationResponseValidator','TaxValidationResultCode','TaxValidationCalculatedDocument','TaxValidationResponseInspection',
     'TaxCalculatedDocumentValidator','TaxCalculatedDocumentsInspection',
+    'TaxDeliveryConfirmationPrerequisite','bind_tax_delivery_confirmation_prerequisite',
+    'is_tax_delivery_owner_confirmation_instance',
+    'TaxDeliveryConfirmationReadEvidence','reconcile_tax_delivery_confirmation',
+    'TaxDeliveryProcessAcknowledgment','decode_tax_delivery_process_acknowledgment',
     'TaxDeliveryValidationPrerequisite','bind_tax_delivery_validation_prerequisite',
     'TaxValidationJobStatus','TaxValidationJobInspection','TaxDeliveryValidationJobObservation','decode_tax_delivery_validation_job_observation',
     'TaxDeliveryValidationResultObservation','decode_tax_delivery_validation_result_observation',
