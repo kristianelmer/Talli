@@ -13,7 +13,10 @@ from psycopg.rows import dict_row
 from talli_backend.adapters.supabase_ledger import (
     LedgerSupabaseConfiguration, SupabaseLedgerAdapter,
     _VerifiedActor, _line_payload, _map_database_error, _posted_entry,
+    SupabaseLedgerSnapshotQueries,
 )
+from talli_backend.adapters.supabase_investments import SupabaseInvestmentsSnapshotQueries
+from talli_backend.application.annual_data_compatibility import decode_annual_interview_history
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
@@ -130,6 +133,7 @@ class PostgresCompanyTaxSession:
             ) as connection, connection.transaction():
                 if snapshot:
                     await connection.execute('set transaction isolation level repeatable read')
+                    await connection.execute('set transaction read only')
                 await connection.execute('set local role company_tax_filing_workflow_executor')
                 await connection.execute("select set_config('talli.verified_actor_id', %s, true)", (str(self.actor_id.subject),))
                 await connection.execute("select set_config('talli.verified_actor_claims', %s, true)", (self._verified.claims_json,))
@@ -162,6 +166,25 @@ class PostgresCompanyTaxTransaction:
     @property
     def actor_id(self):
         return self._verified.actor_id
+
+    @property
+    def delivery_ledger_queries(self):
+        return SupabaseLedgerSnapshotQueries('', self._verified, self._connection)
+
+    @property
+    def delivery_investments_queries(self):
+        return SupabaseInvestmentsSnapshotQueries(self._verified, self._connection)
+
+    async def delivery_annual_interview(self, query):
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select backend_system.list_annual_data_legacy_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(query.actor_id.subject)))
+        try:
+            return decode_annual_interview_history(row['result'], query.company_id, query.income_year)
+        except (ValueError, TypeError, KeyError, OverflowError):
+            raise CompanyTaxError.unavailable() from None
 
     async def _database_rows(self, query: str, parameters: tuple[object, ...] = ()):
         try:

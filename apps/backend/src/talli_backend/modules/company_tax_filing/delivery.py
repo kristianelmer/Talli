@@ -63,9 +63,10 @@ def _reference(value, label, maximum=4000):
 class TaxDeliverySource:
     """One complete, scope-checked application read of owning source contracts.
 
-    A caller-fact preview cannot produce this durable source: the application
-    reads all pages and holds the source owners' company guard while capturing
-    and verifying it. The three upstream digests bind those complete reads.
+    The application reads all pages in one repeatable source snapshot. Before a
+    consequential effect it must reread and verify current facts under the
+    company guard. The three upstream digests bind the complete reads; this
+    value alone neither proves persistence nor grants filing permission.
     """
     company_id: CompanyId
     income_year: IncomeYear

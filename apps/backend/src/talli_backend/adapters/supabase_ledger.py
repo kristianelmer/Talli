@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import psycopg
+from psycopg import sql
 from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
@@ -2247,6 +2248,33 @@ class SupabaseLedgerSession:
         )
 
 
+async def _verified_snapshot_rows(verified, connection, executor_role, query, parameters):
+    """Borrow an existing read role on one verified repeatable snapshot.
+
+    A savepoint restores transaction-local role state even on cancellation or a
+    failed query. The supplied connection must have one sequential owner.
+    """
+    if executor_role not in ('ledger_executor', 'investments_executor'):
+        raise ValueError('Unsupported snapshot read role.')
+    async with connection.transaction():
+        cursor = await connection.execute("""
+            select current_user as caller_role,
+              current_setting('transaction_isolation') as isolation,
+              current_setting('talli.verified_actor_id', true) as subject,
+              current_setting('talli.verified_actor_claims', true) as claims
+        """)
+        context = await cursor.fetchone()
+        if (context is None or context['isolation'] not in ('repeatable read', 'serializable')
+                or context['subject'] != str(verified.actor_id.subject)
+                or json.loads(context['claims'] or '{}') != json.loads(verified.claims_json)):
+            raise ValueError('Snapshot identity/isolation does not match its binding.')
+        await connection.execute(sql.SQL('set local role {}').format(sql.Identifier(executor_role)))
+        cursor = await connection.execute(query, parameters)
+        rows = list(await cursor.fetchall())
+        await connection.execute(sql.SQL('set local role {}').format(sql.Identifier(context['caller_role'])))
+        return rows
+
+
 @rf1086_adapter(OpeningSnapshotPersistence)
 class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
     """Owned capability operations bound to one PostgreSQL transaction."""
@@ -2464,6 +2492,19 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             posted_entry,
             prepared,
         )
+
+
+class SupabaseLedgerSnapshotQueries(SupabaseLedgerWorkflowTransaction):
+    """Ledger queries bound to a verified application's repeatable snapshot."""
+
+    async def _database_rows(self, query, parameters=()):
+        try:
+            return await _verified_snapshot_rows(self._verified, self._connection,
+                'ledger_executor', query, parameters)
+        except (ValueError, KeyError, TypeError, psycopg.OperationalError):
+            raise self._unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_database_error(str(error)) from None
 
 
 def compose_ledger_application(

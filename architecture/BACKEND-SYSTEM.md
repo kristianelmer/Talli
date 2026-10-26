@@ -844,10 +844,26 @@ values and ownership remain unchanged. Rollback suspends writes while retaining
 facts; replay resumes the existing writer. This is a row backstop, not proof of
 company-first ordering for raw browser writes or complete RF annual readiness.
 
+Tax delivery preparation reads the unchanged Annual interview history through
+an exact, read-only grant to `company_tax_filing_workflow_executor`. Its reversible
+admission migration grants schema usage and only that function's execution,
+preserving every pre-existing role membership option and grantor. The internal
+`company_tax_delivery_source` workflow composes Annual, Ledger and Investments
+public facts on one verified read-only repeatable snapshot. Bound Ledger and
+Investments query adapters borrow existing executor roles in savepoints and
+restore the caller role on completion, SQL failure or cancellation. No new
+foreign table grant, business writer, HTTP route, or provider activation is added.
+
+<!-- architecture-inventory
+{"workflowDependencies":["talli_backend.application.company_tax_delivery_source"]}
+-->
+
 <!-- architecture-inventory
 {"technicalMigrations":["supabase/migrations/20260929094835_annual_interview_company_guard.sql","supabase/rollback/20260929094835_annual_interview_company_guard.sql",
     "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",
     "supabase/rollback/20260929144619_rf_annual_interview_read_admission.sql",
+      "supabase/migrations/20261026043538_company_tax_delivery_annual_read_admission.sql",
+      "supabase/rollback/20261026043538_company_tax_delivery_annual_read_admission.sql",
     "supabase/migrations/20260929160247_rf_annual_ledger_read_admission.sql",
     "supabase/rollback/20260929160247_rf_annual_ledger_read_admission.sql",
     "supabase/migrations/20260929162030_rf_annual_document_read_admission.sql",

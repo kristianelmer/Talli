@@ -1622,7 +1622,12 @@ def investments_persistence_adapter(
     return declare
 
 
+from .reporting import InvestmentReportingSnapshot, read_investment_reporting_snapshot
+
+
 __all__ = [
+    "InvestmentReportingSnapshot",
+    "read_investment_reporting_snapshot",
     "AccountingEntryReference",
     "AcquisitionLotPage",
     "AcquisitionLotId",

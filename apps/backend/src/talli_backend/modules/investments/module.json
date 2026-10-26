@@ -9,7 +9,7 @@
   "publicEntryPoint": "talli_backend.modules.investments.public",
   "exports": {
     "commands": ["CorrectInvestmentCommand", "InvestmentsCommand", "InvestmentsCommands", "RecognizeReceivedDividendCommand", "RecognizeReceivedFundDistributionCommand", "RecognizeSharePurchaseCommand", "RecognizeShareSaleCommand", "RecordInvestmentYearEndMeasurementCommand", "RecordReceivedDividendCommand", "RecordReceivedFundDistributionCommand", "RecordSharePurchaseCommand", "RecordShareSaleCommand", "SettleInvestmentCashCommand"],
-    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentActivityPage", "InvestmentActivityView", "InvestmentCorrectionPage", "InvestmentCorrectionView", "InvestmentLifecycleEventPage", "InvestmentLifecycleEventView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentYearEndMeasurementPage", "InvestmentYearEndMeasurementView", "InvestmentsQueries", "PreparedCashSettlementCorrection", "PreparedEconomicEventCorrection", "PreparedInvestmentCashSettlement", "PreparedInvestmentCorrection", "PreparedInvestmentMeasurementFacts", "PreparedInvestmentYearEndMeasurement", "PreparedReceivedDividend", "PreparedReceivedDividendFacts", "PreparedReceivedFundDistribution", "PreparedReceivedFundDistributionFacts", "PreparedSettledInvestmentCorrection", "PreparedSharePurchase", "PreparedSharePurchaseRecognition", "PreparedShareSale", "PreparedShareSaleFacts", "RecordedInvestmentCashSettlement", "RecordedInvestmentCorrection", "RecordedInvestmentEconomicEvent", "RecordedInvestmentYearEndMeasurement", "RecordedReceivedDividend", "RecordedReceivedFundDistribution", "RecordedSharePurchase", "RecordedShareSale", "ShareSaleAllocationPage", "ShareSaleAllocationView"],
+    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentActivityPage", "InvestmentActivityView", "InvestmentCorrectionPage", "InvestmentCorrectionView", "InvestmentLifecycleEventPage", "InvestmentLifecycleEventView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentReportingSnapshot", "InvestmentYearEndMeasurementPage", "InvestmentYearEndMeasurementView", "InvestmentsQueries", "PreparedCashSettlementCorrection", "PreparedEconomicEventCorrection", "PreparedInvestmentCashSettlement", "PreparedInvestmentCorrection", "PreparedInvestmentMeasurementFacts", "PreparedInvestmentYearEndMeasurement", "PreparedReceivedDividend", "PreparedReceivedDividendFacts", "PreparedReceivedFundDistribution", "PreparedReceivedFundDistributionFacts", "PreparedSettledInvestmentCorrection", "PreparedSharePurchase", "PreparedSharePurchaseRecognition", "PreparedShareSale", "PreparedShareSaleFacts", "RecordedInvestmentCashSettlement", "RecordedInvestmentCorrection", "RecordedInvestmentEconomicEvent", "RecordedInvestmentYearEndMeasurement", "RecordedReceivedDividend", "RecordedReceivedFundDistribution", "RecordedSharePurchase", "RecordedShareSale", "ShareSaleAllocationPage", "ShareSaleAllocationView", "read_investment_reporting_snapshot"],
     "events": [],
     "errors": ["InvestmentsError", "InvestmentsErrorCode"],
     "identifiers": ["AccountingEntryReference", "AcquisitionLotId", "InvestmentActionId", "InvestmentAccountingClassification", "InvestmentActivityKind", "InvestmentCorrectionId", "InvestmentCorrectionTargetKind", "InvestmentCursor", "InvestmentDocumentStatus", "InvestmentEconomicEventId", "InvestmentEvidence", "InvestmentEvidenceMode", "InvestmentFactReference", "InvestmentKind", "InvestmentLotHistoryStatus", "InvestmentMeasurementId", "InvestmentMeasurementRule", "InvestmentPolicyVersion", "InvestmentPositionId", "InvestmentReplacementCommand", "InvestmentSaleLotCalculation", "InvestmentSaleLotFact", "InvestmentSettlementBalanceKind", "InvestmentSettlementId", "InvestmentSourceCapability", "InvestmentSourceReference", "InvestmentTaxTreatment", "InvestmentTradingProfile", "InvestmentUnits", "InvestmentsPersistence", "ShareSaleAllocationId", "investments_persistence_adapter"]
@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "decimal", "enum", "hashlib", "json", "re", "talli_backend.shared.kernel", "typing", "uuid"],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "decimal", "enum", "hashlib", "json", "re", "talli_backend.shared.kernel", "types", "typing", "uuid"],
   "forbiddenResponsibilities": [
     "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
     "Bank-provider selection, credentials, consent, live calls, or provider-specific types",
@@ -42,6 +42,7 @@
   "tests": {
     "contract": "apps/backend/tests/test_investments_public_contract.py",
     "policy": "apps/backend/tests/test_investments.py",
+    "reportingSource": "apps/backend/tests/test_investment_reporting_source.py",
     "supportedPatterns": "apps/backend/tests/test_investments_supported_patterns.py",
     "workflow": "apps/backend/tests/test_investments_workflow.py",
     "adapter": "apps/backend/tests/test_supabase_investments.py",

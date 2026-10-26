@@ -118,6 +118,16 @@ operation-specific shape. These policy contracts do not yet constitute a
 persisted delivery workflow, enable a provider or replace the disabled-production
 source gate above.
 
+The internal `CompanyTaxApplication` delivery-source read now composes the
+existing exact-year Annual interview contract, every Ledger entry page, and
+Investments' complete reporting snapshot in one verified, read-only repeatable
+transaction. Owning adapters borrow only existing executor memberships, enforce
+the verified subject/claims and isolation binding, and restore the Tax role on
+success, SQL error or cancellation. The source keeps all upstream digests while
+projecting selected-year facts into the characterized Tax calculator. Missing
+interviews, malformed pages and unresolved source lineage fail closed. This
+preparation seam has no public HTTP route, stored approval or authority effect.
+
 <!-- architecture-inventory
 {"ports": ["CompanyTaxSourcePersistence"]}
 -->

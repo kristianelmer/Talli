@@ -8,11 +8,12 @@ from talli_backend.modules.company_tax_filing.public import TaxSettlementPersist
 from talli_backend.modules.documents.public import DocumentBindingPersistence
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
+from talli_backend.application.company_tax_delivery_source import TaxDeliverySourceInputs
 
 
 class CompanyTaxTransaction(
     TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence, CompanyTaxSourcePersistence, AuditInclusion, LedgerPersistence, TaxSettlementBankingPersistence,
-    DocumentBindingPersistence, Protocol,
+    DocumentBindingPersistence, TaxDeliverySourceInputs, Protocol,
 ):
     @property
     def actor_id(self) -> ActorId: ...

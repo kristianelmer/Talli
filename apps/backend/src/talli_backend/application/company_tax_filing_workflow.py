@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from talli_backend.application.company_tax_filing_session import CompanyTaxSession, CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
 from talli_backend.modules.audit.public import AuditEventDraft
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
@@ -14,7 +15,7 @@ from talli_backend.modules.company_tax_filing.public import (
     normalize_company_tax_review, normalize_company_tax_test_evidence,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
-    CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, project_company_tax_source, verify_company_tax_source,
+    CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, TaxDeliverySource, project_company_tax_source, verify_company_tax_source,
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
 )
@@ -24,7 +25,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId, PostedLedgerEntry, PostTaxSettlementCommand,
     TaxSettlementKind as LedgerTaxSettlementKind,
 )
-from talli_backend.shared.kernel import CompanyId, IncomeYear, Money, Timestamp
+from talli_backend.shared.kernel import CompanyId, CorrelationId, IncomeYear, Money, Timestamp
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,6 +130,12 @@ class AuthenticatedCompanyTax:
             raise CompanyTaxError.forbidden()
         async with self._session.transaction(snapshot=True) as transaction:
             return project_company_tax_source(query, await transaction.filing_source_snapshot(query))
+
+    async def delivery_source(self, query: CompanyTaxSourceQuery, *, correlation_id: CorrelationId) -> TaxDeliverySource:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return await read_company_tax_delivery_source(transaction, query, correlation_id=correlation_id)
 
     async def verify_filing_source(self, query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence) -> bool:
         if query.actor_id != self.actor_id:
