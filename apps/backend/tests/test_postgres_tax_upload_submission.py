@@ -35,6 +35,7 @@ from test_company_tax_delivery_observation import instance_document
 from test_company_tax_delivery_journal import INSTANCE,DATA
 
 pytestmark=pytest.mark.company_tax_database
+NATIVE_JOB="storeDokument-native-http-v1"
 
 
 @pytest.fixture
@@ -48,7 +49,8 @@ def upload_http(upload_database,current_draft,monkeypatch):
         async with session.transaction() as tx:await tx.store_delivery_draft(value)
     asyncio.run(store())
     state={'calls':[],'uploadPosts':0,'uploaded':None,'lost':False,'parallel':False,'barrier':threading.Barrier(2),
-        'on_upload':lambda:None,'on_file':lambda:None,'errors':[],'key':uuid4().hex+uuid4().hex,'run':str(uuid4())}
+        'on_upload':lambda:None,'on_file':lambda:None,'on_validation':lambda:None,'on_job':lambda:None,'on_result':lambda:None,
+        'scan':'Pending','validationPosts':0,'lostValidation':False,'validationResult':None,'jobStatus':'FERDIG','errors':[],'key':uuid4().hex+uuid4().hex,'run':str(uuid4())}
     class Authority(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
         def respond(self,status,raw,media='application/json'):
@@ -66,19 +68,32 @@ def upload_http(upload_database,current_draft,monkeypatch):
                 self.check()
                 if self.path=='/api/skattemelding/v2/2025/'+value.envelope.source.organization_number:
                     return self.respond(200,value.current_document.response.raw_bytes)
+                if self.path.endswith('/'+NATIVE_JOB+'/status'):
+                    state['on_job']();return self.respond(200,json.dumps({'jobbStatus':state['jobStatus'],'forrigeStatus':'KJOERER',
+                        'sekunderSidenOpprettelse':10,'sekunderSidenEndring':1}).encode())
+                if self.path.endswith('/'+NATIVE_JOB+'/resultat'):
+                    state['on_result']();return self.respond(200,state['validationResult'],'application/xml')
                 if self.path.endswith('/data/'+DATA):
                     state['on_file']();return self.respond(200,state['uploaded'],'application/xml')
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE
                 if state['parallel'] and state['uploaded'] is None:state['barrier'].wait(timeout=5)
                 body=instance_document(value)
                 if state['uploaded'] is not None:body['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
-                    'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':'Pending'}]
+                    'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
                 self.respond(200,b'\xef\xbb\xbf'+json.dumps(body).encode()+b'\n')
             except Exception as error:state['errors'].append(type(error).__name__);self.respond(500,b'{}')
         def do_POST(self):
             try:
                 self.check();raw=self.rfile.read(int(self.headers['Content-Length']))
                 if self.path=='/skd/formueinntekt-skattemelding-v2/instances/':return self.respond(201,json.dumps({'id':INSTANCE}).encode())
+                if self.path=='/api/skattemelding/v2/jobb/altinn/2025/'+value.envelope.source.organization_number+'/start':
+                    assert json.loads(raw)=={'appId':'skd/formueinntekt-skattemelding-v2','instansId':INSTANCE}
+                    with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:
+                        assert db.execute("select count(*) from company_tax_filing.delivery_events where filing_id=%s and slot='intent:start_validation' and canonical_json::jsonb->>'version'='company-tax-delivery-mutation-request-v3'",(value.filing_id,)).fetchone()==(1,)
+                    state['validationPosts']+=1;state['on_validation']()
+                    if state['lostValidation']:
+                        self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                    return self.respond(200,b'\xef\xbb\xbf \n'+json.dumps({'jobbId':NATIVE_JOB,'jobbStatus':'OPPRETTET'}).encode()+b'\n')
                 assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data?dataType=skattemeldingOgNaeringsspesifikasjon'
                 assert raw==value.envelope.envelope_xml.encode()
                 with psycopg.connect(**upload_database,user='postgres',autocommit=True) as db:

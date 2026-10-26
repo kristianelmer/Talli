@@ -13,8 +13,11 @@ from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCo
 from .delivery_observation import (TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation,
     decode_tax_delivery_observation)
 from .delivery_envelope_observation import TaxDeliveryEnvelopeObservation,decode_tax_delivery_envelope_observation
+from .delivery_validation_job import TaxDeliveryValidationJobObservation,decode_tax_delivery_validation_job_observation
+from .delivery_validation_result import TaxDeliveryValidationResultObservation,decode_tax_delivery_validation_result_observation
 
-_EVIDENCE=(TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation)
+_EVIDENCE=(TaxDeliveryAdmissionEvidence,TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,
+    TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
 
 
 def _guarded_upload_value(value):
@@ -23,9 +26,14 @@ def _guarded_upload_value(value):
         or type(value) is TaxDeliveryMutationCompletion and value.upload_read_evidence is not None)
 
 
+def _validation_value(value):
+    return (type(value) in (TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
+        or type(value) is TaxDeliveryMutationRequest and value.validation_prerequisite is not None)
+
+
 @dataclass(frozen=True, slots=True)
 class StoredTaxDeliveryEvent:
-    value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation
+    value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation | TaxDeliveryValidationJobObservation | TaxDeliveryValidationResultObservation
     recorded_at: Timestamp
     recorded_by: ActorId
 
@@ -47,22 +55,27 @@ class StoredTaxDeliveryEvent:
         if type(self.value) is TaxDeliveryAdmissionEvidence:return 'admission'
         if type(self.value) is TaxDeliveryInstanceObservation:return 'observation:instance:'+self.value.evidence_sha256
         if type(self.value) is TaxDeliveryEnvelopeObservation:return 'observation:envelope:'+self.value.evidence_sha256
+        if type(self.value) is TaxDeliveryValidationJobObservation:return 'observation:validation-job:'+self.value.evidence_sha256
+        if type(self.value) is TaxDeliveryValidationResultObservation:return 'observation:validation-result:'+self.value.evidence_sha256
         prefix='completion' if type(self.value) is TaxDeliveryMutationCompletion else 'intent'
         return prefix+':'+self.binding.kind.value
 
 
 def decode_tax_delivery_event(raw: str, expected_sha256: str, recorded_at: Timestamp, recorded_by: ActorId,
-        *,guarded_upload: bool=False) -> StoredTaxDeliveryEvent:
+        *,guarded_upload: bool=False,validation_evidence: bool=False) -> StoredTaxDeliveryEvent:
     # Each decoder checks the exact complete envelope, canonical bytes, hash,
     # duplicate keys, field sets and its own bounded payload. This dispatch does
     # not downgrade unknown versions or infer them from optional fields.
-    if type(guarded_upload) is not bool or type(raw) is not str or len(raw.encode('utf-8'))>(24*1024*1024+32768 if guarded_upload else 12*1024*1024+16384):
+    if (type(guarded_upload) is not bool or type(validation_evidence) is not bool or validation_evidence and not guarded_upload
+            or type(raw) is not str or len(raw.encode('utf-8'))>(24*1024*1024+32768 if guarded_upload else 12*1024*1024+16384)):
         raise ValueError('Tax event original exceeds its limit.')
     try:
         version=json.loads(raw)['version']
         guarded_versions={'company-tax-delivery-mutation-request-v2','company-tax-delivery-mutation-completion-v2',
             'company-tax-delivery-envelope-observation-v1'}
         if version in guarded_versions and not guarded_upload:raise ValueError()
+        if version in ('company-tax-delivery-mutation-request-v3','company-tax-delivery-validation-job-observation-v1',
+                'company-tax-delivery-validation-result-observation-v1') and not validation_evidence:raise ValueError()
         decoder={
             'company-tax-delivery-review-approval-v1':decode_tax_delivery_review_approval,
             'company-tax-delivery-mutation-request-v1':decode_tax_delivery_mutation_request,
@@ -72,6 +85,9 @@ def decode_tax_delivery_event(raw: str, expected_sha256: str, recorded_at: Times
             'company-tax-delivery-mutation-request-v2':decode_tax_delivery_mutation_request,
             'company-tax-delivery-mutation-completion-v2':decode_tax_delivery_mutation_completion,
             'company-tax-delivery-envelope-observation-v1':decode_tax_delivery_envelope_observation,
+            'company-tax-delivery-mutation-request-v3':decode_tax_delivery_mutation_request,
+            'company-tax-delivery-validation-job-observation-v1':decode_tax_delivery_validation_job_observation,
+            'company-tax-delivery-validation-result-observation-v1':decode_tax_delivery_validation_result_observation,
         }[version]
         return StoredTaxDeliveryEvent(decoder(raw,expected_sha256),recorded_at,recorded_by)
     except (KeyError,TypeError,ValueError,RecursionError,OverflowError):
@@ -90,13 +106,15 @@ class TaxDeliveryJournal:
     events: tuple[StoredTaxDeliveryEvent, ...]
     read_evidence: bool=False
     guarded_upload: bool=False
+    validation_evidence: bool=False
 
     def __post_init__(self):
         if (type(self.draft) is not TaxDeliveryDraft or type(self.read_evidence) is not bool or type(self.guarded_upload) is not bool
+                or type(self.validation_evidence) is not bool or self.validation_evidence and not self.guarded_upload
                 or self.guarded_upload and not self.read_evidence):raise ValueError('Tax journal draft is invalid.')
         object.__setattr__(self,'events',tuple(self.events))
         if len(self.events)>2048:raise ValueError('Tax journal exceeds its evidence limit.')
-        approval=None;admission=None;requests={};request_times={};completions={};instances={};slots=set();previous_time=None
+        approval=None;admission=None;requests={};request_times={};completions={};completion_times={};instances={};envelopes={};jobs={};slots=set();previous_time=None
         for event in self.events:
             if type(event) is not StoredTaxDeliveryEvent or event.slot in slots:
                 raise ValueError('Tax journal has duplicate or invalid events.')
@@ -109,6 +127,8 @@ class TaxDeliveryJournal:
                 raise ValueError('Tax journal contains foreign scope.')
             value=event.value
             if _guarded_upload_value(value) and not self.guarded_upload:raise ValueError('Tax upload proof requires the successor contract.')
+            if _validation_value(value) and not self.validation_evidence:
+                raise ValueError('Tax validation proof requires the successor contract.')
             if type(value) in _EVIDENCE and not self.read_evidence:raise ValueError('Tax read evidence requires the successor contract.')
             if type(value) is TaxDeliveryReviewApproval:
                 if self.events[0]!=event:raise ValueError('Tax review must precede effects.')
@@ -127,6 +147,19 @@ class TaxDeliveryJournal:
                     instance=instances.get(value.instance_evidence_sha256)
                     if instance is None:raise ValueError('Tax envelope has no retained metadata predecessor.')
                     value.assert_instance(approval,self.draft,instance)
+                    envelopes[value.evidence_sha256]=value
+                elif type(value) is TaxDeliveryValidationJobObservation:
+                    request=requests.get(TaxMutationKind.START_VALIDATION);started=completions.get(TaxMutationKind.START_VALIDATION)
+                    if request is None or started is None:raise ValueError('Tax status has no retained known job.')
+                    value.assert_started(approval,self.draft,request,started)
+                    if not completion_times[TaxMutationKind.START_VALIDATION].value<=value.observed_at.value<=event.recorded_at.value:
+                        raise ValueError('Tax job read is outside its committed start/record interval.')
+                    jobs[value.evidence_sha256]=value
+                elif type(value) is TaxDeliveryValidationResultObservation:
+                    job=jobs.get(value.job_status_evidence_sha256)
+                    if job is None:raise ValueError('Tax result has no retained known-job status.')
+                    value.assert_status(approval,self.draft,requests[TaxMutationKind.START_VALIDATION],completions[TaxMutationKind.START_VALIDATION],job)
+                    if value.observed_at.value>event.recorded_at.value:raise ValueError('Tax result read postdates its record.')
                 elif type(value) is TaxDeliveryMutationRequest:
                     value.assert_draft(approval,self.draft)
                     kinds=list(TaxMutationKind);index=kinds.index(value.kind)
@@ -139,6 +172,13 @@ class TaxDeliveryJournal:
                         if admission is None or instance is None:raise ValueError('Tax upload has no retained admission and instance proof.')
                         value.upload_prerequisite.assert_retained(approval,self.draft,instance)
                         value.upload_prerequisite.assert_current(event.recorded_at)
+                    if value.validation_prerequisite is not None:
+                        proof=value.validation_prerequisite
+                        instance=instances.get(proof.instance_read.evidence_sha256);envelope=envelopes.get(proof.envelope_read.evidence_sha256)
+                        if admission is None or instance is None or envelope is None:raise ValueError('Tax validation has no retained Clean/file originals.')
+                        proof.assert_retained(approval,self.draft,instance,envelope);proof.assert_current(event.recorded_at)
+                        if proof.observed_from.value<completion_times[TaxMutationKind.UPLOAD_ENVELOPE].value:
+                            raise ValueError('Tax validation reads predate the retained known upload result.')
                     requests[value.kind]=value
                     request_times[value.kind]=event.recorded_at
                 else:
@@ -147,6 +187,7 @@ class TaxDeliveryJournal:
                     if value.upload_read_evidence is not None and value.upload_read_evidence.instance.observed_at.value<request_times[value.intent.kind].value:
                         raise ValueError('Tax upload recovery read predates its committed request.')
                     completions[value.intent.kind]=value
+                    completion_times[value.intent.kind]=event.recorded_at
             slots.add(event.slot)
 
     @property
@@ -179,14 +220,17 @@ class TaxDeliveryJournal:
         intent=request.intent(self.approval)
         prior=next((event.value for event in self.events if event.slot=='intent:'+request.kind.value),None)
         if prior is None:
-            if self.guarded_upload and request.kind is not TaxMutationKind.CREATE_INSTANCE and request.upload_prerequisite is None:
+            if (self.guarded_upload and request.kind is not TaxMutationKind.CREATE_INSTANCE
+                    and request.upload_prerequisite is None and request.validation_prerequisite is None):
                 raise ValueError('A new later-stage Tax intent requires retained prerequisites.')
             # Validate an append in the same order persistence will retain it.
             # Historical reconstruction validates server recording time. A new
             # upload's eventual SQL record must follow its completed fresh read.
-            recorded_at=(Timestamp(max(request.upload_prerequisite.observed_until.value,self.events[-1].recorded_at.value))
-                if request.upload_prerequisite is not None else self.events[-1].recorded_at)
-            TaxDeliveryJournal(self.draft,self.events+(StoredTaxDeliveryEvent(request,recorded_at,self.approval.approved_by),),self.read_evidence,self.guarded_upload)
+            proof=request.upload_prerequisite or request.validation_prerequisite
+            recorded_at=(Timestamp(max(proof.observed_until.value,self.events[-1].recorded_at.value))
+                if proof is not None else self.events[-1].recorded_at)
+            TaxDeliveryJournal(self.draft,self.events+(StoredTaxDeliveryEvent(request,recorded_at,self.approval.approved_by),),
+                self.read_evidence,self.guarded_upload,self.validation_evidence)
             return plan_tax_mutation(intent,None)
         completion=next((event.value for event in self.events if event.slot=='completion:'+request.kind.value),None)
         record=TaxMutationRecord(prior.intent(self.approval),'completed' if completion else 'uncertain',
@@ -228,11 +272,12 @@ def assert_tax_delivery_attempt_history(query,snapshot,filing_id: str) -> TaxDel
     """
     from .public import CompanyTaxError,project_company_tax_source
     facts=project_company_tax_source(query,snapshot)
-    if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5') or facts.history_coverage.status!='complete':
+    if snapshot.contract_version not in ('company-tax-source-v3','company-tax-source-v4','company-tax-source-v5','company-tax-source-v6') or facts.history_coverage.status!='complete':
         raise CompanyTaxError.unavailable()
     if any(event.binding.filing_id!=filing_id for event in snapshot.delivery_events):
         raise CompanyTaxError.draft_conflict()
     draft=next((row.draft for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
     if draft is None:raise CompanyTaxError.not_found()
     return TaxDeliveryJournal(draft,tuple(event for event in snapshot.delivery_events if event.binding.filing_id==filing_id),
-        snapshot.contract_version in ('company-tax-source-v4','company-tax-source-v5'),snapshot.contract_version=='company-tax-source-v5')
+        snapshot.contract_version in ('company-tax-source-v4','company-tax-source-v5','company-tax-source-v6'),
+        snapshot.contract_version in ('company-tax-source-v5','company-tax-source-v6'),snapshot.contract_version=='company-tax-source-v6')

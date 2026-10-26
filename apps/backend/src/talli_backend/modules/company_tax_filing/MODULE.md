@@ -362,8 +362,8 @@ then performs the fixed-path create. An uncertain intent never elects another
 send. Results are bound to exact original bytes and retained through the narrow
 original-actor completion RPC even if access changes during I/O. Approval retries
 return the immutable original review receipt. Unknown create reconciliation has
-no invented lookup or lease reset. Guarded upload requires the Source V5 successor below. Validation and
-confirmation remain closed until their retained prerequisites are implemented.
+no invented lookup or lease reset. Guarded upload requires Source V5; guarded validation requires Source V6 below.
+Confirmation remains closed until its retained prerequisites are implemented.
 
 <!-- architecture-inventory
 {"ports":["TaxDeliveryMutationAuthority"]}
@@ -458,3 +458,76 @@ clients request `readEvidence=true&readEvidenceVersion=2`. Predecessor requests
 receive a complete reprojected V4 or V3 only while all retained codecs fit that
 version; unsupported originals make the request unavailable, never incomplete.
 No hosted/provider activation follows from installing the local successor.
+
+`TaxValidationResponseInspection`, `TaxValidationResultCode` and
+`TaxValidationCalculatedDocument` describe local structural inspection of the
+separate pinned common V2 validation-response schema. Exact response and decoded
+document bytes remain distinct. Counts expose calculation deviations, validation
+deviations, guidance and failure reasons, including guidance accompanying
+`validertOK`. No field is a filing-readiness attestation. The schema has no
+company/year/job identity; known-job scope and calculated-document scope still
+need separate checks before any consequential operation.
+
+<!-- architecture-inventory
+{"ports":["TaxValidationResponseValidator"]}
+-->
+
+`TaxDeliveryValidationPrerequisite` and
+`bind_tax_delivery_validation_prerequisite` require fresh metadata and file
+reads within one 30-second window, exact approved bytes, exact `Clean` scan
+status, one reviewed data resource and an unarchived active data task. Fresh
+read times remain separate from the first retained canonical originals. This
+proof has no dispatch authority without the positive V6 intent/store and current
+application access, owning-source, current-document and finite admission checks.
+The release drift probe checks both the original delivery bundle and separate
+validation-response bundle against one current official repository commit; a
+changed, missing or unreadable response resource prevents a current verdict.
+
+`TaxDeliveryValidationJobObservation` retains exact known-job status JSON;
+`TaxValidationJobInspection` derives the documented `TaxValidationJobStatus`,
+previous status and bounded timing fields. Malformed/ambiguous status remains
+unknown; a recognizable foreign job is rejected. No lost job ID has a lookup
+or retry path. `decode_tax_delivery_validation_job_observation` preserves exact
+canonical originals and their stable content identities across later polls.
+
+`TaxDeliveryValidationResultObservation` links exact XML to the same retained
+start request and finished known-job original. The separate response schema pin
+is rechecked during inspection; no caller-provided success flag is stored.
+`decode_tax_delivery_validation_result_observation` retains unknown/malformed
+XML originals without promoting them to a positive validation result. These
+V5 journal/store refuses these new read codecs and V3 requests. Source V6 /
+Journal V4 admit them only with complete prefix and positive contract proof.
+
+The deferred `20261026143210_company_tax_validation_evidence_v1.sql` installs
+Source V6 / Journal V4 over the same nine tables before opening its default-false
+validation fence. The matching rollback closes new validation intents and read
+writes after company-lock waits; every original and compatible reader remains.
+Known original-actor start results retain their narrow completion path even
+after access, MFA or containment changes. Raw status JSON uses exact lexical
+integer fields; decimal/exponent timing stays unknown, while an unrelated large
+numeric value cannot prevent retaining the original.
+
+`CompanyTaxDeliverySubmission.advance_validation` requires a known upload,
+complete current owning sources and current authority document, then fresh Clean
+metadata plus exact approved file bytes. SQL commits the explicit V3 intent
+before one fixed-path validation-start POST. Lost response/commit acknowledgment
+never elects another start. Without a retained job ID, reconciliation performs
+no lookup or provider operation. Known jobs alone can be polled; only a finished
+status can supply a result GET target. Current owner/MFA gates run before each
+network read and again before retaining or disclosing read originals. All I/O
+runs outside SQL. Exact unknown/rejected XML stays retained without Tax success.
+
+The archive client keeps `readEvidenceVersion=2` and additionally requests
+`validationEvidence=true`. A prior backend ignores the additive capability and
+returns its complete supported V5/V4/V3 archive. A V6 backend returns compatible
+V5 to older clients only before validation originals exist; it never omits them.
+Invalid higher-version proof fails before any downgrade. New web readers verify
+scope, exact bytes, hashes, causal prefix, fresh Clean/file references and known
+job/status/result identities; retaining XML does not itself prove local XSD or
+inner-document scope, owner confirmation, submission or Tax acceptance.
+
+Validation JSON inspection removes exactly one leading UTF-8 BOM while retaining
+all original bytes; a second BOM remains unknown and cannot authorize a result.
+The web reader rejects recognizable foreign job identity before checking timing
+syntax and requires closed V3 request and new observation roots, scope wrappers
+and time wrappers. No extra readiness field can extend a retained codec.

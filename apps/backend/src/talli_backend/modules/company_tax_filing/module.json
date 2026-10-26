@@ -114,7 +114,19 @@
       "TaxDeliveryUploadPrerequisite",
       "bind_tax_delivery_upload_prerequisite",
       "TaxDeliveryUploadReadEvidence",
-      "reconcile_tax_delivery_upload"
+      "reconcile_tax_delivery_upload",
+      "TaxValidationResponseValidator",
+      "TaxValidationResultCode",
+      "TaxValidationCalculatedDocument",
+      "TaxValidationResponseInspection",
+      "TaxDeliveryValidationPrerequisite",
+      "bind_tax_delivery_validation_prerequisite",
+      "TaxValidationJobStatus",
+      "TaxValidationJobInspection",
+      "TaxDeliveryValidationJobObservation",
+      "decode_tax_delivery_validation_job_observation",
+      "TaxDeliveryValidationResultObservation",
+      "decode_tax_delivery_validation_result_observation"
     ],
     "events": [],
     "errors": [
@@ -292,6 +304,15 @@
       "adapters": [
         "talli_backend.adapters.loopback_company_tax_delivery.LoopbackCompanyTaxDelivery"
       ]
+    },
+    {
+      "name": "TaxValidationResponseValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxValidationResponseValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas"
+      ]
     }
   ],
   "dependencies": [],
@@ -358,7 +379,16 @@
     "guardedUploadWorkflow": "apps/backend/tests/test_company_tax_delivery_upload_workflow.py",
     "guardedUploadDatabase": "apps/backend/tests/test_postgres_tax_guarded_upload.py",
     "uploadSubmissionDatabase": "apps/backend/tests/test_postgres_tax_upload_submission.py",
-    "guardedUploadTopology": "apps/backend/tests/test_company_tax_guarded_upload_database.py"
+    "guardedUploadTopology": "apps/backend/tests/test_company_tax_guarded_upload_database.py",
+    "validationResponseSchemas": "apps/backend/tests/test_company_tax_validation_response_schemas.py",
+    "validationPrerequisite": "apps/backend/tests/test_company_tax_validation_prerequisite.py",
+    "validationObservations": "apps/backend/tests/test_company_tax_validation_observations.py",
+    "validationTransport": "apps/backend/tests/test_company_tax_validation_transport.py",
+    "validationEvidenceDatabase": "apps/backend/tests/test_postgres_tax_validation_evidence.py",
+    "validationWorkflow": "apps/backend/tests/test_company_tax_delivery_validation_workflow.py",
+    "validationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_validation_submission.py",
+    "validationApi": "apps/backend/tests/test_company_tax_delivery_validation_api.py",
+    "validationTopology": "apps/backend/tests/test_company_tax_validation_database.py"
   },
   "compatibilityExceptions": []
 }

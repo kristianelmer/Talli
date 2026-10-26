@@ -19,6 +19,7 @@ from test_company_tax_delivery_journal_archive import complete_archive
 from test_company_tax_delivery_submission import workflow,advancing
 from test_company_tax_delivery_journal import INSTANCE,DATA
 from test_company_tax_delivery_observation import instance_document
+from test_company_tax_validation_response_schemas import xml
 
 
 @pytest.fixture
@@ -31,15 +32,29 @@ def upload_workflow(workflow):
         clock[0]=Timestamp(clock[0].value+timedelta(milliseconds=1));return clock[0]
     session.current_time=tick
     state={'uploaded':None,'uploadPosts':0,'lost':False,'metadata':None,'on_metadata':lambda:None,
-        'on_file':lambda:None,'on_upload':lambda:None,'on_current':lambda:None}
+        'on_file':lambda:None,'on_upload':lambda:None,'on_current':lambda:None,
+        'scan':'Pending','validationPosts':0,'lostValidation':False,'startStatus':'OPPRETTET','jobStatus':'FERDIG',
+        'jobBody':None,'resultBytes':xml(),'on_validation':lambda:None,'on_job':lambda:None,'on_result':lambda:None}
     async def authority(request):
         assert session.active==[],'Every provider operation follows closed SQL contexts.'
         tick();calls.append((request.method,request.url.path))
-        if request.method=='GET' and request.url.path.startswith('/api/skattemelding/'):
+        if request.method=='GET' and request.url.path.endswith('/storeDokument-workflow-v1/status'):
+            state['on_job']()
+            return httpx.Response(200,content=state['jobBody'],headers={'content-type':'application/json'}) if state['jobBody'] is not None else httpx.Response(200,json={
+                'jobbStatus':state['jobStatus'],'forrigeStatus':'KJOERER','sekunderSidenOpprettelse':10,'sekunderSidenEndring':1})
+        if request.method=='GET' and request.url.path.endswith('/storeDokument-workflow-v1/resultat'):
+            state['on_result']();return httpx.Response(200,content=state['resultBytes'],headers={'content-type':'application/xml'})
+        if request.method=='GET' and request.url.path=='/api/skattemelding/v2/2025/'+session.draft.envelope.source.organization_number:
             state['on_current']();return httpx.Response(200,content=session.draft.current_document.response.raw_bytes)
         if request.method=='POST' and request.url.path.endswith('/instances/'):
             assert any(event.slot=='intent:create_instance' for event in session.events)
             return httpx.Response(201,json={'id':INSTANCE})
+        if request.method=='POST' and request.url.path.endswith('/start'):
+            assert any(event.slot=='intent:start_validation' for event in session.events)
+            assert json.loads(request.content)=={'appId':'skd/formueinntekt-skattemelding-v2','instansId':INSTANCE}
+            state['validationPosts']+=1;state['on_validation']()
+            if state['lostValidation']:raise httpx.ReadTimeout('synthetic validation start acknowledgement lost',request=request)
+            return httpx.Response(200,json={'jobbId':'storeDokument-workflow-v1','jobbStatus':state['startStatus']})
         if request.method=='POST':
             assert request.url.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data'
             assert request.url.params['dataType']=='skattemeldingOgNaeringsspesifikasjon'
@@ -55,7 +70,7 @@ def upload_workflow(workflow):
         if state['metadata'] is not None:return httpx.Response(200,content=state['metadata'],headers={'content-type':'application/json'})
         value=instance_document(session.draft)
         if state['uploaded'] is not None:value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
-            'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':'Pending'}]
+            'contentType':'application/xml','size':len(state['uploaded']),'fileScanResult':state['scan']}]
         return httpx.Response(200,json=value)
     service._authority=LoopbackCompanyTaxDelivery(service._runtime,transport=httpx.MockTransport(authority))
     return session,service,command,calls,state,clock,grant

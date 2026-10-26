@@ -18,6 +18,7 @@ from .delivery_draft import TaxDeliveryDraft, _canonical, _object
 from .delivery_original import _bytes,_instance,_response_object,_uuid,_MAX_BODY
 from .delivery_upload_prerequisite import TaxDeliveryUploadPrerequisite,_decode_upload_prerequisite
 from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence,_decode_upload_read_evidence
+from .delivery_validation_prerequisite import TaxDeliveryValidationPrerequisite,_decode_validation_prerequisite
 
 _APP_ID='skd/formueinntekt-skattemelding-v2'
 
@@ -33,6 +34,7 @@ class TaxDeliveryMutationRequest:
     target_instance: str | None
     body_base64: str
     upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None
+    validation_prerequisite: TaxDeliveryValidationPrerequisite | None=None
 
     def __post_init__(self):
         _uuid(self.filing_id);_digest(self.approval_sha256)
@@ -51,6 +53,11 @@ class TaxDeliveryMutationRequest:
                 or self.kind is not TaxMutationKind.UPLOAD_ENVELOPE
                 or self.upload_prerequisite.instance_id!=self.target_instance):
             raise ValueError('Tax upload prerequisite differs from its exact request.')
+        if self.validation_prerequisite is not None and (
+                type(self.validation_prerequisite) is not TaxDeliveryValidationPrerequisite
+                or self.upload_prerequisite is not None or self.kind is not TaxMutationKind.START_VALIDATION
+                or self.validation_prerequisite.instance_id!=self.target_instance):
+            raise ValueError('Tax validation prerequisite differs from its exact request.')
 
     @property
     def body_bytes(self) -> bytes:
@@ -62,6 +69,8 @@ class TaxDeliveryMutationRequest:
         version='company-tax-delivery-mutation-request-v2'
         if self.upload_prerequisite is None:
             value.pop('upload_prerequisite');version='company-tax-delivery-mutation-request-v1'
+        if self.validation_prerequisite is None:value.pop('validation_prerequisite')
+        else:version='company-tax-delivery-mutation-request-v3'
         return _canonical({'version':version,'request':value})
 
     @property
@@ -78,13 +87,14 @@ class TaxDeliveryMutationRequest:
 
     def assert_draft(self, approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft) -> None:
         if self != build_tax_delivery_mutation_request(approval,draft,self.kind,target_instance=self.target_instance,
-                upload_prerequisite=self.upload_prerequisite):
+                upload_prerequisite=self.upload_prerequisite,validation_prerequisite=self.validation_prerequisite):
             raise ValueError('Tax mutation request differs from the approved original.')
 
 
 def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft,
         kind: TaxMutationKind, *, target_instance: str | None = None,
-        upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None) -> TaxDeliveryMutationRequest:
+        upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None,
+        validation_prerequisite: TaxDeliveryValidationPrerequisite | None=None) -> TaxDeliveryMutationRequest:
     """Create exact nonsecret wire bodies; an operation never accepts a URL.
 
     These bodies preserve the fixed Tax application contract. The eventual
@@ -103,7 +113,8 @@ def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, dra
         body=json.dumps({'appId':_APP_ID,'instansId':_instance(target_instance)},separators=(',',':')).encode()
     else:body=b''
     return TaxDeliveryMutationRequest(draft.filing_id,source.company_id,source.income_year,
-        source.organization_number,approval.sha256,kind,target_instance,base64.b64encode(body).decode('ascii'),upload_prerequisite)
+        source.organization_number,approval.sha256,kind,target_instance,base64.b64encode(body).decode('ascii'),
+        upload_prerequisite,validation_prerequisite)
 
 
 class TaxDeliveryCompletionOrigin(StrEnum):
@@ -183,6 +194,8 @@ class TaxDeliveryMutationCompletion:
                 self.result['envelopeSha256']!=hashlib.sha256(request.body_bytes).hexdigest()):
             raise ValueError('Tax completion refers to different envelope bytes.')
         if self.upload_read_evidence is not None:self.upload_read_evidence.assert_request(request)
+        if request.validation_prerequisite is not None and _response_object(self.response_bytes).get('jobbStatus')!='OPPRETTET':
+            raise ValueError('Tax validation start response does not confirm a created job.')
 
 
 def complete_tax_delivery_mutation(request: TaxDeliveryMutationRequest, approval: TaxDeliveryReviewApproval,
@@ -249,12 +262,14 @@ def decode_tax_delivery_mutation_request(raw: str, expected_sha256: str) -> TaxD
     try:
         if type(raw) is not str or len(raw.encode('utf-8'))>12*1024*1024+16384:raise ValueError()
         version=_response_object(raw.encode('utf-8')).get('version')
-        if version not in ('company-tax-delivery-mutation-request-v1','company-tax-delivery-mutation-request-v2'):raise ValueError()
+        if version not in ('company-tax-delivery-mutation-request-v1','company-tax-delivery-mutation-request-v2','company-tax-delivery-mutation-request-v3'):raise ValueError()
         successor=version=='company-tax-delivery-mutation-request-v2'
+        validation=version=='company-tax-delivery-mutation-request-v3'
         value=_object(_decode(raw,expected_sha256,version,'request'),
             ('filing_id','company_id','income_year','organization_number','approval_sha256','kind','target_instance','body_base64',
-                *(('upload_prerequisite',) if successor else ())))
+                *(('upload_prerequisite',) if successor else ()),*(('validation_prerequisite',) if validation else ())))
         if successor:value=value|{'upload_prerequisite':_decode_upload_prerequisite(value['upload_prerequisite'])}
+        if validation:value=value|{'validation_prerequisite':_decode_validation_prerequisite(value['validation_prerequisite'])}
         company=_object(value['company_id'],('value',));year=_object(value['income_year'],('value',))
         result=TaxDeliveryMutationRequest(**(value|{'company_id':CompanyId(company['value']),
             'income_year':IncomeYear(year['value']),'kind':TaxMutationKind(value['kind'])}))

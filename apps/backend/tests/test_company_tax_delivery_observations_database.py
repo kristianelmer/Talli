@@ -18,6 +18,7 @@ from psycopg.conninfo import conninfo_to_dict
 import pytest
 
 from talli_backend.adapters.company_tax_schemas import PinnedTax2025Schemas
+from talli_backend.adapters.company_tax_response_schemas import PinnedTaxValidationResponseSchemas
 from talli_backend.adapters.loopback_company_tax_delivery import LoopbackCompanyTaxDelivery
 from talli_backend.application.company_tax_delivery_rehearsal import (
     TaxDeliveryRehearsalAdmission,TaxDeliveryRehearsalRuntime,loopback_tax_database_scope,
@@ -33,13 +34,17 @@ pytestmark=pytest.mark.company_tax_database
 
 
 @contextmanager
-def finite_http(signed_runtime,*,upload=False):
+def finite_http(signed_runtime,*,upload=False,validation=False):
+    upload=upload or validation
     connection,token,aal1=signed_runtime;url,backend,cid,actor,sessions=connection
     app,command,_,original=configured(connection);app._sessions=sessions
     async def prepare():return await (await app.session(token)).prepare_delivery_draft(command)
     draft=asyncio.run(prepare()).draft
     state={'calls':[],'grant':None,'revoke':False,'uploaded':None,'lostUpload':False,
-        'fileBytes':None,'onFile':lambda:None,'errors':[]}
+        'fileBytes':None,'onFile':lambda:None,'errors':[],
+        'scan':'Clean' if validation else 'Pending','validationPosts':0,'lostValidation':False,
+        'onValidation':lambda:None,'onJob':lambda:None,'jobStatus':'FERDIG','jobId':'storeDokument-signed-http-v1',
+        'validationResult':b'\xef\xbb\xbf<skattemeldingOgNaeringsspesifikasjonResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:response:v2"><veiledningEtterKontroll><veiledning><veiledningstype>guidance</veiledningstype><hjelpetekst>Kontroller bel\xc3\xb8pet</hjelpetekst></veiledning></veiledningEtterKontroll><resultatAvValidering>validertOK</resultatAvValidering></skattemeldingOgNaeringsspesifikasjonResponse>\n'}
     user=conninfo_to_dict(backend)['user']
     class Authority(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
@@ -58,6 +63,12 @@ def finite_http(signed_runtime,*,upload=False):
             self.check_request()
             if self.path=='/api/skattemelding/v2/2025/'+draft.envelope.source.organization_number:
                 return self.respond(200,original.raw_bytes)
+            if validation and self.path.endswith('/'+state['jobId']+'/status'):
+                state['onJob']()
+                return self.respond(200,json.dumps({'jobbStatus':state['jobStatus'],'forrigeStatus':'KJOERER',
+                    'sekunderSidenOpprettelse':0,'sekunderSidenEndring':0}).encode())
+            if validation and self.path.endswith('/'+state['jobId']+'/resultat'):
+                return self.respond(200,state['validationResult'],'application/xml')
             if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data/'+DATA:
                 state['onFile']()
                 return self.respond(200,state['uploaded'] if state['fileBytes'] is None else state['fileBytes'],'application/xml')
@@ -72,7 +83,7 @@ def finite_http(signed_runtime,*,upload=False):
             if upload and state['uploaded'] is not None:
                 raw=state['uploaded'] if state['fileBytes'] is None else state['fileBytes']
                 value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
-                    'contentType':'application/xml','size':len(raw),'fileScanResult':'Pending'}]
+                    'contentType':'application/xml','size':len(raw),'fileScanResult':state['scan']}]
             state['original']=b'\xef\xbb\xbf'+json.dumps(value,indent=2).encode()+b'\n'
             self.respond(200,state['original'])
         def do_POST(self):
@@ -81,6 +92,16 @@ def finite_http(signed_runtime,*,upload=False):
             with psycopg.connect(url) as db:
                 rows=db.execute('select slot,canonical_json from company_tax_filing.delivery_events where filing_id=%s order by sequence',(draft.filing_id,)).fetchall()
                 import base64
+                if validation and self.path=='/api/skattemelding/v2/jobb/altinn/2025/'+draft.envelope.source.organization_number+'/start':
+                    assert rows[-1][0]=='intent:start_validation'
+                    assert json.loads(rows[-1][1])['version']=='company-tax-delivery-mutation-request-v3'
+                    assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body
+                    assert json.loads(body)=={'appId':'skd/formueinntekt-skattemelding-v2','instansId':INSTANCE}
+                    state['validationPosts']+=1;state['onValidation']()
+                    if state['lostValidation']:
+                        self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                    state['startOriginal']=b'\xef\xbb\xbf \n'+json.dumps({'jobbId':state['jobId'],'jobbStatus':'OPPRETTET'}).encode()+b'\n'
+                    return self.respond(200,state['startOriginal'])
                 if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data?dataType=skattemeldingOgNaeringsspesifikasjon':
                     assert rows[-1][0]=='intent:upload_envelope'
                     assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body==draft.envelope.envelope_xml.encode()
@@ -103,7 +124,8 @@ def finite_http(signed_runtime,*,upload=False):
             loopback_tax_database_scope(target['host'],int(target['port']),target['dbname'],target['user']),40)
         state['grant']=grant
         runtime=TaxDeliveryRehearsalRuntime(grant)
-        submission=CompanyTaxDeliverySubmission(runtime,LoopbackCompanyTaxDelivery(runtime),PinnedTax2025Schemas())
+        submission=CompanyTaxDeliverySubmission(runtime,LoopbackCompanyTaxDelivery(runtime),PinnedTax2025Schemas(),
+            response_schemas=PinnedTaxValidationResponseSchemas() if validation else None)
         client=TestClient(create_app(company_tax_session_factory=sessions,company_tax_delivery_submission=submission))
         yield client,draft,state,token,aal1
     finally:

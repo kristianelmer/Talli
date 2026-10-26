@@ -115,6 +115,122 @@ function guardedBundle({complete=true,fileBody="<approved/>"}={}) {
   return value;
 }
 
+function validationBundle({known=true,status="FERDIG",scan="Clean",fileBody="<approved/>",jobBody,
+  includeResult=known&&status==="FERDIG",schema="eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1",
+  resultStatusReference,resultJob,resultAt=3,jobAt=2,startStatus="OPPRETTET",resultBody="<unknown-result/>"}={}) {
+  const value=guardedBundle();const previous=JSON.parse(value.events.find(row=>row.slot.startsWith("observation:envelope:")).canonicalJson).observation;
+  const {original,observed_at,data_id,instance_evidence_sha256,...binding}=previous;
+  const time=seconds=>new Date(Date.parse(observedAt)+seconds*1000).toISOString();
+  const event=(slot,payload,seconds)=>{const raw=JSON.stringify(payload);return{filingId:filing,slot,recordedBy:actor,recordedAt:time(seconds),canonicalJson:raw,eventSha256:hash(raw)};};
+  const metadataRaw="\ufeff"+JSON.stringify({id:binding.instance_id,appId:"skd/formueinntekt-skattemelding-v2",instanceOwner:{organisationNumber:"999888777"},
+    dataValues:{inntektsaar:2025},process:{currentTask:{altinnTaskType:"data"}},status:{isArchived:false},data:[{id:data_id,
+      dataType:"skattemeldingOgNaeringsspesifikasjon",contentType:"application/xml",size:Buffer.byteLength(fileBody),fileScanResult:scan}]})+"\n";
+  const metadataIdentity=hash(JSON.stringify(["tax-instance-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,hash(metadataRaw)]));
+  const metadata=event("observation:instance:"+metadataIdentity,{version:"company-tax-delivery-instance-observation-v1",observation:{...binding,
+    observed_at:{value:time(1)},original:{purpose:"instance",body_base64:Buffer.from(metadataRaw).toString("base64"),content_type:"application/json",http_status:200}}},1.01);
+  const envelopeIdentity=hash(JSON.stringify(["tax-envelope-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,data_id,metadataIdentity,hash(fileBody)]));
+  const envelope=event("observation:envelope:"+envelopeIdentity,{version:"company-tax-delivery-envelope-observation-v1",observation:{...binding,
+    data_id,instance_evidence_sha256:metadataIdentity,observed_at:{value:time(1.1)},original:{purpose:"envelope",body_base64:Buffer.from(fileBody).toString("base64"),content_type:"application/xml",http_status:200}}},1.11);
+  const request=event("intent:start_validation",{version:"company-tax-delivery-mutation-request-v3",request:{...scope,
+    organization_number:"999888777",approval_sha256:binding.approval_sha256,kind:"start_validation",target_instance:binding.instance_id,
+    body_base64:Buffer.from(JSON.stringify({appId:"skd/formueinntekt-skattemelding-v2",instansId:binding.instance_id})).toString("base64"),
+    validation_prerequisite:{instance_id:binding.instance_id,data_id,observed_from:{value:time(1)},observed_until:{value:time(1.2)},
+      instance_read:{event_sha256:metadata.eventSha256,evidence_sha256:metadataIdentity,observed_at:{value:time(1)}},
+      envelope_read:{event_sha256:envelope.eventSha256,evidence_sha256:envelopeIdentity,observed_at:{value:time(1.1)}}}}},1.3);
+  value.events.push(metadata,envelope,request);
+  if(known) {
+    const job="storeDokument-client-v1";
+    const completion=event("completion:start_validation",{version:"company-tax-delivery-mutation-completion-v1",completion:{
+      intent:{...scope,approved_by:binding.approved_by,approval_sha256:binding.approval_sha256,kind:"start_validation",request_sha256:request.eventSha256},
+      result:{instanceId:binding.instance_id,jobId:job},observed_at:{value:time(1.4)},origin:"mutation_response",
+      response_base64:Buffer.from(JSON.stringify({jobbId:job,jobbStatus:startStatus})).toString("base64")}},1.5);
+    const context={...binding,job_id:job,start_request_sha256:request.eventSha256};
+    const raw=jobBody??("\ufeff"+JSON.stringify({jobbStatus:status,forrigeStatus:"KJOERER",sekunderSidenOpprettelse:0,sekunderSidenEndring:0})+"\n");
+    const identity=hash(JSON.stringify(["tax-validation-job-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,job,request.eventSha256,hash(raw)]));
+    const read=event("observation:validation-job:"+identity,{version:"company-tax-delivery-validation-job-observation-v1",observation:{...context,
+      observed_at:{value:time(jobAt)},original:{purpose:"validation_job",body_base64:Buffer.from(raw).toString("base64"),content_type:"application/json",http_status:200}}},2.1);
+    value.events.push(completion,read);
+    if(includeResult) {
+      const statusIdentity=resultStatusReference??identity;const resultJobId=resultJob??job;const xml="\ufeff"+resultBody+"\n";
+      const resultIdentity=hash(JSON.stringify(["tax-validation-result-read-identity-v1",filing,company,2025,actor,binding.approval_sha256,"999888777",binding.instance_id,resultJobId,request.eventSha256,statusIdentity,schema,hash(xml)]));
+      value.events.push(event("observation:validation-result:"+resultIdentity,{version:"company-tax-delivery-validation-result-observation-v1",observation:{...context,
+        job_id:resultJobId,job_status_evidence_sha256:statusIdentity,schema_sha256:schema,observed_at:{value:time(resultAt)},
+        original:{purpose:"validation_result",body_base64:Buffer.from(xml).toString("base64"),content_type:"application/xml",http_status:200}}},3.1));
+    }
+  }
+  value.eventCount=value.events.length;value.observedAt=time(4);value.sourceFacts.evidence.evaluatedAt=time(4);value.sourceFacts.historyCoverage.asOf=time(4);
+  value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v5:","v6:");
+  Object.assign(value.journals[0],{status:known?"mutation_completed":"uncertain",mutationKind:"start_validation",latestEventSha256:value.events.at(-1).eventSha256,recordedAt:value.events.at(-1).recordedAt});
+  return value;
+}
+
+for(const [name,options] of [
+  ["unknown start",{known:false}],["running known job",{status:"KJOERER"}],["finished known result",{}],
+  ["unknown exact status",{jobBody:"{",includeResult:false}],["unknown malformed job identity",{jobBody:'{"jobbId":[],"jobbStatus":"FERDIG"}',includeResult:false}],
+  ["huge unrelated numeric original",{jobBody:'{"jobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":0,"sekunderSidenEndring":0,"extra":1e200000}'}],
+])test(`validation archive preserves ${name} without inventing Tax acceptance`,async()=>{
+  const value=validationBundle(options);const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+  assert.equal(result.error,null);assert.deepEqual(result.data.journal.events,value.events);
+  assert.equal(result.data.journal.journals[0].status,options.known===false?"uncertain":"mutation_completed");
+  assert.equal(result.data.journal.journals[0].mutationKind,"start_validation");
+});
+
+for(const [name,options] of [
+  ["pending scan",{scan:"Pending"}],["infected scan",{scan:"Infected"}],["changed approved file",{fileBody:"<different/>"}],
+  ["unsupported schema pin",{schema:"f".repeat(64)}],["missing status reference",{resultStatusReference:"f".repeat(64)}],
+  ["foreign result job",{resultJob:"another-job"}],["job read before start commit",{jobAt:1.4}],
+  ["result before status",{resultAt:1.9}],["start response not created",{startStatus:"FERDIG"}],
+  ["nonfinished job result",{status:"KJOERER",includeResult:true}],
+  ["ambiguous status result",{jobBody:'{"jobbStatus":"KJOERER","jobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":0,"sekunderSidenEndring":0}'}],
+  ["escaped duplicate status",{jobBody:'{"jobbStatus":"KJOERER","\\u006aobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":0,"sekunderSidenEndring":0}'}],
+  ["foreign job with malformed timing",{jobBody:'{"jobbId":"another-job","jobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":10.0,"sekunderSidenEndring":0}',includeResult:false}],
+  ["decimal timing",{jobBody:'{"jobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":1.0,"sekunderSidenEndring":0}'}],
+  ["exponent timing",{jobBody:'{"jobbStatus":"FERDIG","forrigeStatus":"KJOERER","sekunderSidenOpprettelse":1e1,"sekunderSidenEndring":0}'}],
+])test(`validation archive refuses consistently hashed ${name}`,async()=>{
+  const value=validationBundle(options);const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+  assert.equal(result.data,null);assert.ok(result.error);
+});
+
+for(const name of ["old-reader","duplicate-root-key","escaped-duplicate-root-key","extra-root-field","extra-company-wrapper","extra-income-wrapper","extra-actor-wrapper","extra-subject-wrapper","extra-time-wrapper"])test(`validation archive refuses ${name}`,async()=>{
+  const value=validationBundle();
+  if(name==="old-reader")value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v6:","v5:");
+  else if(name.startsWith("extra-")) {
+    const record=value.events.at(-1);const raw=JSON.parse(record.canonicalJson);const binding=raw.observation;
+    if(name==="extra-root-field")raw.unsupported=true;
+    else if(name==="extra-company-wrapper")binding.company_id.unsupported=true;
+    else if(name==="extra-income-wrapper")binding.income_year.unsupported=true;
+    else if(name==="extra-actor-wrapper")binding.approved_by.unsupported=true;
+    else if(name==="extra-subject-wrapper")binding.approved_by.subject.unsupported=true;
+    else binding.observed_at.unsupported=true;
+    record.canonicalJson=JSON.stringify(raw);record.eventSha256=hash(record.canonicalJson);value.journals[0].latestEventSha256=record.eventSha256;
+  } else {
+    const record=value.events.at(-1);const key=name==="duplicate-root-key"?"version":"\\u0076ersion";
+    record.canonicalJson=record.canonicalJson.slice(0,-1)+',"'+key+'":"company-tax-delivery-validation-result-observation-v1"}';
+    record.eventSha256=hash(record.canonicalJson);value.journals[0].latestEventSha256=record.eventSha256;
+  }
+  const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  assert.equal((await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025)).data,null);
+});
+
+test("validation-capable frontend keeps the previous backend's bounded version and complete V5 archive",async()=>{
+  const value=guardedBundle();let called=false;
+  const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async url=>{
+    const query=new URL(url).searchParams;called=true;
+    assert.equal(query.get("readEvidenceVersion"),"2");
+    assert.equal(query.get("validationEvidence"),"true");
+    // The predecessor ignores the additive query but rejects a version >2.
+    assert.ok(Number(query.get("readEvidenceVersion"))<=2);
+    return Response.json(value);
+  }});
+  const result=await api.companyTaxGetDeliveryJournalArchive(company,2025);
+  assert.ok(called);assert.deepEqual(result.events,value.events);
+  assert.ok(result.sourceFacts.evidence.version.startsWith("company-tax-source-v5:"));
+});
+
 for(const complete of [false,true])test(`guarded archive retains exact originals with upload completion=${complete}`,async()=>{
   const value=guardedBundle({complete});const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
     companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};

@@ -15,6 +15,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxDeliveryOriginalPurpose,TaxDeliveryReadOriginal,TaxDeliveryInstanceObservation,
     build_tax_delivery_mutation_request,
     TaxDeliveryEnvelopeObservation,
+    TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxValidationJobStatus,
 )
 from talli_backend.shared.kernel import IncomeYear
 
@@ -86,6 +87,12 @@ class LoopbackCompanyTaxDelivery:
             except ValueError:raise CompanyTaxError.unavailable() from None
             response=await self._request('POST',_APP_PATH+'/instances/'+request.target_instance+'/data?dataType=skattemeldingOgNaeringsspesifikasjon',
                 body=request.body_bytes,content_type='application/xml',response_types=('application/json',))
+        elif request.kind is TaxMutationKind.START_VALIDATION:
+            if request.validation_prerequisite is None:raise CompanyTaxError.unavailable()
+            try:request.validation_prerequisite.assert_current(self._runtime.now())
+            except ValueError:raise CompanyTaxError.unavailable() from None
+            response=await self._request('POST',f'/api/skattemelding/v2/jobb/altinn/{int(approval.income_year)}/'
+                +draft.envelope.source.organization_number+'/start',body=request.body_bytes,content_type='application/json')
         else:raise CompanyTaxError.unavailable()
         try:
             return complete_tax_delivery_mutation(request,approval,draft,response_bytes=response.raw_bytes,
@@ -136,4 +143,47 @@ class LoopbackCompanyTaxDelivery:
             return value
         except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
             raise CompanyTaxReturnAuthorityError('Finite Tax envelope scope is unavailable.',
+                code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
+
+    async def observe_validation_job(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion) -> TaxDeliveryValidationJobObservation:
+        if (type(request) is not TaxDeliveryMutationRequest or request.kind is not TaxMutationKind.START_VALIDATION
+                or type(started) is not TaxDeliveryMutationCompletion):raise CompanyTaxError.invalid_input()
+        request.assert_draft(approval,draft);started.assert_request(request,approval)
+        if self._runtime.authorize(draft,approval.approved_by)!=approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        response=await self._request('GET',f'/api/skattemelding/v2/jobb/altinn/{int(approval.income_year)}/'
+            +draft.envelope.source.organization_number+'/'+started.result['jobId']+'/status',
+            expected_statuses=(200,),response_types=('application/json',))
+        try:
+            value=TaxDeliveryValidationJobObservation(draft.filing_id,approval.company_id,approval.income_year,
+                approval.approved_by,approval.sha256,draft.envelope.source.organization_number,started.result['instanceId'],
+                started.result['jobId'],request.sha256,TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.VALIDATION_JOB,
+                    base64.b64encode(response.raw_bytes).decode('ascii'),response.media_type,response.status),self._runtime.now())
+            value.assert_started(approval,draft,request,started)
+            return value
+        except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
+            raise CompanyTaxReturnAuthorityError('Finite Tax validation job scope is unavailable.',
+                code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None
+
+    async def observe_validation_result(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion,
+            status: TaxDeliveryValidationJobObservation,*,schema_sha256: str) -> TaxDeliveryValidationResultObservation:
+        if type(status) is not TaxDeliveryValidationJobObservation:raise CompanyTaxError.invalid_input()
+        status.assert_started(approval,draft,request,started)
+        if not status.inspection.known or status.inspection.status is not TaxValidationJobStatus.FINISHED:
+            raise CompanyTaxError.unavailable()
+        if self._runtime.authorize(draft,approval.approved_by)!=approval.authority_context_sha256:raise CompanyTaxError.forbidden()
+        response=await self._request('GET',f'/api/skattemelding/v2/jobb/altinn/{int(approval.income_year)}/'
+            +draft.envelope.source.organization_number+'/'+started.result['jobId']+'/resultat',
+            expected_statuses=(200,),response_types=('application/xml','text/xml'))
+        try:
+            value=TaxDeliveryValidationResultObservation(draft.filing_id,approval.company_id,approval.income_year,
+                approval.approved_by,approval.sha256,draft.envelope.source.organization_number,started.result['instanceId'],
+                started.result['jobId'],request.sha256,status.evidence_sha256,schema_sha256,
+                TaxDeliveryReadOriginal(TaxDeliveryOriginalPurpose.VALIDATION_RESULT,
+                    base64.b64encode(response.raw_bytes).decode('ascii'),response.media_type,response.status),self._runtime.now())
+            value.assert_status(approval,draft,request,started,status)
+            return value
+        except (ValueError,TypeError,AttributeError,RecursionError,OverflowError):
+            raise CompanyTaxReturnAuthorityError('Finite Tax validation result scope is unavailable.',
                 code='COMPANY_TAX_REHEARSAL_AUTHORITY_UNAVAILABLE') from None

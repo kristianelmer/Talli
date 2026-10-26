@@ -804,6 +804,11 @@ from .delivery_envelope_observation import (TaxDeliveryEnvelopeObservation,decod
 from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryUploadPrerequisite,
     bind_tax_delivery_upload_prerequisite)
 from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
+from .delivery_validation_response import (TaxValidationResultCode,TaxValidationCalculatedDocument,TaxValidationResponseInspection)
+from .delivery_validation_prerequisite import (TaxDeliveryValidationPrerequisite,bind_tax_delivery_validation_prerequisite)
+from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobInspection,TaxDeliveryValidationJobObservation,
+    decode_tax_delivery_validation_job_observation)
+from .delivery_validation_result import (TaxDeliveryValidationResultObservation,decode_tax_delivery_validation_result_observation)
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
@@ -870,7 +875,7 @@ class TaxDeliveryDraftPersistence(Protocol):
 
 
 class TaxDeliveryJournalPersistence(Protocol):
-    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation) -> TaxDeliveryEventAppend: ...
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation | TaxDeliveryValidationJobObservation | TaxDeliveryValidationResultObservation) -> TaxDeliveryEventAppend: ...
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
     async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
 
@@ -894,6 +899,12 @@ class TaxDeliverySchemaValidator(Protocol):
     def inspect_current(self, response: TaxCurrentDocumentResponse) -> TaxCurrentDocument: ...
 
 
+class TaxValidationResponseValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def inspect(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseInspection: ...
+
+
 class CompanyTaxCurrentDocumentReader(Protocol):
     async def fetch_current_document(self, *, income_year: int,
                                      company_org_number: str) -> TaxCurrentDocumentResponse: ...
@@ -906,6 +917,11 @@ class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
                                created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
     async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
                                created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
+    async def observe_validation_job(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion) -> TaxDeliveryValidationJobObservation: ...
+    async def observe_validation_result(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion,
+            status: TaxDeliveryValidationJobObservation,*,schema_sha256: str) -> TaxDeliveryValidationResultObservation: ...
 
 
 def tax_delivery_schema_adapter(contract):
@@ -941,6 +957,10 @@ __all__ = [
     'TaxMutationIntent', 'TaxMutationRecord', 'tax_delivery_digest', 'prepare_tax_delivery',
     'plan_tax_mutation', 'verify_tax_review',
     'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
+    'TaxValidationResponseValidator','TaxValidationResultCode','TaxValidationCalculatedDocument','TaxValidationResponseInspection',
+    'TaxDeliveryValidationPrerequisite','bind_tax_delivery_validation_prerequisite',
+    'TaxValidationJobStatus','TaxValidationJobInspection','TaxDeliveryValidationJobObservation','decode_tax_delivery_validation_job_observation',
+    'TaxDeliveryValidationResultObservation','decode_tax_delivery_validation_result_observation',
     "CompanyTaxSourceQuery",
     "CompanyTaxSourceSnapshot",
     "CompanyTaxSourceEvidence",

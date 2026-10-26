@@ -594,7 +594,7 @@
     },
     {
       "name": "company-tax-finite-delivery",
-      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload intents before fixed-path local authority I/O; retains bound results after revocation and resolves unknown uploads only through exact known-instance metadata/file reads. Default composition is disabled.",
+      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload/validation intents before fixed-path local authority I/O; retains bound results after revocation, resolves unknown uploads only through exact known-instance metadata/file reads, and polls only retained known validation-job IDs. Default composition is disabled.",
       "publicPackages": [
         "talli_backend.modules.company_tax_filing.public"
       ],
@@ -603,7 +603,9 @@
         "/api/v1/company-tax/delivery-advances",
         "/api/v1/company-tax/delivery-reconciliations",
         "/api/v1/company-tax/delivery-upload-advances",
-        "/api/v1/company-tax/delivery-upload-reconciliations"
+        "/api/v1/company-tax/delivery-upload-reconciliations",
+        "/api/v1/company-tax/delivery-validation-advances",
+        "/api/v1/company-tax/delivery-validation-reconciliations"
       ]
     }
   ],
@@ -1166,6 +1168,12 @@
       "adapter": "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
       "owner": "backend-system",
       "mode": "fixed TT02 current-return GET only; strict UTF-8 and exact original bytes; preparation remains unconfigured in default composition"
+    },
+    {
+      "port": "TaxValidationResponseValidator",
+      "adapter": "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas",
+      "owner": "backend-system",
+      "mode": "offline separately pinned common V2 validation-response XSD; exact original and decoded calculated-document bytes; no job scope or filing authority"
     }
   ],
   "allowedDependencies": {
@@ -1305,19 +1313,24 @@
       "httpx",
       "ipaddress",
       "json",
+      "lxml",
       "os",
       "psycopg",
       "psycopg.conninfo",
       "psycopg.rows",
       "re",
       "talli_backend.adapters.bank_provider_http",
+      "talli_backend.adapters.company_tax_xml",
       "talli_backend.adapters.maskinporten",
       "talli_backend.adapters.postgres_annual_notifications",
       "talli_backend.adapters.postgres_annual_observation",
+      "talli_backend.adapters.postgres_document_evidence",
+      "talli_backend.adapters.postgres_shareholder_register_filing",
       "talli_backend.adapters.rf1086_authority",
       "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_billing",
+      "talli_backend.adapters.supabase_documents",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.vipps_billing",
       "talli_backend.adapters.vipps_webhook",
@@ -1330,10 +1343,13 @@
       "talli_backend.application.banking_workflow",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.company_tax_delivery_rehearsal",
+      "talli_backend.application.company_tax_delivery_submission",
       "talli_backend.application.company_tax_filing_session",
       "talli_backend.application.company_tax_filing_workflow",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
+      "talli_backend.application.corporate_register_evidence",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
       "talli_backend.application.launch_signoffs",
@@ -1341,6 +1357,7 @@
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.new_year_opening",
       "talli_backend.application.shareholder_register_filing_session",
+      "talli_backend.modules.audit.public",
       "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
@@ -1359,15 +1376,7 @@
       "typing",
       "urllib.error",
       "urllib.parse",
-      "urllib.request",
-      "talli_backend.modules.audit.public",
-      "talli_backend.adapters.postgres_document_evidence",
-      "talli_backend.adapters.supabase_documents",
-      "talli_backend.application.corporate_register_evidence",
-      "talli_backend.adapters.postgres_shareholder_register_filing",
-      "lxml",
-      "talli_backend.application.company_tax_delivery_submission",
-      "talli_backend.application.company_tax_delivery_rehearsal"
+      "urllib.request"
     ]
   }
 }

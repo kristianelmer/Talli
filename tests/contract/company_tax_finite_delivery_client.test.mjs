@@ -17,10 +17,12 @@ const operations=[
   ["companyTaxReconcileDelivery","delivery-reconciliations",advance],
   ["companyTaxAdvanceDeliveryUpload","delivery-upload-advances",advance],
   ["companyTaxReconcileDeliveryUpload","delivery-upload-reconciliations",advance],
+  ["companyTaxAdvanceDeliveryValidation","delivery-validation-advances",advance],
+  ["companyTaxReconcileDeliveryValidation","delivery-validation-reconciliations",advance],
 ];
 
 for(const [method,path,command] of operations) {
-  const expected=method.endsWith("Upload")?{...progress,status:"uncertain",mutationKind:"upload_envelope"}:progress;
+  const expected=method.endsWith("Upload")?{...progress,status:"uncertain",mutationKind:"upload_envelope"}:method.endsWith("Validation")?{...progress,status:"uncertain",mutationKind:"start_validation"}:progress;
   test(`${method} sends only bound scope and immutable review identity`,async()=>{
     let called;const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async(url,request)=>{
       called={url,request};return Response.json(expected);
@@ -45,7 +47,7 @@ for(const field of ["draftSha256","reviewSha256"])test(`approval receipt must ma
   const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...progress,[field]:"f".repeat(64)})});
   await assert.rejects(api.companyTaxApproveDeliveryDraft(review,{idempotencyKey:"one-command-key-v1"}),error=>error instanceof TalliApiError&&error.status===502);
 });
-for(const method of ["companyTaxAdvanceDelivery","companyTaxReconcileDelivery","companyTaxAdvanceDeliveryUpload","companyTaxReconcileDeliveryUpload"])test(`${method} binds the original approval`,async()=>{
+for(const method of ["companyTaxAdvanceDelivery","companyTaxReconcileDelivery","companyTaxAdvanceDeliveryUpload","companyTaxReconcileDeliveryUpload","companyTaxAdvanceDeliveryValidation","companyTaxReconcileDeliveryValidation"])test(`${method} binds the original approval`,async()=>{
   const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...progress,approvalSha256:"f".repeat(64)})});
   await assert.rejects(api[method](advance,{idempotencyKey:"one-command-key-v1"}),error=>error instanceof TalliApiError&&error.status===502);
 });
@@ -57,7 +59,7 @@ test("uncertainty is returned unchanged without automatic retry or invented outc
   assert.equal(calls,1);
 });
 
-for(const method of ["companyTaxAdvanceDeliveryUpload","companyTaxReconcileDeliveryUpload"])test(`${method} cannot return a different mutation kind`,async()=>{
+for(const method of ["companyTaxAdvanceDeliveryUpload","companyTaxReconcileDeliveryUpload","companyTaxAdvanceDeliveryValidation","companyTaxReconcileDeliveryValidation"])test(`${method} cannot return a different mutation kind`,async()=>{
   const api=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...progress,status:"mutation_completed",mutationKind:"create_instance"})});
   await assert.rejects(api[method](advance,{idempotencyKey:"upload-kind-bound-v1"}),error=>error instanceof TalliApiError&&error.status===502);
 });

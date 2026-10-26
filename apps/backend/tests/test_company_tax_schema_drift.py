@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from talli_backend.adapters.company_tax_schemas import _BUNDLE
+from talli_backend.adapters import company_tax_response_schemas as response_resource
 
 
 spec = importlib.util.spec_from_file_location('tax_schema_drift',
@@ -22,6 +23,9 @@ class Source:
         self.manifest = json.loads((_BUNDLE/'manifest.json').read_bytes())
         self.resources = {probe.RAW+COMMIT+'/'+entry['sourcePath']:(_BUNDLE/name).read_bytes()
             for name,entry in self.manifest['files'].items()}
+        self.response_manifest = json.loads((response_resource._BUNDLE/'manifest.json').read_bytes())
+        self.resources.update({probe.RAW+COMMIT+'/'+entry['sourcePath']:(response_resource._BUNDLE/name).read_bytes()
+            for name,entry in self.response_manifest['files'].items()})
 
     def fetch(self,url):
         self.calls.append(url)
@@ -36,8 +40,11 @@ def test_complete_matching_resources_are_current_even_if_other_years_moved():
     assert result['status'] == 'current' and result['completeEnumeration'] is True
     assert result['observedSourceCommit'] == COMMIT
     assert result['observedSourceCommit'] != result['approvedSourceCommit']
-    assert len(source.calls) == len(source.resources)+1 == 11
+    assert len(source.calls) == len(source.resources)+1 == 12
     assert len(result['files']) == 10 and all(row['matches'] for row in result['files'].values())
+    assert result['schema'] == 'company-tax-schema-drift-v2'
+    assert len(result['validationResponse']['files']) == 2
+    assert all(row['matches'] for row in result['validationResponse']['files'].values())
 
 
 def test_one_changed_code_list_is_drift_not_a_current_or_incomplete_verdict():
@@ -66,3 +73,22 @@ def test_partial_or_oversized_resource_read_cannot_produce_a_current_verdict():
     with pytest.raises(ValueError): probe.verify_current(source.fetch)
     del source.resources[key]
     with pytest.raises(KeyError): probe.verify_current(source.fetch)
+
+
+def test_response_schema_drift_is_not_hidden_by_current_delivery_resources():
+    source = Source()
+    key = next(url for url in source.resources if url.endswith('skattemeldingognaeringsspesifikasjonresponse_v2.xsd'))
+    source.resources[key] += b'\n'
+    result = probe.verify_current(source.fetch)
+    assert result['status'] == 'drift' and result['completeEnumeration'] is True
+    assert all(row['matches'] for row in result['files'].values())
+    assert not result['validationResponse']['files']['skattemeldingognaeringsspesifikasjonresponse_v2.xsd']['matches']
+    del source.resources[key]
+    with pytest.raises(KeyError):probe.verify_current(source.fetch)
+
+
+def test_unavailable_local_response_pin_prevents_every_network_read(tmp_path,monkeypatch):
+    source = Source()
+    monkeypatch.setattr(response_resource,'_BUNDLE',tmp_path/'missing-bundle')
+    with pytest.raises(Exception):probe.verify_current(source.fetch)
+    assert source.calls == []

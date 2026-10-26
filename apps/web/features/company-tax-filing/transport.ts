@@ -48,11 +48,48 @@ export type TaxDeliveryDraftArchiveProjection = {
   journal?: CompanyTaxDeliveryJournalArchiveWire;
 };
 
-async function exactTaxOriginal(raw: string, expected: string) {
-  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw))))
+async function taxTextSha(raw: string) {
+  return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw))))
     .map(byte => byte.toString(16).padStart(2,"0")).join("");
-  if (digest !== expected) throw new Error("Tax original bytes changed.");
-  return JSON.parse(raw);
+}
+
+function taxJsonObject(raw: string,integerFields: readonly string[]=[]) {
+  const value=JSON.parse(raw);
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("Tax JSON original is not an object.");
+  // JSON.parse validates grammar; this iterative token walk additionally
+  // refuses duplicate keys, including differently escaped equal names.
+  const stack: {keys: Set<string> | null;expectKey: boolean;key?: string}[]=[];
+  for (const match of raw.matchAll(/"(?:\\.|[^"\\])*"|[{}\[\]:,]|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/gu)) {
+    const token=match[0];const top=stack.at(-1);
+    if (token === "{") stack.push({keys:new Set(),expectKey:true});
+    else if (token === "[") stack.push({keys:null,expectKey:false});
+    else if (token === "}" || token === "]") stack.pop();
+    else if (token === "," && top?.keys) top.expectKey=true;
+    else if (token.startsWith('"') && top?.keys && top.expectKey) {
+      const key=JSON.parse(token);
+      if (top.keys.has(key)) throw new Error("Tax JSON original has duplicate keys.");
+      top.keys.add(key);top.expectKey=false;top.key=key;
+    } else if (stack.length === 1 && top?.key && integerFields.includes(top.key) && /^-?[0-9]/u.test(token)
+        && !/^-?(?:0|[1-9][0-9]*)$/u.test(token)) {
+      throw new Error("Tax JSON timing field is not an integer original.");
+    }
+  }
+  return value;
+}
+
+function taxHasKeys(value: unknown,keys: string) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).sort().join(",") === keys;
+}
+
+function taxTimeWrapper(value: {value?: unknown} | undefined) {
+  return taxHasKeys(value,"value") && typeof value?.value === "string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/u.test(value.value)
+    && Number.isFinite(Date.parse(value.value));
+}
+
+async function exactTaxOriginal(raw: string, expected: string) {
+  if (await taxTextSha(raw) !== expected) throw new Error("Tax original bytes changed.");
+  return taxJsonObject(raw);
 }
 
 async function taxEncodedOriginal(encoded: string) {
@@ -66,10 +103,10 @@ async function taxEncodedOriginal(encoded: string) {
   return {text,sha256,size:bytes.length};
 }
 
-async function taxReadOriginal(value: {purpose: unknown;content_type: unknown;http_status: unknown;body_base64: unknown},purpose: "finite_admission" | "instance" | "envelope") {
+async function taxReadOriginal(value: {purpose: unknown;content_type: unknown;http_status: unknown;body_base64: unknown},purpose: "finite_admission" | "instance" | "envelope" | "validation_job" | "validation_result") {
   if (!value || Object.keys(value).sort().join(",") !== "body_base64,content_type,http_status,purpose"
       || typeof value.content_type !== "string"
-      || value.purpose !== purpose || (purpose === "envelope" ? !["application/xml","text/xml"].includes(String(value.content_type)) : value.content_type !== "application/json")
+      || value.purpose !== purpose || (["envelope","validation_result"].includes(purpose) ? !["application/xml","text/xml"].includes(String(value.content_type)) : value.content_type !== "application/json")
       || value.http_status !== (purpose === "finite_admission" ? null : 200)
       || typeof value.body_base64 !== "string" || value.body_base64.length > 12*1024*1024) throw new Error("Tax read original is invalid.");
   return taxEncodedOriginal(value.body_base64);
@@ -93,8 +130,7 @@ async function taxBoundRead(raw: string,sha256: string,kind: "instance" | "envel
   const identity=JSON.stringify([kind === "instance" ? "tax-instance-read-identity-v1" : "tax-envelope-read-identity-v1",
     scope.filing,scope.company,scope.year,scope.actor,scope.approval,scope.organization,scope.instance,
     ...(kind === "envelope" ? [binding.data_id,binding.instance_evidence_sha256] : []),original.sha256]);
-  const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(identity))))
-    .map(byte => byte.toString(16).padStart(2,"0")).join("");
+  const digest=await taxTextSha(identity);
   return {binding,original,identity:digest};
 }
 
@@ -118,8 +154,12 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
   const effects = new Map<string,typeof journal.events[number]>();
   const admissions = new Set<string>();
   const slots = new Set<string>();
-  const instanceReads = new Map<string,{hash: string;identity: string;observedAt: string;instance: string}>();
-  const drafts = new Map<string,{envelope?: {source?: {organization_number?: string}}}>();
+  const instanceReads = new Map<string,{hash: string;identity: string;observedAt: string;instance: string;text: string}>();
+  const envelopeReads = new Map<string,{hash: string;identity: string;observedAt: string;instance: string;data: string;metadata: string;fileHash: string;size: number}>();
+  const knownJobs = new Map<string,{job: string;request: string;recordedAt: string}>();
+  const jobReads = new Map<string,{identity: string;observedAt: string;finished: boolean}>();
+  const completedAt = new Map<string,string>();
+  const drafts = new Map<string,{envelope?: {source?: {organization_number?: string};envelope_xml?: string}}>();
   for (const draft of journal.drafts) drafts.set(draft.filingId,(await exactTaxOriginal(draft.canonicalJson,draft.draftSha256)).draft);
   for (const record of journal.events) {
     const slot=record.filingId+":"+record.slot;
@@ -127,8 +167,58 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
     slots.add(slot);
     const value = await exactTaxOriginal(record.canonicalJson,record.eventSha256);
     const evidence=record.slot === "admission" || record.slot.startsWith("observation:");
+    const validationJob=record.slot.startsWith("observation:validation-job:");
+    const validationResult=record.slot.startsWith("observation:validation-result:");
+    if (validationJob || validationResult) {
+      const approval=approvals.get(record.filingId);const job=knownJobs.get(record.filingId);const binding=value.observation;
+      const kind=validationJob ? "validation-job" : "validation-result";
+      const keys="approval_sha256,approved_by,company_id,filing_id,income_year,instance_id,job_id,observed_at,organization_number,original,start_request_sha256";
+      const expectedKeys=validationJob ? keys : keys.split(",").concat("job_status_evidence_sha256","schema_sha256").sort().join(",");
+      const observed=Date.parse(binding?.observed_at?.value);const recorded=Date.parse(record.recordedAt);
+      if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v6:") || !approval || !job
+          || value.version !== "company-tax-delivery-"+kind+"-observation-v1" || !taxHasKeys(value,"observation,version")
+          || !taxHasKeys(binding,expectedKeys) || !taxHasKeys(binding.company_id,"value") || !taxHasKeys(binding.income_year,"value")
+          || !taxHasKeys(binding.approved_by,"kind,subject") || !taxHasKeys(binding.approved_by?.subject,"value") || !taxTimeWrapper(binding.observed_at)
+          || binding.filing_id !== record.filingId || binding.company_id?.value !== companyId || binding.income_year?.value !== incomeYear
+          || binding.approved_by?.kind !== "USER" || binding.approved_by?.subject?.value !== approval.actor || record.recordedBy !== approval.actor
+          || binding.approval_sha256 !== approval.hash || binding.organization_number !== approval.organization
+          || binding.instance_id !== instances.get(record.filingId) || binding.job_id !== job.job || binding.start_request_sha256 !== job.request
+          || ![observed,recorded].every(Number.isFinite) || observed < Date.parse(job.recordedAt) || observed > recorded) throw new Error("Tax validation read scope or known-job predecessor mismatch.");
+      const original=await taxReadOriginal(binding.original,validationJob ? "validation_job" : "validation_result");
+      const identity=await taxTextSha(JSON.stringify([validationJob ? "tax-validation-job-read-identity-v1" : "tax-validation-result-read-identity-v1",
+        record.filingId,companyId,incomeYear,approval.actor,approval.hash,approval.organization,binding.instance_id,job.job,job.request,
+        ...(validationResult ? [binding.job_status_evidence_sha256,binding.schema_sha256] : []),original.sha256]));
+      if (record.slot !== "observation:"+kind+":"+identity) throw new Error("Tax validation read identity mismatch.");
+      if (validationJob) {
+        let body=null;
+        try {body=taxJsonObject(original.text);} catch { /* Exact unknown status remains retained. */ }
+        if (body && typeof body.jobbId === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u.test(body.jobbId)
+            && body.jobbId !== job.job) throw new Error("Tax status original names another job.");
+        // Identity rejection precedes classifying malformed timing as unknown.
+        let timingValid=false;
+        if (body) {
+          try {taxJsonObject(original.text,["sekunderSidenOpprettelse","sekunderSidenEndring"]);timingValid=true;}
+          catch { /* Keep this exact status original unknown. */ }
+        }
+        const statuses=["OPPRETTET","NY","KJOERER","VENTER","AVBRUTT","FEILET","FERDIG"];
+        const finished=Boolean(body && timingValid && body.jobbStatus === "FERDIG" && Object.hasOwn(body,"forrigeStatus")
+          && (body.forrigeStatus === null || statuses.includes(body.forrigeStatus))
+          && (!Object.hasOwn(body,"jobbId") || body.jobbId === job.job)
+          && Number.isInteger(body.sekunderSidenOpprettelse) && Number.isInteger(body.sekunderSidenEndring)
+          && body.sekunderSidenEndring >= 0 && body.sekunderSidenEndring <= body.sekunderSidenOpprettelse && body.sekunderSidenOpprettelse <= 2147483647);
+        jobReads.set(record.filingId+":"+identity,{identity,observedAt:binding.observed_at.value,finished});
+      } else {
+        const status=jobReads.get(record.filingId+":"+binding.job_status_evidence_sha256);
+        if (!status?.finished || observed < Date.parse(status.observedAt)
+            || binding.schema_sha256 !== "eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1") throw new Error("Tax result has no finished known-job original or supported schema pin.");
+        // XML remains an exact original here. A retained read is not an XSD,
+        // inner-document scope, owner-confirmation or Tax-acceptance verdict.
+      }
+      latest.set(record.filingId,record);
+      continue;
+    }
     if (evidence) {
-      if (!/^company-tax-source-v[45]:/u.test(journal.sourceFacts.evidence.version)) throw new Error("Tax reads require the V4/V5 source.");
+      if (!/^company-tax-source-v[456]:/u.test(journal.sourceFacts.evidence.version)) throw new Error("Tax reads require a supported evidence source.");
       const admission=record.slot === "admission";
       const envelopeRead=record.slot.startsWith("observation:envelope:");
       const binding=admission ? value.admission : value.observation;
@@ -140,7 +230,7 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
           || binding?.approved_by?.subject?.value !== approval.actor) throw new Error("Tax read scope mismatch.");
       const original=await taxReadOriginal(binding.original,admission ? "finite_admission" : envelopeRead ? "envelope" : "instance");
       if (admission) {
-        const context=JSON.parse(original.text);
+        const context=taxJsonObject(original.text);
         const keys="actorId,companyId,credentialSha256,databaseScopeSha256,draftSha256,expiresAt,filingId,incomeYear,issuedAt,maximumRequests,organizationNumber,origin,runId,version";
         const ttl=Date.parse(context.expiresAt)-Date.parse(context.issuedAt);
         const port=typeof context.origin === "string" && /^http:\/\/127\.0\.0\.1:[0-9]{4,5}$/u.test(context.origin)
@@ -163,15 +253,17 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
         if (record.slot !== "observation:"+(envelopeRead ? "envelope:" : "instance:")+read.identity) throw new Error("Tax read identity mismatch.");
         if (envelopeRead) {
           const predecessor=instanceReads.get(record.filingId+":"+binding.instance_evidence_sha256);
-          if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v5:") || !predecessor
+          if (!/^company-tax-source-v[56]:/u.test(journal.sourceFacts.evidence.version) || !predecessor
               || predecessor.instance !== binding.instance_id || Date.parse(binding.observed_at.value) < Date.parse(predecessor.observedAt)) throw new Error("Tax envelope has no retained metadata predecessor.");
-        } else instanceReads.set(record.filingId+":"+read.identity,{hash:record.eventSha256,identity:read.identity,observedAt:binding.observed_at.value,instance:binding.instance_id});
+          envelopeReads.set(record.filingId+":"+read.identity,{hash:record.eventSha256,identity:read.identity,observedAt:binding.observed_at.value,
+            instance:binding.instance_id,data:binding.data_id,metadata:binding.instance_evidence_sha256,fileHash:read.original.sha256,size:read.original.size});
+        } else instanceReads.set(record.filingId+":"+read.identity,{hash:record.eventSha256,identity:read.identity,observedAt:binding.observed_at.value,instance:binding.instance_id,text:read.original.text});
       }
       latest.set(record.filingId,record);
       continue;
     }
     const mode = record.slot === "review" ? "review" : record.slot.startsWith("intent:") ? "intent" : "completion";
-    const expected = {review:["company-tax-delivery-review-approval-v1"],intent:["company-tax-delivery-mutation-request-v1","company-tax-delivery-mutation-request-v2"],completion:["company-tax-delivery-mutation-completion-v1","company-tax-delivery-mutation-completion-v2"]}[mode];
+    const expected = {review:["company-tax-delivery-review-approval-v1"],intent:["company-tax-delivery-mutation-request-v1","company-tax-delivery-mutation-request-v2","company-tax-delivery-mutation-request-v3"],completion:["company-tax-delivery-mutation-completion-v1","company-tax-delivery-mutation-completion-v2"]}[mode];
     const binding = mode === "review" ? value.approval : mode === "intent" ? value.request : value.completion?.intent;
     if (!expected.includes(value.version) || binding?.filing_id !== record.filingId
         || binding?.company_id?.value !== companyId || binding?.income_year?.value !== incomeYear
@@ -196,13 +288,46 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
           const proof=binding.upload_prerequisite;const reference=proof?.instance_read;
           const original=instanceReads.get(record.filingId+":"+reference?.evidence_sha256);
           const start=Date.parse(proof?.observed_from?.value);const end=Date.parse(proof?.observed_until?.value);const read=Date.parse(reference?.observed_at?.value);const recorded=Date.parse(record.recordedAt);
-          if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v5:") || binding.kind !== "upload_envelope"
+          if (!/^company-tax-source-v[56]:/u.test(journal.sourceFacts.evidence.version) || binding.kind !== "upload_envelope"
               || !proof || Object.keys(proof).sort().join(",") !== "instance_id,instance_read,observed_from,observed_until"
               || !reference || Object.keys(reference).sort().join(",") !== "event_sha256,evidence_sha256,observed_at"
               || !original || original.hash !== reference.event_sha256 || original.instance !== binding.target_instance
               || proof.instance_id !== binding.target_instance || ![start,end,read,recorded].every(Number.isFinite)
               || end < start || end-start > 30000 || read < start || read > end || end < Date.parse(original.observedAt)
               || recorded < end || recorded-start > 30000) throw new Error("Tax guarded upload prerequisite mismatch.");
+        }
+        if (value.version === "company-tax-delivery-mutation-request-v3") {
+          const proof=binding.validation_prerequisite;const metadataRef=proof?.instance_read;const fileRef=proof?.envelope_read;
+          const metadata=instanceReads.get(record.filingId+":"+metadataRef?.evidence_sha256);
+          const file=envelopeReads.get(record.filingId+":"+fileRef?.evidence_sha256);
+          const start=Date.parse(proof?.observed_from?.value);const end=Date.parse(proof?.observed_until?.value);
+          const metadataTime=Date.parse(metadataRef?.observed_at?.value);const fileTime=Date.parse(fileRef?.observed_at?.value);const recorded=Date.parse(record.recordedAt);
+          const uploadRecorded=Date.parse(completedAt.get(record.filingId+":upload_envelope") ?? "");
+          const referenceKeys="event_sha256,evidence_sha256,observed_at";
+          if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v6:") || binding.kind !== "start_validation"
+              || !taxHasKeys(value,"request,version") || !taxHasKeys(binding,"approval_sha256,body_base64,company_id,filing_id,income_year,kind,organization_number,target_instance,validation_prerequisite")
+              || !taxHasKeys(binding.company_id,"value") || !taxHasKeys(binding.income_year,"value")
+              || !proof || Object.keys(proof).sort().join(",") !== "data_id,envelope_read,instance_id,instance_read,observed_from,observed_until"
+              || !metadataRef || !fileRef || Object.keys(metadataRef).sort().join(",") !== referenceKeys || Object.keys(fileRef).sort().join(",") !== referenceKeys
+              || !taxTimeWrapper(proof.observed_from) || !taxTimeWrapper(proof.observed_until)
+              || !taxTimeWrapper(metadataRef.observed_at) || !taxTimeWrapper(fileRef.observed_at)
+              || !metadata || !file || metadata.hash !== metadataRef.event_sha256 || file.hash !== fileRef.event_sha256
+              || metadata.instance !== binding.target_instance || file.instance !== binding.target_instance || proof.instance_id !== binding.target_instance
+              || file.metadata !== metadata.identity || file.data !== proof.data_id
+              || ![start,end,metadataTime,fileTime,recorded,uploadRecorded].every(Number.isFinite) || end < start || end-start > 30000
+              || metadataTime < start || fileTime < metadataTime || fileTime > end || end < Date.parse(metadata.observedAt) || end < Date.parse(file.observedAt)
+              || recorded < end || recorded-start > 30000 || start < uploadRecorded) throw new Error("Tax validation prerequisite references or freshness mismatch.");
+          const body=taxJsonObject(metadata.text);const rows=body.data;const wire=await taxEncodedOriginal(binding.body_base64);
+          const target=taxJsonObject(wire.text);const approved=drafts.get(record.filingId)?.envelope?.envelope_xml;
+          if (body.id !== binding.target_instance || body.appId !== "skd/formueinntekt-skattemelding-v2"
+              || body.instanceOwner?.organisationNumber !== approval.organization || ![incomeYear,String(incomeYear)].includes(body.dataValues?.inntektsaar)
+              || body.process?.currentTask?.altinnTaskType !== "data" || body.process?.ended != null || body.status?.isArchived !== false || body.status?.archived != null
+              || !Array.isArray(rows) || rows.length !== 1 || rows[0]?.id !== file.data || rows[0]?.dataType !== "skattemeldingOgNaeringsspesifikasjon"
+              || rows[0].fileScanResult !== "Clean" || rows[0].size !== file.size || typeof rows[0].contentType !== "string"
+              || !["application/xml","text/xml"].includes(rows[0].contentType.split(";",1)[0].trim().toLowerCase())
+              || typeof approved !== "string" || await taxTextSha(approved) !== file.fileHash
+              || Object.keys(target).sort().join(",") !== "appId,instansId" || target.appId !== "skd/formueinntekt-skattemelding-v2"
+              || target.instansId !== binding.target_instance) throw new Error("Tax validation original is not the reviewed Clean envelope.");
         }
       } else {
         if (!requests.has(record.filingId+":"+binding.kind)
@@ -213,15 +338,26 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
         if (typeof instance !== "string" || !/^[0-9]{1,19}\/[0-9a-f-]{36}$/u.test(instance)
             || (binding.kind !== "create_instance" && instance !== instances.get(record.filingId))) throw new Error("Tax journal instance mismatch.");
         if (binding.kind === "create_instance") instances.set(record.filingId,instance);
+        if (binding.kind === "start_validation") {
+          const request=requestOriginals.get(record.filingId+":"+binding.kind);
+          const job=value.completion.result.jobId;
+          if (typeof job !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u.test(job)) throw new Error("Tax start result has no known job ID.");
+          if (typeof value.completion.response_base64 === "string") {
+            const response=taxJsonObject((await taxEncodedOriginal(value.completion.response_base64)).text);
+            if (value.completion.origin !== "mutation_response" || response.jobbId !== job
+                || (request?.version === "company-tax-delivery-mutation-request-v3" && response.jobbStatus !== "OPPRETTET")) throw new Error("Tax start result differs from its exact response.");
+            knownJobs.set(record.filingId,{job,request:binding.request_sha256,recordedAt:record.recordedAt});
+          } else if (request?.version === "company-tax-delivery-mutation-request-v3") throw new Error("Tax start response original is missing.");
+        }
         if (value.version === "company-tax-delivery-mutation-completion-v2") {
           const proof=value.completion.upload_read_evidence;const request=requestOriginals.get(record.filingId+":"+binding.kind);
-          if (!journal.sourceFacts.evidence.version.startsWith("company-tax-source-v5:") || binding.kind !== "upload_envelope"
+          if (!/^company-tax-source-v[56]:/u.test(journal.sourceFacts.evidence.version) || binding.kind !== "upload_envelope"
               || value.completion.origin !== "envelope_read" || "response_base64" in value.completion || !request || !proof
               || Object.keys(proof).sort().join(",") !== "envelope_canonical_json,envelope_sha256,instance_canonical_json,instance_sha256") throw new Error("Tax upload recovery proof is incomplete.");
           const scope={filing:record.filingId,company:companyId,year:incomeYear,actor:approval.actor,approval:approval.hash,organization:approval.organization,instance};
           const metadata=await taxBoundRead(proof.instance_canonical_json,proof.instance_sha256,"instance",scope);
           const file=await taxBoundRead(proof.envelope_canonical_json,proof.envelope_sha256,"envelope",scope);
-          const wire=await taxEncodedOriginal(request.bodyBase64);const body=JSON.parse(metadata.original.text);
+          const wire=await taxEncodedOriginal(request.bodyBase64);const body=taxJsonObject(metadata.original.text);
           const files=Array.isArray(body.data) ? body.data.filter((row: {dataType?: unknown}) => row?.dataType === "skattemeldingOgNaeringsspesifikasjon") : [];
           const metadataTime=Date.parse(metadata.binding.observed_at.value);const fileTime=Date.parse(file.binding.observed_at.value);const resultTime=Date.parse(value.completion.observed_at?.value);
           if (body.id !== instance || body.appId !== "skd/formueinntekt-skattemelding-v2" || body.instanceOwner?.organisationNumber !== approval.organization
@@ -233,6 +369,7 @@ async function verifyTaxJournalOriginals(journal: CompanyTaxDeliveryJournalArchi
               || !Number.isFinite(resultTime) || metadataTime < Date.parse(request.recordedAt) || fileTime < metadataTime || resultTime < fileTime) throw new Error("Tax upload recovery originals differ from the request.");
         }
         completed.add(record.filingId+":"+binding.kind);
+        completedAt.set(record.filingId+":"+binding.kind,record.recordedAt);
       }
     }
     latest.set(record.filingId,record);
@@ -258,7 +395,7 @@ export async function loadTaxDeliveryDraftArchiveSource(accessToken: string, com
         && source.historyCoverage.status === "complete") {
       return { data: { sourceFacts: source, originals: null } satisfies TaxDeliveryDraftArchiveProjection, error: null };
     }
-    if (/^company-tax-source-v[345]:[0-9a-f]{64}$/u.test(source.evidence.version)
+    if (/^company-tax-source-v[3456]:[0-9a-f]{64}$/u.test(source.evidence.version)
         || (/^company-tax-source-v2:[0-9a-f]{64}$/u.test(source.evidence.version)
           && source.historyCoverage.reasons.includes("declaredDeliveryExtentValid_unproven"))) {
       // The nine-table successor supplies facts and originals from one guarded

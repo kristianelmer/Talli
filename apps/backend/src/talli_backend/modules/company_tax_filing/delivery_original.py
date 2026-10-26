@@ -22,6 +22,12 @@ def _instance(value):
     return value
 
 
+def _job(value):
+    if type(value) is not str or re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,255}',value) is None:
+        raise ValueError('Tax validation job identity is invalid.')
+    return value
+
+
 def _bytes(encoded, *, allow_empty=False):
     if type(encoded) is not str or len(encoded)>12*1024*1024:
         raise ValueError('Tax journal original exceeds its limit.')

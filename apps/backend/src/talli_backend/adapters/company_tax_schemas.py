@@ -9,6 +9,8 @@ import re
 
 from lxml import etree
 
+from talli_backend.adapters.company_tax_xml import _parse
+
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError, TaxDeliveryEnvelope, TaxDeliverySchemaValidator,
     TaxSchemaValidation, tax_delivery_schema_adapter,
@@ -45,21 +47,6 @@ _CURRENT_TAX_LEAVES = frozenset({'partsnummer','inntektsaar',
     'spesifikasjonAvForholdRelevanteForBeskatning/aksjeIAksjonaerregisteret/utbytte/beloepSomHeltall'})
 _CURRENT_TAX_PATHS = frozenset('/'.join(path.split('/')[:n])
     for path in _CURRENT_TAX_LEAVES for n in range(1,len(path.split('/'))+1))
-
-
-class _DenyExternalResources(etree.Resolver):
-    def resolve(self, url, public_id, context):
-        raise ValueError('External XML resources are forbidden.')
-
-
-def _parse(raw):
-    parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True,
-        huge_tree=False, recover=False, remove_comments=True, remove_pis=True)
-    parser.resolvers.add(_DenyExternalResources())
-    root = etree.fromstring(raw, parser)
-    if root.getroottree().docinfo.doctype:
-        raise ValueError('Document type declarations are forbidden.')
-    return root
 
 
 def _supported_current_tax(root):

@@ -13,6 +13,7 @@ const api=createTalliApiClient({baseUrl:"https://finite-client.invalid",fetch:as
   if(parsed.pathname.endsWith("/delivery-journal-v1")) {
     assert.equal(parsed.searchParams.get("readEvidence"),"true");
     assert.equal(parsed.searchParams.get("readEvidenceVersion"),"2");
+    assert.equal(parsed.searchParams.get("validationEvidence"),"true");
     return Response.json(value);
   }
   assert.ok(parsed.pathname.endsWith("/source-facts"));

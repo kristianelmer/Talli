@@ -25,6 +25,8 @@ class TaxDeliveryOriginalPurpose(StrEnum):
     ADMISSION='finite_admission'
     INSTANCE='instance'
     ENVELOPE='envelope'
+    VALIDATION_RESULT='validation_result'
+    VALIDATION_JOB='validation_job'
 
 
 @dataclass(frozen=True,slots=True)
@@ -36,7 +38,7 @@ class TaxDeliveryReadOriginal:
 
     def __post_init__(self):
         if type(self.purpose) is not TaxDeliveryOriginalPurpose:raise ValueError('Tax original purpose is invalid.')
-        expected={'application/json'} if self.purpose in (TaxDeliveryOriginalPurpose.ADMISSION,TaxDeliveryOriginalPurpose.INSTANCE) else {'application/xml','text/xml'}
+        expected={'application/json'} if self.purpose in (TaxDeliveryOriginalPurpose.ADMISSION,TaxDeliveryOriginalPurpose.INSTANCE,TaxDeliveryOriginalPurpose.VALIDATION_JOB) else {'application/xml','text/xml'}
         if type(self.content_type) is not str or self.content_type not in expected:raise ValueError('Tax original content type is invalid.')
         if self.purpose is TaxDeliveryOriginalPurpose.ADMISSION:
             if self.http_status is not None:raise ValueError('A local admission is not an HTTP response.')

@@ -19,7 +19,7 @@ from talli_backend.modules.company_tax_filing.public import (
     AdvanceTaxDelivery,ApproveTaxDeliveryDraft,CompanyTaxError,TaxDeliveryEventAppend,StoredTaxDeliveryEvent,
     StoredTaxDeliveryDraft,approve_tax_delivery_review,
     TaxDeliveryInstanceObservation,
-    TaxDeliveryEnvelopeObservation,
+    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,
 )
 from talli_backend.shared.kernel import CorrelationId,IdempotencyKey,Timestamp
 from talli_backend.modules.company_tax_filing.public import TaxFilingSubmissionId
@@ -61,7 +61,7 @@ class Session:
                     if not session.fresh:raise CompanyTaxError.mfa_required()
                 prior=next((row for row in session.events if row.slot==event.slot and row.binding.filing_id==event.binding.filing_id),None)
                 if prior is not None:
-                    if prior.value!=value and not (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation)
+                    if prior.value!=value and not (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation)
                         and type(prior.value) is type(value)
                         and value.evidence_sha256==prior.value.evidence_sha256 and value.original==prior.value.original):
                         raise CompanyTaxError.draft_conflict()
@@ -142,8 +142,8 @@ def test_review_and_first_mutation_preserve_exact_order_and_replay_without_autho
         # a later operation has changed the current progress projection.
         assert await service.approve(session,command)==approved
         observed=await service.reconcile(session,advancing(command,approved))
-        assert observed.status==result.status and observed.mutation_kind==result.mutation_kind
-        assert observed.latest_event_sha256==session.events[-1].value.sha256
+        assert observed==result
+        assert session.events[-1].slot.startswith('observation:instance:')
     asyncio.run(exercise())
     assert [method for method,_ in calls]==['GET','GET','POST','GET']
     assert [row.slot for row in session.events[:4]]==['review','admission','intent:create_instance','completion:create_instance']
