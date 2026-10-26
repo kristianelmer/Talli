@@ -132,7 +132,10 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
         content = {'version': snapshot.contract_version, 'rows': rows, 'coverage': snapshot.coverage,
                    'completeEnumeration': snapshot.complete_enumeration}
         if snapshot.contract_version == _DELIVERY_VERSION:
-            content['deliveryDrafts'] = drafts
+            # Bind exact versioned storage bytes, independent of future Python
+            # dataclass fields or internal representations of the same original.
+            content['deliveryDrafts'] = [{'filingId':row.draft.filing_id,
+                'draftSha256':row.draft.sha256,'recordedAt':row.recorded_at.value.isoformat()} for row in drafts]
         digest = _digest(content)
         evidence = CompanyTaxSourceEvidence(query.company_id, query.income_year,
             f'company-tax:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)

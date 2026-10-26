@@ -8,8 +8,10 @@ from uuid import UUID
 
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IdempotencyKey, IncomeYear, Timestamp, UserId
 from .delivery import TaxDeliveryEnvelope, TaxDeliverySource, TaxSchemaValidation, _json
+from .current_document import TaxCurrentDocument, _decode_current_document
 
 _VERSION = 'company-tax-delivery-draft-v1'
+_CURRENT_VERSION = 'company-tax-delivery-draft-v2'
 _MAX_BYTES = 32 * 1024 * 1024
 
 
@@ -30,6 +32,7 @@ class TaxDeliveryDraft:
     prepared_by: ActorId
     envelope: TaxDeliveryEnvelope
     validation: TaxSchemaValidation
+    current_document: TaxCurrentDocument | None = None
 
     def __post_init__(self):
         if (type(self.filing_id) is not str or str(UUID(self.filing_id)) != self.filing_id
@@ -40,10 +43,21 @@ class TaxDeliveryDraft:
                 or type(self.validation) is not TaxSchemaValidation):
             raise ValueError('Tax draft identity is invalid.')
         self.validation.verify(self.envelope)
+        if self.current_document is not None:
+            current = self.current_document
+            if (type(current) is not TaxCurrentDocument
+                    or current.response.organization_number != self.envelope.source.organization_number
+                    or current.response.income_year != self.envelope.source.income_year
+                    or current.document_reference != self.envelope.current_document_reference
+                    or current.schema_sha256 != self.envelope.schema_sha256):
+                raise ValueError('Current Tax original does not match the prepared delivery.')
 
     @property
     def canonical_json(self) -> str:
-        raw = _canonical({'version': _VERSION, 'draft': _json(self)})
+        value = _json(self)
+        if self.current_document is None:
+            value.pop('current_document')
+        raw = _canonical({'version': _CURRENT_VERSION if self.current_document is not None else _VERSION, 'draft': value})
         if len(raw.encode('utf-8')) > _MAX_BYTES:
             raise ValueError('Tax draft exceeds the retained-byte limit.')
         return raw
@@ -103,9 +117,11 @@ def decode_tax_delivery_draft(raw: str, expected_sha256: str) -> TaxDeliveryDraf
                 or hashlib.sha256(raw.encode('utf-8')).hexdigest() != expected_sha256):
             raise ValueError()
         root = _object(json.loads(raw, object_pairs_hook=pairs, parse_constant=constant), ('version', 'draft'))
-        if root['version'] != _VERSION:
+        if root['version'] not in (_VERSION, _CURRENT_VERSION):
             raise ValueError()
-        value = _object(root['draft'], ('filing_id', 'command_key', 'prepared_by', 'envelope', 'validation'))
+        current = root['version'] == _CURRENT_VERSION
+        keys = ('filing_id', 'command_key', 'prepared_by', 'envelope', 'validation')
+        value = _object(root['draft'], (*keys, 'current_document') if current else keys)
         actor = _object(value['prepared_by'], ('kind', 'subject'))
         subject = _object(actor['subject'], ('value',))
         key = _object(value['command_key'], ('value',))
@@ -123,7 +139,8 @@ def decode_tax_delivery_draft(raw: str, expected_sha256: str) -> TaxDeliveryDraf
             'income_year': IncomeYear(year['value'])}))
         draft = TaxDeliveryDraft(value['filing_id'], IdempotencyKey(key['value']),
             ActorId(ActorKind(actor['kind']), UserId(subject['value'])),
-            TaxDeliveryEnvelope(**(envelope | {'source': source})), TaxSchemaValidation(**proof))
+            TaxDeliveryEnvelope(**(envelope | {'source': source})), TaxSchemaValidation(**proof),
+            _decode_current_document(value['current_document']) if current else None)
         if draft.canonical_json != raw:
             raise ValueError()
         return draft

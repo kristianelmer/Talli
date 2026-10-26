@@ -66,7 +66,7 @@ export async function loadTaxDeliveryDraftArchiveSource(accessToken: string, com
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)))
         .map(byte => byte.toString(16).padStart(2,"0")).join("");
       const value = JSON.parse(record.canonicalJson);
-      if (digest !== record.draftSha256 || value.version !== "company-tax-delivery-draft-v1"
+      if (digest !== record.draftSha256 || !["company-tax-delivery-draft-v1","company-tax-delivery-draft-v2"].includes(value.version)
           || value.draft?.filing_id !== record.filingId
           || value.draft?.envelope?.source?.company_id?.value !== companyId
           || value.draft?.envelope?.source?.income_year?.value !== incomeYear) throw new Error("Tax draft original mismatch.");

@@ -220,3 +220,8 @@ Its exact enabled function/arguments are included in positive V2 coverage.
 Temporary trigger EXECUTE authority and role memberships are restored after DDL.
 New writes invalidate in-progress company exports; exact replay does not.
 Containment preserves originals and generation tracking.
+
+Reader-first rollout: deploy the compatible backend codec and web archive reader
+before enabling V2 draft writes. Keep these readers as the minimum application
+rollback target after any V2 record exists. Containment disables V2 writes but
+retains both codecs; rolling back to a V1-only reader is unsupported.
