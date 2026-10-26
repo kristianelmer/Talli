@@ -46,9 +46,10 @@ function feature(api) {
   return exports;
 }
 
-function readBundle() {
+function readBundle(envelopeXml) {
   const value=bundle();const draft=JSON.parse(value.drafts[0].canonicalJson);
   draft.draft.envelope.source.organization_number="999888777";
+  if(envelopeXml!==undefined)draft.draft.envelope.envelope_xml=envelopeXml;
   value.drafts[0].canonicalJson=JSON.stringify(draft);value.drafts[0].draftSha256=hash(value.drafts[0].canonicalJson);
   value.sourceFacts.deliveryDrafts[0].draftSha256=value.drafts[0].draftSha256;
   const context={version:"tax-loopback-admission-v1",runId:filing,companyId:company,incomeYear:2025,actorId:actor,
@@ -77,6 +78,81 @@ function readBundle() {
   value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v3:","v4:");
   Object.assign(value.journals[0],{status:"mutation_completed",approvalSha256:binding.approval_sha256,latestEventSha256:observation.eventSha256});
   return value;
+}
+
+function guardedBundle({complete=true,fileBody="<approved/>"}={}) {
+  const wire="<approved/>";const value=readBundle(wire);
+  const approval=value.events[0].eventSha256;const instance=JSON.parse(value.events[3].canonicalJson).completion.result.instanceId;
+  const data="10000000-0000-4000-8000-000000000005";
+  const binding={...scope,approved_by:{kind:"USER",subject:{value:actor}},approval_sha256:approval,organization_number:"999888777",instance_id:instance};
+  const event=(slot,payload)=>{const raw=JSON.stringify(payload);return{filingId:filing,slot,recordedBy:actor,recordedAt:observedAt,canonicalJson:raw,eventSha256:hash(raw)};};
+  const metadata=withFile=>({id:instance,appId:"skd/formueinntekt-skattemelding-v2",instanceOwner:{organisationNumber:"999888777"},
+    dataValues:{inntektsaar:2025},process:{currentTask:{altinnTaskType:"data"}},status:{isArchived:false},
+    data:withFile?[{id:data,dataType:"skattemeldingOgNaeringsspesifikasjon",contentType:"application/xml",size:Buffer.byteLength(fileBody),fileScanResult:"Pending"}]:[]});
+  const read=(kind,raw,predecessor)=>{
+    const body={...binding,observed_at:{value:observedAt},original:{purpose:kind,body_base64:Buffer.from(raw).toString("base64"),
+      content_type:kind==="instance"?"application/json":"application/xml",http_status:200},
+      ...(kind==="envelope"?{data_id:data,instance_evidence_sha256:predecessor}:{})};
+    const identity=hash(JSON.stringify([kind==="instance"?"tax-instance-read-identity-v1":"tax-envelope-read-identity-v1",
+      filing,company,2025,actor,approval,"999888777",instance,...(kind==="envelope"?[data,predecessor]:[]),hash(raw)]));
+    return{record:event("observation:"+kind+":"+identity,{version:"company-tax-delivery-"+kind+"-observation-v1",observation:body}),identity};
+  };
+  const before=read("instance","\ufeff"+JSON.stringify(metadata(false))+"\n");
+  const request=event("intent:upload_envelope",{version:"company-tax-delivery-mutation-request-v2",request:{...scope,
+    organization_number:"999888777",approval_sha256:approval,kind:"upload_envelope",target_instance:instance,
+    body_base64:Buffer.from(wire).toString("base64"),upload_prerequisite:{instance_id:instance,
+      instance_read:{event_sha256:before.record.eventSha256,evidence_sha256:before.identity,observed_at:{value:observedAt}},
+      observed_from:{value:observedAt},observed_until:{value:observedAt}}}});
+  const after=read("instance","\ufeff"+JSON.stringify(metadata(true))+"\n");const envelope=read("envelope",fileBody,after.identity);
+  value.events=[...value.events.slice(0,4),before.record,request,after.record,envelope.record];
+  if(complete)value.events.push(event("completion:upload_envelope",{version:"company-tax-delivery-mutation-completion-v2",completion:{
+    intent:{...scope,approved_by:binding.approved_by,approval_sha256:approval,kind:"upload_envelope",request_sha256:request.eventSha256},
+    result:{instanceId:instance,dataId:data,envelopeSha256:hash(fileBody)},observed_at:{value:observedAt},origin:"envelope_read",
+    upload_read_evidence:{instance_canonical_json:after.record.canonicalJson,instance_sha256:after.record.eventSha256,
+      envelope_canonical_json:envelope.record.canonicalJson,envelope_sha256:envelope.record.eventSha256}}}));
+  value.eventCount=value.events.length;value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v4:","v5:");
+  Object.assign(value.journals[0],{status:complete?"mutation_completed":"uncertain",mutationKind:"upload_envelope",latestEventSha256:value.events.at(-1).eventSha256});
+  return value;
+}
+
+for(const complete of [false,true])test(`guarded archive retains exact originals with upload completion=${complete}`,async()=>{
+  const value=guardedBundle({complete});const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,
+    companyTaxGetDeliveryJournalArchive:async()=>client(value).companyTaxGetDeliveryJournalArchive(company,2025)};
+  const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+  assert.equal(result.error,null);assert.deepEqual(result.data.journal.events,value.events);
+  assert.equal(result.data.journal.journals[0].status,complete?"mutation_completed":"uncertain");
+});
+
+for(const change of ["old-reader","missing-admission","missing-create","borrowed-read","foreign-actor","foreign-company",
+  "old-metadata","proof-hash","proof-missing","origin","carrier","wrong-file","false-outcome"]) {
+  test(`guarded archive refuses ${change} without dropping or substituting originals`,async()=>{
+    const value=guardedBundle(change==="wrong-file"?{fileBody:"<different/>"}:{});
+    if(change==="old-reader")value.sourceFacts.evidence.version=value.sourceFacts.evidence.version.replace("v5:","v4:");
+    else if(change==="missing-admission")value.events.splice(1,1);
+    else if(change==="missing-create")value.events.splice(3,1);
+    else if(change==="false-outcome")value.journals[0].status="uncertain";
+    else if(change!=="wrong-file"){
+      const index=change==="borrowed-read"?5:value.events.length-1;const root=JSON.parse(value.events[index].canonicalJson);
+      if(change==="borrowed-read")root.request.upload_prerequisite.instance_read.event_sha256="f".repeat(64);
+      else if(change==="origin")root.completion.origin="mutation_response";
+      else if(change==="carrier")root.completion.response_base64="e30=";
+      else if(change==="proof-hash")root.completion.upload_read_evidence.envelope_sha256="f".repeat(64);
+      else if(change==="proof-missing")delete root.completion.upload_read_evidence.envelope_canonical_json;
+      else {
+        const proof=root.completion.upload_read_evidence;const inner=JSON.parse(proof.instance_canonical_json);
+        if(change==="foreign-actor")inner.observation.approved_by.subject.value=company;
+        else if(change==="foreign-company")inner.observation.company_id.value=filing;
+        else inner.observation.observed_at.value="2026-10-26T09:59:59Z";
+        proof.instance_canonical_json=JSON.stringify(inner);proof.instance_sha256=hash(proof.instance_canonical_json);
+      }
+      value.events[index].canonicalJson=JSON.stringify(root);value.events[index].eventSha256=hash(value.events[index].canonicalJson);
+    }
+    value.eventCount=value.events.length;value.journals[0].latestEventSha256=value.events.at(-1).eventSha256;
+    let fallbacks=0;const api={companyTaxGetSourceFacts:async()=>value.sourceFacts,companyTaxGetDeliveryJournalArchive:async()=>value,
+      companyTaxGetDeliveryDraftArchive:async()=>{fallbacks++;return{};}};
+    const result=await feature(api).loadTaxDeliveryDraftArchiveSource("fixture",company,2025);
+    assert.ok(result.error);assert.equal(result.data,null);assert.equal(fallbacks,0);
+  });
 }
 
 test("V4 export preserves exact read evidence without treating it as another completed mutation",async()=>{
@@ -125,6 +201,7 @@ test("generated journal archive client binds one complete source and exact scope
   assert.equal(called.url.pathname,"/api/v1/company-tax/archive-source/delivery-journal-v1");
   assert.equal(called.url.searchParams.get("companyId"),company);
   assert.equal(called.url.searchParams.get("readEvidence"),"true");
+  assert.equal(called.url.searchParams.get("readEvidenceVersion"),"2");
   assert.equal(new Headers(called.request.headers).get("Authorization"),"Bearer fixture");
 });
 

@@ -362,8 +362,8 @@ then performs the fixed-path create. An uncertain intent never elects another
 send. Results are bound to exact original bytes and retained through the narrow
 original-actor completion RPC even if access changes during I/O. Approval retries
 return the immutable original review receipt. Unknown create reconciliation has
-no invented lookup or lease reset. Later upload, validation and confirmation
-stages stay closed until retained read prerequisites are implemented.
+no invented lookup or lease reset. Guarded upload requires the Source V5 successor below. Validation and
+confirmation remain closed until their retained prerequisites are implemented.
 
 <!-- architecture-inventory
 {"ports":["TaxDeliveryMutationAuthority"]}
@@ -401,13 +401,14 @@ bytes, including BOM and whitespace. A known create result supplies the fixed
 read target. Unknown create has no invented lookup. Explicit foreign scope is
 rejected; missing, malformed or ambiguous metadata stays unknown and cannot
 prove an empty instance. Positive metadata inspection includes scan and process
-facts but authorizes no upload, validation, confirmation or final receipt.
+facts. Only the successor fresh empty-instance proof can authorize an upload;
+metadata alone authorizes no validation, confirmation or final receipt.
 
 Read evidence requires the successor contract. Current owner and fresh MFA are
 checked before network and again before storing or disclosing a read. Network
 runs outside SQL transactions. Unchanged read bytes reuse their first original
 and recording time without advancing export generation; the later local read
-time is not promoted to a fresh consequential proof. Evidence updates the last
+time requires an explicit bounded upload prerequisite to become consequential. Evidence updates the last
 event reference without inventing another completed mutation or submitted state.
 Journal enumeration is bounded to 2,048 events/64 MiB per filing; source export
 retains its 9,000-event/64 MiB company-year bounds. Exceeding a bound fails closed.
@@ -415,3 +416,45 @@ retains its 9,000-event/64 MiB company-year bounds. Exceeding a bound fails clos
 UTF-8 resource bytes, purpose, media type and successful read status.
 `decode_tax_delivery_observation` rechecks closed codec fields, canonical bytes,
 scope, original encoding and the expected digest before reconstructing evidence.
+
+`TaxDeliveryEnvelopeObservation` and `decode_tax_delivery_envelope_observation`
+retain exact known-instance file reads and bind their positive instance metadata
+identity and data ID. Approved-byte equality requires exact hash, media and size;
+`Clean` scan status remains a separate prerequisite. A changed BOM or whitespace
+is retained as different bytes. Source V5 admits this codec to the journal;
+its fixed-path read alone adds no upload or unknown-outcome clearance authority.
+
+`TaxDeliveryReadReference` and `TaxDeliveryUploadPrerequisite` distinguish the
+first retained instance original from its fresh backend observation time.
+`bind_tax_delivery_upload_prerequisite` requires identical read content and a
+positively empty, unarchived active data task within a 30-second observation
+interval. The optional upload prerequisite selects mutation-request codec V2;
+absent it, every V1 canonical byte remains unchanged. Source V5 / Journal V3
+validate these references and fresh access/source guards before committing an
+intent. Concurrent identical reads may reach storage in reverse order; the
+first retained original remains immutable, and both observations must predate
+the finished proof. A committed winner is replayed before comparing new proof
+times. Only an acknowledged new committed intent elects one fixed-path POST.
+
+`TaxDeliveryUploadReadEvidence` and `reconcile_tax_delivery_upload` build a V2
+upload completion from exact bound metadata and file originals. Both canonical
+originals are retained once inside the completion; exact request-body equality,
+resource identity, scope, media and size are mandatory. This proves only upload
+existence, including while a scan is pending or infected. It authorizes no
+validation. Source V5 binds the completion to an already committed original-actor
+upload intent. Known file results survive revocation during file GET; new reads
+and drift evidence still require current owner/MFA. Unknown uploads never retry
+POST and resolve only through exact known-instance metadata and file originals.
+Concurrent recoverers preserve the first completed original. A different exact
+completion cannot disclose it through the late-result RPC; a separate current
+owner/MFA history read may replay the bound winner. Create advance/reconciliation
+receipts stay scoped to create across later upload states.
+
+The deferred `20261026124307_company_tax_guarded_upload_v2.sql` installs positive
+Source V5 / Journal V3 readers over the same nine tables, with default-closed
+guarded writers. Its rollback closes new guarded work after company-lock waits
+and retains originals, readers and narrow known-result completion. New archive
+clients request `readEvidence=true&readEvidenceVersion=2`. Predecessor requests
+receive a complete reprojected V4 or V3 only while all retained codecs fit that
+version; unsupported originals make the request unavailable, never incomplete.
+No hosted/provider activation follows from installing the local successor.

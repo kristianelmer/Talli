@@ -292,6 +292,8 @@ const annualAccountsOperations = {
 const companyTaxOperations = {
   approveDeliveryDraft: ["/api/v1/company-tax/delivery-reviews", "post", "companyTaxApproveDeliveryDraft"],
   advanceDelivery: ["/api/v1/company-tax/delivery-advances", "post", "companyTaxAdvanceDelivery"],
+  advanceDeliveryUpload: ["/api/v1/company-tax/delivery-upload-advances", "post", "companyTaxAdvanceDeliveryUpload"],
+  reconcileDeliveryUpload: ["/api/v1/company-tax/delivery-upload-reconciliations", "post", "companyTaxReconcileDeliveryUpload"],
   reconcileDelivery: ["/api/v1/company-tax/delivery-reconciliations", "post", "companyTaxReconcileDelivery"],
   prepareDeliveryDraft: ["/api/v1/company-tax/delivery-drafts", "post", "companyTaxPrepareDeliveryDraft"],
   deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
@@ -2972,6 +2974,28 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async companyTaxAdvanceDeliveryUpload(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-upload-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "upload_envelope") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryUpload(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-upload-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "upload_envelope") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async companyTaxPrepareDeliveryDraft(
       command: CompanyTaxPrepareDeliveryDraftRequest, request: TalliMutationOptions,
     ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
@@ -3005,7 +3029,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     async companyTaxGetDeliveryJournalArchive(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
-      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true" });
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2" });
       const result = await executeJson(
         \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?\${query}\`,
         "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
@@ -3014,7 +3038,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const draftIds = new Set(result.drafts.map(row => row.filingId));
       if (result.companyId !== companyId || result.incomeYear !== incomeYear
           || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
-          || !["company-tax-source-v3:","company-tax-source-v4:"].some(version => source.evidence.version === version + result.sourceSha256)
+          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:"].some(version => source.evidence.version === version + result.sourceSha256)
           || source.evidence.digest !== result.sourceSha256
           || source.evidence.evaluatedAt !== result.observedAt
           || source.historyCoverage.evidenceReference !== source.evidence.reference

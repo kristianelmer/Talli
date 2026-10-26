@@ -42,15 +42,22 @@ def test_archive_keeps_one_complete_source_and_exact_originals(complete_archive)
     assert not result.source_facts.production_attempts
 
 
-def test_reader_negotiation_keeps_predecessor_only_history_compatible_without_masking_bad_proof(complete_archive):
+@pytest.mark.parametrize("version",[4,5])
+def test_reader_negotiation_keeps_predecessor_only_history_compatible_without_masking_bad_proof(complete_archive,version):
     query,snapshot=complete_archive
     successor=replace(snapshot,contract_version='company-tax-source-v4',coverage=dict(snapshot.coverage)|{
         'contractVersion':'company-tax-source-v4','declaredObservationExtentValid':True,'observationCodecVersion':'tax-read-evidence-v1'})
+    if version==5:
+        successor=replace(successor,contract_version='company-tax-source-v5',coverage=dict(successor.coverage)|{
+            'contractVersion':'company-tax-source-v5','declaredGuardedUploadExtentValid':True,'guardedUploadCodecVersion':'tax-guarded-upload-v1'})
+        v4=archive_tax_delivery_journal(query,successor,guarded_upload=False)
+        assert v4.source_facts.evidence.version.startswith('company-tax-source-v4:')
+        assert v4.events==snapshot.delivery_events
     compatible=archive_tax_delivery_journal(query,successor,read_evidence=False)
     assert compatible.source_facts==archive_tax_delivery_journal(query,snapshot).source_facts
     assert compatible.events==snapshot.delivery_events and compatible.drafts==snapshot.delivery_drafts
-    assert archive_tax_delivery_journal(query,successor).source_facts.evidence.version.startswith('company-tax-source-v4:')
-    broken=replace(successor,coverage=dict(successor.coverage)|{'declaredObservationExtentValid':False})
+    assert archive_tax_delivery_journal(query,successor).source_facts.evidence.version.startswith(f'company-tax-source-v{version}:')
+    broken=replace(successor,coverage=dict(successor.coverage)|{('declaredObservationExtentValid' if version==4 else 'declaredGuardedUploadExtentValid'):False})
     with pytest.raises(CompanyTaxError):archive_tax_delivery_journal(query,broken,read_evidence=False)
 
 

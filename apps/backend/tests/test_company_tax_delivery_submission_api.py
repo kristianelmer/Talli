@@ -42,7 +42,7 @@ def test_http_review_create_and_reconcile_expose_only_bound_progress(workflow):
     assert [method for method,_ in workflow[3]]==['GET','GET','POST','GET']
 
 
-@pytest.mark.parametrize('path',['delivery-reviews','delivery-advances','delivery-reconciliations'])
+@pytest.mark.parametrize('path',['delivery-reviews','delivery-advances','delivery-reconciliations','delivery-upload-advances','delivery-upload-reconciliations'])
 def test_default_composition_has_no_submission_authority(workflow,path):
     client,body,headers=client_for(workflow,enabled=False)
     if path!='delivery-reviews':body={name:body[name] for name in ('companyId','incomeYear','filingId')}|{'approvalSha256':'a'*64}
@@ -95,3 +95,12 @@ def test_deeply_nested_authority_json_is_returned_as_unknown_on_the_first_respon
     assert first.status_code==200 and first.json()['status']=='uncertain'
     assert client.post('/api/v1/company-tax/delivery-advances',json=advance,headers=headers).json()==first.json()
     assert sum(method=='POST' for method,_ in workflow[3])==1
+
+
+@pytest.mark.parametrize('path',['delivery-upload-advances','delivery-upload-reconciliations'])
+@pytest.mark.parametrize('field',['origin','credential','actorId','annualReady','envelopeXml','uploadPrerequisite'])
+def test_upload_http_cannot_supply_runtime_or_read_proof(workflow,path,field):
+    client,body,headers=client_for(workflow)
+    body={name:body[name] for name in ('companyId','incomeYear','filingId')}|{'approvalSha256':'a'*64,field:'caller supplied'}
+    assert client.post('/api/v1/company-tax/'+path,json=body,headers=headers).status_code==422
+    assert workflow[3]==[] and workflow[0].events==[]

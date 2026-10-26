@@ -107,7 +107,7 @@ from talli_backend.modules.company_tax_filing.public import (
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
-    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
     PrepareTaxDeliveryDraft, TaxFilingSubmissionId,
 )
@@ -1121,7 +1121,7 @@ class CompanyTaxSourceFactsWire(TransportModel):
 
 class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
     filing_id: UUID
-    slot: str = Field(pattern=r"^(review|admission|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation)|observation:instance:[0-9a-f]{64})$")
+    slot: str = Field(pattern=r"^(review|admission|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation)|observation:(instance|envelope):[0-9a-f]{64})$")
     recorded_by: UUID
     recorded_at: datetime
     canonical_json: str
@@ -11949,8 +11949,14 @@ def create_app(
                     raise CompanyTaxError.unavailable()
             else:
                 intent=AdvanceTaxDelivery(*scope,command.approval_sha256)
-                result=await (session.advance_delivery(intent) if action=='advance' else session.reconcile_delivery(intent))
+                if action=='advance':result=await session.advance_delivery(intent)
+                elif action=='reconcile':result=await session.reconcile_delivery(intent)
+                elif action=='advance-upload':result=await session.advance_delivery_upload(intent)
+                elif action=='reconcile-upload':result=await session.reconcile_delivery_upload(intent)
+                else:raise CompanyTaxError.unavailable()
                 if result.approval_sha256!=command.approval_sha256:raise CompanyTaxError.unavailable()
+                if action in ('advance-upload','reconcile-upload') and result.mutation_kind is not TaxMutationKind.UPLOAD_ENVELOPE:
+                    raise CompanyTaxError.unavailable()
             if (str(result.company_id)!=str(command.company_id) or int(result.income_year)!=command.income_year
                     or result.filing_id!=str(command.filing_id)):
                 raise CompanyTaxError.unavailable()
@@ -11991,6 +11997,26 @@ def create_app(
     ) -> CompanyTaxDeliveryProgressWire:
         return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile')
 
+    @application.post('/api/v1/company-tax/delivery-upload-advances',operation_id='companyTaxAdvanceDeliveryUpload',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery_upload(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-upload')
+
+    @application.post('/api/v1/company-tax/delivery-upload-reconciliations',operation_id='companyTaxReconcileDeliveryUpload',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_upload(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-upload')
+
     @application.get(
         "/api/v1/company-tax/archive-source/delivery-drafts-v1",
         operation_id="companyTaxGetDeliveryDraftArchive", response_model=CompanyTaxDeliveryDraftArchiveWire,
@@ -12024,12 +12050,14 @@ def create_app(
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
         read_evidence: Annotated[bool, Query(alias="readEvidence")] = False,
+        read_evidence_version: Annotated[int, Query(alias="readEvidenceVersion",ge=1,le=2)] = 1,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxDeliveryJournalArchiveWire:
         async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
             session=await company_tax_application.session(bearer_token(credentials))
             result=await session.delivery_journal_archive(CompanyTaxSourceQuery(
-                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),read_evidence=read_evidence)
+                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),read_evidence=read_evidence,
+                guarded_upload=read_evidence and read_evidence_version==2)
             facts=result.source_facts
             try:
                 return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),

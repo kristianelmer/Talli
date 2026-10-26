@@ -15,13 +15,15 @@ from .public import (
     StoredTaxDeliveryDraft, TaxDeliveryDraftFact,
     StoredTaxDeliveryEvent, TaxDeliveryJournal, TaxDeliveryJournalFact,
 )
+from .delivery_events import _guarded_upload_value
 
 _VERSION = 'company-tax-source-v1'
 _DELIVERY_VERSION = 'company-tax-source-v2'
 _JOURNAL_VERSION = 'company-tax-source-v3'
 _OBSERVATION_VERSION = 'company-tax-source-v4'
-_DELIVERY_VERSIONS=(_DELIVERY_VERSION,_JOURNAL_VERSION,_OBSERVATION_VERSION)
-_JOURNAL_VERSIONS=(_JOURNAL_VERSION,_OBSERVATION_VERSION)
+_GUARDED_UPLOAD_VERSION = 'company-tax-source-v5'
+_DELIVERY_VERSIONS=(_DELIVERY_VERSION,_JOURNAL_VERSION,_OBSERVATION_VERSION,_GUARDED_UPLOAD_VERSION)
+_JOURNAL_VERSIONS=(_JOURNAL_VERSION,_OBSERVATION_VERSION,_GUARDED_UPLOAD_VERSION)
 _FAMILIES = {
     'filing_previews': 'previews', 'filing_submissions': 'submissions',
     'filing_overrides': 'overrides', 'filing_review_comments': 'review_comments',
@@ -87,9 +89,12 @@ def _coverage(query, snapshot, evidence_reference):
             reasons.append('delivery_source_contract_required')
         if snapshot.contract_version in _JOURNAL_VERSIONS:
             events=snapshot.delivery_events
-            if snapshot.contract_version==_OBSERVATION_VERSION:
+            if snapshot.contract_version in (_OBSERVATION_VERSION,_GUARDED_UPLOAD_VERSION):
                 if proof.get('declaredObservationExtentValid') is not True or proof.get('observationCodecVersion')!='tax-read-evidence-v1':
                     reasons.append('observation_source_contract_unproven')
+            if snapshot.contract_version==_GUARDED_UPLOAD_VERSION:
+                if proof.get('declaredGuardedUploadExtentValid') is not True or proof.get('guardedUploadCodecVersion')!='tax-guarded-upload-v1':
+                    reasons.append('guarded_upload_source_contract_unproven')
             if proof.get('deliveryEventArchiveTrackingValid') is not True or proof.get('declaredDeliveryExtentValid') is not False:
                 reasons.append('journal_archive_tracking_unproven')
             if (type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=len(events)
@@ -159,6 +164,8 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
             events=snapshot.delivery_events;draft_ids={row.draft.filing_id for row in drafts}
             if snapshot.contract_version==_JOURNAL_VERSION and any(event.slot=='admission' or event.slot.startswith('observation:') for event in events):
                 raise ValueError('Tax read evidence requires the positive V4 reader contract.')
+            if snapshot.contract_version!=_GUARDED_UPLOAD_VERSION and any(_guarded_upload_value(event.value) for event in events):
+                raise ValueError('Tax guarded upload originals require the positive V5 reader contract.')
             if any(type(event) is not StoredTaxDeliveryEvent or event.binding.filing_id not in draft_ids
                     or event.recorded_at.value>snapshot.as_of.value for event in events):
                 raise ValueError('Tax event history is incomplete or out of scope.')
@@ -167,7 +174,8 @@ def project(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) ->
                 'recordedBy':str(event.recorded_by.subject)} for event in events]
             for row in drafts:
                 retained=tuple(event for event in events if event.binding.filing_id==row.draft.filing_id)
-                journal=TaxDeliveryJournal(row.draft,retained,snapshot.contract_version==_OBSERVATION_VERSION)
+                journal=TaxDeliveryJournal(row.draft,retained,snapshot.contract_version in (_OBSERVATION_VERSION,_GUARDED_UPLOAD_VERSION),
+                    snapshot.contract_version==_GUARDED_UPLOAD_VERSION)
                 if retained:
                     progress=journal.progress
                     journals.append(TaxDeliveryJournalFact(row.draft.filing_id,journal.approval.approved_by,

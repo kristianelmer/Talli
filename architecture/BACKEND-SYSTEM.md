@@ -1146,7 +1146,9 @@ after waits and after source reads. Authority I/O never holds SQL transactions.
 
 The strict `/api/v1/company-tax/delivery-reviews`,
 `/api/v1/company-tax/delivery-advances` and
-`/api/v1/company-tax/delivery-reconciliations` routes accept scope, hashes and an
+`/api/v1/company-tax/delivery-reconciliations`,
+`/api/v1/company-tax/delivery-upload-advances` and
+`/api/v1/company-tax/delivery-upload-reconciliations` routes accept scope, hashes and an
 idempotency header only. Default composition has no submission dependency and
 returns unavailable. There is no environment activation flag, hosted target,
 provider credential lookup or Annual/Billing readiness attestation. The finite
@@ -1154,7 +1156,7 @@ mode is synthetic engineering authority. Real filing and all later unimplemented
 provider stages remain closed.
 
 <!-- architecture-inventory
-{"workflows":["company-tax-finite-delivery"],"workflowPurposes":["company-tax-finite-delivery=>Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and create intent before fixed-path local authority I/O; retains bound results after revocation and never resends uncertain creates. Default composition is disabled."],"routes":["/api/v1/company-tax/delivery-reviews","/api/v1/company-tax/delivery-advances","/api/v1/company-tax/delivery-reconciliations"]}
+{"workflows":["company-tax-finite-delivery"],"workflowPurposes":["company-tax-finite-delivery=>Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload intents before fixed-path local authority I/O; retains bound results after revocation and resolves unknown uploads only through exact known-instance metadata/file reads. Default composition is disabled."],"routes":["/api/v1/company-tax/delivery-reviews","/api/v1/company-tax/delivery-advances","/api/v1/company-tax/delivery-reconciliations","/api/v1/company-tax/delivery-upload-advances","/api/v1/company-tax/delivery-upload-reconciliations"]}
 -->
 
 <!-- architecture-inventory

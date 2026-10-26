@@ -948,6 +948,8 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
     "apps/backend/tests/test_postgres_tax_delivery_events.py",
     "apps/backend/tests/test_postgres_tax_delivery_observations.py",
     "apps/backend/tests/test_postgres_tax_delivery_submission.py",
+    "apps/backend/tests/test_postgres_tax_guarded_upload.py",
+    "apps/backend/tests/test_postgres_tax_upload_submission.py",
     "apps/backend/tests/test_company_tax_filing_runtime.py",
     "apps/backend/tests/test_company_tax_return_lifecycle.py",
     "apps/backend/tests/test_company_tax_delivery_database.py",
@@ -955,10 +957,14 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
     "apps/backend/tests/test_company_tax_current_preparation_database.py",
     "apps/backend/tests/test_company_tax_delivery_events_database.py",
     "apps/backend/tests/test_company_tax_delivery_observations_database.py",
+    "apps/backend/tests/test_company_tax_guarded_upload_database.py",
   ], "Tax must retain settlement expansion/runtime and filing lifecycle coverage");
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
-  assert.ok(tax.size >= 97);
+  assert.ok(tax.size >= 115);
+  for (const file of ["tests/contract/company_tax_journal_archive_client.test.mjs", "tests/contract/company_tax_finite_delivery_client.test.mjs"]) {
+    assert.ok(packageJson.scripts["test:boundary-contract"].split(/\s+/u).includes(file), "Tax guarded readers and upload methods must run in the contract lane");
+  }
   assert.match(packageJson.scripts["check:company-tax-schemas"], /scripts\/check_company_tax_schema_drift\.py/u);
   assert.ok(packageJson.scripts["test:launch-rehearsal"].includes("npm run check:company-tax-schemas &&"),
     "the complete gate must check current official Tax schema/code-list resources");

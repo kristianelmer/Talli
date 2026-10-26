@@ -99,7 +99,7 @@ def test_foreign_instance_read_is_not_retained_and_lost_append_ack_reuses_first_
     session,service,command,_,response,clock,_=read_workflow
     async def exercise():
         approval=await service.approve(session,command);advance=advancing(command,approval)
-        await service.advance(session,advance)
+        created=await service.advance(session,advance)
         good=response['instance'];document=instance_document(session.draft);document['instanceOwner']['organisationNumber']='999999999'
         response['instance']=json.dumps(document).encode()
         with pytest.raises(CompanyTaxError):await service.reconcile(session,advance)
@@ -115,7 +115,8 @@ def test_foreign_instance_read_is_not_retained_and_lost_append_ack_reuses_first_
         first=session.events[-1]
         clock[0]=Timestamp(clock[0].value+timedelta(seconds=1))
         result=await service.reconcile(session,advance)
-        assert result.latest_event_sha256==first.value.sha256 and session.events[-1]==first and len(session.events)==5
+        assert result==created
+        assert session.events[-1]==first and len(session.events)==5
     asyncio.run(exercise())
 
 

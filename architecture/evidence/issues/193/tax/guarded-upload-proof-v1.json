@@ -1,0 +1,177 @@
+{
+  "version": "tax-guarded-upload-proof-v1",
+  "baselineRevision": "311ba44b9b764402bc6cd4d73e5f80c6dc9849ff",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Exact known-instance envelope originals bound to positive metadata/data ID; exact byte hash/media/size equality separate from Clean scan status.",
+    "Default-closed Source V5 / Journal V3 successor on the same nine tables, with V2 upload requests and inline read-reconciliation completions; original V1 codecs and history remain exact.",
+    "Explicit upload-advance and upload-reconcile commands; current owner/MFA/source/current document and fresh empty active data task before committed submit-once intent and one fixed-path loopback POST.",
+    "Unknown upload never repeats POST; known-instance metadata and exact approved file reads can prove upload existence while Pending or Infected, without validation authority.",
+    "Narrow original-actor result retention survives access changes during final GET. Concurrent winner replay requires a separate current owner/MFA history read; no late-writer disclosure privilege is widened.",
+    "Immutable create receipts survive later upload states. Concurrent identical metadata reads may reach storage in reverse order without changing the first retained original or inventing freshness.",
+    "readEvidenceVersion=2 negotiation; predecessor clients get complete compatible V4/V3 only while every original fits, otherwise unavailable."
+  ],
+  "validation": {
+    "domainAndSourceRegression": {
+      "passed": 332,
+      "privateLog": "upload-regression-v2.log",
+      "note": "V4/V5 negotiation follow-up added one further case; both targeted negotiation cases pass."
+    },
+    "httpApi": {
+      "passed": 34,
+      "privateLog": "upload-api-v1.log"
+    },
+    "nativePgAndRealHttp": {
+      "passed": 14,
+      "privateLogs": [
+        "upload-race-green-v1.log",
+        "upload-review-fixes-v1.log",
+        "upload-recovery-race-access-v1.log"
+      ],
+      "includes": [
+        "seven guarded-storage/containment cases",
+        "seven real HTTP cases, including reversed-storage metadata race, concurrent recovery, and revoked-racer non-disclosure"
+      ]
+    },
+    "postReviewWorkflowRegression": {
+      "passed": 26,
+      "privateLog": "upload-review-fixes-v1.log"
+    },
+    "concurrentRecoveryAccess": {
+      "passed": 2,
+      "privateLog": "upload-recovery-race-access-v1.log"
+    },
+    "signedMfaFullOwningTopology": {
+      "passed": 4,
+      "privateLog": "upload-signed-topology-v1.log",
+      "note": "Actual GoTrue signed AAL2, complete owning sources, restricted runtime and real loopback HTTP; synthetic local authority only."
+    },
+    "actualSourceFactsAndArchiveClient": {
+      "passed": 1,
+      "privateLog": "upload-signed-full-client-v1.log",
+      "note": "Actual source-facts plus V5 archive responses through generated SDK and web verifier; all originals unchanged; all three archive negotiation generations exercised."
+    },
+    "generatedClientAndWebArchive": {
+      "passed": 101,
+      "privateLog": "upload-clients-v2.log"
+    },
+    "mandatoryPartition": {
+      "status": "PASS",
+      "minimumTaxCases": 115,
+      "markerParity": true,
+      "privateLog": "upload-partition-final-v1.log"
+    },
+    "architecture": "PASS; dependency evidence unchanged",
+    "typecheck": "PASS",
+    "generatedArtifacts": "PASS",
+    "whitespace": "PASS",
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    }
+  },
+  "review": {
+    "initialStandards": {
+      "findings": 1,
+      "resolved": 1,
+      "remaining": 0,
+      "resolution": "Conflicting exact completion originals resolve a committed winner only through a separate currently authorized history read."
+    },
+    "initialSpec": {
+      "findings": 1,
+      "resolved": 1,
+      "remaining": 0,
+      "resolution": "Create reconciliation returns its create receipt across later upload states."
+    },
+    "independentFollowup": {
+      "standardsFindings": 0,
+      "specFindings": 0
+    }
+  },
+  "contracts": {
+    "paths": 189,
+    "schemas": 525,
+    "addedPaths": [
+      "/api/v1/company-tax/delivery-upload-advances",
+      "/api/v1/company-tax/delivery-upload-reconciliations"
+    ],
+    "changedExistingPaths": [
+      "/api/v1/company-tax/archive-source/delivery-journal-v1"
+    ],
+    "changedSchemas": [
+      "CompanyTaxDeliveryJournalOriginalWire"
+    ],
+    "predecessorOriginalCodecsUnchanged": true,
+    "frozenExportRouteUnchanged": true
+  },
+  "rollout": {
+    "hostedChanges": false,
+    "pushOrDeployment": false,
+    "guardedWritesDefaultEnabled": false,
+    "realProviderActivation": false,
+    "productionFiling": false,
+    "paidActivation": false,
+    "liveData": false,
+    "publicLaunch": false,
+    "minimumRollback": "Contain new work with the matching deferred rollback; retain V5-compatible readers and every original. Narrow original-actor known-result retention remains available."
+  },
+  "notEstablished": [
+    "Fresh Clean scan prerequisite for validation dispatch",
+    "Validation job/status and pinned XML result originals",
+    "Owner confirmation, final feedback and receipt truth",
+    "Correction chain",
+    "Actual signed-JWT desktop/touch Tax completion",
+    "Accounts completion",
+    "Commercial Annual/Billing or production authority",
+    "Original Model3/P-H compatibility",
+    "Customer-ready release verdict"
+  ],
+  "sourceFiles": {
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_delivery.py": "2bf7bc8de9cad60262587a5b3c8c0687ffbd7791c440c1f765e58504611ef315",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "74fb1fc65818b2fd2c45f94aff19bfee8d36810c0f28cdad3d63e56daa384960",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "013ab0ac1fcaede2b8fae58e8ef4bd79c32b2f7190435a1157e3332e214189fd",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "8c5223a1ed6d9d5fbc1ab6de727da883e656ff671af2c842b64953b6a1411691",
+    "apps/backend/src/talli_backend/main.py": "b9bc05a1942ed9961ad9c1b667aa4ffa711706fa3f4ee71647c0d22df06ea339",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "f9f7385e12ff8d3be4674335681347eb25be8fdc9fcbe05609c25edc9a07a5aa",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_archive.py": "fb0979fb2f5b9b175fbc256bfed48c80311914eeafc6e5b4b7c0994627940db1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_envelope_observation.py": "4ce3e4806d6711bd5e4c0ad4e578c41dc8a18c490842beb0f7a2b65c4912049e",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "5fc54cc60453728ee9054d0a60c843f541efdef334ec54b5dbe01cce5ca87f43",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_journal.py": "deb240c4a01692dde1727d3e50a701ee558c3a7bdf6fd3144d7f99e141e19992",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_observation.py": "251fe6fdb75014865b3f9fbd80137c91a033b4e406af3c4ba23f107331e49451",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_original.py": "51938168095db46cf003bcd941e0dfa161d86bdb4b7a4db4239c8d64420178d6",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_upload_prerequisite.py": "9e6ff6e2cdfdeb4209d86be8397bfc7651b40d7d6f535c1594471f341ce72874",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_upload_read_evidence.py": "211514e69966068a3e9e58fd616726450457eef79246dd9e6eee234d5f7178c6",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "7e90794a827de5772331cd86c020e0f4be257b7cba7af3a18197ca18df3a697e",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "b50741ce22b67b0f09a198bd3367b1b6ca40a37e4baff3310ef1053c7697344b",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "b6c12f2859dab317e0709f8565d0d9675ae1423efab5c8991f6773f75dbcdba4",
+    "apps/backend/tests/test_company_tax_delivery_envelope_observation.py": "daf4f90136509dc04cf1761de9e61b3ee5660910149d5fdea5236d3e15520893",
+    "apps/backend/tests/test_company_tax_delivery_journal_archive.py": "5300618ba90d762de15981d00e665b03187a1d217d453fd3af87ddb34eec5c84",
+    "apps/backend/tests/test_company_tax_delivery_observation_workflow.py": "616e7d2f3287cf44d8aedfbe924fc4b383e154b4fe586a3108d6fa1d32ed7936",
+    "apps/backend/tests/test_company_tax_delivery_observations_database.py": "5fdf2a65f032c964cd505fe2866b746ee732dfec6d3a6d1e28aa2115fc785c28",
+    "apps/backend/tests/test_company_tax_delivery_submission.py": "b8165fea176a7795f6b3fb25bcb57af62682012517bf7aa4efde2148789325b1",
+    "apps/backend/tests/test_company_tax_delivery_submission_api.py": "518896e27ace1e818269b896f8511926cc9ce51cfb919eb6e6b7514d4f22ea1d",
+    "apps/backend/tests/test_company_tax_delivery_upload_workflow.py": "5e7e6c65f0eb8374143f95f687aa20e74c8d3bf16e2eef4fc2efac684d2986e8",
+    "apps/backend/tests/test_company_tax_guarded_upload_database.py": "30d04261e627ac8e70cb42344da50b8b99f89ab92ec9df4c53190b1d25d5af3f",
+    "apps/backend/tests/test_company_tax_guarded_upload_journal.py": "0019eda7ebbf199b03738a484809a2045f7b5d6885297cc17350f9ef93a36c5d",
+    "apps/backend/tests/test_company_tax_upload_prerequisite.py": "c7180fbb44f3c726e76a084e7150cd3dc83029d46f0732eaf819ab4a6a6dd64e",
+    "apps/backend/tests/test_company_tax_upload_reconciliation.py": "5407ee719097a3b842f0e1316aa3c35744ffe6b3be3ba9386c5ba5516c8eb362",
+    "apps/backend/tests/test_postgres_tax_guarded_upload.py": "142102ccd88fb13c533bbe48de79519e44e2112c427037fd618923ef36c4bee1",
+    "apps/backend/tests/test_postgres_tax_upload_submission.py": "2611a223d976baf1c926bb0b49e5f88f963d0ff87b37a5e7b9ef16bf62143410",
+    "apps/web/features/company-tax-filing/transport.ts": "91de02062b578cba295b28f62e41a7998a887180212d991b125df1a7da5d832c",
+    "architecture/BACKEND-SYSTEM.md": "fe230c78f12c9be459abd9da18338eb7aab5ee1fb645bc16e7f8db62a4137e8b",
+    "architecture/backend-system.json": "02af6c5a036e694c36456f366b797062bf7df4d563c71781c7b0d31f391ce7d9",
+    "contracts/openapi/talli-v1.json": "91b3a82e4d632a959ae55f952fd4ddf3d87bc4aa96d977d04ace399dcd7190f3",
+    "package.json": "bf8f66d18a11ffd37511ead3b7547b59e5dc55544e11a00076aeb8cdc76c2803",
+    "packages/talli-api-client/src/generated/client.ts": "e193e1f669e80eab7305104c60a10a346daf274cde535b0806166ffd51647d5d",
+    "scripts/generate-api-client.mjs": "003b699b4e117b6fd8ca599dd4031c4467775f0bb2e905833e2f81ca80050655",
+    "scripts/rehearse-tax-topology.mjs": "d1a68b7ed16787e5f302e0dc704aaba4e091f4aaab3f726ae5b758715e5c3ad7",
+    "supabase/contract-migrations/20261026124307_company_tax_guarded_upload_v2.sql": "a0e657a2aaa5264b8f83ee9c0aa2d2ecbf808f65a25c171be8b399c71a7fc0d2",
+    "supabase/rollback/20261026124307_company_tax_guarded_upload_v2.sql": "1046ae9a53c007f6e04c4855764be0a4b3148d9bb056b6636e1f19247f10b23b",
+    "tests/ci_release_gate.test.mjs": "745a5bc1b97760f2b6c7c8591458ba82b2fc5e3430421d72dd24826a2fc2ce37",
+    "tests/contract/company_tax_finite_delivery_client.test.mjs": "a234c45e851cda01d91e7b3bbbfe5b692a13377a68de7a725f412c81507e533e",
+    "tests/contract/company_tax_journal_archive_client.test.mjs": "b24a198e9b3deb4b9ccad287ac76eb531e8c139e94367eb15806b43bb17735d7",
+    "tests/support/check-tax-journal-client.mjs": "66e1bf3046d58f2b52fdcc59aad20b777324ba4b8d129f81b1ec32a6d374c6c7"
+  }
+}

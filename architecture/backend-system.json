@@ -594,14 +594,16 @@
     },
     {
       "name": "company-tax-finite-delivery",
-      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and create intent before fixed-path local authority I/O; retains bound results after revocation and never resends uncertain creates. Default composition is disabled.",
+      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload intents before fixed-path local authority I/O; retains bound results after revocation and resolves unknown uploads only through exact known-instance metadata/file reads. Default composition is disabled.",
       "publicPackages": [
         "talli_backend.modules.company_tax_filing.public"
       ],
       "routes": [
         "/api/v1/company-tax/delivery-reviews",
         "/api/v1/company-tax/delivery-advances",
-        "/api/v1/company-tax/delivery-reconciliations"
+        "/api/v1/company-tax/delivery-reconciliations",
+        "/api/v1/company-tax/delivery-upload-advances",
+        "/api/v1/company-tax/delivery-upload-reconciliations"
       ]
     }
   ],

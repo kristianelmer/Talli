@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import UTC,datetime,timedelta
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
+import socket
 from threading import Thread
 from uuid import uuid4
 
@@ -26,23 +27,24 @@ from talli_backend.main import create_app
 from talli_backend.shared.kernel import Timestamp
 from test_company_tax_current_preparation_database import configured
 from test_company_tax_delivery_events_database import signed_runtime,ARCHIVE
-from test_company_tax_delivery_journal import INSTANCE
+from test_company_tax_delivery_journal import INSTANCE,DATA
 
 pytestmark=pytest.mark.company_tax_database
 
 
 @contextmanager
-def finite_http(signed_runtime):
+def finite_http(signed_runtime,*,upload=False):
     connection,token,aal1=signed_runtime;url,backend,cid,actor,sessions=connection
     app,command,_,original=configured(connection);app._sessions=sessions
     async def prepare():return await (await app.session(token)).prepare_delivery_draft(command)
     draft=asyncio.run(prepare()).draft
-    state={'calls':[],'grant':None,'revoke':False}
+    state={'calls':[],'grant':None,'revoke':False,'uploaded':None,'lostUpload':False,
+        'fileBytes':None,'onFile':lambda:None,'errors':[]}
     user=conninfo_to_dict(backend)['user']
     class Authority(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
-        def respond(self,status,raw):
-            self.send_response(status);self.send_header('Content-Type','application/json; charset=utf-8')
+        def respond(self,status,raw,media='application/json; charset=utf-8'):
+            self.send_response(status);self.send_header('Content-Type',media)
             self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
         def check_request(self):
             grant=state['grant']
@@ -56,6 +58,9 @@ def finite_http(signed_runtime):
             self.check_request()
             if self.path=='/api/skattemelding/v2/2025/'+draft.envelope.source.organization_number:
                 return self.respond(200,original.raw_bytes)
+            if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data/'+DATA:
+                state['onFile']()
+                return self.respond(200,state['uploaded'] if state['fileBytes'] is None else state['fileBytes'],'application/xml')
             assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE
             if state['revoke']:
                 with psycopg.connect(url) as db:
@@ -64,15 +69,28 @@ def finite_http(signed_runtime):
                 'instanceOwner':{'organisationNumber':draft.envelope.source.organization_number},
                 'dataValues':{'inntektsaar':2025},'process':{'currentTask':{'altinnTaskType':'data'}},
                 'status':{'isArchived':False},'data':[]}
+            if upload and state['uploaded'] is not None:
+                raw=state['uploaded'] if state['fileBytes'] is None else state['fileBytes']
+                value['data']=[{'id':DATA,'dataType':'skattemeldingOgNaeringsspesifikasjon',
+                    'contentType':'application/xml','size':len(raw),'fileScanResult':'Pending'}]
             state['original']=b'\xef\xbb\xbf'+json.dumps(value,indent=2).encode()+b'\n'
             self.respond(200,state['original'])
         def do_POST(self):
-            self.check_request();assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'
+            self.check_request()
             body=self.rfile.read(int(self.headers['Content-Length']))
             with psycopg.connect(url) as db:
                 rows=db.execute('select slot,canonical_json from company_tax_filing.delivery_events where filing_id=%s order by sequence',(draft.filing_id,)).fetchall()
-                assert [row[0] for row in rows]==['review','admission','intent:create_instance']
                 import base64
+                if upload and self.path=='/skd/formueinntekt-skattemelding-v2/instances/'+INSTANCE+'/data?dataType=skattemeldingOgNaeringsspesifikasjon':
+                    assert rows[-1][0]=='intent:upload_envelope'
+                    assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body==draft.envelope.envelope_xml.encode()
+                    assert sum(row[0]=='intent:upload_envelope' for row in rows)==1
+                    state['uploaded']=body
+                    if state['lostUpload']:
+                        self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                    return self.respond(201,json.dumps({'id':DATA,'fileScanResult':'Pending'}).encode())
+                assert self.path=='/skd/formueinntekt-skattemelding-v2/instances/'
+                assert [row[0] for row in rows]==['review','admission','intent:create_instance']
                 assert base64.b64decode(json.loads(rows[-1][1])['request']['body_base64'])==body
             self.respond(201,('\ufeff{"id":"'+INSTANCE+'"}\n').encode())
     server=ThreadingHTTPServer(('127.0.0.1',0),Authority);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
@@ -82,7 +100,7 @@ def finite_http(signed_runtime):
         grant=TaxDeliveryRehearsalAdmission(str(uuid4()),command.company_id,command.income_year,actor,draft.filing_id,
             draft.sha256,draft.envelope.source.organization_number,issued,Timestamp(issued.value+timedelta(minutes=10)),
             'http://127.0.0.1:'+str(server.server_port),uuid4().hex+uuid4().hex,
-            loopback_tax_database_scope(target['host'],int(target['port']),target['dbname'],target['user']),20)
+            loopback_tax_database_scope(target['host'],int(target['port']),target['dbname'],target['user']),40)
         state['grant']=grant
         runtime=TaxDeliveryRehearsalRuntime(grant)
         submission=CompanyTaxDeliverySubmission(runtime,LoopbackCompanyTaxDelivery(runtime),PinnedTax2025Schemas())

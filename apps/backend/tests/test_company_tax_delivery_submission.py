@@ -19,6 +19,7 @@ from talli_backend.modules.company_tax_filing.public import (
     AdvanceTaxDelivery,ApproveTaxDeliveryDraft,CompanyTaxError,TaxDeliveryEventAppend,StoredTaxDeliveryEvent,
     StoredTaxDeliveryDraft,approve_tax_delivery_review,
     TaxDeliveryInstanceObservation,
+    TaxDeliveryEnvelopeObservation,
 )
 from talli_backend.shared.kernel import CorrelationId,IdempotencyKey,Timestamp
 from talli_backend.modules.company_tax_filing.public import TaxFilingSubmissionId
@@ -33,6 +34,7 @@ class Session:
         self.source=draft.envelope.source;self.owner=self.fresh=True
         self.lose=None;self.on_commit=lambda slot:None;self.on_source=lambda:None
         self.guards=[];self.extra_drafts=[]
+        self.current_time=None
 
     @asynccontextmanager
     async def transaction(self,*,snapshot=False):
@@ -52,14 +54,15 @@ class Session:
             async def append_delivery_event(self,value):
                 nonlocal last
                 assert session.active==[False]
-                event=StoredTaxDeliveryEvent(value,Timestamp(session.base.as_of.value+timedelta(microseconds=len(session.events)+1)),session.actor_id)
+                recorded=(session.current_time() if session.current_time is not None else Timestamp(session.base.as_of.value+timedelta(microseconds=len(session.events)+1)))
+                event=StoredTaxDeliveryEvent(value,recorded,session.actor_id)
                 if not event.slot.startswith('completion:'):
                     if not session.owner:raise CompanyTaxError.not_found()
                     if not session.fresh:raise CompanyTaxError.mfa_required()
                 prior=next((row for row in session.events if row.slot==event.slot and row.binding.filing_id==event.binding.filing_id),None)
                 if prior is not None:
-                    if prior.value!=value and not (type(value) is TaxDeliveryInstanceObservation
-                        and type(prior.value) is TaxDeliveryInstanceObservation
+                    if prior.value!=value and not (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation)
+                        and type(prior.value) is type(value)
                         and value.evidence_sha256==prior.value.evidence_sha256 and value.original==prior.value.original):
                         raise CompanyTaxError.draft_conflict()
                     return TaxDeliveryEventAppend(prior,False)
@@ -83,7 +86,7 @@ class Session:
             'deliveryEventCount':len(self.events),'deliveryEventDigests':{
                 row.binding.filing_id+':'+row.slot:row.value.sha256 for row in self.events}}
         return replace(self.base,coverage=proof,delivery_events=tuple(self.events),delivery_drafts=drafts,
-            as_of=Timestamp(self.base.as_of.value+timedelta(microseconds=len(self.events)+2)))
+            as_of=(self.current_time() if self.current_time is not None else Timestamp(self.base.as_of.value+timedelta(microseconds=len(self.events)+2))))
 
 
 @pytest.fixture

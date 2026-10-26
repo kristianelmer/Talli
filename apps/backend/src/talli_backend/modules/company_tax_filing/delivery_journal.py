@@ -9,39 +9,17 @@ from enum import StrEnum
 import hashlib
 import json
 import re
-from uuid import UUID
 
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, Timestamp, UserId
 from .delivery import TaxMutationIntent, TaxMutationKind, TaxMutationRecord, _digest, _json
 from .delivery_approval import TaxDeliveryReviewApproval
 from .delivery_draft import TaxDeliveryDraft, _canonical, _object
 
+from .delivery_original import _bytes,_instance,_response_object,_uuid,_MAX_BODY
+from .delivery_upload_prerequisite import TaxDeliveryUploadPrerequisite,_decode_upload_prerequisite
+from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence,_decode_upload_read_evidence
+
 _APP_ID='skd/formueinntekt-skattemelding-v2'
-_MAX_BODY=8*1024*1024
-
-
-def _uuid(value):
-    if type(value) is not str or str(UUID(value))!=value:
-        raise ValueError('Tax journal identifier is invalid.')
-    return value
-
-
-def _instance(value):
-    if type(value) is not str or re.fullmatch(r'[0-9]{1,19}/[0-9a-f-]{36}',value) is None:
-        raise ValueError('Tax journal instance is invalid.')
-    _uuid(value.split('/',1)[1])
-    return value
-
-
-def _bytes(encoded, *, allow_empty=False):
-    if type(encoded) is not str or len(encoded)>12*1024*1024:
-        raise ValueError('Tax journal original exceeds its limit.')
-    raw=base64.b64decode(encoded,validate=True)
-    if ((not raw and not allow_empty) or len(raw)>_MAX_BODY
-            or base64.b64encode(raw).decode('ascii')!=encoded):
-        raise ValueError('Tax journal original encoding is invalid.')
-    raw.decode('utf-8',errors='strict')
-    return raw
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +32,7 @@ class TaxDeliveryMutationRequest:
     kind: TaxMutationKind
     target_instance: str | None
     body_base64: str
+    upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None
 
     def __post_init__(self):
         _uuid(self.filing_id);_digest(self.approval_sha256)
@@ -67,6 +46,11 @@ class TaxDeliveryMutationRequest:
             if self.target_instance is not None:raise ValueError('New Tax instance cannot have a prior target.')
         else:_instance(self.target_instance)
         _bytes(self.body_base64,allow_empty=self.kind is TaxMutationKind.PREPARE_CONFIRMATION)
+        if self.upload_prerequisite is not None and (
+                type(self.upload_prerequisite) is not TaxDeliveryUploadPrerequisite
+                or self.kind is not TaxMutationKind.UPLOAD_ENVELOPE
+                or self.upload_prerequisite.instance_id!=self.target_instance):
+            raise ValueError('Tax upload prerequisite differs from its exact request.')
 
     @property
     def body_bytes(self) -> bytes:
@@ -74,7 +58,11 @@ class TaxDeliveryMutationRequest:
 
     @property
     def canonical_json(self) -> str:
-        return _canonical({'version':'company-tax-delivery-mutation-request-v1','request':_json(self)})
+        value=_json(self)
+        version='company-tax-delivery-mutation-request-v2'
+        if self.upload_prerequisite is None:
+            value.pop('upload_prerequisite');version='company-tax-delivery-mutation-request-v1'
+        return _canonical({'version':version,'request':value})
 
     @property
     def sha256(self) -> str:
@@ -89,12 +77,14 @@ class TaxDeliveryMutationRequest:
             approval.sha256,self.kind,self.sha256)
 
     def assert_draft(self, approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft) -> None:
-        if self != build_tax_delivery_mutation_request(approval,draft,self.kind,target_instance=self.target_instance):
+        if self != build_tax_delivery_mutation_request(approval,draft,self.kind,target_instance=self.target_instance,
+                upload_prerequisite=self.upload_prerequisite):
             raise ValueError('Tax mutation request differs from the approved original.')
 
 
 def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, draft: TaxDeliveryDraft,
-        kind: TaxMutationKind, *, target_instance: str | None = None) -> TaxDeliveryMutationRequest:
+        kind: TaxMutationKind, *, target_instance: str | None = None,
+        upload_prerequisite: TaxDeliveryUploadPrerequisite | None=None) -> TaxDeliveryMutationRequest:
     """Create exact nonsecret wire bodies; an operation never accepts a URL.
 
     These bodies preserve the fixed Tax application contract. The eventual
@@ -113,40 +103,40 @@ def build_tax_delivery_mutation_request(approval: TaxDeliveryReviewApproval, dra
         body=json.dumps({'appId':_APP_ID,'instansId':_instance(target_instance)},separators=(',',':')).encode()
     else:body=b''
     return TaxDeliveryMutationRequest(draft.filing_id,source.company_id,source.income_year,
-        source.organization_number,approval.sha256,kind,target_instance,base64.b64encode(body).decode('ascii'))
+        source.organization_number,approval.sha256,kind,target_instance,base64.b64encode(body).decode('ascii'),upload_prerequisite)
 
 
 class TaxDeliveryCompletionOrigin(StrEnum):
     MUTATION_RESPONSE = 'mutation_response'
     INSTANCE_READ = 'instance_read'
-
-
-def _response_object(raw: bytes):
-    def pairs(items):
-        result={}
-        for key,value in items:
-            if key in result:raise ValueError('Duplicate Tax response key.')
-            result[key]=value
-        return result
-    def constant(_value):raise ValueError('Nonfinite Tax response value.')
-    result=json.loads(raw.decode('utf-8-sig',errors='strict'),object_pairs_hook=pairs,parse_constant=constant)
-    if type(result) is not dict:raise ValueError('Tax response must be an object.')
-    return result
+    ENVELOPE_READ = 'envelope_read'
 
 
 @dataclass(frozen=True, slots=True)
 class TaxDeliveryMutationCompletion:
     intent: TaxMutationIntent
     result: Mapping[str, object]
-    response_base64: str
+    response_base64: str | None
     observed_at: Timestamp
     origin: TaxDeliveryCompletionOrigin
+    upload_read_evidence: TaxDeliveryUploadReadEvidence | None=None
 
     def __post_init__(self):
         if (type(self.intent) is not TaxMutationIntent or type(self.observed_at) is not Timestamp
                 or type(self.origin) is not TaxDeliveryCompletionOrigin):
             raise ValueError('Tax completion binding is invalid.')
         record=TaxMutationRecord(self.intent,'completed',self.result)
+        if self.upload_read_evidence is not None:
+            proof=self.upload_read_evidence
+            if (type(proof) is not TaxDeliveryUploadReadEvidence or self.intent.kind is not TaxMutationKind.UPLOAD_ENVELOPE
+                    or self.origin is not TaxDeliveryCompletionOrigin.ENVELOPE_READ or self.response_base64 is not None
+                    or dict(record.result)!=proof.result or self.intent.filing_id!=proof.instance.filing_id
+                    or self.intent.company_id!=proof.instance.company_id or self.intent.income_year!=proof.instance.income_year
+                    or self.intent.approved_by!=proof.instance.approved_by or self.intent.approval_sha256!=proof.instance.approval_sha256
+                    or self.observed_at.value<proof.instance.observed_at.value or self.observed_at.value<proof.envelope.observed_at.value):
+                raise ValueError('Tax upload reconciliation is not bound to its original intent and read originals.')
+            object.__setattr__(self,'result',record.result)
+            return
         value=_response_object(_bytes(self.response_base64))
         # Bind the normalized result to its original. A PUT acknowledgment does
         # not prove confirmation: that requires a separate instance read.
@@ -168,11 +158,17 @@ class TaxDeliveryMutationCompletion:
 
     @property
     def response_bytes(self) -> bytes:
+        if self.upload_read_evidence is not None:return self.upload_read_evidence.instance.original.raw_bytes
         return _bytes(self.response_base64)
 
     @property
     def canonical_json(self) -> str:
-        return _canonical({'version':'company-tax-delivery-mutation-completion-v1','completion':_json(self)})
+        value=_json({key:getattr(self,key) for key in ('intent','result','response_base64','observed_at','origin')})
+        version='company-tax-delivery-mutation-completion-v1'
+        if self.upload_read_evidence is not None:
+            value.pop('response_base64');value['upload_read_evidence']=self.upload_read_evidence.canonical_value
+            version='company-tax-delivery-mutation-completion-v2'
+        return _canonical({'version':version,'completion':value})
 
     @property
     def sha256(self) -> str:
@@ -186,6 +182,7 @@ class TaxDeliveryMutationCompletion:
         if request.kind is TaxMutationKind.UPLOAD_ENVELOPE and (
                 self.result['envelopeSha256']!=hashlib.sha256(request.body_bytes).hexdigest()):
             raise ValueError('Tax completion refers to different envelope bytes.')
+        if self.upload_read_evidence is not None:self.upload_read_evidence.assert_request(request)
 
 
 def complete_tax_delivery_mutation(request: TaxDeliveryMutationRequest, approval: TaxDeliveryReviewApproval,
@@ -215,7 +212,24 @@ def complete_tax_delivery_mutation(request: TaxDeliveryMutationRequest, approval
     return completion
 
 
-def _decode(raw, expected_sha256, version, field):
+def reconcile_tax_delivery_upload(request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+        draft: TaxDeliveryDraft,*,evidence: TaxDeliveryUploadReadEvidence,observed_at: Timestamp) -> TaxDeliveryMutationCompletion:
+    """Resolve a prior upload using exact originals, without sending another POST.
+
+    Persistence must independently bind this result to the committed request.
+    Pending scanning may still prove the upload exists; it cannot start validation.
+    """
+    request.assert_draft(approval,draft)
+    if type(evidence) is not TaxDeliveryUploadReadEvidence:raise ValueError('Tax upload read evidence is required.')
+    evidence.envelope.assert_instance(approval,draft,evidence.instance)
+    evidence.assert_request(request)
+    result=TaxDeliveryMutationCompletion(request.intent(approval),evidence.result,None,observed_at,
+        TaxDeliveryCompletionOrigin.ENVELOPE_READ,evidence)
+    result.assert_request(request,approval)
+    return result
+
+
+def _decode(raw, expected_sha256, version, field, *, maximum=12*1024*1024+16384):
     def pairs(items):
         value={}
         for key,child in items:
@@ -223,7 +237,7 @@ def _decode(raw, expected_sha256, version, field):
             value[key]=child
         return value
     def constant(_value):raise ValueError('Nonfinite Tax journal value.')
-    if (type(raw) is not str or len(raw.encode('utf-8'))>12*1024*1024+16384
+    if (type(raw) is not str or len(raw.encode('utf-8'))>maximum
             or _digest(expected_sha256)!=hashlib.sha256(raw.encode('utf-8')).hexdigest()):
         raise ValueError('Tax journal bytes changed.')
     value=_object(json.loads(raw,object_pairs_hook=pairs,parse_constant=constant),('version',field))
@@ -233,8 +247,14 @@ def _decode(raw, expected_sha256, version, field):
 
 def decode_tax_delivery_mutation_request(raw: str, expected_sha256: str) -> TaxDeliveryMutationRequest:
     try:
-        value=_object(_decode(raw,expected_sha256,'company-tax-delivery-mutation-request-v1','request'),
-            ('filing_id','company_id','income_year','organization_number','approval_sha256','kind','target_instance','body_base64'))
+        if type(raw) is not str or len(raw.encode('utf-8'))>12*1024*1024+16384:raise ValueError()
+        version=_response_object(raw.encode('utf-8')).get('version')
+        if version not in ('company-tax-delivery-mutation-request-v1','company-tax-delivery-mutation-request-v2'):raise ValueError()
+        successor=version=='company-tax-delivery-mutation-request-v2'
+        value=_object(_decode(raw,expected_sha256,version,'request'),
+            ('filing_id','company_id','income_year','organization_number','approval_sha256','kind','target_instance','body_base64',
+                *(('upload_prerequisite',) if successor else ())))
+        if successor:value=value|{'upload_prerequisite':_decode_upload_prerequisite(value['upload_prerequisite'])}
         company=_object(value['company_id'],('value',));year=_object(value['income_year'],('value',))
         result=TaxDeliveryMutationRequest(**(value|{'company_id':CompanyId(company['value']),
             'income_year':IncomeYear(year['value']),'kind':TaxMutationKind(value['kind'])}))
@@ -246,8 +266,13 @@ def decode_tax_delivery_mutation_request(raw: str, expected_sha256: str) -> TaxD
 
 def decode_tax_delivery_mutation_completion(raw: str, expected_sha256: str) -> TaxDeliveryMutationCompletion:
     try:
-        value=_object(_decode(raw,expected_sha256,'company-tax-delivery-mutation-completion-v1','completion'),
-            ('intent','result','response_base64','observed_at','origin'))
+        if type(raw) is not str or len(raw.encode('utf-8'))>24*1024*1024+32768:raise ValueError()
+        version=_response_object(raw.encode('utf-8')).get('version')
+        if version not in ('company-tax-delivery-mutation-completion-v1','company-tax-delivery-mutation-completion-v2'):raise ValueError()
+        successor=version=='company-tax-delivery-mutation-completion-v2'
+        value=_object(_decode(raw,expected_sha256,version,'completion',maximum=(24*1024*1024+32768 if successor else 12*1024*1024+16384)),
+            ('intent','result','observed_at','origin','upload_read_evidence' if successor else 'response_base64'))
+        if successor:value=value|{'upload_read_evidence':_decode_upload_read_evidence(value['upload_read_evidence']),'response_base64':None}
         intent=_object(value['intent'],('filing_id','company_id','income_year','approved_by','approval_sha256','kind','request_sha256'))
         company=_object(intent['company_id'],('value',));year=_object(intent['income_year'],('value',))
         actor=_object(intent['approved_by'],('kind','subject'));subject=_object(actor['subject'],('value',))
@@ -256,7 +281,7 @@ def decode_tax_delivery_mutation_completion(raw: str, expected_sha256: str) -> T
             'income_year':IncomeYear(year['value']),'kind':TaxMutationKind(intent['kind']),
             'approved_by':ActorId(ActorKind(actor['kind']),UserId(subject['value']))}))
         result=TaxDeliveryMutationCompletion(intent,value['result'],value['response_base64'],
-            Timestamp(datetime.fromisoformat(observed['value'])),TaxDeliveryCompletionOrigin(value['origin']))
+            Timestamp(datetime.fromisoformat(observed['value'])),TaxDeliveryCompletionOrigin(value['origin']),value.get('upload_read_evidence'))
         if result.canonical_json!=raw:raise ValueError()
         return result
     except (ValueError,TypeError,KeyError,AttributeError,RecursionError,OverflowError):

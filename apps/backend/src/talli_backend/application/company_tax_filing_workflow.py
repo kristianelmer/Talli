@@ -96,6 +96,16 @@ class AuthenticatedCompanyTax:
         if self._submission is None:raise CompanyTaxError.unavailable()
         return await self._submission.reconcile(self._session,command)
 
+    async def advance_delivery_upload(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_upload(self._session,command)
+
+    async def reconcile_delivery_upload(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_upload(self._session,command)
+
     async def prepare_delivery_draft(self, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
         if command.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
@@ -186,14 +196,15 @@ class AuthenticatedCompanyTax:
             await guard.lock_delivery_draft_archive(query)
             return result
 
-    async def delivery_journal_archive(self, query: CompanyTaxSourceQuery, *, read_evidence: bool=False) -> TaxDeliveryJournalArchive:
+    async def delivery_journal_archive(self, query: CompanyTaxSourceQuery, *, read_evidence: bool=False,guarded_upload: bool=False) -> TaxDeliveryJournalArchive:
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
         # The current guard spans the separate repeatable source snapshot. The
         # late guard evaluates ownership/MFA after all enumeration and waits.
         async with self._session.transaction() as guard:
             await guard.lock_delivery_draft_archive(query)
             async with self._session.transaction(snapshot=True) as transaction:
-                result=archive_tax_delivery_journal(query,await transaction.journal_history_snapshot(query),read_evidence=read_evidence)
+                result=archive_tax_delivery_journal(query,await transaction.journal_history_snapshot(query),
+                    read_evidence=read_evidence,guarded_upload=guarded_upload)
             await guard.lock_delivery_draft_archive(query)
             return result
 

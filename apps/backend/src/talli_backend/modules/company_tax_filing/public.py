@@ -797,9 +797,13 @@ from .delivery_approval import (TaxDeliveryAuthorityMode, TaxDeliveryReviewAppro
 
 from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
     TaxDeliveryCompletionOrigin, build_tax_delivery_mutation_request, complete_tax_delivery_mutation,
-    decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion)
+    decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion,reconcile_tax_delivery_upload)
 from .delivery_observation import (TaxDeliveryOriginalPurpose, TaxDeliveryReadOriginal,
     TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation, decode_tax_delivery_observation)
+from .delivery_envelope_observation import (TaxDeliveryEnvelopeObservation,decode_tax_delivery_envelope_observation)
+from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryUploadPrerequisite,
+    bind_tax_delivery_upload_prerequisite)
+from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
 
 from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
     TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event)
@@ -866,7 +870,7 @@ class TaxDeliveryDraftPersistence(Protocol):
 
 
 class TaxDeliveryJournalPersistence(Protocol):
-    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation) -> TaxDeliveryEventAppend: ...
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation) -> TaxDeliveryEventAppend: ...
     async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
     async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
 
@@ -900,6 +904,8 @@ class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
                       draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
     async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
                                created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
+    async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
 
 
 def tax_delivery_schema_adapter(contract):
@@ -915,6 +921,9 @@ __all__ = [
     'TaxDeliveryMutationAuthority',
     'TaxDeliveryOriginalPurpose', 'TaxDeliveryReadOriginal', 'TaxDeliveryAdmissionEvidence',
     'TaxDeliveryInstanceObservation', 'decode_tax_delivery_observation',
+    'TaxDeliveryEnvelopeObservation','decode_tax_delivery_envelope_observation',
+    'TaxDeliveryReadReference','TaxDeliveryUploadPrerequisite','bind_tax_delivery_upload_prerequisite',
+    'TaxDeliveryUploadReadEvidence','reconcile_tax_delivery_upload',
     'TaxDeliveryJournalArchive', 'archive_tax_delivery_journal',
     'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
     'TaxDeliveryJournalPersistence',

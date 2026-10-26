@@ -16,7 +16,7 @@ from talli_backend.shared.kernel import ActorId,ActorKind,CompanyId,IncomeYear,T
 from .delivery import _digest,_json,tax_delivery_digest
 from .delivery_approval import TaxDeliveryReviewApproval
 from .delivery_draft import TaxDeliveryDraft,_canonical,_object
-from .delivery_journal import _bytes,_instance,_response_object,_uuid
+from .delivery_original import _bytes,_instance,_response_object,_uuid
 
 _APP_ID='skd/formueinntekt-skattemelding-v2'
 
