@@ -183,7 +183,8 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
     verifyAccounts:async archive=>{
       const response=await fixture.accountsRequest('/api/v1/annual-accounts/company-year-archive-verifications',
         {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(archive)});
-      assert.equal(response.status,200,await response.text());return response.json();
+      const verificationText=await response.text();
+      assert.equal(response.status,200,verificationText);return JSON.parse(verificationText);
     }});
   const integrity=assertRestoreIntegrity(restored);
   assert.deepEqual(integrity.failures.filter(code=>code.startsWith('annual_accounts_')),[]);
