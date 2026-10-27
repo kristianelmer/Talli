@@ -61,6 +61,26 @@ def correction_http(correction_database,submission_http):
     return submission_http
 
 
+@pytest.mark.parametrize(('fixture_name','version'),[
+    ('events_database',3),('observation_database',4),('upload_database',5),
+    ('validation_database',6),('confirmation_database',7),('submission_database',8),
+    ('correction_database',9),
+])
+def test_default_facts_negotiate_the_installed_journal_extent(request,fixture_name,version):
+    from test_postgres_tax_current_draft import current_session
+    selected=request.getfixturevalue(fixture_name)
+    from talli_backend.shared.kernel import IncomeYear
+    query=CompanyTaxSourceQuery(COMPANY,IncomeYear(2025),ACTOR)
+    async def exercise():
+        async with current_session(selected).transaction(snapshot=True) as tx:
+            snapshot=await tx.filing_source_snapshot(query)
+        assert snapshot.contract_version==f'company-tax-source-v{version}'
+        facts=project_company_tax_source(query,snapshot)
+        assert facts.history_coverage.status=='complete',facts.history_coverage.reasons
+        assert facts.hard_blocks==('company_tax_production_disabled',)
+    asyncio.run(exercise())
+
+
 async def candidate(fixture):
     session,service,_,state,_=fixture
     command,recovery=await reviewed(fixture)
@@ -237,6 +257,9 @@ def test_source9_never_claims_lineage_extent_with_a_disabled_frontier_guard(corr
                 facts=project_company_tax_source(query,snapshot)
                 assert snapshot.coverage['declaredCorrectionExtentValid'] is False
                 assert facts.history_coverage.status=='incomplete' and 'correction_source_contract_unproven' in facts.history_coverage.reasons
+                async with session.transaction(snapshot=True) as tx:default=await tx.filing_source_snapshot(query)
+                assert default.contract_version=='company-tax-source-v9'
+                assert project_company_tax_source(query,default).history_coverage.status=='incomplete'
                 with pytest.raises(CompanyTaxError):assert_tax_delivery_attempt_history(query,snapshot,parent.draft.filing_id)
             finally:db.execute('alter table company_tax_filing.delivery_events enable trigger tax_delivery_frontier')
     asyncio.run(exercise())

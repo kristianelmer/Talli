@@ -496,6 +496,10 @@ class PostgresCompanyTaxTransaction:
         # Prefer the installed versioned successor. A missing successor never
         # hides an added store: the unchanged V1 exact-extent proof fails closed.
         row = await self._delivery_row(
+            "select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v3(uuid,integer,text)') is not null as installed", ())
+        if row['installed'] is True:
+            return await self.journal_history_snapshot(query)
+        row = await self._delivery_row(
             "select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v2(uuid,integer,text)') is not null as installed", ())
         return await self._filing_source_snapshot(query, delivery=row['installed'])
 
