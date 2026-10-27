@@ -1,4 +1,4 @@
-import { backendBaseUrl } from "#backend-configuration";
+import { backendBaseUrl, backendClientOptions } from "#backend-configuration";
 
 const MAX_RESPONSE_BYTES = 16_384;
 const DEADLINE_MS = 3_000;
@@ -73,8 +73,9 @@ export function createReadinessProbe(options: Options = {}): () => Promise<boole
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const config = configuration();
+        const backendFetch = backendClientOptions({ baseUrl: config.backend, fetch: fetcher }).fetch ?? fetcher;
         const checks = Promise.all([
-          boundedJson(fetcher, config.backend + "/health/ready", controller.signal).then(
+          boundedJson(backendFetch, config.backend + "/health/ready", controller.signal).then(
             (data) => record(data) && Object.keys(data).length === 1 && data.status === "ready",
           ),
           boundedJson(fetcher, config.auth + "/auth/v1/settings", controller.signal, { apikey: config.key }).then(

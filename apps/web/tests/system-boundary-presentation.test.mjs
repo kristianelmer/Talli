@@ -162,6 +162,59 @@ const settings = { external: { email: true }, disable_signup: false };
 const healthConfig = () => ({ backend: "https://backend.example", auth: "https://auth.example", key: "actual-anon" });
 const goodResponse = (url) => Response.json(url.endsWith("/settings") ? settings : { status: "ready" });
 
+function previewEnvironment(t, token) {
+  const values = { VERCEL_ENV: "preview", TALLI_BACKEND_URL: healthConfig().backend,
+    VERCEL_OIDC_TOKEN: token };
+  for (const [key, value] of Object.entries(values)) {
+    const previous = process.env[key];
+    t.after(() => previous === undefined ? delete process.env[key] : process.env[key] = previous);
+    process.env[key] = value;
+  }
+}
+
+function syntheticPlatformToken(sequence) {
+  return "synthetic." + Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600,
+    sequence })).toString("base64url") + ".signature";
+}
+
+test("Preview readiness authenticates only the backend with a current platform token", async (t) => {
+  const tokens = [syntheticPlatformToken(1), syntheticPlatformToken(2)];
+  previewEnvironment(t, tokens[0]);
+  const backendTokens = [];
+  let authCalls = 0;
+  const probe = createReadinessProbe({ configuration: healthConfig, cacheMs: 0, fetch: async (url, options) => {
+    const headers = new Headers(options.headers);
+    assert.equal(options.cache, "no-store");
+    assert.equal(options.redirect, "error");
+    if (url.endsWith("/settings")) {
+      authCalls++;
+      assert.equal(headers.get("apikey"), "actual-anon");
+      assert.equal(headers.get("x-vercel-trusted-oidc-idp-token"), null);
+    } else {
+      backendTokens.push(headers.get("x-vercel-trusted-oidc-idp-token"));
+      assert.equal(headers.get("apikey"), null);
+      if (backendTokens.at(-1) !== process.env.VERCEL_OIDC_TOKEN) return new Response(null, { status: 401 });
+    }
+    return goodResponse(url);
+  } });
+  assert.equal(await probe(), true);
+  process.env.VERCEL_OIDC_TOKEN = tokens[1];
+  assert.equal(await probe(), true);
+  assert.deepEqual(backendTokens, tokens);
+  assert.equal(authCalls, 2);
+});
+
+test("Preview readiness rejects an invalid platform token without an unprotected backend fallback", async (t) => {
+  previewEnvironment(t, "invalid-synthetic-token");
+  let backendCalls = 0;
+  const probe = createReadinessProbe({ configuration: healthConfig, fetch: async (url) => {
+    if (url.endsWith("/ready")) backendCalls++;
+    return goodResponse(url);
+  } });
+  assert.equal(await probe(), false);
+  assert.equal(backendCalls, 0);
+});
+
 test("readiness probes backend health and actual Auth settings/key concurrently, caching success and failure", async () => {
   for (const available of [true, false]) {
     const calls = [];
