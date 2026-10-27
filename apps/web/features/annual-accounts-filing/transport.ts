@@ -1,10 +1,10 @@
 import { createTalliApiClient, TalliApiError, type AnnualAccountsOverrideRequest, type AnnualAccountsReviewRequest,
   type AnnualAccountsPermissionRequest, type AnnualAccountsTestEvidenceRequest, type AnnualAccountsEvidenceImportRequest,
   type AnnualAccountsReadinessPreviewRequest } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
-  return createTalliApiClient({ baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` } });
+  return createTalliApiClient({ ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
 export function loadAnnualAccountsFilingWorkspace(accessToken: string, companyId: string, incomeYear: number | null = null) {

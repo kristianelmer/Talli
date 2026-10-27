@@ -19,14 +19,14 @@ import {
   type InvestmentsCorrectionWire,
   type InvestmentsCorrectionResultWire,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 const PAGE_LIMIT = 100;
 const MAX_CURSOR_PAGES = 10_000;
 
 function client(accessToken: string) {
   return createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }

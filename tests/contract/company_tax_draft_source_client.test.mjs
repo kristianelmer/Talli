@@ -93,7 +93,7 @@ for (const version of ["company-tax-delivery-draft-v1", "company-tax-delivery-dr
       recordCount: 1, records: [{ filingId: draft().filingId, canonicalJson,
         draftSha256: tamper ? "0".repeat(64) : createHash("sha256").update(canonicalJson).digest("hex") }] };
     const exports = {};
-    const dependencies = { backendBaseUrl: () => "https://backend.example", TalliApiError, verifyCompanyTaxDeliveryDraftArchive,
+    const dependencies = { backendClientOptions: () => ({ baseUrl: "https://backend.example" }), TalliApiError, verifyCompanyTaxDeliveryDraftArchive,
       createTalliApiClient: () => ({ companyTaxGetSourceFacts: async () => source(),
         companyTaxGetDeliveryDraftArchive: async () => original }) };
     const text = readFileSync(new URL("../../apps/web/features/company-tax-filing/transport.ts", import.meta.url), "utf8");

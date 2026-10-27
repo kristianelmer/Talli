@@ -4,7 +4,7 @@ import {
   type RfCompanyTestRetentionRecordWire,
   type RfCompanyTestRetentionWire,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 const pageSize = 50;
 const canonicalCompany = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -30,7 +30,7 @@ export function companyTestHistoryPageNumber(value: string | string[] | undefine
 export async function loadCompanyTestHistory(accessToken: string, companyId: string, requestId: string) {
   if (!isCompanyTestHistoryCompany(companyId)) throw new TalliApiError(400, undefined);
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` },
+    ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.rf1086ReadCompanyTestRetention(companyId, {
     requestId, signal: AbortSignal.timeout(30_000),
@@ -42,7 +42,7 @@ export async function downloadCompanyTestHistory(
 ) {
   if (!isCompanyTestHistoryCompany(companyId)) throw new TalliApiError(400, undefined);
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` },
+    ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.rf1086DownloadCompanyTestRetention(companyId, {
     requestId, signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]),

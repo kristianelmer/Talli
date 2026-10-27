@@ -167,7 +167,7 @@ function feature(api) {
   const text=readFileSync(new URL("../../apps/web/features/annual-accounts-filing/transport.ts",import.meta.url),"utf8");
   const exports={};
   vm.runInNewContext(ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
-    {exports,AbortSignal,Error,require:name=>name==="@talli/talli-api-client"?{createTalliApiClient:()=>api,TalliApiError}:{backendBaseUrl:()=>"https://fixture.test"}});
+    {exports,AbortSignal,Error,require:name=>name==="@talli/talli-api-client"?{createTalliApiClient:()=>api,TalliApiError}:{backendClientOptions: () => ({ baseUrl: "https://fixture.test" })}});
   return exports;
 }
 for(const scenario of ["empty","history","unauthorized","unavailable","workspace-unavailable"])test(`web-first Accounts overlap handles ${scenario}`,async()=>{

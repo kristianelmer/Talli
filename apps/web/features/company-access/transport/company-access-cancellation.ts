@@ -5,7 +5,7 @@ import {
   type ResumeCompanyCancellationRequest,
   type ReviewCompanyDeletionRequest,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 // Backend worst case: authorization/company reads plus command/reconcile retry
 // sequence, each bounded at five seconds. The outer caller retains 10s margin.
@@ -14,7 +14,7 @@ export const COMPANY_ACCESS_CANCELLATION_TIMEOUT_MS = 45_000;
 
 function client(accessToken: string) {
   return createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
