@@ -162,7 +162,7 @@ def test_source_adapter_validates_scope_and_snapshot_shape_before_projection():
             return self
 
         async def fetchall(self):
-            if 'to_regprocedure' in self.calls[-1][0]:return [{'installed':False}]
+            if 'to_regprocedure' in self.calls[-1][0]:return [{'version':1}]
             return [{'result': self.result}]
 
     connection = Connection()

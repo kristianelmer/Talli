@@ -95,7 +95,11 @@ from talli_backend.modules.annual_accounts_filing.public import (
     ImportAnnualAccountsEvidence, AnnualAccountsError, AnnualAccountsWorkspaceQuery, AnnualAccountsRecordQuery, AnnualAccountsRecordId,
     RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment, ConfirmAnnualAccountsPermission,
     RecordAnnualAccountsTestEvidence,
+    PrepareAnnualAccountsDeliveryDraft,AnnualAccountsDeliveryBinding,AnnualAccountsDeliveryStage,AnnualAccountsDeliveryAction,
 )
+from talli_backend.adapters.annual_accounts_schemas import DeferredAnnualAccountsSchemas
+from talli_backend.application.annual_accounts_delivery_preparation import AnnualAccountsDeliveryPreparation
+from talli_backend.application.annual_accounts_delivery_workflow import AnnualAccountsDeliveryWorkflow
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
@@ -568,6 +572,91 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+class AccountsDeliveryScopeRequest(StrictTransportModel):
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+
+
+class AccountsPrepareDeliveryRequest(AccountsDeliveryScopeRequest):
+    contact_email: Annotated[str,Field(strict=True,min_length=3,max_length=1000)]
+    confirming_representative: Annotated[str,Field(strict=True,min_length=1,max_length=1000)]
+
+
+class AccountsDeliveryBoundRequest(AccountsDeliveryScopeRequest):
+    draft_sha256: Annotated[str,Field(strict=True,pattern=r'^[a-f0-9]{64}$')]
+
+
+class AccountsReviewDeliveryRequest(AccountsDeliveryBoundRequest):
+    stage: Literal['prepare','confirm','sign']
+    reviewed_evidence_sha256: Annotated[str,Field(strict=True,pattern=r'^[a-f0-9]{64}$')]
+    documents_checked: Annotated[bool,Field(strict=True)]
+    action_confirmed: Annotated[bool,Field(strict=True)]
+
+
+class AccountsAdvanceDeliveryRequest(AccountsDeliveryBoundRequest):
+    action: Literal['create_instance','upload_main_form','upload_company_accounts','confirm','sign']
+
+
+AccountsDeliveryStateWire=Literal['draft','reviewed','creation_unknown','created','main_upload_unknown','main_uploaded','accounts_upload_unknown','validation_blocked','confirmation_review','confirmation_unknown','person_review','signing_unknown','technical_archive','inspection_unavailable']
+AccountsDeliveryActionWire=Literal['review_prepare','review_confirm','review_sign','create_instance','upload_main_form','upload_company_accounts','confirm','sign','reconcile']
+
+
+class AccountsDeliveryProgressWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    filing_id: UUID
+    draft_sha256: str
+    state: AccountsDeliveryStateWire
+
+
+class AccountsDeliveryOriginalRefWire(TransportModel):
+    key: str
+    purpose: str
+    source_filing_id: UUID
+    sha256: str
+    media_type: str
+
+
+class AccountsDeliveryOriginalWire(AccountsDeliveryOriginalRefWire):
+    company_id: UUID
+    income_year: int
+    filing_id: UUID
+    body_base64: str
+
+
+class AccountsDeliveryFieldWire(TransportModel):
+    document: str
+    path: str
+    value: str
+
+
+class AccountsDeliveryWorkspaceRowWire(TransportModel):
+    filing_id: UUID
+    recorded_at: AwareDatetime
+    draft_sha256: str
+    source_sha256: str
+    review_sha256: str
+    review_stage: Literal['prepare','confirm','sign']
+    state: AccountsDeliveryStateWire
+    known_instance: str | None
+    source_current: bool
+    actions: list[AccountsDeliveryActionWire]
+    fields: list[AccountsDeliveryFieldWire]
+    validation_issues: list[dict[str,Any]]
+    originals: list[AccountsDeliveryOriginalRefWire]
+
+
+class AccountsDeliveryWorkspaceWire(TransportModel):
+    version: Literal['annual-accounts-delivery-workspace-v1']
+    company_id: UUID
+    income_year: int
+    source_sha256: str | None
+    observed_at: AwareDatetime
+    preparation_available: bool
+    rows: list[AccountsDeliveryWorkspaceRowWire]
 
 
 class AnnualBillingOfferWire(TransportModel):
@@ -5751,6 +5840,8 @@ def create_app(
     company_test_retention_session_factory: CompanyTestRetentionSessionFactory | None = None,
     company_tax_delivery_preparation: CompanyTaxDeliveryPreparation | None = None,
     company_tax_delivery_submission: CompanyTaxDeliverySubmission | None = None,
+    annual_accounts_delivery_preparation: AnnualAccountsDeliveryPreparation | None = None,
+    annual_accounts_delivery_workflow: AnnualAccountsDeliveryWorkflow | None = None,
 ) -> FastAPI:
     # Readiness follows the infrastructure selected here. Injected adapters own
     # their operational contract; unit/custom applications can inject a probe.
@@ -5819,7 +5910,6 @@ def create_app(
     ledger_application = compose_ledger_application(ledger_session_factory)
     company_tax_application = compose_company_tax_application(company_tax_session_factory,
         preparation=company_tax_delivery_preparation,submission=company_tax_delivery_submission)
-    annual_accounts_application = compose_annual_accounts_application(annual_accounts_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
     )
@@ -5865,6 +5955,10 @@ def create_app(
         documents_application,
         CorporateRegisterEvidenceVerifier(shareholder_register_filing_session_factory, documents_application),
     )
+    accounts_schemas=DeferredAnnualAccountsSchemas()
+    annual_accounts_application=compose_annual_accounts_application(annual_accounts_session_factory,
+        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas),
+        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas))
     shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
         shareholder_register_filing_session_factory, company_access_service,
         documents_application, corporate_governance_application,
@@ -11831,6 +11925,82 @@ def create_app(
             except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
                 raise AnnualAccountsError.invalid_input() from None
         return await annual_accounts_call(execute)
+
+    @application.get('/api/v1/annual-accounts/delivery-workspace',operation_id='annualAccountsGetDeliveryWorkspace',
+        response_model=AccountsDeliveryWorkspaceWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_delivery_workspace(request: Request,company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            result=await session.delivery_workspace(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),
+                correlation_id=ledger_correlation(request))
+            return AccountsDeliveryWorkspaceWire.model_validate(company_tax_json_wire(result))
+        return await annual_accounts_call(execute)
+
+    @application.get('/api/v1/annual-accounts/delivery-original',operation_id='annualAccountsGetDeliveryOriginal',
+        response_model=AccountsDeliveryOriginalWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_delivery_original(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],filing_id: Annotated[UUID,Query(alias='filingId')],
+        key: Annotated[str,Query(pattern=r'^[a-z_]+:[0-9a-f]{64}$',max_length=128)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            original=await session.delivery_original(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),str(filing_id),key)
+            return AccountsDeliveryOriginalWire(company_id=company_id,income_year=income_year,filing_id=filing_id,**asdict(original))
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/delivery-drafts',operation_id='annualAccountsPrepareDeliveryDraft',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_prepare_delivery(request: Request,command: AccountsPrepareDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            try:
+                stored=await session.prepare_delivery_draft(PrepareAnnualAccountsDeliveryDraft(CompanyId(str(command.company_id)),IncomeYear(command.income_year),
+                    session.actor_id,AnnualAccountsRecordId(str(command.filing_id)),IdempotencyKey(idempotency_key),ledger_correlation(request),
+                    command.contact_email,command.confirming_representative))
+            except (ValueError,TypeError):raise AnnualAccountsError.invalid_input() from None
+            return AccountsDeliveryProgressWire(company_id=str(stored.draft.source.company_id),income_year=int(stored.draft.source.income_year),
+                filing_id=stored.draft.filing_id,draft_sha256=stored.draft.sha256,state='draft')
+        return await annual_accounts_call(execute)
+
+    async def accounts_delivery_action(request,command,credentials,operation,key=None):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            binding=AnnualAccountsDeliveryBinding(str(command.filing_id),CompanyId(str(command.company_id)),IncomeYear(command.income_year),session.actor_id,command.draft_sha256)
+            if operation=='review':
+                state=await session.review_delivery(binding,stage=AnnualAccountsDeliveryStage(command.stage),
+                    reviewed_evidence_sha256=command.reviewed_evidence_sha256,documents_checked=command.documents_checked,
+                    action_confirmed=command.action_confirmed,command_key=IdempotencyKey(key),correlation_id=ledger_correlation(request))
+            elif operation=='advance':state=await session.advance_delivery(binding,action=AnnualAccountsDeliveryAction(command.action),correlation_id=ledger_correlation(request))
+            else:state=await session.reconcile_delivery(binding)
+            return AccountsDeliveryProgressWire(company_id=str(state.stored.draft.source.company_id),income_year=int(state.stored.draft.source.income_year),
+                filing_id=state.stored.draft.filing_id,draft_sha256=state.stored.draft.sha256,state=state.inspection.state)
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/delivery-reviews',operation_id='annualAccountsReviewDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_review_delivery(request: Request,command: AccountsReviewDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'review',idempotency_key)
+
+    @application.post('/api/v1/annual-accounts/delivery-advances',operation_id='annualAccountsAdvanceDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_advance_delivery(request: Request,command: AccountsAdvanceDeliveryRequest,
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'advance')
+
+    @application.post('/api/v1/annual-accounts/delivery-reconciliations',operation_id='annualAccountsReconcileDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_reconcile_delivery(request: Request,command: AccountsDeliveryBoundRequest,
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'reconcile')
 
     @application.get(
         "/api/v1/annual-accounts/source-facts",

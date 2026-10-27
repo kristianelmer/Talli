@@ -74,3 +74,31 @@ export function previewAnnualAccountsReadiness(accessToken: string, facts: Annua
 export function loadAnnualAccountsSourceFacts(accessToken: string, companyId: string, incomeYear: number) {
   return client(accessToken).annualAccountsGetSourceFacts(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });
 }
+
+export function loadAccountsDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
+  return client(accessToken).annualAccountsGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function loadAccountsDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {
+  return client(accessToken).annualAccountsGetDeliveryOriginal(companyId,incomeYear,filingId,key,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function prepareAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsPrepareDeliveryRequest,key: string) {
+  return client(accessToken).annualAccountsPrepareDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function reviewAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsReviewDeliveryRequest,key: string) {
+  return client(accessToken).annualAccountsReviewDelivery(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function advanceAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsAdvanceDeliveryRequest) {
+  return client(accessToken).annualAccountsAdvanceDelivery(command,{signal:AbortSignal.timeout(20_000)});
+}
+
+export function reconcileAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsDeliveryBoundRequest) {
+  return client(accessToken).annualAccountsReconcileDelivery(command,{signal:AbortSignal.timeout(60_000)});
+}
+
+export function accountsDeliveryMfaRequired(error: unknown) {
+  return error instanceof TalliApiError && error.problem?.code==="ANNUAL_ACCOUNTS_MFA_REQUIRED";
+}

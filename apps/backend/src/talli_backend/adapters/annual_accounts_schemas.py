@@ -9,6 +9,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
+from threading import Lock
 
 from lxml import etree
 
@@ -22,6 +23,20 @@ _XSD='http://www.w3.org/2001/XMLSchema'
 _APP='brg/aarsregnskap-vanlig-202406'
 _MAIN_NS='http://schema.brreg.no/regnsys/aarsregnskap_vanlig'
 _ACCOUNTS_NS=_MAIN_NS+'/underskjema'
+
+
+@annual_accounts_schema_adapter(AnnualAccountsSchemaValidator)
+class DeferredAnnualAccountsSchemas:
+    """Keep archive composition independent of schema resource availability."""
+    def __init__(self):self._actual=None;self._lock=Lock()
+
+    @property
+    def schema_sha256(self):return _PIN
+
+    def validate_pair(self,*args,**kwargs):
+        with self._lock:
+            if self._actual is None:self._actual=PinnedAnnualAccountsSchemas()
+        return self._actual.validate_pair(*args,**kwargs)
 # Explicit supported packet branches from the released renderer, not the
 # broader upstream optional form. No customer facts or readiness are embedded.
 _PROFILE_LEAVES={'companyAccountsXml': ('Rapport-RR0002U/aarsregnskap/regnskapstype',

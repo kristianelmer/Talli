@@ -277,6 +277,12 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  deliveryWorkspace: ["/api/v1/annual-accounts/delivery-workspace","get","annualAccountsGetDeliveryWorkspace"],
+  deliveryOriginal: ["/api/v1/annual-accounts/delivery-original","get","annualAccountsGetDeliveryOriginal"],
+  prepareDelivery: ["/api/v1/annual-accounts/delivery-drafts","post","annualAccountsPrepareDeliveryDraft"],
+  reviewDelivery: ["/api/v1/annual-accounts/delivery-reviews","post","annualAccountsReviewDelivery"],
+  advanceDelivery: ["/api/v1/annual-accounts/delivery-advances","post","annualAccountsAdvanceDelivery"],
+  reconcileDelivery: ["/api/v1/annual-accounts/delivery-reconciliations","post","annualAccountsReconcileDelivery"],
   sourceFacts: ["/api/v1/annual-accounts/source-facts", "get", "annualAccountsGetSourceFacts"],
   readinessPreview: ["/api/v1/annual-accounts/readiness-previews", "post", "annualAccountsPreviewReadiness"],
   getPreview: ["/api/v1/annual-accounts/previews/{preview_id}", "get", "annualAccountsGetPreview"],
@@ -913,6 +919,8 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsCorporateBlockerWire", "AnnualAccountsReadinessPreviewRequest", "AnnualAccountsReadinessIssueWire", "AnnualAccountsReadinessPreviewWire",
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
+  "AccountsPrepareDeliveryRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
+  "AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -1114,6 +1122,7 @@ const problemSchema = resolveSchema(
 const source = `// Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: ${contract.info.version}
 import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
+import {verifyAccountsDeliveryOriginal} from "../accounts-delivery-evidence.ts";
 
 ${renderInterface("SystemBoundaryStatus", successSchema)}
 
@@ -2809,6 +2818,48 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         \`\${baseUrl}/api/v1/annual-accounts/tt02-evidence-imports\`,
         "POST", request, body, isAnnualAccountsEvidenceImportWire,
       );
+    },
+
+    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-workspace?\${query}\`,"GET",request,undefined,isAccountsDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
+            || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
+            || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<AccountsDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-original?\${query}\`,"GET",request,undefined,isAccountsDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try {await verifyAccountsDeliveryOriginal(result);} catch {throw new TalliApiError(502,undefined);}
+      return result;
+    },
+
+    async annualAccountsPrepareDeliveryDraft(command: AccountsPrepareDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-drafts\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReviewDelivery(command: AccountsReviewDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-reviews\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsAdvanceDelivery(command: AccountsAdvanceDeliveryRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-advances\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReconcileDelivery(command: AccountsDeliveryBoundRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-reconciliations\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
     },
 
     async annualAccountsGetSourceFacts(

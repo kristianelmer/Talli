@@ -11,6 +11,12 @@ from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, Correlati
 from .delivery_documents import AnnualAccountsDocumentsInspection
 from .delivery import (AnnualAccountsDeliverySource, AnnualAccountsDeliveryDraft, StoredAnnualAccountsDeliveryDraft, annual_accounts_delivery_digest,
     prepare_annual_accounts_delivery, decode_annual_accounts_delivery_draft)
+from .delivery_originals import (AnnualAccountsReadPurpose, AnnualAccountsDeliveryOriginal, AnnualAccountsDataElement,
+    AnnualAccountsInstanceInspection, inspect_annual_accounts_instance, inspect_annual_accounts_validation)
+from .delivery_events import (AnnualAccountsDeliveryStage, AnnualAccountsAuthorityPort, AnnualAccountsDeliveryAction,
+    AnnualAccountsDeliveryBinding, AnnualAccountsDeliveryReview, AnnualAccountsFiniteAdmission, AnnualAccountsDeliveryIntent, AnnualAccountsDeliveryCompletion, AnnualAccountsDeliveryObservation, AnnualAccountsFrameKind, AnnualAccountsDeliveryFrameRecord, decode_annual_accounts_delivery_record)
+from .delivery_frames import AnnualAccountsDeliveryFrameInspection, inspect_annual_accounts_delivery_frame
+from .delivery_journal import StoredAnnualAccountsDeliveryEvent, AnnualAccountsDeliveryJournalInspection, inspect_annual_accounts_delivery_journal
 
 
 def _freeze(value):
@@ -517,11 +523,14 @@ class AnnualAccountsSourceSnapshot:
     complete_enumeration: bool
     contract_version: str = 'annual-accounts-source-v1'
     delivery_drafts: tuple[StoredAnnualAccountsDeliveryDraft,...] = ()
+    delivery_events: tuple[StoredAnnualAccountsDeliveryEvent,...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze(self.coverage))
         if not isinstance(self.delivery_drafts,(list,tuple)):raise AnnualAccountsError.unavailable()
         object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
+        if not isinstance(self.delivery_events,(list,tuple)):raise AnnualAccountsError.unavailable()
+        object.__setattr__(self, "delivery_events", tuple(self.delivery_events))
 
 
 @dataclass(frozen=True, slots=True)
@@ -647,6 +656,15 @@ class AnnualAccountsDeliveryDraftPersistence(Protocol):
     async def store_delivery_draft(self,draft: AnnualAccountsDeliveryDraft) -> StoredAnnualAccountsDeliveryDraft: ...
 
 
+class AnnualAccountsDeliveryJournalPersistence(Protocol):
+    async def append_delivery_event(self,record: object) -> tuple[StoredAnnualAccountsDeliveryEvent,bool]: ...
+
+
+class AnnualAccountsDeliveryTransport(Protocol):
+    async def execute(self,request: AnnualAccountsDeliveryIntent,review: AnnualAccountsDeliveryReview,draft: AnnualAccountsDeliveryDraft) -> AnnualAccountsDeliveryCompletion: ...
+    async def read(self,*,purpose: AnnualAccountsReadPurpose,instance_id: str,data_id: str | None=None) -> AnnualAccountsDeliveryOriginal: ...
+
+
 class AnnualAccountsSourcePersistence(Protocol):
     async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot: ...
 
@@ -675,7 +693,14 @@ def annual_accounts_schema_adapter(contract: type[object]):
 
 
 __all__ = [
-    "StoredAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftFact","PrepareAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftPersistence",
+    "StoredAnnualAccountsDeliveryEvent","AnnualAccountsDeliveryJournalInspection","inspect_annual_accounts_delivery_journal",
+    "AnnualAccountsFrameKind","AnnualAccountsDeliveryFrameRecord","AnnualAccountsDeliveryFrameInspection","inspect_annual_accounts_delivery_frame",
+    "AnnualAccountsDeliveryObservation","decode_annual_accounts_delivery_record",
+    "AnnualAccountsDeliveryStage","AnnualAccountsAuthorityPort","AnnualAccountsDeliveryAction","AnnualAccountsDeliveryBinding",
+    "AnnualAccountsDeliveryReview","AnnualAccountsFiniteAdmission","AnnualAccountsDeliveryIntent","AnnualAccountsDeliveryCompletion",
+    "AnnualAccountsReadPurpose","AnnualAccountsDeliveryOriginal","AnnualAccountsDataElement","AnnualAccountsInstanceInspection",
+    "inspect_annual_accounts_instance","inspect_annual_accounts_validation",
+    "StoredAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftFact","PrepareAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftPersistence","AnnualAccountsDeliveryJournalPersistence","AnnualAccountsDeliveryTransport",
     "AnnualAccountsDeliverySource", "AnnualAccountsDeliveryDraft", "annual_accounts_delivery_digest",
     "prepare_annual_accounts_delivery", "decode_annual_accounts_delivery_draft",
     "AnnualAccountsDocumentsInspection","AnnualAccountsSchemaValidator","annual_accounts_schema_adapter",

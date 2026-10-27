@@ -16,18 +16,20 @@ from talli_backend.modules.annual_accounts_filing.public import (
 
 
 class AnnualAccountsApplication:
-    def __init__(self, sessions: AnnualAccountsSessionFactory, *, preparation=None):
+    def __init__(self, sessions: AnnualAccountsSessionFactory, *, preparation=None,delivery=None):
         self._sessions = sessions
         self._preparation = preparation
+        self._delivery = delivery
 
     async def session(self, access_token: str) -> AuthenticatedAnnualAccounts:
-        return AuthenticatedAnnualAccounts(await self._sessions.session(access_token),preparation=self._preparation)
+        return AuthenticatedAnnualAccounts(await self._sessions.session(access_token),preparation=self._preparation,delivery=self._delivery)
 
 
 class AuthenticatedAnnualAccounts:
-    def __init__(self, session: AnnualAccountsSession, *, preparation=None):
+    def __init__(self, session: AnnualAccountsSession, *, preparation=None,delivery=None):
         self._session = session
         self._preparation = preparation
+        self._delivery = delivery
 
     @property
     def actor_id(self):
@@ -36,6 +38,22 @@ class AuthenticatedAnnualAccounts:
     async def prepare_delivery_draft(self,command):
         if self._preparation is None:raise AnnualAccountsError.unavailable()
         return await self._preparation.prepare(self._session,command)
+
+    def _delivery_required(self):
+        if self._delivery is None:raise AnnualAccountsError.unavailable()
+        return self._delivery
+
+    async def delivery_workspace(self,query,*,correlation_id):
+        from talli_backend.application.annual_accounts_delivery_workspace import AnnualAccountsDeliveryWorkspace
+        return await AnnualAccountsDeliveryWorkspace(self._delivery_required()).read(self._session,query,correlation_id=correlation_id)
+
+    async def delivery_original(self,query,filing_id,key):
+        from talli_backend.application.annual_accounts_delivery_workspace import AnnualAccountsDeliveryWorkspace
+        return await AnnualAccountsDeliveryWorkspace(self._delivery_required()).original(self._session,query,filing_id,key)
+
+    async def review_delivery(self,binding,**choices):return await self._delivery_required().review(self._session,binding,**choices)
+    async def advance_delivery(self,binding,**command):return await self._delivery_required().advance(self._session,binding,**command)
+    async def reconcile_delivery(self,binding):return await self._delivery_required().reconcile(self._session,binding)
 
     async def filing_workspace(self, query: AnnualAccountsWorkspaceQuery) -> AnnualAccountsFilingRows:
         if query.actor_id != self.actor_id:

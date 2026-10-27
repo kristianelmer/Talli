@@ -1290,3 +1290,26 @@ The current preparation stage performs no provider I/O or person signing.
 <!-- architecture-inventory
 {"technicalMigrations":["supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql","supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql"],"ports":["AnnualAccountsDeliveryDraftPersistence"],"adapterBindings":["AnnualAccountsDeliveryDraftPersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"],"adapterBindingOwners":["AnnualAccountsDeliveryDraftPersistence=>backend-system"],"adapterBindingModes":["AnnualAccountsDeliveryDraftPersistence=>Exact immutable Accounts drafts in a default-closed reader-first source-v2 store; current owner/MFA and published company guard, no dispatch or authority permission."]}
 -->
+
+
+Accounts operation retention uses `AnnualAccountsDeliveryJournalPersistence`. Source v3 binds every event sequence and canonical record hash, plus exact executable/check/RLS fingerprints; Source v2 remains incomplete for a nonempty journal. This proves complete retained enumeration. The application must additionally inspect the full typed journal and pinned document frames before HTTP. A committed intent is sent at most once; opaque responses and known read originals remain retainable after containment. Rollback closes new mutations while retaining readers and bound late results.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261026232554_annual_accounts_delivery_events_v1.sql","supabase/rollback/20261026232554_annual_accounts_delivery_events_v1.sql"],"ports":["AnnualAccountsDeliveryJournalPersistence"],"adapterBindings":["AnnualAccountsDeliveryJournalPersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"],"adapterBindingOwners":["AnnualAccountsDeliveryJournalPersistence=>backend-system"],"adapterBindingModes":["AnnualAccountsDeliveryJournalPersistence=>Immutable bounded Accounts operation originals with complete Source v3 sequence/hash enumeration, staged finite admissions and submit-once intent slots; default closed, no provider or signature authority."]}
+-->
+
+Accounts owner delivery routes expose exact draft/review/action bindings, full document fields, validation issues, and protected original references. The default backend supplies schema/source preparation and archive reads with no authority runtime. Four separately composed loopback transport roles keep system preparation/confirmation, person signing, and known reads finite. No SQL transaction crosses HTTP.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/annual-accounts/delivery-workspace","/api/v1/annual-accounts/delivery-original","/api/v1/annual-accounts/delivery-drafts","/api/v1/annual-accounts/delivery-reviews","/api/v1/annual-accounts/delivery-advances","/api/v1/annual-accounts/delivery-reconciliations"],"ports":["AnnualAccountsDeliveryTransport"],"adapterBindings":["AnnualAccountsDeliveryTransport=>talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemPreparation","AnnualAccountsDeliveryTransport=>talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemConfirmation","AnnualAccountsDeliveryTransport=>talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsPersonSigning","AnnualAccountsDeliveryTransport=>talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsKnownRead"],"adapterDependencies":["talli_backend.adapters.loopback_annual_accounts_delivery"],"adapterBindingOwners":["AnnualAccountsDeliveryTransport=>backend-system"],"adapterBindingModes":["AnnualAccountsDeliveryTransport=>Distinct finite loopback Accounts LoopbackAccountsSystemPreparation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback.","AnnualAccountsDeliveryTransport=>Distinct finite loopback Accounts LoopbackAccountsSystemConfirmation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback.","AnnualAccountsDeliveryTransport=>Distinct finite loopback Accounts LoopbackAccountsPersonSigning port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback.","AnnualAccountsDeliveryTransport=>Distinct finite loopback Accounts LoopbackAccountsKnownRead port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."]}
+-->
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.annual_accounts_schemas","talli_backend.application.annual_accounts_delivery_preparation","talli_backend.application.annual_accounts_delivery_workflow"]}
+-->
+
+Default Accounts schema composition is lazy. An unavailable bundle closes delivery validation, preserves an explicit unavailable-inspection workspace state, and does not prevent current owner/MFA access to original listings or downloads.
+
+<!-- architecture-inventory
+{"adapterBindings":["AnnualAccountsSchemaValidator=>talli_backend.adapters.annual_accounts_schemas.DeferredAnnualAccountsSchemas"],"adapterBindingOwners":["AnnualAccountsSchemaValidator=>backend-system"],"adapterBindingModes":["AnnualAccountsSchemaValidator=>Deferred exact pinned Accounts validation; archive composition/listing/download survives unavailable resources while mutation/frame validation remains closed."]}
+-->

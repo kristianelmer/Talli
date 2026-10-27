@@ -15,3 +15,9 @@ bounded by a timeout. Audit remains the existing post-write action continuation.
 `loadAnnualAccountsSourceFacts` presents the durable owner-scoped source handoff
 through generated transport. It preserves evidence version, coverage and unknown
 states and applies no commercial classification.
+
+The delivery workspace presents all document fields and validation issues, separately confirms preparation, process transition and person signing with two explicit choices, and delegates allowed steps to the generated client. Page reads consume no authority grant. Downloads verify exact opaque bytes and use authenticated no-store attachments.
+
+<!-- architecture-inventory
+{"routes":["/api/annual-accounts/delivery-original"],"apiOperations":["annualAccountsGetDeliveryWorkspace","annualAccountsGetDeliveryOriginal","annualAccountsPrepareDeliveryDraft","annualAccountsReviewDelivery","annualAccountsAdvanceDelivery","annualAccountsReconcileDelivery"]}
+-->

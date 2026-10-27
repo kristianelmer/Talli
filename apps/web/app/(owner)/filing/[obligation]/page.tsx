@@ -42,6 +42,7 @@ import {
 import { buildOwnerFilingPresentation } from "../_presentation";
 import { Rf1086ReconciliationControl } from "../_submission-presentation";
 import {TaxDeliveryPanel} from "../_tax-delivery";
+import {AccountsDeliveryPanel} from "../_accounts-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -219,6 +220,7 @@ export default async function FilingObligationPage({
           </div>
         </section>
         {obligation === "skattemelding" ? <TaxDeliveryPanel companyId={input.company.id} incomeYear={input.incomeYear}/> : null}
+        {obligation === "aarsregnskap" ? <AccountsDeliveryPanel companyId={input.company.id} incomeYear={input.incomeYear}/> : null}
         {obligation === "aarsregnskap" ? (
           <section className="filingStep">
             <div className="filingStepHead">

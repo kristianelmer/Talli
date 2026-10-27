@@ -1,6 +1,7 @@
 // Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: 1.0.0
 import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
+import {verifyAccountsDeliveryOriginal} from "../accounts-delivery-evidence.ts";
 
 export interface SystemBoundaryStatus {
   apiVersion: string;
@@ -3044,6 +3045,100 @@ export interface AnnualAccountsEvidenceImportRequest {
 export interface AnnualAccountsEvidenceImportWire {
   recordId: string;
   testReference: string;
+}
+
+export interface AccountsPrepareDeliveryRequest {
+  companyId: string;
+  confirmingRepresentative: string;
+  contactEmail: string;
+  filingId: string;
+  incomeYear: number;
+}
+
+export interface AccountsDeliveryBoundRequest {
+  companyId: string;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: number;
+}
+
+export interface AccountsReviewDeliveryRequest {
+  actionConfirmed: boolean;
+  companyId: string;
+  documentsChecked: boolean;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: number;
+  reviewedEvidenceSha256: string;
+  stage: "prepare" | "confirm" | "sign";
+}
+
+export interface AccountsAdvanceDeliveryRequest {
+  action: "create_instance" | "upload_main_form" | "upload_company_accounts" | "confirm" | "sign";
+  companyId: string;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: number;
+}
+
+export interface AccountsDeliveryProgressWire {
+  companyId: string;
+  draftSha256: string;
+  filingId: string;
+  incomeYear: number;
+  state: "draft" | "reviewed" | "creation_unknown" | "created" | "main_upload_unknown" | "main_uploaded" | "accounts_upload_unknown" | "validation_blocked" | "confirmation_review" | "confirmation_unknown" | "person_review" | "signing_unknown" | "technical_archive" | "inspection_unavailable";
+}
+
+export interface AccountsDeliveryOriginalRefWire {
+  key: string;
+  mediaType: string;
+  purpose: string;
+  sha256: string;
+  sourceFilingId: string;
+}
+
+export interface AccountsDeliveryOriginalWire {
+  bodyBase64: string;
+  companyId: string;
+  filingId: string;
+  incomeYear: number;
+  key: string;
+  mediaType: string;
+  purpose: string;
+  sha256: string;
+  sourceFilingId: string;
+}
+
+export interface AccountsDeliveryFieldWire {
+  document: string;
+  path: string;
+  value: string;
+}
+
+export interface AccountsDeliveryWorkspaceRowWire {
+  actions: ("review_prepare" | "review_confirm" | "review_sign" | "create_instance" | "upload_main_form" | "upload_company_accounts" | "confirm" | "sign" | "reconcile")[];
+  draftSha256: string;
+  fields: AccountsDeliveryFieldWire[];
+  filingId: string;
+  knownInstance: string | null;
+  originals: AccountsDeliveryOriginalRefWire[];
+  recordedAt: string;
+  reviewSha256: string;
+  reviewStage: "prepare" | "confirm" | "sign";
+  sourceCurrent: boolean;
+  sourceSha256: string;
+  state: "draft" | "reviewed" | "creation_unknown" | "created" | "main_upload_unknown" | "main_uploaded" | "accounts_upload_unknown" | "validation_blocked" | "confirmation_review" | "confirmation_unknown" | "person_review" | "signing_unknown" | "technical_archive" | "inspection_unavailable";
+  validationIssues: Record<string, unknown>[];
+}
+
+export interface AccountsDeliveryWorkspaceWire {
+  companyId: string;
+  incomeYear: number;
+  observedAt: string;
+  preparationAvailable: boolean;
+  rows: AccountsDeliveryWorkspaceRowWire[];
+  sourceSha256: string | null;
+  version: "annual-accounts-delivery-workspace-v1";
 }
 
 export interface AnnualAccountsWorkspaceWire {
@@ -9183,6 +9278,140 @@ function isAnnualAccountsEvidenceImportWire(value: unknown): value is AnnualAcco
   );
 }
 
+function isAccountsPrepareDeliveryRequest(value: unknown): value is AccountsPrepareDeliveryRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","confirmingRepresentative","contactEmail","filingId","incomeYear"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.confirmingRepresentative === "string" && value.confirmingRepresentative.length >= 1 && value.confirmingRepresentative.length <= 1000) &&
+    (typeof value.contactEmail === "string" && value.contactEmail.length >= 3 && value.contactEmail.length <= 1000) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025)
+  );
+}
+
+function isAccountsDeliveryBoundRequest(value: unknown): value is AccountsDeliveryBoundRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","draftSha256","filingId","incomeYear"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025)
+  );
+}
+
+function isAccountsReviewDeliveryRequest(value: unknown): value is AccountsReviewDeliveryRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionConfirmed","companyId","documentsChecked","draftSha256","filingId","incomeYear","reviewedEvidenceSha256","stage"]) &&
+    typeof value.actionConfirmed === "boolean" &&
+    isUuid(value.companyId) &&
+    typeof value.documentsChecked === "boolean" &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025) &&
+    (typeof value.reviewedEvidenceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.reviewedEvidenceSha256)) &&
+    (value.stage === "prepare" || value.stage === "confirm" || value.stage === "sign")
+  );
+}
+
+function isAccountsAdvanceDeliveryRequest(value: unknown): value is AccountsAdvanceDeliveryRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["action","companyId","draftSha256","filingId","incomeYear"]) &&
+    (value.action === "create_instance" || value.action === "upload_main_form" || value.action === "upload_company_accounts" || value.action === "confirm" || value.action === "sign") &&
+    isUuid(value.companyId) &&
+    (typeof value.draftSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.draftSha256)) &&
+    isUuid(value.filingId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2025 && value.incomeYear <= 2025)
+  );
+}
+
+function isAccountsDeliveryProgressWire(value: unknown): value is AccountsDeliveryProgressWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","draftSha256","filingId","incomeYear","state"]) &&
+    isUuid(value.companyId) &&
+    typeof value.draftSha256 === "string" &&
+    isUuid(value.filingId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (value.state === "draft" || value.state === "reviewed" || value.state === "creation_unknown" || value.state === "created" || value.state === "main_upload_unknown" || value.state === "main_uploaded" || value.state === "accounts_upload_unknown" || value.state === "validation_blocked" || value.state === "confirmation_review" || value.state === "confirmation_unknown" || value.state === "person_review" || value.state === "signing_unknown" || value.state === "technical_archive" || value.state === "inspection_unavailable")
+  );
+}
+
+function isAccountsDeliveryOriginalRefWire(value: unknown): value is AccountsDeliveryOriginalRefWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["key","mediaType","purpose","sha256","sourceFilingId"]) &&
+    typeof value.key === "string" &&
+    typeof value.mediaType === "string" &&
+    typeof value.purpose === "string" &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.sourceFilingId)
+  );
+}
+
+function isAccountsDeliveryOriginalWire(value: unknown): value is AccountsDeliveryOriginalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bodyBase64","companyId","filingId","incomeYear","key","mediaType","purpose","sha256","sourceFilingId"]) &&
+    typeof value.bodyBase64 === "string" &&
+    isUuid(value.companyId) &&
+    isUuid(value.filingId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.key === "string" &&
+    typeof value.mediaType === "string" &&
+    typeof value.purpose === "string" &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.sourceFilingId)
+  );
+}
+
+function isAccountsDeliveryFieldWire(value: unknown): value is AccountsDeliveryFieldWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["document","path","value"]) &&
+    typeof value.document === "string" &&
+    typeof value.path === "string" &&
+    typeof value.value === "string"
+  );
+}
+
+function isAccountsDeliveryWorkspaceRowWire(value: unknown): value is AccountsDeliveryWorkspaceRowWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actions","draftSha256","fields","filingId","knownInstance","originals","recordedAt","reviewSha256","reviewStage","sourceCurrent","sourceSha256","state","validationIssues"]) &&
+    Array.isArray(value.actions) && value.actions.every((item) => (item === "review_prepare" || item === "review_confirm" || item === "review_sign" || item === "create_instance" || item === "upload_main_form" || item === "upload_company_accounts" || item === "confirm" || item === "sign" || item === "reconcile")) &&
+    typeof value.draftSha256 === "string" &&
+    Array.isArray(value.fields) && value.fields.every((item) => isAccountsDeliveryFieldWire(item)) &&
+    isUuid(value.filingId) &&
+    (typeof value.knownInstance === "string" || value.knownInstance === null) &&
+    Array.isArray(value.originals) && value.originals.every((item) => isAccountsDeliveryOriginalRefWire(item)) &&
+    isDateTime(value.recordedAt) &&
+    typeof value.reviewSha256 === "string" &&
+    (value.reviewStage === "prepare" || value.reviewStage === "confirm" || value.reviewStage === "sign") &&
+    typeof value.sourceCurrent === "boolean" &&
+    typeof value.sourceSha256 === "string" &&
+    (value.state === "draft" || value.state === "reviewed" || value.state === "creation_unknown" || value.state === "created" || value.state === "main_upload_unknown" || value.state === "main_uploaded" || value.state === "accounts_upload_unknown" || value.state === "validation_blocked" || value.state === "confirmation_review" || value.state === "confirmation_unknown" || value.state === "person_review" || value.state === "signing_unknown" || value.state === "technical_archive" || value.state === "inspection_unavailable") &&
+    Array.isArray(value.validationIssues) && value.validationIssues.every((item) => isRecord(item))
+  );
+}
+
+function isAccountsDeliveryWorkspaceWire(value: unknown): value is AccountsDeliveryWorkspaceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observedAt","preparationAvailable","rows","sourceSha256","version"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isDateTime(value.observedAt) &&
+    typeof value.preparationAvailable === "boolean" &&
+    Array.isArray(value.rows) && value.rows.every((item) => isAccountsDeliveryWorkspaceRowWire(item)) &&
+    (typeof value.sourceSha256 === "string" || value.sourceSha256 === null) &&
+    value.version === "annual-accounts-delivery-workspace-v1"
+  );
+}
+
 function isAnnualAccountsWorkspaceWire(value: unknown): value is AnnualAccountsWorkspaceWire {
   return (
     isRecord(value) &&
@@ -13588,6 +13817,48 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         `${baseUrl}/api/v1/annual-accounts/tt02-evidence-imports`,
         "POST", request, body, isAnnualAccountsEvidenceImportWire,
       );
+    },
+
+    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-workspace?${query}`,"GET",request,undefined,isAccountsDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
+            || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
+            || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<AccountsDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-original?${query}`,"GET",request,undefined,isAccountsDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try {await verifyAccountsDeliveryOriginal(result);} catch {throw new TalliApiError(502,undefined);}
+      return result;
+    },
+
+    async annualAccountsPrepareDeliveryDraft(command: AccountsPrepareDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-drafts`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReviewDelivery(command: AccountsReviewDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-reviews`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsAdvanceDelivery(command: AccountsAdvanceDeliveryRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-advances`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReconcileDelivery(command: AccountsDeliveryBoundRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-reconciliations`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
     },
 
     async annualAccountsGetSourceFacts(

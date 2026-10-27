@@ -533,7 +533,13 @@
         "talli_backend.modules.annual_accounts_filing.public"
       ],
       "routes": [
-        "/api/v1/annual-accounts/source-facts"
+        "/api/v1/annual-accounts/source-facts",
+        "/api/v1/annual-accounts/delivery-workspace",
+        "/api/v1/annual-accounts/delivery-original",
+        "/api/v1/annual-accounts/delivery-drafts",
+        "/api/v1/annual-accounts/delivery-reviews",
+        "/api/v1/annual-accounts/delivery-advances",
+        "/api/v1/annual-accounts/delivery-reconciliations"
       ]
     },
     {
@@ -760,7 +766,9 @@
       "supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql",
       "supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql",
       "supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql",
-      "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql"
+      "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql",
+      "supabase/contract-migrations/20261026232554_annual_accounts_delivery_events_v1.sql",
+      "supabase/rollback/20261026232554_annual_accounts_delivery_events_v1.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1215,6 +1223,42 @@
       "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
       "owner": "backend-system",
       "mode": "Exact immutable Accounts drafts in a default-closed reader-first source-v2 store; current owner/MFA and published company guard, no dispatch or authority permission."
+    },
+    {
+      "port": "AnnualAccountsDeliveryJournalPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "Immutable bounded Accounts operation originals with complete Source v3 sequence/hash enumeration, staged finite admissions and submit-once intent slots; default closed, no provider or signature authority."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemPreparation",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsSystemPreparation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemConfirmation",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsSystemConfirmation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsPersonSigning",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsPersonSigning port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsKnownRead",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsKnownRead port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsSchemaValidator",
+      "adapter": "talli_backend.adapters.annual_accounts_schemas.DeferredAnnualAccountsSchemas",
+      "owner": "backend-system",
+      "mode": "Deferred exact pinned Accounts validation; archive composition/listing/download survives unavailable resources while mutation/frame validation remains closed."
     }
   ],
   "allowedDependencies": {
@@ -1306,7 +1350,10 @@
       "talli_backend.application.shareholder_register_company_test_retention_http",
       "talli_backend.adapters.company_test_retention_runtime",
       "talli_backend.application.company_tax_delivery_preparation",
-      "talli_backend.application.company_tax_delivery_submission"
+      "talli_backend.application.company_tax_delivery_submission",
+      "talli_backend.adapters.annual_accounts_schemas",
+      "talli_backend.application.annual_accounts_delivery_preparation",
+      "talli_backend.application.annual_accounts_delivery_workflow"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1419,7 +1466,8 @@
       "urllib.parse",
       "urllib.request",
       "talli_backend.adapters.company_tax_loopback_read",
-      "talli_backend.adapters.annual_accounts_schemas"
+      "talli_backend.adapters.annual_accounts_schemas",
+      "talli_backend.adapters.loopback_annual_accounts_delivery"
     ]
   }
 }

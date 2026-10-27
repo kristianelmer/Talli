@@ -14,7 +14,8 @@
   ],
   "ownedRoutes": [
     "/workspace",
-    "/filing/[obligation]"
+    "/filing/[obligation]",
+    "/api/annual-accounts/delivery-original"
   ],
   "apiOperations": [
     "annualAccountsGetFilingWorkspace",
@@ -26,7 +27,13 @@
     "annualAccountsConfirmPermission",
     "annualAccountsRecordTestEvidence",
     "annualAccountsPreviewReadiness",
-    "annualAccountsGetSourceFacts"
+    "annualAccountsGetSourceFacts",
+    "annualAccountsGetDeliveryWorkspace",
+    "annualAccountsGetDeliveryOriginal",
+    "annualAccountsPrepareDeliveryDraft",
+    "annualAccountsReviewDelivery",
+    "annualAccountsAdvanceDelivery",
+    "annualAccountsReconcileDelivery"
   ],
   "dependencies": [],
   "allowedImports": [

@@ -7,3 +7,6 @@ export { presentAnnualAccountsPreview, presentAnnualAccountsSubmission, presentA
 export type { AnnualAccountsWorkspaceWire, AnnualAccountsReadinessPreviewRequest, AnnualAccountsReadinessPreviewWire,
   AnnualAccountsReadinessIssueWire } from "@talli/talli-api-client";
 export type { AnnualAccountsSourceFactsWire, AnnualAccountsSourceEvidenceWire, AnnualAccountsHistoryCoverageWire } from "@talli/talli-api-client";
+export {loadAccountsDeliveryWorkspace,loadAccountsDeliveryOriginal,prepareAccountsDelivery,reviewAccountsDelivery,
+  advanceAccountsDelivery,reconcileAccountsDelivery,accountsDeliveryMfaRequired} from "./transport.ts";
+export type {AccountsDeliveryWorkspaceWire,AccountsDeliveryWorkspaceRowWire,AccountsAdvanceDeliveryRequest} from "@talli/talli-api-client";
