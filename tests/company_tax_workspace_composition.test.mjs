@@ -346,3 +346,15 @@ for(const failed of [false,true])test(`Accounts archive ${failed?"failure":"abse
   assert.equal(response.status,503);
   assert.equal(effects.some(row=>["archive","company_archive_complete_export"].includes(row.name)),false);
 });
+
+test("a positively empty preceding Accounts workspace preserves export with explicit legacy coverage",async()=>{
+  const {effects,dependencies}=consumerSetup();
+  const legacyEmpty={version:"annual-accounts-delivery-workspace-v1",companyId:"company",incomeYear:2025,rows:[]};
+  dependencies.loadAccountsCompanyArchiveSource=async()=>({data:null,legacyEmpty,error:null});
+  const get=functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts","GET",dependencies);
+  const response=await get(new Request("https://example.test/archive"),{params:Promise.resolve({companyId:"company",incomeYear:"2025"})});
+  assert.equal(response.status,200);
+  assert.equal(effects.find(row=>row.name==="archive").body.accountsCompanyArchive,undefined);
+  assert.equal(effects.find(row=>row.name==="archive").body.accountsLegacyEmpty,legacyEmpty);
+  assert.equal(effects.filter(row=>row.name==="company_archive_complete_export").length,1);
+});

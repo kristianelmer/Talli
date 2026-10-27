@@ -444,8 +444,8 @@ Corporate-backed source facts, correction-parent reads and opaque PDF/signature
 bytes. `build_annual_accounts_company_archive` and
 `parse_annual_accounts_company_archive` are the owning serialization/copy
 contracts. The parser checks the external archive digest, original company/year,
-strict codecs, enumeration commitments, schema-bound drafts and complete finite
-history. It rejects missing parents, events, changed originals and unsupported
+strict codecs, enumeration commitments, exact prepared byte pairs and complete finite
+history, retaining historical schema pins without reloading schema files. It rejects missing parents, events, changed originals and unsupported
 extents; an unresolved predecessor effect alone does not erase retained evidence.
 
 The shared company archive consumes this projection under its existing export
@@ -456,3 +456,11 @@ Missing Accounts coverage fails restore integrity. The standalone copy checker
 reconstructs through the same owning parser in another process. This contract
 and fixture do not authorize a runtime database import, new provider operation,
 production activation or a whole-service recovery claim.
+
+Shared copy acceptance requires `verify_annual_accounts_company_archive`, exposed
+by the read-only `company-year-archive-verifications` query under the current
+owner/MFA guard. Its exact archive/source digests, original catalog and counts
+must match. TypeScript checks only portable scope/bytes/enumeration; they never
+replace owning journal interpretation. Raw restored fixtures remain unverified.
+The preceding workspace may support an explicitly empty delivery overlap on an
+older backend; this preserves export availability, not complete restore coverage.

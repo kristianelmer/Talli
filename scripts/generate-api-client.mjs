@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  verifyCompanyYearArchive: ["/api/v1/annual-accounts/company-year-archive-verifications","post","annualAccountsVerifyCompanyYearArchive"],
   companyYearArchive: ["/api/v1/annual-accounts/company-year-archive","get","annualAccountsGetCompanyYearArchive"],
   deliveryWorkspace: ["/api/v1/annual-accounts/delivery-workspace","get","annualAccountsGetDeliveryWorkspace"],
   deliveryOriginal: ["/api/v1/annual-accounts/delivery-original","get","annualAccountsGetDeliveryOriginal"],
@@ -922,7 +923,7 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
   "AccountsPrepareDeliveryRequest","AccountsPrepareCorrectionRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
-  "AccountsCompanyArchiveWire","AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
+  "AccountsArchiveVerificationWire","AccountsArchivedOriginalFactWire","AccountsCompanyArchiveWire","AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -2831,6 +2832,15 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
             || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
             || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsVerifyCompanyYearArchive(archive: AccountsCompanyArchiveWire,request: TalliRequestOptions = {}): Promise<AccountsArchiveVerificationWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive-verifications",
+        "POST",request,archive,isAccountsArchiveVerificationWire);
+      if (result.companyId!==archive.companyId || result.incomeYear!==archive.incomeYear || result.archiveSha256!==archive.sha256
+          || result.sourceSha256!==archive.sourceSha256 || result.draftCount!==archive.draftCount || result.eventCount!==archive.eventCount
+          || result.originalCount!==archive.originalCount || result.originals.length!==result.originalCount) throw new TalliApiError(502,undefined);
       return result;
     },
 

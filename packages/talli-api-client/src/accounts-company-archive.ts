@@ -57,7 +57,7 @@ export function inspectAccountsCompanyArchive(value: AccountsCompanyArchiveWire,
     drafts.set(draft.filing_id,{...row,actor:draft.prepared_by.subject.value});
   }
   let previous = 0, time = -Infinity, originals = 4*value.draftCount;
-  const seen = new Set<string>(), parents = new Map<string,string>(), children = new Set<string>();
+  const seen = new Set<string>();
   for (const row of source.events) {
     if (!keys(row,["sequence","canonicalJson","sha256","recordedAt"]) || !Number.isSafeInteger(row.sequence) || row.sequence <= previous
       || !hash(row.sha256) || seen.has(row.sha256) || typeof row.canonicalJson !== "string" || digest(row.canonicalJson) !== row.sha256
@@ -67,20 +67,9 @@ export function inspectAccountsCompanyArchive(value: AccountsCompanyArchiveWire,
       || binding.income_year?.value !== incomeYear || binding.actor_id?.kind !== "USER" || binding.actor_id?.subject?.value !== draft.actor
       || binding.draft_sha256 !== draft.sha256 || !(instant(draft.recordedAt) <= instant(row.recordedAt))) fail();
     if (root.version.startsWith("annual-accounts-correction-") && source.contractVersion !== "annual-accounts-source-v4") fail();
-    if (root.version === "annual-accounts-correction-parent-admission-v1") {
-      const parent = record.parent_binding, stored = drafts.get(parent?.filing_id);
-      if (!stored || parent.filing_id === binding.filing_id || parent.company_id?.value !== companyId || parent.income_year?.value !== incomeYear
-        || parent.draft_sha256 !== stored.sha256 || parent.actor_id?.kind !== "USER" || parent.actor_id?.subject?.value !== stored.actor
-        || parents.has(binding.filing_id) || children.has(parent.filing_id)) fail();
-      parents.set(binding.filing_id,parent.filing_id); children.add(parent.filing_id);
-    }
     if (["annual-accounts-delivery-observation-v1","annual-accounts-correction-parent-observation-v1"].includes(root.version)
       && record.original?.body_base64 != null) originals++;
     originals++; seen.add(row.sha256); previous = row.sequence; time = instant(row.recordedAt);
-  }
-  for (const child of parents.keys()) {
-    let key = child; const visited = new Set<string>();
-    while (parents.has(key)) { if (visited.has(key)) fail(); visited.add(key); key = parents.get(key)!; }
   }
   if (value.originalCount !== originals || !Number.isSafeInteger(value.originalCount)) fail();
   return source;

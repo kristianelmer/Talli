@@ -1358,3 +1358,17 @@ parser; it has no runtime database-import or provider authority.
 <!-- architecture-inventory
 {"routes":["/api/v1/annual-accounts/company-year-archive"]}
 -->
+
+The read-only `/api/v1/annual-accounts/company-year-archive-verifications` query
+checks a submitted archive through the owning parser under current owner/MFA
+checks, without writing historical rows. Shared copy acceptance requires its
+matching digest/scope/count result; a shape-only fixture remains unverified.
+Prepared byte identity and retained schema pins are sufficient for archive
+history, so unavailable schema files do not suppress exact historical originals.
+During web-first overlap, the preceding owning workspace may preserve the older
+export only when it positively enumerates an empty Accounts delivery history.
+That explicit legacy profile still fails complete restore integrity.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/annual-accounts/company-year-archive-verifications"]}
+-->

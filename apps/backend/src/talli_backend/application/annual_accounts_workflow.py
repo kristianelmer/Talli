@@ -93,7 +93,17 @@ class AuthenticatedAnnualAccounts:
             await guard.lock_delivery_archive(query)
             async with self._session.transaction(snapshot=True) as transaction:
                 snapshot = await transaction.filing_source_snapshot(query)
-                result = build_annual_accounts_company_archive(query, snapshot, schemas=self._delivery_required()._schemas)
+                result = build_annual_accounts_company_archive(query, snapshot)
+            await guard.lock_delivery_archive(query)
+            return result
+
+    async def verify_company_year_archive(self, query: AnnualAccountsSourceQuery, raw: str, expected_sha256: str):
+        from talli_backend.modules.annual_accounts_filing.public import verify_annual_accounts_company_archive
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_archive(query)
+            result = verify_annual_accounts_company_archive(raw, query=query, expected_sha256=expected_sha256)
             await guard.lock_delivery_archive(query)
             return result
 

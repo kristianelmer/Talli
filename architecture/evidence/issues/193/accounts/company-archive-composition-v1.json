@@ -8,13 +8,13 @@
     "occurrences": 0
   },
   "candidate": {
-    "sourceDigest": "sha256:2b0a680d7042b899d519407571e1ca7211371c634e0867679273c2d20ef02468",
+    "sourceDigest": "sha256:4fbb7cfb9fa62f3071244119e9f2a5bf3d5d86917d7eb22c04b43c6f25be23b2",
     "occurrences": 0
   },
   "exactAdditions": [
-    "  const accountsCompanyArchive = await loadAccountsCompanyArchiveSource(accessToken, companyId, incomeYear);\n  if (accountsCompanyArchive.error || !accountsCompanyArchive.data) return new Response(\"Kunne ikke lese komplett årsregnskapsarkiv\", {status: 503});\n",
-    "    accountsCompanyArchive: accountsCompanyArchive.data,\n",
-    " && accountsCompanyArchive.data.draftCount === 0"
+    "  const accountsCompanyArchive = await loadAccountsCompanyArchiveSource(accessToken, companyId, incomeYear);\n  if (accountsCompanyArchive.error || (!accountsCompanyArchive.data && !accountsCompanyArchive.legacyEmpty)) return new Response(\"Kunne ikke lese komplett årsregnskapsarkiv\", {status: 503});\n",
+    "    accountsCompanyArchive: accountsCompanyArchive.data ?? undefined,\n    accountsLegacyEmpty: accountsCompanyArchive.legacyEmpty ?? undefined,\n",
+    " && (accountsCompanyArchive.data?.draftCount ?? 0) === 0"
   ],
-  "scope": "Add only owned immutable Accounts history to the existing company export generation receipt. Existing sibling SQL and scope remain frozen; no compatibility retirement or provider authority."
+  "scope": "Add owned Accounts history or an explicitly empty preceding owning workspace inside the existing export receipt. Legacy overlap preserves export only, never a full restore claim. Retained sibling SQL remains frozen; no compatibility retirement or provider authority."
 }

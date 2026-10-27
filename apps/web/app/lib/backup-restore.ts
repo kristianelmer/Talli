@@ -1,3 +1,4 @@
+import type {AccountsCompanyArchiveWire,AccountsArchiveVerificationWire} from "@talli/talli-api-client";
 import { createHash } from "node:crypto";
 import { inspectAccountsCompanyArchive } from "@talli/talli-api-client";
 import { rf1086SourceRestoreFailures } from "./rf1086-restore-integrity.ts";
@@ -110,7 +111,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
     )].sort(),
     objectReferences,
     rf1086ProductionEvidenceAvailability: archive.rf1086Production ? "included" : "unavailable",
-    annualAccountsEvidenceAvailability: archive.annualAccountsCompanyArchive ? "included" : "unavailable",
+    annualAccountsEvidenceAvailability: archive.annualAccountsCompanyArchive ? "included" : archive.annualAccountsLegacyEmpty ? "legacy_empty_delivery" : "unavailable",
     annualAccountsArchiveSha256: archive.annualAccountsCompanyArchive?.sha256 ?? null,
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
@@ -165,6 +166,7 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
 
   return {
     restoreType: "talli_company_year_restore_fixture",
+    accountsVerification: null as AccountsArchiveVerificationWire | null,
     sourceCompanyId: archive.company?.id,
     targetCompanyId: options.targetCompanyId,
     incomeYear: archive.incomeYear,
@@ -182,6 +184,7 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       companyTaxDeliveryJournal: archive.companyTaxDeliveryJournal ?? null,
       // Copy original identities and bytes; targetCompanyId is only fixture metadata.
       annualAccountsCompanyArchive: archive.annualAccountsCompanyArchive == null ? null : structuredClone(archive.annualAccountsCompanyArchive),
+      annualAccountsLegacyEmpty: archive.annualAccountsLegacyEmpty == null ? null : structuredClone(archive.annualAccountsLegacyEmpty),
       filingSubmissions: submissionCollections.filingSubmissions,
       productionPilotEntitlements: archive.productionPilotEntitlements ?? [],
       filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
@@ -206,7 +209,8 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
 }
 
 /** Copy one receipt-bound export; never remap identities inside retained facts. */
-export function copyCompanyYearArchive(raw: string, options: {targetCompanyId: string; expectedArchiveSha256: string}) {
+export async function copyCompanyYearArchive(raw: string, options: {targetCompanyId: string; expectedArchiveSha256: string;
+  verifyAccounts: (archive: AccountsCompanyArchiveWire) => Promise<AccountsArchiveVerificationWire>}) {
   if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 512*1024*1024
       || !/^[a-f0-9]{64}$/u.test(options.expectedArchiveSha256)
       || createHash("sha256").update(raw, "utf8").digest("hex") !== options.expectedArchiveSha256) {
@@ -218,7 +222,17 @@ export function copyCompanyYearArchive(raw: string, options: {targetCompanyId: s
       || !archive.annualAccountsCompanyArchive) throw new Error("Complete Accounts archive source is required.");
   inspectAccountsCompanyArchive(archive.annualAccountsCompanyArchive, archive.company.id, archive.incomeYear,
     text => createHash("sha256").update(text).digest("hex"));
-  return {...restoreCompanyYearArchive(archive, options), sourceArchiveSha256: options.expectedArchiveSha256};
+  const proof = await options.verifyAccounts(archive.annualAccountsCompanyArchive);
+  if (proof.version !== "accounts-company-archive-verification-v1" || proof.status !== "verified"
+      || proof.companyId !== archive.company.id || proof.incomeYear !== archive.incomeYear
+      || proof.archiveSha256 !== archive.annualAccountsCompanyArchive.sha256
+      || proof.sourceSha256 !== archive.annualAccountsCompanyArchive.sourceSha256
+      || proof.draftCount !== archive.annualAccountsCompanyArchive.draftCount
+      || proof.eventCount !== archive.annualAccountsCompanyArchive.eventCount
+      || proof.originalCount !== archive.annualAccountsCompanyArchive.originalCount || !Array.isArray(proof.originals) || proof.originals.length !== proof.originalCount) {
+    throw new Error("Owning Accounts archive verification differs.");
+  }
+  return {...restoreCompanyYearArchive(archive, options), accountsVerification: proof, sourceArchiveSha256: options.expectedArchiveSha256};
 }
 
 export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompanyYearArchive>) {
@@ -368,8 +382,14 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
     }
   }
   const accounts = restored.restored.annualAccountsCompanyArchive;
-  if (!accounts) fail("annual_accounts_archive_missing");
+  if (!accounts) fail(restored.restored.annualAccountsLegacyEmpty ? "annual_accounts_legacy_archive_only" : "annual_accounts_archive_missing");
   if (accounts) {
+    const proof = restored.accountsVerification;
+    if (!proof || proof.version !== "accounts-company-archive-verification-v1" || proof.status !== "verified"
+        || proof.companyId !== restored.sourceCompanyId || proof.incomeYear !== restored.incomeYear
+        || proof.archiveSha256 !== accounts.sha256 || proof.sourceSha256 !== accounts.sourceSha256
+        || proof.draftCount !== accounts.draftCount || proof.eventCount !== accounts.eventCount
+        || proof.originalCount !== accounts.originalCount || !Array.isArray(proof.originals) || proof.originals.length !== proof.originalCount) fail("annual_accounts_archive_unverified");
     try {
       inspectAccountsCompanyArchive(accounts, restored.sourceCompanyId, restored.incomeYear,
         raw => createHash("sha256").update(raw).digest("hex"));

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
+import ts from "typescript";
 import {createTalliApiClient,TalliApiError,verifyAccountsCompanyArchive} from "../../packages/talli-api-client/src/index.ts";
 import {buildPersistedCompanyArchive} from "../../apps/web/app/lib/archive.ts";
 import {copyCompanyYearArchive,restoreCompanyYearArchive,assertRestoreIntegrity} from "../../apps/web/app/lib/backup-restore.ts";
@@ -13,7 +15,22 @@ const original=JSON.parse(readFileSync(new URL("../fixtures/accounts-company-arc
 const sha=raw=>createHash("sha256").update(raw).digest("hex");
 const client=value=>createTalliApiClient({baseUrl:"https://fixture.test",fetch:async()=>Response.json(value)});
 const source=value=>JSON.parse(value.canonicalJson);
-const rehash=(value,body)=>{value.canonicalJson=JSON.stringify(body);value.sha256=sha(value.canonicalJson);return value;};
+const canonical=value=>Array.isArray(value)?"["+value.map(canonical).join(",")+"]":value!==null&&typeof value==="object"
+  ?"{"+Object.keys(value).sort().map(key=>JSON.stringify(key)+":"+canonical(value[key])).join(",")+"}":JSON.stringify(value);
+const rehash=(value,body)=>{value.canonicalJson=canonical(body);value.sha256=sha(value.canonicalJson);return value;};
+async function owningVerifier(value) {
+  const python=process.env.TALLI_BACKEND_PYTHON_BIN||process.env.TALLI_PYTHON_BIN||"apps/backend/.venv/bin/python";
+  const actor=JSON.parse(source(original).drafts[0].canonicalJson).draft.prepared_by.subject.value;
+  const args=["scripts/check_accounts_company_archive.py","--company-id",original.companyId,"--income-year","2025","--actor-id",actor,"--expected-sha256",value.sha256];
+  const result=spawnSync(python,args,{input:JSON.stringify(value),encoding:"utf8",timeout:60_000,maxBuffer:2*1024*1024});
+  if(result.status!==0)throw new Error("Owning Accounts decoder refused archive.");
+  return JSON.parse(result.stdout);
+}
+function shared(value) {
+  return buildPersistedCompanyArchive({company:{id:original.companyId},incomeYear:2025,setups:[],shareholders:[],ledgerEntries:[],
+    documents:[],filingPreviews:[],filingSubmissions:[],accountsCompanyArchive:value});
+}
+
 
 test("Accounts generated archive client preserves complete root/correction bytes with current bearer scope",async()=>{
   let request;
@@ -33,7 +50,8 @@ test("shared company export/copy/restore retains original identities, source and
   const archive=buildPersistedCompanyArchive({company:{id:original.companyId},incomeYear:2025,setups:[],shareholders:[],
     ledgerEntries:[],documents:[],filingPreviews:[],filingSubmissions:[],accountsCompanyArchive:original});
   const copied=JSON.parse(JSON.stringify(archive));
-  const restored=restoreCompanyYearArchive(copied,{targetCompanyId:"isolated-copy-metadata"});
+  const raw=JSON.stringify(copied);
+  const restored=await copyCompanyYearArchive(raw,{targetCompanyId:"isolated-copy-metadata",expectedArchiveSha256:sha(raw),verifyAccounts:owningVerifier});
   assert.deepEqual(restored.restored.annualAccountsCompanyArchive,original);
   assert.notEqual(restored.restored.annualAccountsCompanyArchive,copied.annualAccountsCompanyArchive);
   assert.equal(restored.manifest.counts.annualAccountsDeliveryDrafts,2);
@@ -49,7 +67,7 @@ test("shared company export/copy/restore retains original identities, source and
 });
 
 for (const defect of ["scope","year","hash","source","codec","missing-draft","missing-event","duplicate-event","order",
-  "foreign-binding","foreign-actor","parent","coverage","original-bytes","count","original-count","extra"]) {
+  "foreign-binding","foreign-actor","coverage","original-bytes","count","original-count","extra"]) {
   test(`Accounts archive client and shared restore refuse ${defect}`,async()=>{
     const value=structuredClone(original),body=source(value);
     if(defect==="scope")value.companyId="15000000-0000-4000-8000-000000000099";
@@ -67,12 +85,11 @@ for (const defect of ["scope","year","hash","source","codec","missing-draft","mi
     else if(defect==="original-count")value.originalCount--;
     else if(defect==="extra")value.privileged=true;
     else {
-      const index=defect==="parent"?body.events.findIndex(row=>JSON.parse(row.canonicalJson).record.parent_binding):0;
+      const index=0;
       const event=body.events[index],root=JSON.parse(event.canonicalJson);
       if(defect==="foreign-binding")root.record.binding.company_id.value="15000000-0000-4000-8000-000000000099";
       else if(defect==="foreign-actor")root.record.binding.actor_id.kind="SYSTEM";
-      else root.record.parent_binding.filing_id=root.record.binding.filing_id;
-      event.canonicalJson=JSON.stringify(root);event.sha256=sha(event.canonicalJson);
+      event.canonicalJson=canonical(root);event.sha256=sha(event.canonicalJson);
       body.coverage.deliveryEventDigests[String(event.sequence)]=event.sha256;
     }
     if(!["scope","year","hash","count","original-count","extra"].includes(defect))rehash(value,body);
@@ -101,15 +118,15 @@ test("Accounts shared export adds only its owned source inside the frozen genera
   assert.deepEqual(legacyOperationProof(prior,evidence.path,scope),evidence.prior);
 });
 
-test("shared copy binds the exact external export receipt before parsing or restoring Accounts",()=>{
+test("shared copy binds the exact external export receipt before parsing or restoring Accounts",async()=>{
   const value=buildPersistedCompanyArchive({company:{id:original.companyId},incomeYear:2025,setups:[],shareholders:[],ledgerEntries:[],
     documents:[],filingPreviews:[],filingSubmissions:[],accountsCompanyArchive:original});
   const raw=JSON.stringify(value,null,2),expectedArchiveSha256=sha(raw);
-  assert.equal(copyCompanyYearArchive(raw,{targetCompanyId:original.companyId,expectedArchiveSha256}).sourceArchiveSha256,expectedArchiveSha256);
-  assert.throws(()=>copyCompanyYearArchive(raw+" ",{targetCompanyId:original.companyId,expectedArchiveSha256}));
-  assert.throws(()=>copyCompanyYearArchive(raw,{targetCompanyId:original.companyId,expectedArchiveSha256:"0".repeat(64)}));
+  assert.equal((await copyCompanyYearArchive(raw,{targetCompanyId:original.companyId,expectedArchiveSha256,verifyAccounts:owningVerifier})).sourceArchiveSha256,expectedArchiveSha256);
+  await assert.rejects(()=>copyCompanyYearArchive(raw+" ",{targetCompanyId:original.companyId,expectedArchiveSha256}));
+  await assert.rejects(()=>copyCompanyYearArchive(raw,{targetCompanyId:original.companyId,expectedArchiveSha256:"0".repeat(64)}));
   value.annualAccountsCompanyArchive=null;const missing=JSON.stringify(value);
-  assert.throws(()=>copyCompanyYearArchive(missing,{targetCompanyId:original.companyId,expectedArchiveSha256:sha(missing)}));
+  await assert.rejects(()=>copyCompanyYearArchive(missing,{targetCompanyId:original.companyId,expectedArchiveSha256:sha(missing)}));
 });
 
 test("an independent Python copy reconstructs every original through the owning decoder",()=>{
@@ -123,4 +140,61 @@ test("an independent Python copy reconstructs every original through the owning 
   assert.ok(copied.originals.some(row=>row.purpose==="signature"));
   const refused=spawnSync(python,[...args,"--expected-sha256","0".repeat(64)],{input:JSON.stringify(original),encoding:"utf8",timeout:60_000,maxBuffer:2*1024*1024});
   assert.notEqual(refused.status,0);assert.equal(refused.stdout,"");
+});
+
+for(const defect of ["pdf-original","parent-admission","coverage-declarations"])test(`shared copy requires owning validation for ${defect}`,async()=>{
+  const value=structuredClone(original),body=source(value);
+  if(defect==="pdf-original") {
+    const event=body.events.find(row=>JSON.parse(row.canonicalJson).record.original?.purpose==="pdf"),root=JSON.parse(event.canonicalJson);
+    root.record.original.body_base64=Buffer.from("changed retained PDF").toString("base64");
+    event.canonicalJson=canonical(root);event.sha256=sha(event.canonicalJson);body.coverage.deliveryEventDigests[String(event.sequence)]=event.sha256;
+  } else if(defect==="parent-admission") {
+    const index=body.events.findIndex(row=>JSON.parse(row.canonicalJson).version==="annual-accounts-correction-parent-admission-v1");
+    const [event]=body.events.splice(index,1);delete body.coverage.deliveryEventDigests[String(event.sequence)];
+    value.eventCount--;value.originalCount--;body.coverage.deliveryEventCount--;
+  } else {delete body.coverage.declaredTables;delete body.coverage.reconciledFamilies;}
+  rehash(value,body);
+  // The SDK checks portable bytes, scope and enumeration; it cannot substitute
+  // for the owning history parser when those outer commitments were recomputed.
+  await verifyAccountsCompanyArchive(value,original.companyId,2025);
+  const raw=JSON.stringify(shared(value));
+  await assert.rejects(copyCompanyYearArchive(raw,{targetCompanyId:original.companyId,expectedArchiveSha256:sha(raw),verifyAccounts:owningVerifier}));
+  const unverified=restoreCompanyYearArchive(shared(value),{targetCompanyId:original.companyId});
+  assert.ok(assertRestoreIntegrity(unverified).failures.includes("annual_accounts_archive_unverified"));
+});
+
+function feature(api) {
+  const text=readFileSync(new URL("../../apps/web/features/annual-accounts-filing/transport.ts",import.meta.url),"utf8");
+  const exports={};
+  vm.runInNewContext(ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
+    {exports,AbortSignal,Error,require:name=>name==="@talli/talli-api-client"?{createTalliApiClient:()=>api,TalliApiError}:{backendBaseUrl:()=>"https://fixture.test"}});
+  return exports;
+}
+for(const scenario of ["empty","history","unauthorized","unavailable","workspace-unavailable"])test(`web-first Accounts overlap handles ${scenario}`,async()=>{
+  const empty={version:"annual-accounts-delivery-workspace-v1",companyId:original.companyId,incomeYear:2025,sourceSha256:null,
+    observedAt:"2026-10-27T12:00:00Z",preparationAvailable:false,rows:[]};
+  let fallbacks=0;
+  const api={annualAccountsGetCompanyYearArchive:async()=>{throw new TalliApiError(scenario==="unauthorized"?403:scenario==="unavailable"?503:404,undefined);},
+    annualAccountsGetDeliveryWorkspace:async()=>{fallbacks++;if(scenario==="workspace-unavailable")throw new TalliApiError(503,undefined);
+      return {...empty,rows:scenario==="history"?[{filingId:"retained"}]:[]};}};
+  const result=await feature(api).loadAccountsCompanyArchiveSource("synthetic",original.companyId,2025);
+  assert.equal(fallbacks,["unauthorized","unavailable"].includes(scenario)?0:1);
+  if(scenario==="empty"){
+    assert.equal(result.error,null);assert.deepEqual(JSON.parse(JSON.stringify(result.legacyEmpty)),empty);assert.equal(result.data,null);
+    const archive=buildPersistedCompanyArchive({company:{id:original.companyId},incomeYear:2025,setups:[],shareholders:[],ledgerEntries:[],documents:[],
+      filingPreviews:[],filingSubmissions:[],accountsLegacyEmpty:result.legacyEmpty});
+    assert.equal(archive.annualAccountsEvidenceAvailability,"legacy_empty_delivery");
+    assert.ok(assertRestoreIntegrity(restoreCompanyYearArchive(archive,{targetCompanyId:original.companyId})).failures.includes("annual_accounts_legacy_archive_only"));
+  } else {assert.ok(result.error);assert.equal(result.data,null);assert.equal(result.legacyEmpty,null);}
+});
+
+test("generated owning verification binds its response to the exact submitted archive",async()=>{
+  const proof=await owningVerifier(original);let returned=proof;let request;
+  const api=createTalliApiClient({baseUrl:"https://fixture.test",fetch:async(url,options)=>{request={url:new URL(url),options};return Response.json(returned);}});
+  assert.deepEqual(await api.annualAccountsVerifyCompanyYearArchive(original),proof);
+  assert.equal(request.url.pathname,"/api/v1/annual-accounts/company-year-archive-verifications");assert.equal(request.options.method,"POST");
+  assert.deepEqual(JSON.parse(request.options.body),original);
+  for(const changed of [{archiveSha256:"0".repeat(64)},{sourceSha256:"0".repeat(64)},{draftCount:0},{originals:[]}]){
+    returned={...proof,...changed};await assert.rejects(api.annualAccountsVerifyCompanyYearArchive(original),error=>error instanceof TalliApiError&&error.status===502);
+  }
 });

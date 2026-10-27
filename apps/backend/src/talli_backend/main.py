@@ -644,6 +644,28 @@ class AccountsCompanyArchiveWire(StrictTransportModel):
     original_count: int = Field(ge=0, le=20256)
 
 
+class AccountsArchivedOriginalFactWire(StrictTransportModel):
+    filing_id: UUID
+    key: str
+    purpose: str
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    media_type: str
+    byte_length: int = Field(ge=0, le=32 * 1024 * 1024)
+
+
+class AccountsArchiveVerificationWire(StrictTransportModel):
+    version: Literal['accounts-company-archive-verification-v1']
+    status: Literal['verified']
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    archive_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    draft_count: int = Field(ge=0, le=64)
+    event_count: int = Field(ge=0, le=10000)
+    original_count: int = Field(ge=0, le=20256)
+    originals: list[AccountsArchivedOriginalFactWire] = Field(max_length=20256)
+
+
 class AccountsDeliveryFieldWire(TransportModel):
     document: str
     path: str
@@ -11967,6 +11989,21 @@ def create_app(
             session = await annual_accounts_application.session(bearer_token(credentials))
             result = await session.company_year_archive(AnnualAccountsSourceQuery(CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id))
             return AccountsCompanyArchiveWire(**asdict(result))
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/company-year-archive-verifications', operation_id='annualAccountsVerifyCompanyYearArchive',
+        response_model=AccountsArchiveVerificationWire, responses=ledger_errors, tags=['annual-accounts'],
+        openapi_extra={'parameters': [REQUEST_ID_PARAMETER]})
+    async def accounts_verify_company_year_archive(archive: AccountsCompanyArchiveWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY):
+        async def execute():
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.verify_company_year_archive(AnnualAccountsSourceQuery(CompanyId(str(archive.company_id)),
+                IncomeYear(archive.income_year), session.actor_id), archive.canonical_json, archive.sha256)
+            if (archive.source_sha256 != result.source_sha256 or archive.draft_count != result.draft_count
+                    or archive.event_count != result.event_count or archive.original_count != result.original_count):
+                raise AnnualAccountsError.invalid_input()
+            return AccountsArchiveVerificationWire(**asdict(result))
         return await annual_accounts_call(execute)
 
     @application.get('/api/v1/annual-accounts/delivery-original',operation_id='annualAccountsGetDeliveryOriginal',

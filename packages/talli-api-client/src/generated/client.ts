@@ -3092,6 +3092,28 @@ export interface AccountsAdvanceDeliveryRequest {
   incomeYear: number;
 }
 
+export interface AccountsArchiveVerificationWire {
+  archiveSha256: string;
+  companyId: string;
+  draftCount: number;
+  eventCount: number;
+  incomeYear: number;
+  originalCount: number;
+  originals: AccountsArchivedOriginalFactWire[];
+  sourceSha256: string;
+  status: "verified";
+  version: "accounts-company-archive-verification-v1";
+}
+
+export interface AccountsArchivedOriginalFactWire {
+  byteLength: number;
+  filingId: string;
+  key: string;
+  mediaType: string;
+  purpose: string;
+  sha256: string;
+}
+
 export interface AccountsCompanyArchiveWire {
   canonicalJson: string;
   codec: "annual-accounts-company-year-archive-v1";
@@ -9366,6 +9388,36 @@ function isAccountsAdvanceDeliveryRequest(value: unknown): value is AccountsAdva
   );
 }
 
+function isAccountsArchiveVerificationWire(value: unknown): value is AccountsArchiveVerificationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveSha256","companyId","draftCount","eventCount","incomeYear","originalCount","originals","sourceSha256","status","version"]) &&
+    (typeof value.archiveSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.archiveSha256)) &&
+    isUuid(value.companyId) &&
+    (typeof value.draftCount === "number" && Number.isInteger(value.draftCount) && value.draftCount >= 0 && value.draftCount <= 64) &&
+    (typeof value.eventCount === "number" && Number.isInteger(value.eventCount) && value.eventCount >= 0 && value.eventCount <= 10000) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.originalCount === "number" && Number.isInteger(value.originalCount) && value.originalCount >= 0 && value.originalCount <= 20256) &&
+    Array.isArray(value.originals) && value.originals.every((item) => isAccountsArchivedOriginalFactWire(item)) && value.originals.length <= 20256 &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256)) &&
+    value.status === "verified" &&
+    value.version === "accounts-company-archive-verification-v1"
+  );
+}
+
+function isAccountsArchivedOriginalFactWire(value: unknown): value is AccountsArchivedOriginalFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","filingId","key","mediaType","purpose","sha256"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength >= 0 && value.byteLength <= 33554432) &&
+    isUuid(value.filingId) &&
+    typeof value.key === "string" &&
+    typeof value.mediaType === "string" &&
+    typeof value.purpose === "string" &&
+    (typeof value.sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sha256))
+  );
+}
+
 function isAccountsCompanyArchiveWire(value: unknown): value is AccountsCompanyArchiveWire {
   return (
     isRecord(value) &&
@@ -13882,6 +13934,15 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
             || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
             || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsVerifyCompanyYearArchive(archive: AccountsCompanyArchiveWire,request: TalliRequestOptions = {}): Promise<AccountsArchiveVerificationWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive-verifications",
+        "POST",request,archive,isAccountsArchiveVerificationWire);
+      if (result.companyId!==archive.companyId || result.incomeYear!==archive.incomeYear || result.archiveSha256!==archive.sha256
+          || result.sourceSha256!==archive.sourceSha256 || result.draftCount!==archive.draftCount || result.eventCount!==archive.eventCount
+          || result.originalCount!==archive.originalCount || result.originals.length!==result.originalCount) throw new TalliApiError(502,undefined);
       return result;
     },
 

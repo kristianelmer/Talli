@@ -44,8 +44,8 @@ def originals(snapshot):
 
 def test_root_correction_and_all_pdf_signature_technical_originals_survive_exact_copy(draft):
     query, snapshot, schemas = correction_source(draft)
-    archive = build_annual_accounts_company_archive(query, snapshot, schemas=schemas)
-    restored = parse_annual_accounts_company_archive(archive.canonical_json, query=query, expected_sha256=archive.sha256, schemas=schemas)
+    archive = build_annual_accounts_company_archive(query, snapshot)
+    restored = parse_annual_accounts_company_archive(archive.canonical_json, query=query, expected_sha256=archive.sha256)
     assert restored == snapshot
     assert archive.draft_count == 2 and archive.event_count == len(snapshot.delivery_events)
     assert archive.original_count == len(originals(snapshot))
@@ -54,14 +54,14 @@ def test_root_correction_and_all_pdf_signature_technical_originals_survive_exact
     assert any(row.purpose == 'signature' for row in originals(restored))
     assert any(row.purpose.startswith('parent_') for row in originals(restored))
     assert project_annual_accounts_source(query, restored).evidence.digest == archive.source_sha256
-    assert build_annual_accounts_company_archive(query, restored, schemas=schemas) == archive
+    assert build_annual_accounts_company_archive(query, restored) == archive
 
 
 @pytest.mark.parametrize('defect', ['scope','year','digest','whitespace','duplicate-key','codec','missing-draft','missing-event',
     'event-order','coverage','original','orphan-parent','wrong-source','extra-field'])
 def test_copy_refuses_changed_scope_bytes_or_incomplete_history_even_after_outer_rehash(draft, defect):
     query, snapshot, schemas = correction_source(draft)
-    archive = build_annual_accounts_company_archive(query, snapshot, schemas=schemas)
+    archive = build_annual_accounts_company_archive(query, snapshot)
     value = json.loads(archive.canonical_json)
     if defect == 'scope': query = replace(query, company_id=CompanyId(str(uuid4())))
     elif defect == 'year': query = replace(query, income_year=IncomeYear(2024))
@@ -85,7 +85,7 @@ def test_copy_refuses_changed_scope_bytes_or_incomplete_history_even_after_outer
     if defect == 'duplicate-key': raw = raw.replace('"codec":', '"codec":"discarded","codec":', 1)
     digest = '0' * 64 if defect == 'digest' else hashlib.sha256(raw.encode()).hexdigest()
     with pytest.raises(AnnualAccountsError):
-        parse_annual_accounts_company_archive(raw, query=query, expected_sha256=digest, schemas=schemas)
+        parse_annual_accounts_company_archive(raw, query=query, expected_sha256=digest)
 
 
 @pytest.mark.parametrize('late_failure', [False, True])
@@ -148,10 +148,31 @@ def test_company_archive_http_uses_current_authorization_and_preserves_exact_cod
     headers = {'Authorization':'Bearer synthetic'}
     response = http.get(path, params=params, headers=headers)
     assert response.status_code == 200 and response.headers['cache-control'] == 'no-store'
-    archive = build_annual_accounts_company_archive(query, source, schemas=schemas)
+    archive = build_annual_accounts_company_archive(query, source)
     assert response.json()['canonicalJson'] == archive.canonical_json
     assert response.json()['sha256'] == archive.sha256
+    verification_path = '/api/v1/annual-accounts/company-year-archive-verifications'
+    wire = response.json()
+    verification = http.post(verification_path, json=wire, headers=headers)
+    assert verification.status_code == 200, verification.text
+    assert verification.json()['archiveSha256'] == archive.sha256
+    assert verification.json()['originalCount'] == archive.original_count
+    assert any(row['purpose'] == 'signature' for row in verification.json()['originals'])
+    assert http.post(verification_path, json=wire).status_code == 401
+    assert http.post(verification_path, json=wire | {'companyId':str(uuid4())}, headers=headers).status_code == 404
+    assert http.post(verification_path, json=wire | {'canonicalJson':wire['canonicalJson'] + ' '}, headers=headers).status_code == 503
     assert http.get(path, params=params).status_code == 401
     assert http.get(path, params=params | {'companyId':str(uuid4())}, headers=headers).status_code == 404
     sessions.mfa = False
     assert http.get(path, params=params, headers=headers).status_code == 403
+    assert http.post(verification_path, json=wire, headers=headers).status_code == 403
+
+def test_complete_archived_history_survives_unavailable_schema_resources(draft, monkeypatch):
+    from talli_backend.adapters.annual_accounts_schemas import PinnedAnnualAccountsSchemas
+    query, snapshot, _ = correction_source(draft)
+    def unavailable(*args, **kwargs):
+        raise AssertionError('Archive read must not reload schema resources.')
+    monkeypatch.setattr(PinnedAnnualAccountsSchemas, 'validate_pair', unavailable)
+    archive = build_annual_accounts_company_archive(query, snapshot)
+    restored = parse_annual_accounts_company_archive(archive.canonical_json, query=query, expected_sha256=archive.sha256)
+    assert originals(restored) == originals(snapshot)

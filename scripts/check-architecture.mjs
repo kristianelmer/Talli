@@ -204,7 +204,7 @@ const TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST =
 // #193 adds only Accounts-owned archive coverage to the existing generation
 // receipt. The inverse composition proof pins every predecessor sibling read.
 const ACCOUNTS_COMPANY_ARCHIVE_COMPOSITION_DIGEST =
-  "sha256:2b0a680d7042b899d519407571e1ca7211371c634e0867679273c2d20ef02468";
+  "sha256:4fbb7cfb9fa62f3071244119e9f2a5bf3d5d86917d7eb22c04b43c6f25be23b2";
 // #152 routes Tax through its declared API while preserving every retained
 // Accounts and Audit chain. This pins behavior, not a new persistence exception.
 const TAX_RETURN_COMPOSITION_DIGESTS = new Map([

@@ -179,7 +179,12 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   assert.equal(exportReceipts.filter(receipt=>receipt.archive_sha256===sha(Buffer.from(companyArchiveText))).length,1);
   await verifyAccountsCompanyArchive(accountsArchive,fixture.companyId,2025);
   assert.equal(accountsArchive.draftCount,2);
-  const restored=copyCompanyYearArchive(companyArchiveText,{targetCompanyId:fixture.companyId,expectedArchiveSha256:sha(Buffer.from(companyArchiveText))});
+  const restored=await copyCompanyYearArchive(companyArchiveText,{targetCompanyId:fixture.companyId,expectedArchiveSha256:sha(Buffer.from(companyArchiveText)),
+    verifyAccounts:async archive=>{
+      const response=await fixture.accountsRequest('/api/v1/annual-accounts/company-year-archive-verifications',
+        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(archive)});
+      assert.equal(response.status,200,await response.text());return response.json();
+    }});
   const integrity=assertRestoreIntegrity(restored);
   assert.deepEqual(integrity.failures.filter(code=>code.startsWith('annual_accounts_')),[]);
   assert.deepEqual(restored.restored.annualAccountsCompanyArchive,accountsArchive);

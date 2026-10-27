@@ -108,10 +108,20 @@ export function prepareAccountsCorrection(accessToken: string,command: import("@
 }
 
 export async function loadAccountsCompanyArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
+  const api = client(accessToken);
   try {
-    const data = await client(accessToken).annualAccountsGetCompanyYearArchive(companyId, incomeYear, {signal: AbortSignal.timeout(60_000)});
-    return {data, error: null};
-  } catch {
-    return {data: null, error: new Error("Accounts company archive source unavailable.")};
+    const data = await api.annualAccountsGetCompanyYearArchive(companyId, incomeYear, {signal: AbortSignal.timeout(60_000)});
+    return {data, legacyEmpty: null, error: null};
+  } catch (error) {
+    // The preceding owning workspace contract positively enumerates all retained
+    // drafts/events. Only an explicit empty history permits its older export;
+    // it cannot manufacture the new archive codec or a complete restore claim.
+    if (error instanceof TalliApiError && error.status === 404) {
+      try {
+        const workspace = await api.annualAccountsGetDeliveryWorkspace(companyId, incomeYear, {signal: AbortSignal.timeout(10_000)});
+        if (workspace.rows.length === 0) return {data: null, legacyEmpty: workspace, error: null};
+      } catch { /* An unavailable or unauthorized predecessor is not empty. */ }
+    }
+    return {data: null, legacyEmpty: null, error: new Error("Accounts company archive source unavailable.")};
   }
 }

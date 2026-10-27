@@ -1,4 +1,4 @@
-import type { AccountsCompanyArchiveWire } from "@talli/talli-api-client";
+import type { AccountsCompanyArchiveWire, AccountsDeliveryWorkspaceWire } from "@talli/talli-api-client";
 import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch } from "./rf1086-original-integrity.ts";
 import type { TaxDeliveryDraftArchiveProjection } from "../../features/company-tax-filing";
 import type {
@@ -84,6 +84,7 @@ export function firstArchiveSourceError(
 export function buildPersistedCompanyArchive(input: {
   taxDeliveryDrafts?: TaxDeliveryDraftArchiveProjection;
   accountsCompanyArchive?: AccountsCompanyArchiveWire;
+  accountsLegacyEmpty?: AccountsDeliveryWorkspaceWire;
   company: CompanyWorkspaceRow;
   incomeYear: number;
   setups: OpeningBalanceSetupRow[];
@@ -294,7 +295,8 @@ export function buildPersistedCompanyArchive(input: {
     } : null,
     companyTaxDeliveryJournal: input.taxDeliveryDrafts?.journal ?? null,
     annualAccountsCompanyArchive: input.accountsCompanyArchive ?? null,
-    annualAccountsEvidenceAvailability: input.accountsCompanyArchive ? "included" : "unavailable",
+    annualAccountsLegacyEmpty: input.accountsLegacyEmpty ?? null,
+    annualAccountsEvidenceAvailability: input.accountsCompanyArchive ? "included" : input.accountsLegacyEmpty ? "legacy_empty_delivery" : "unavailable",
     companyTaxSubmissions: input.filingSubmissions
       .filter(
         (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",

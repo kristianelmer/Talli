@@ -31,6 +31,30 @@ class AnnualAccountsCompanyArchive:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountsArchivedOriginalFact:
+    filing_id: str
+    key: str
+    purpose: str
+    sha256: str
+    media_type: str
+    byte_length: int
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsArchiveVerification:
+    company_id: str
+    income_year: int
+    archive_sha256: str
+    source_sha256: str
+    draft_count: int
+    event_count: int
+    original_count: int
+    originals: tuple[AccountsArchivedOriginalFact, ...]
+    version: str = 'accounts-company-archive-verification-v1'
+    status: str = 'verified'
+
+
+@dataclass(frozen=True, slots=True)
 class AccountsDeliveryOriginal:
     key: str
     purpose: str
@@ -62,7 +86,29 @@ def annual_accounts_delivery_originals(stored, events):
     return tuple(result)
 
 
-def _validate(query, snapshot, schemas):
+class _RetainedDocumentPairs:
+    """Archive proof compares exact prepared bytes, never current schema policy.
+
+    This private reader cannot validate a new preparation or changed document.
+    Historical schema pins/inspections remain unchanged inside each draft.
+    """
+    def __init__(self, drafts):
+        self._pairs = {}
+        for stored in drafts:
+            draft = stored.draft
+            key = (draft.main_form_xml.encode(), draft.company_accounts_xml.encode(), draft.source.organization_number, int(draft.source.income_year))
+            if key in self._pairs and self._pairs[key] != draft.inspection:
+                raise ValueError('Accounts retained document inspection is ambiguous.')
+            self._pairs[key] = draft.inspection
+
+    def validate_pair(self, main_form, company_accounts, *, organization_number, income_year):
+        try:
+            return self._pairs[(main_form, company_accounts, organization_number, income_year)]
+        except KeyError:
+            raise ValueError('Accounts archive contains a changed prepared document pair.') from None
+
+
+def _validate(query, snapshot):
     from .public import AnnualAccountsError, project_annual_accounts_source
     from .workspace import validate_rows
     validate_rows(snapshot.rows)
@@ -74,24 +120,19 @@ def _validate(query, snapshot, schemas):
             or set(facts.history_coverage.reasons) - {'production_journal_unavailable'}
             or snapshot.contract_version != 'annual-accounts-source-v4' and any(type(row.record) in CORRECTION_RECORDS for row in snapshot.delivery_events)):
         raise AnnualAccountsError.unavailable()
-    for stored in snapshot.delivery_drafts:
-        draft = stored.draft
-        inspection = schemas.validate_pair(draft.main_form_xml.encode(), draft.company_accounts_xml.encode(),
-            organization_number=draft.source.organization_number, income_year=int(draft.source.income_year))
-        if inspection != draft.inspection:
-            raise ValueError('Accounts draft schema inspection differs.')
     if snapshot.delivery_drafts:
-        inspect_annual_accounts_delivery_history(snapshot.delivery_drafts, snapshot.delivery_events, schemas=schemas,
+        inspect_annual_accounts_delivery_history(snapshot.delivery_drafts, snapshot.delivery_events,
+            schemas=_RetainedDocumentPairs(snapshot.delivery_drafts),
             expected_event_digests=dict(snapshot.coverage['deliveryEventDigests']))
     elif snapshot.delivery_events:
         raise ValueError('Accounts archive has events without drafts.')
     return facts
 
 
-def serialize_annual_accounts_company_archive(query, snapshot, *, schemas):
+def serialize_annual_accounts_company_archive(query, snapshot):
     from .public import AnnualAccountsError
     try:
-        facts = _validate(query, snapshot, schemas)
+        facts = _validate(query, snapshot)
         value = {'codec': CODEC, 'companyId': str(query.company_id), 'incomeYear': int(query.income_year),
             'contractVersion': snapshot.contract_version, 'asOf': snapshot.as_of.value.isoformat(),
             'sourceSha256': facts.evidence.digest, 'rows': {key: getattr(snapshot.rows, key) for key in FAMILIES},
@@ -108,8 +149,8 @@ def serialize_annual_accounts_company_archive(query, snapshot, *, schemas):
         raise AnnualAccountsError.unavailable() from None
 
 
-def build_annual_accounts_company_archive(query, snapshot, *, schemas):
-    raw = serialize_annual_accounts_company_archive(query, snapshot, schemas=schemas)
+def build_annual_accounts_company_archive(query, snapshot):
+    raw = serialize_annual_accounts_company_archive(query, snapshot)
     return AnnualAccountsCompanyArchive(str(query.company_id), int(query.income_year), raw,
         hashlib.sha256(raw.encode()).hexdigest(), json.loads(raw)['sourceSha256'],
         len(snapshot.delivery_drafts), len(snapshot.delivery_events),
@@ -117,7 +158,7 @@ def build_annual_accounts_company_archive(query, snapshot, *, schemas):
             if row.record.binding.filing_id == stored.draft.filing_id))) for stored in snapshot.delivery_drafts))
 
 
-def parse_annual_accounts_company_archive(raw, *, query, expected_sha256, schemas):
+def parse_annual_accounts_company_archive(raw, *, query, expected_sha256):
     """Verify the original scope; company/user identities are never rewritten."""
     from .public import AnnualAccountsError, AnnualAccountsFilingRows, AnnualAccountsSourceSnapshot
     try:
@@ -146,9 +187,20 @@ def parse_annual_accounts_company_archive(raw, *, query, expected_sha256, schema
             events.append(StoredAnnualAccountsDeliveryEvent(row['sequence'], decode_annual_accounts_delivery_record_v2(row['canonicalJson'], row['sha256']), timestamp(row['recordedAt'])))
         snapshot = AnnualAccountsSourceSnapshot(AnnualAccountsFilingRows(query.company_id, query.income_year, **value['rows']),
             value['coverage'], timestamp(value['asOf']), True, value['contractVersion'], tuple(drafts), tuple(events))
-        facts = _validate(query, snapshot, schemas)
+        facts = _validate(query, snapshot)
         if facts.evidence.digest != value['sourceSha256']:
             raise ValueError('Accounts archive source commitment differs.')
         return snapshot
     except (ValueError, TypeError, KeyError, AttributeError, RecursionError, OverflowError):
         raise AnnualAccountsError.unavailable() from None
+
+
+def verify_annual_accounts_company_archive(raw, *, query, expected_sha256):
+    snapshot = parse_annual_accounts_company_archive(raw, query=query, expected_sha256=expected_sha256)
+    originals = tuple(AccountsArchivedOriginalFact(stored.draft.filing_id, value.key, value.purpose,
+        value.sha256, value.media_type, len(base64.b64decode(value.body_base64, validate=True)))
+        for stored in snapshot.delivery_drafts for value in annual_accounts_delivery_originals(stored,
+            tuple(row for row in snapshot.delivery_events if row.record.binding.filing_id == stored.draft.filing_id)))
+    from .public import project_annual_accounts_source
+    return AnnualAccountsArchiveVerification(str(query.company_id), int(query.income_year), expected_sha256,
+        project_annual_accounts_source(query, snapshot).evidence.digest, len(snapshot.delivery_drafts), len(snapshot.delivery_events), len(originals), originals)

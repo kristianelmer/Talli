@@ -699,10 +699,11 @@ from .delivery_corrections import (
 )
 
 
-from .delivery_archive import (AnnualAccountsCompanyArchive, AccountsDeliveryOriginal, annual_accounts_delivery_originals,
+from .delivery_archive import (AnnualAccountsArchiveVerification, AccountsArchivedOriginalFact, verify_annual_accounts_company_archive, AnnualAccountsCompanyArchive, AccountsDeliveryOriginal, annual_accounts_delivery_originals,
     build_annual_accounts_company_archive, serialize_annual_accounts_company_archive, parse_annual_accounts_company_archive)
 
 __all__ = [
+    "AnnualAccountsArchiveVerification", "AccountsArchivedOriginalFact", "verify_annual_accounts_company_archive",
     "AnnualAccountsCompanyArchive", "AccountsDeliveryOriginal", "annual_accounts_delivery_originals",
     "build_annual_accounts_company_archive", "serialize_annual_accounts_company_archive", "parse_annual_accounts_company_archive",
     "AnnualAccountsCorrectionReadGrant",
