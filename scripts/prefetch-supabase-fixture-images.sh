@@ -18,7 +18,7 @@ fixture_started="$SECONDS"
 fixture_budget=600
 
 fixture_fatal() {
-  LC_ALL=C grep -Eiq 'unauthorized|authentication required|no basic auth credentials|denied|forbidden|manifest unknown|manifest invalid|invalid manifest|no matching manifest|invalid reference format|x509:|certificate|no such host|no space left on device|read-only file system|cannot connect to the Docker daemon' <<< "$1"
+  LC_ALL=C grep -Eiq 'unauthorized|authentication required|no basic auth credentials|denied|forbidden|manifest unknown|manifest invalid|invalid manifest|no matching manifest|invalid reference format|x509:|certificate|tls:|TLS handshake failure|no such host|server misbehaving|connection refused|no space left on device|read-only file system|cannot connect to the Docker daemon' <<< "$1"
 }
 fixture_data_limit() {
   ! fixture_fatal "$1" && LC_ALL=C grep -Eiq 'toomanyrequests:[[:space:]]*Data limit exceeded[[:space:]]*$' <<< "$1"
@@ -33,7 +33,7 @@ fixture_docker() {
   local limit=120
   if [[ "$remaining" -lt "$limit" ]]; then limit="$remaining"; fi
   timeout --signal=TERM --kill-after=5s "${limit}s" \
-    env -u DOCKER_AUTH_CONFIG -u DOCKER_CONTEXT -u DOCKER_HOST -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH \
+    env -u DOCKER_AUTH_CONFIG -u DOCKER_CONTEXT -u DOCKER_HOST -u DOCKER_TLS -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH \
     DOCKER_CONFIG="$fixture_config" docker --context default "$@"
 }
 fixture_delay() {
