@@ -396,3 +396,5 @@ predicate retain their existing behavior. Corporate owns its separate 2025
 annual-close scope. The additive reader and exact rollback are
 `20261027080000_company_access_corporate_owner_read.sql`; native coverage is
 `tests/corporate_annual_close_2025_database.test.mjs`.
+The reader is a deferred contract: install it after the historical Governance
+rollback rehearsal and before Corporate's 2025 writer policy.

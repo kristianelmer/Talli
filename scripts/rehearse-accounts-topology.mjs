@@ -13,6 +13,7 @@ const phases={
     "contract-migrations/20261027010818_corporate_accounts_owning_read_admission.sql",
     "contract-migrations/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
     "contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
+    "contract-migrations/20261027080000_company_access_corporate_owner_read.sql",
     "contract-migrations/20261027080100_corporate_annual_close_2025.sql"],
 };
 const enables={"delivery-enable":"20261026221935_annual_accounts_delivery_store_v1.sql",

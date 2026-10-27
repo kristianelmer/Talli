@@ -151,7 +151,7 @@ test("supported2025 Corporate lifecycle uses actual owner evidence with narrow a
       assert.equal((await fixture.db.query("select to_regprocedure($1) routine", [assertion])).rows[0].routine, null);
       await authority({ legacy: true });
       await fixture.db.query(await sqlFile("rollback", readerFile));
-      await fixture.db.query(await sqlFile("migrations", readerFile));
+      await fixture.db.query(await sqlFile("contract-migrations", readerFile));
       await fixture.db.query(await sqlFile("contract-migrations", policyFile));
       await fixture.db.query(await sqlFile("contract-migrations", policyFile));
       assert.deepEqual(await inventory(), before);

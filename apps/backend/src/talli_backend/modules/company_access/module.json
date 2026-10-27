@@ -19,7 +19,7 @@
     "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_access_grants", "public.support_access_operation_receipts", "public.support_case_openings", "public.support_operators"],
     "storageBuckets": [],
     "projections": ["CompanyYearPurchaseBasis"],
-    "migrations": "supabase/migrations/20260924080208_company_access_rf_admission_guard.sql; supabase/migrations/20261027080000_company_access_corporate_owner_read.sql; supabase/rollback/20261027080000_company_access_corporate_owner_read.sql"
+    "migrations": "supabase/migrations/20260924080208_company_access_rf_admission_guard.sql; supabase/contract-migrations/20261027080000_company_access_corporate_owner_read.sql; supabase/rollback/20261027080000_company_access_corporate_owner_read.sql"
   },
   "ports": [
     {
