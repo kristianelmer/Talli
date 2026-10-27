@@ -52,8 +52,21 @@ const workspace = () => ({ companyId, incomeYear: null,
   productionSubmissions: [], productionEvents: [], feedbackArtifacts: [], actions: [],
 });
 
+function emptyTaxDeliveryArchive(company, year) {
+  const reference = `company-tax:${company}:${year}`;
+  return { sourceFacts: {
+    evidence: { companyId: company, incomeYear: year, obligation: "skattemelding", scope: "talli_recorded_company_tax",
+      reference, version: "company-tax-source-v1:" + "0".repeat(64), digest: "0".repeat(64), evaluatedAt: at },
+    readinessStatus: "blocked", hardBlocks: ["company_tax_production_disabled"],
+    historyCoverage: { status: "complete", reasons: [], evidenceReference: reference,
+      asOf: at, submissionCount: 0, scope: "talli_recorded_company_tax" },
+    recordedSubmissions: [], productionAttempts: [], correctionLinks: [], incidents: [], outcomes: [],
+  }, originals: null };
+}
+
 function route({ companyId: selectedCompany = companyId, generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {}, documentObjects = [] } = {}) {
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {},
+  taxDeliveryDrafts, documentObjects = [] } = {}) {
   const companyId = selectedCompany;
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
@@ -107,6 +120,13 @@ function route({ companyId: selectedCompany = companyId, generic = {}, failures 
       presentOpeningSnapshots, loadLedgerEntriesForArchive: empty, presentLedgerEntriesForArchive: value => value,
     },
     "../../../../../features/company-tax-filing": {
+      loadTaxDeliveryDraftArchiveSource: async (access, company, year) => {
+        calls.push("read:tax-delivery-api");
+        assert.equal(access, "verified-owner"); assert.equal(company, companyId);
+        assert.equal(Number.isInteger(year), true);
+        return { data: taxDeliveryDrafts === undefined ? emptyTaxDeliveryArchive(company, year) : taxDeliveryDrafts,
+          error: failures.taxDeliveryDrafts ?? null };
+      },
       loadTaxSettlementArchiveSource: async (access, company, year) => {
         calls.push("read:tax-api");
         assert.equal(access, "verified-owner"); assert.equal(company, companyId);
@@ -156,6 +176,33 @@ function route({ companyId: selectedCompany = companyId, generic = {}, failures 
   return { calls, captures, readTables, openingYears, rfYears,
     run: (incomeYear = 2025) => exports.GET(new Request("https://talli.example/archive"), { params: Promise.resolve({ companyId, incomeYear: String(incomeYear) }) }) };
 }
+
+test("company export forwards the complete owned Tax draft projection before recording its receipt", async () => {
+  const taxDeliveryDrafts = emptyTaxDeliveryArchive(companyId, 2025);
+  const raw = '\uFEFF{"original_key":"æ\\r\\n","nested":{"B":2,"a":1}}\r\n';
+  taxDeliveryDrafts.originals = { companyId, incomeYear: 2025, codec: "company-tax-delivery-draft-archive-v1",
+    coverage: "complete", sourceSha256: "0".repeat(64), observedAt: at, recordCount: 1,
+    records: [{ filingId: uid(90), recordedAt: at, canonicalJson: raw,
+      draftSha256: createHash("sha256").update(raw).digest("hex") }] };
+  const fixture = route({ taxDeliveryDrafts });
+  assert.equal((await fixture.run()).status, 200);
+  assert.equal(fixture.captures[0].taxDeliveryDrafts, taxDeliveryDrafts);
+  assert.equal(fixture.captures[0].taxDeliveryDrafts.originals.records[0].canonicalJson, raw);
+  assert.ok(fixture.calls.indexOf("read:tax-delivery-api") > fixture.calls.indexOf("read:tax-filing-api"));
+  assert.ok(fixture.calls.indexOf("build") > fixture.calls.indexOf("read:tax-delivery-api"));
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+for (const options of [
+  { failures: { taxDeliveryDrafts: Error("owned Tax archive unavailable") } },
+  { taxDeliveryDrafts: null },
+]) test("unavailable owned Tax draft source cannot build or complete a company export", async () => {
+  const fixture = route(options);
+  assert.equal((await fixture.run()).status, 503);
+  assert.equal(fixture.captures.length, 0);
+  assert.equal(fixture.calls.includes("company_archive_complete_export"), false);
+  assert.equal(fixture.calls.includes("read:opening-api"), false);
+});
 
 test("company export completes with actual V2-source V6 JSON and every portable original", async t => {
   const value = retainedArchiveSource();
