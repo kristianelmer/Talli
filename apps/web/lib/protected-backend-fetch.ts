@@ -12,7 +12,9 @@ export class BackendTransportError extends Error {
   readonly code: BackendTransportErrorCode;
 
   constructor(code: BackendTransportErrorCode) {
-    super(code);
+    super(code === "BACKEND_REQUEST_ABORTED"
+      ? "Forespørselen ble avbrutt."
+      : "Tjenesten er midlertidig utilgjengelig.");
     this.name = "BackendTransportError";
     this.code = code;
   }
@@ -23,7 +25,7 @@ export class BackendFetchError extends TypeError {
   readonly code = "BACKEND_FETCH_UNAVAILABLE";
 
   constructor() {
-    super("BACKEND_FETCH_UNAVAILABLE");
+    super("Kunne ikke bekrefte svaret fra tjenesten. Kontroller status før du prøver igjen.");
   }
 }
 
