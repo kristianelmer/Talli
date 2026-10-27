@@ -134,7 +134,8 @@
     "test:browser-annual-accounts": "node --test --test-concurrency=1 tests/browser_annual_accounts_filing.mjs",
     "check:rf1086-sources": "node scripts/check-rf1086-official-sources.mjs --current",
     "test:rf1086-sources": "node --test tests/rf1086_official_sources.test.mjs && node scripts/check-rf1086-official-sources.mjs",
-    "test:browser-accounts-delivery": "node --test tests/browser_accounts_delivery.mjs"
+    "test:browser-accounts-delivery": "node --test tests/browser_accounts_delivery.mjs",
+    "check:browser-syntax": "node scripts/check-browser-syntax.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

@@ -51,6 +51,9 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Check browser rehearsal syntax
+        run: npm run check:browser-syntax
+
       - name: Use Python 3.12
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -151,6 +154,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - name: Check browser rehearsal syntax
+        run: npm run check:browser-syntax
 
       - name: Use Python 3.12
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0

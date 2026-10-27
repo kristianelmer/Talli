@@ -172,9 +172,9 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   assert.equal(parentRecheck.status,200);assert.ok((await workspace()).rows.every(item=>item.state==='technical_archive'));
   // The shared company export must contain the actual Corporate-backed root
   // and correction, not only the separately downloadable workspace originals.
-  const download=await page.request.get(fixture.siteOrigin+`/archive/${fixture.companyId}/2025/download`);
-  assert.equal(download.status(),200,await download.text());
-  const companyArchiveText=await download.text(),companyArchive=JSON.parse(companyArchiveText),accountsArchive=companyArchive.annualAccountsCompanyArchive;
+  const companyDownload=await page.request.get(fixture.siteOrigin+`/archive/${fixture.companyId}/2025/download`);
+  assert.equal(companyDownload.status(),200,await companyDownload.text());
+  const companyArchiveText=await companyDownload.text(),companyArchive=JSON.parse(companyArchiveText),accountsArchive=companyArchive.annualAccountsCompanyArchive;
   const exportReceipts=(await fixture.db.query('select archive_sha256 from public.company_archive_export_receipts where company_id=$1 and income_year=2025',[fixture.companyId])).rows;
   assert.equal(exportReceipts.filter(receipt=>receipt.archive_sha256===sha(Buffer.from(companyArchiveText))).length,1);
   await verifyAccountsCompanyArchive(accountsArchive,fixture.companyId,2025);
