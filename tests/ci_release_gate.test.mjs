@@ -75,6 +75,13 @@ const cleanWorktreePath = fileURLToPath(
 
 const postgresPrefetchPath = fileURLToPath(new URL("../scripts/prefetch-postgres-fixture-images.sh", import.meta.url));
 const supabaseStackImages=['postgres:17.6.1.143','kong:2.8.1','gotrue:v2.192.0','postgrest:v14.14','storage-api:v1.62.5'];
+const registryJobFixture={actor:'synthetic-owner',token:'synthetic-job-token'};
+const registryJobAuth=Buffer.from(registryJobFixture.actor+':'+registryJobFixture.token).toString('base64');
+function assertNoRegistryJobCredential(result){
+  const output=result.stdout+result.stderr;
+  for(const value of [registryJobFixture.token,registryJobAuth])assert.ok(!output.includes(value),'job credential must not appear in either output stream');
+}
+
 
 test("Supabase advisor child opts out of telemetry while keeping security and process failures closed", () => {
   const directory = mkdtempSync(join(tmpdir(), "talli-advisor-process-test-"));
@@ -161,7 +168,8 @@ assert.deepEqual(Object.keys(authConfig), ['auths'], 'no credential helper, stor
 assert.deepEqual(authConfig.auths['public.ecr.aws'], {});
 const supabase = process.env.PREFETCH_SUPABASE === '1';
 const jobAuth=process.env.PREFETCH_JOB_AUTH==='1';
-const auth=Buffer.from('synthetic-owner:synthetic-job-token').toString('base64');
+const jobFixture=${JSON.stringify(registryJobFixture)};
+const auth=Buffer.from(jobFixture.actor+':'+jobFixture.token).toString('base64');
 const mirrorAuth=authConfig.auths[supabase?'ghcr.io':'https://index.docker.io/v1/'];
 assert.deepEqual(Object.keys(authConfig.auths).sort(), ['public.ecr.aws',supabase?'ghcr.io':'https://index.docker.io/v1/'].sort());
 if(!supabase||!jobAuth)assert.deepEqual(mirrorAuth,{});
@@ -178,9 +186,9 @@ const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
 fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
 if(args[0]==='login'){
  assert.ok(supabase&&jobAuth);
- assert.deepEqual(args,['login','ghcr.io','--username','synthetic-owner','--password-stdin']);
+ assert.deepEqual(args,['login','ghcr.io','--username',jobFixture.actor,'--password-stdin']);
  assert.deepEqual(mirrorAuth,{});
- const token=fs.readFileSync(0,'utf8');assert.equal(token,'synthetic-job-token');
+ const token=fs.readFileSync(0,'utf8');assert.equal(token,jobFixture.token);
  process.stdout.write('noisy login '+token+' '+auth);
  process.stderr.write('noisy login '+token+' '+auth);
  if(process.env.PREFETCH_FAIL_LOGIN==='1')process.exit(23);
@@ -247,8 +255,8 @@ process.exit(r.status??1);
         SHELLOPTS: shellOptions ? "allexport:xtrace" : undefined,
         fixture_job_token: "synthetic-exported-shadow", fixture_job_auth: "synthetic-exported-shadow", fixture_output: "synthetic-exported-shadow",
         PREFETCH_JOB_AUTH: jobAuth ? "1" : "0", PREFETCH_FAIL_LOGIN: failLogin ? "1" : "0",
-        TALLI_GHCR_JOB_TOKEN: jobAuth ? "synthetic-job-token" : undefined, GH_TOKEN: "synthetic-ambient-token", GITHUB_TOKEN: "synthetic-ambient-token",
-        GITHUB_ACTIONS: jobAuth ? "true" : "", GITHUB_REPOSITORY: jobAuth ? "kristianelmer/Talli" : "", GITHUB_ACTOR: jobAuth ? "synthetic-owner" : "",
+        TALLI_GHCR_JOB_TOKEN: jobAuth ? registryJobFixture.token : undefined, GH_TOKEN: "synthetic-ambient-token", GITHUB_TOKEN: "synthetic-ambient-token",
+        GITHUB_ACTIONS: jobAuth ? "true" : "", GITHUB_REPOSITORY: jobAuth ? "kristianelmer/Talli" : "", GITHUB_ACTOR: jobAuth ? registryJobFixture.actor : "",
         PREFETCH_SUPABASE: supabase ? "1" : "0", PREFETCH_CLOCK_PROBE: clockProbe ? "1" : "0", DOCKER_TLS: "1", DOCKER_TLS_VERIFY: "synthetic-tls", DOCKER_CERT_PATH: "/synthetic-certs",
         PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
         PREFETCH_CREDENTIAL_TRACE: credentialTrace,
@@ -553,15 +561,15 @@ test('Supabase registry job token is lazy, stdin-only and used once for the fixe
   const pullFailures=Object.fromEntries(supabaseStackImages.map(image=>[supabaseEcr(image),[ecrDataLimit]]));
   const {result,calls,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,pullFailures});
   assert.equal(result.status,0,result.stderr);
-  const expected=supabaseStackImages.flatMap((image,i)=>[['pull',supabaseEcr(image)],...(i===0?[['login','ghcr.io','--username','synthetic-owner','--password-stdin']]:[]),['pull',supabaseGhcr(image)],['tag',supabaseGhcr(image),supabaseEcr(image)]]);
+  const expected=supabaseStackImages.flatMap((image,i)=>[['pull',supabaseEcr(image)],...(i===0?[['login','ghcr.io','--username',registryJobFixture.actor,'--password-stdin']]:[]),['pull',supabaseGhcr(image)],['tag',supabaseGhcr(image),supabaseEcr(image)]]);
   assert.deepEqual(calls,expected);assert.deepEqual(sleeps,[]);
-  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+  assertNoRegistryJobCredential(result);
 });
 test('Supabase registry keeps job credentials private under inherited tracing and allexport',()=>{
   const image=supabaseStackImages[0];
   const {result}=runFixturePrefetch({supabase:true,jobAuth:true,shellOptions:true,pullFailures:{[supabaseEcr(image)]:[ecrDataLimit]}});
   assert.equal(result.status,0,result.stderr);
-  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+  assertNoRegistryJobCredential(result);
 });
 test('Supabase registry job token is unused while anonymous ECR succeeds',()=>{
   const {result,calls}=runFixturePrefetch({supabase:true,jobAuth:true});
@@ -570,25 +578,25 @@ test('Supabase registry job token is unused while anonymous ECR succeeds',()=>{
 test('Supabase registry withholds noisy failed login output and never retries anonymously',()=>{
   const ecr=supabaseEcr(supabaseStackImages[0]);
   const {result,calls,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,failLogin:true,pullFailures:{[ecr]:[ecrDataLimit]}});
-  assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],['login','ghcr.io','--username','synthetic-owner','--password-stdin']]);
+  assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],['login','ghcr.io','--username',registryJobFixture.actor,'--password-stdin']]);
   assert.deepEqual(sleeps,[]);assert.match(result.stderr,/authentication failed/u);
-  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+  assertNoRegistryJobCredential(result);
 });
 test('Supabase registry redacts raw and Docker-encoded job credentials from retry diagnostics',()=>{
-  const image=supabaseStackImages[0],auth=Buffer.from('synthetic-owner:synthetic-job-token').toString('base64');
-  const {result,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,pullFailures:{[supabaseEcr(image)]:[ecrDataLimit],[supabaseGhcr(image)]:[ghcrThrottle+' synthetic-job-token '+auth]}});
+  const image=supabaseStackImages[0],auth=registryJobAuth;
+  const {result,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,pullFailures:{[supabaseEcr(image)]:[ecrDataLimit],[supabaseGhcr(image)]:[ghcrThrottle+' '+registryJobFixture.token+' '+auth]}});
   assert.equal(result.status,0,result.stderr);assert.deepEqual(sleeps,[['20']]);
-  assert.match(result.stderr,/<redacted>/u);assert.ok(!result.stderr.includes('synthetic-job-token'));assert.ok(!result.stderr.includes(auth));
+  assert.match(result.stderr,/<redacted>/u);assertNoRegistryJobCredential(result);
 });
 for(const [name,context] of [
- ['local process',{GITHUB_ACTIONS:'false',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:'synthetic-owner'}],
- ['other repository',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'foreign/repository',GITHUB_ACTOR:'synthetic-owner'}],
+ ['local process',{GITHUB_ACTIONS:'false',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:registryJobFixture.actor}],
+ ['other repository',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'foreign/repository',GITHUB_ACTOR:registryJobFixture.actor}],
  ['missing actor',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:''}],
  ['unsafe actor',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:'foreign:actor'}],
  ])test('Supabase registry rejects a supplied job credential outside its designated context: '+name,()=>{
   const script=fileURLToPath(new URL('../scripts/prefetch-supabase-fixture-images.sh',import.meta.url));
-  const result=spawnSync('bash',[script],{encoding:'utf8',env:{...process.env,...context,TALLI_GHCR_JOB_TOKEN:'synthetic-job-token',RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
-  assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/designated Actions context/u);assert.doesNotMatch(result.stderr,/synthetic-job-token|mktemp/u);
+  const result=spawnSync('bash',[script],{encoding:'utf8',env:{...process.env,...context,TALLI_GHCR_JOB_TOKEN:registryJobFixture.token,RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
+  assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/designated Actions context/u);assert.doesNotMatch(result.stderr,/mktemp/u);assertNoRegistryJobCredential(result);
  });
 test('registry job credentials are step-scoped and use read-only package permission in exactly two jobs',()=>{
   const workflow=readFileSync(workflowPath,'utf8');
