@@ -39,6 +39,11 @@ class AuthenticatedAnnualAccounts:
         if self._preparation is None:raise AnnualAccountsError.unavailable()
         return await self._preparation.prepare(self._session,command)
 
+    async def prepare_delivery_correction(self,command,parent_binding):
+        from talli_backend.application.annual_accounts_delivery_correction import AnnualAccountsDeliveryCorrection
+        if self._preparation is None:raise AnnualAccountsError.unavailable()
+        return await AnnualAccountsDeliveryCorrection(self._preparation,self._delivery_required()).prepare(self._session,command,parent_binding)
+
     def _delivery_required(self):
         if self._delivery is None:raise AnnualAccountsError.unavailable()
         return self._delivery
@@ -53,7 +58,15 @@ class AuthenticatedAnnualAccounts:
 
     async def review_delivery(self,binding,**choices):return await self._delivery_required().review(self._session,binding,**choices)
     async def advance_delivery(self,binding,**command):return await self._delivery_required().advance(self._session,binding,**command)
-    async def reconcile_delivery(self,binding):return await self._delivery_required().reconcile(self._session,binding)
+    async def reconcile_delivery(self,binding):
+        workflow=self._delivery_required();query=workflow._query(self._session,binding)
+        state=await workflow.read(self._session,query,binding.filing_id)
+        if state.inspection.known_instance is None and state.slot('correction:admission') is not None:
+            from talli_backend.application.annual_accounts_delivery_correction import AnnualAccountsDeliveryCorrection
+            from talli_backend.shared.kernel import CorrelationId
+            return await AnnualAccountsDeliveryCorrection(self._preparation,workflow).refresh(self._session,binding,
+                correlation_id=CorrelationId('accounts-explicit-parent-recheck'))
+        return await workflow.reconcile(self._session,binding)
 
     async def filing_workspace(self, query: AnnualAccountsWorkspaceQuery) -> AnnualAccountsFilingRows:
         if query.actor_id != self.actor_id:

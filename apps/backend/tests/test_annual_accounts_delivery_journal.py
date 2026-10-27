@@ -85,8 +85,9 @@ def test_upload_acknowledgment_does_not_prove_original_bytes_were_stored(draft):
     assert world.inspect().next_action is Action.UPLOAD_COMPANY_ACCOUNTS
 
 
-def complete_world(draft):
-    world=World(draft);approval,grant,create=world.create();target,_=world.frame(Kind.CREATE_TARGET,create,grant)
+def complete_world(draft,*,start_second=0):
+    world=World(draft);world.second=start_second
+    approval,grant,create=world.create();target,_=world.frame(Kind.CREATE_TARGET,create,grant)
     main=world.request(Action.UPLOAD_MAIN_FORM,approval,grant,target);main_frame,_=world.frame(Kind.MAIN_UPLOADED,main,grant)
     accounts=world.request(Action.UPLOAD_COMPANY_ACCOUNTS,approval,grant,main_frame);uploaded,info=world.frame(Kind.UPLOAD_REVIEW,accounts,grant)
     confirmation=world.review(Stage.CONFIRM,info.review_sha256);confirm_grant=world.admit(confirmation)

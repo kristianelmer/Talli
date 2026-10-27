@@ -22,7 +22,7 @@ test("Accounts workspace keeps all fields/issues and refuses foreign or invented
   const client=createTalliApiClient({baseUrl:"https://backend.example",headers:{Authorization:"Bearer fixture"}});
   assert.deepEqual(await client.annualAccountsGetDeliveryWorkspace(companyId,2025),valid);
   for (const changed of [{companyId:other},{incomeYear:2024},{rows:[row,row]},
-    ...[{state:"accepted"},{actions:["production"]},{actions:["sign","sign"]},{signed:true},
+    ...[{state:"accepted"},{parentFilingId:other},{parentFilingId:filingId},{actions:["production"]},{actions:["sign","sign"]},{signed:true},
       {originals:[{...row.originals[0],sourceFilingId:other}]},{originals:[...row.originals,...row.originals]}].map(change=>({rows:[{...row,...change}]}))]) {
     response={...valid,...changed};await assert.rejects(client.annualAccountsGetDeliveryWorkspace(companyId,2025),failed);
   }
@@ -52,4 +52,20 @@ test("Accounts action responses cannot change the exact requested draft binding"
     response={...valid,...change};await assert.rejects(client.annualAccountsAdvanceDelivery(command),failed);
   }
   assert.equal(calls,6);
+});
+
+
+test("Accounts correction preparation keeps the new child scope and explicit parent binding",async t=>{
+  const command={companyId,incomeYear:2025,filingId:other,parentFilingId:filingId,parentDraftSha256:sha,
+    contactEmail:"owner@example.test",confirmingRepresentative:"Synthetic Person"};
+  let response={companyId,incomeYear:2025,filingId:other,draftSha256:sha,state:"draft"};
+  t.mock.method(globalThis,"fetch",async (url,request)=>{
+    assert.equal(new URL(url).pathname,"/api/v1/annual-accounts/delivery-corrections");
+    assert.equal(new Headers(request.headers).get("Idempotency-Key"),"accounts-correction-command");
+    assert.deepEqual(JSON.parse(request.body),command);return Response.json(response);
+  });
+  const client=createTalliApiClient({baseUrl:"https://backend.example"});
+  assert.deepEqual(await client.annualAccountsPrepareDeliveryCorrection(command,{idempotencyKey:"accounts-correction-command"}),response);
+  response={...response,filingId};
+  await assert.rejects(client.annualAccountsPrepareDeliveryCorrection(command,{idempotencyKey:"accounts-correction-command"}),failed);
 });

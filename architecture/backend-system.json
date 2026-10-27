@@ -539,7 +539,8 @@
         "/api/v1/annual-accounts/delivery-drafts",
         "/api/v1/annual-accounts/delivery-reviews",
         "/api/v1/annual-accounts/delivery-advances",
-        "/api/v1/annual-accounts/delivery-reconciliations"
+        "/api/v1/annual-accounts/delivery-reconciliations",
+        "/api/v1/annual-accounts/delivery-corrections"
       ]
     },
     {
@@ -768,7 +769,15 @@
       "supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql",
       "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql",
       "supabase/contract-migrations/20261026232554_annual_accounts_delivery_events_v1.sql",
-      "supabase/rollback/20261026232554_annual_accounts_delivery_events_v1.sql"
+      "supabase/rollback/20261026232554_annual_accounts_delivery_events_v1.sql",
+      "supabase/contract-migrations/20261027010818_corporate_accounts_owning_read_admission.sql",
+      "supabase/rollback/20261027010818_corporate_accounts_owning_read_admission.sql",
+      "supabase/contract-migrations/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
+      "supabase/rollback/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
+      "supabase/contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
+      "supabase/rollback/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
+      "supabase/contract-migrations/20261027004007_annual_accounts_delivery_corrections_v1.sql",
+      "supabase/rollback/20261027004007_annual_accounts_delivery_corrections_v1.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

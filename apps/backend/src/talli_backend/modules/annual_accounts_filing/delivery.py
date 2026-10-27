@@ -111,6 +111,13 @@ class AnnualAccountsDeliverySource:
 
 
 def _approval(source):
+    def field(value,camel,snake):
+        # Corporate's persisted public receipt uses camel case; its retained
+        # predecessor uses snake case. Preserve both originals without mixing
+        # or silently preferring contradictory representations.
+        keys=[key for key in (camel,snake) if key in value]
+        if len(keys)!=1:raise ValueError('Corporate canonical identity is missing or ambiguous.')
+        return value[keys[0]]
     evidence=source.owning_snapshots['corporate'];ready=evidence['readiness']
     if (ready['company_id']!={'value':str(source.company_id)} or ready['income_year']!={'value':int(source.income_year)}
             or ready['decision_kind']!='annual_close' or ready['current_source_matches'] is not True
@@ -122,8 +129,8 @@ def _approval(source):
     decision=decisions[0];value=decision['canonical_input']
     if (decision['company_id']!={'value':str(source.company_id)} or decision['income_year']!={'value':int(source.income_year)}
             or decision['decision_kind']!='annual_close' or decision['decision_hash']!=ready['decision_hash']
-            or value['company_id']!=str(source.company_id) or value['income_year']!=int(source.income_year)
-            or value['organization_number']!=source.organization_number or value['legal_name']!=source.legal_name):
+            or field(value,'companyId','company_id')!=str(source.company_id) or field(value,'incomeYear','income_year')!=int(source.income_year)
+            or field(value,'organizationNumber','organization_number')!=source.organization_number or field(value,'legalName','legal_name')!=source.legal_name):
         raise ValueError('Corporate annual-close identity differs from current source.')
     finals=[item for item in evidence['snapshot']['finalizations'] if item['finalization_id']==ready['finalization_id']]
     if (len(finals)!=1 or finals[0]['company_id']!=decision['company_id'] or finals[0]['income_year']!=decision['income_year']
@@ -131,7 +138,7 @@ def _approval(source):
             or finals[0]['annual_close_source_id']!=decision['annual_close_source_id']
             or finals[0]['signed_artifact_hashes']!=ready['signed_artifact_hashes']):
         raise ValueError('Accounts retained Corporate finalization does not bind the signed decision.')
-    approval=value['general_meeting']['meeting_date']
+    approval=field(field(value,'generalMeeting','general_meeting'),'meetingDate','meeting_date')
     if type(approval) is not str or date.fromisoformat(approval).isoformat()!=approval:
         raise ValueError('Corporate approval date is invalid.')
     return approval

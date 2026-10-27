@@ -14,6 +14,10 @@ from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsDeliveryIntent as Intent,AnnualAccountsDeliveryObservation as Observation,
     AnnualAccountsDeliveryFrameRecord as Frame,StoredAnnualAccountsDeliveryEvent as Event,
     inspect_annual_accounts_delivery_journal,inspect_annual_accounts_delivery_frame,inspect_annual_accounts_instance,
+    inspect_annual_accounts_delivery_history,
+    AnnualAccountsCorrectionParentAdmission as ParentAdmission,AnnualAccountsCorrectionParentObservation as ParentObservation,
+    AnnualAccountsCorrectionParentAttempt as ParentAttempt,
+    AnnualAccountsCorrectionParentFrame as ParentFrame,
 )
 from talli_backend.shared.kernel import Timestamp
 
@@ -28,6 +32,8 @@ class AccountsDeliveryState:
     stored: object
     events: tuple[Event,...]
     inspection: object
+    history_drafts: tuple=()
+    history_events: tuple=()
 
     def slot(self,slot):return next((row for row in self.events if row.record.slot==slot),None)
 
@@ -37,22 +43,30 @@ class AnnualAccountsDeliveryWorkflow:
         self._corporate,self._schemas,self._ports=corporate,schemas,ports
         self._now=now or (lambda:Timestamp(datetime.now(UTC)))
 
-    def _inspect(self,stored,events,commitment):
+    def _inspect(self,stored,events,commitment,*,history_drafts=(),history_events=()):
         try:
-            return AccountsDeliveryState(stored,tuple(events),inspect_annual_accounts_delivery_journal(stored,events,
-                schemas=self._schemas,expected_event_digests=commitment))
+            if history_drafts:
+                if commitment!={str(row.sequence):row.record.sha256 for row in events}:raise ValueError()
+                combined=tuple(sorted((*[row for row in history_events if row.record.binding.filing_id!=stored.draft.filing_id],*events),key=lambda row:row.sequence))
+                inspection=inspect_annual_accounts_delivery_history(history_drafts,combined,schemas=self._schemas,
+                    expected_event_digests={str(row.sequence):row.record.sha256 for row in combined})[stored.draft.filing_id]
+            else:
+                combined=tuple(events)
+                inspection=inspect_annual_accounts_delivery_journal(stored,events,schemas=self._schemas,expected_event_digests=commitment)
+            return AccountsDeliveryState(stored,tuple(events),inspection,tuple(history_drafts),combined)
         except (ValueError,TypeError,KeyError,AttributeError):raise AnnualAccountsError.unavailable() from None
 
     async def _state(self,transaction,query,filing_id):
         snapshot=await transaction.filing_source_snapshot(query);facts=project_annual_accounts_source(query,snapshot)
-        if snapshot.contract_version!='annual-accounts-source-v3' or facts.history_coverage.status!='complete':
+        if snapshot.contract_version not in ('annual-accounts-source-v3','annual-accounts-source-v4') or facts.history_coverage.status!='complete':
             raise AnnualAccountsError.unavailable()
         stored=next((row for row in snapshot.delivery_drafts if row.draft.filing_id==filing_id),None)
         if stored is None:raise AnnualAccountsError.not_found()
         if stored.draft.prepared_by!=query.actor_id:raise AnnualAccountsError.forbidden()
         events=tuple(row for row in snapshot.delivery_events if row.record.binding.filing_id==filing_id)
         commitments=snapshot.coverage['deliveryEventDigests']
-        return self._inspect(stored,events,{str(row.sequence):commitments[str(row.sequence)] for row in events})
+        return self._inspect(stored,events,{str(row.sequence):commitments[str(row.sequence)] for row in events},
+            history_drafts=snapshot.delivery_drafts,history_events=snapshot.delivery_events)
 
     async def read(self,session,query,filing_id):
         if session.actor_id!=query.actor_id:raise AnnualAccountsError.forbidden()
@@ -108,13 +122,15 @@ class AnnualAccountsDeliveryWorkflow:
         if existing is not None:
             if existing.record!=record:raise AnnualAccountsError.draft_conflict()
         else:
-            candidate=Event((state.events[-1].sequence if state.events else 0)+1,record,self._now())
+            candidate=Event(max((row.sequence for row in state.history_events),default=0)+1,record,self._now())
             values=(*state.events,candidate)
-            self._inspect(state.stored,values,{str(row.sequence):row.record.sha256 for row in values})
+            self._inspect(state.stored,values,{str(row.sequence):row.record.sha256 for row in values},
+                history_drafts=state.history_drafts,history_events=state.history_events)
         stored,inserted=await transaction.append_delivery_event(record)
         values=(*state.events,stored) if inserted else state.events
         if not inserted and (existing is None or stored!=existing):raise AnnualAccountsError.unavailable()
-        return self._inspect(state.stored,values,{str(row.sequence):row.record.sha256 for row in values}),stored,inserted
+        return self._inspect(state.stored,values,{str(row.sequence):row.record.sha256 for row in values},
+            history_drafts=state.history_drafts,history_events=state.history_events),stored,inserted
 
     async def review(self,session,binding,*,stage,reviewed_evidence_sha256,documents_checked,action_confirmed,command_key,correlation_id):
         query=self._query(session,binding)
@@ -126,6 +142,7 @@ class AnnualAccountsDeliveryWorkflow:
                 if (record.reviewed_evidence_sha256!=reviewed_evidence_sha256 or record.command_key!=command_key
                         or documents_checked is not True or action_confirmed is not True):raise AnnualAccountsError.draft_conflict()
                 return state
+            if state.inspection.state=='correction_parent_unknown':raise AnnualAccountsError.draft_conflict()
             await self._current(session,query,state,correlation_id)
             self._validate_draft(state.stored.draft)
             expected=state.stored.draft.sha256
@@ -148,6 +165,7 @@ class AnnualAccountsDeliveryWorkflow:
 
     def mutation_available(self,session,state,stage):
         if self._ports is None or not self._ports.stage_available(session,state.stored.draft,stage):return False
+        if state.inspection.next_action is Action.CREATE_INSTANCE and not self.correction_proof_fresh(state):return False
         if state.inspection.next_action is not Action.CREATE_INSTANCE:
             try:
                 record=next(row.record for row in state.events if row.record.sha256==state.inspection.prerequisite_sha256)
@@ -161,6 +179,27 @@ class AnnualAccountsDeliveryWorkflow:
             port=self._ports.retained(session,retained);port.runtime.assert_available()
             used=sum(getattr(row.record,'admission_sha256',None)==retained.sha256 for row in state.events)
             return used<retained.maximum_requests
+        except AnnualAccountsError:return False
+
+    def correction_proof_fresh(self,state):
+        if state.slot('correction:admission') is None:return True
+        if state.inspection.state=='correction_parent_unknown':return False
+        lineage=next((row.record for row in reversed(state.events) if type(row.record) is ParentFrame),None)
+        attempt=next((row.record for row in reversed(state.events) if type(row.record) is ParentAttempt),None)
+        if lineage is None or attempt is None or lineage.attempt_sha256!=attempt.sha256:return False
+        selected=set(lineage.observation_sha256)
+        began=min(row.record.original.requested_at.value for row in state.events
+            if type(row.record) is ParentObservation and row.record.sha256 in selected)
+        return 0<=(self._now().value-began).total_seconds()<=60
+
+    def correction_refresh_available(self,session,state):
+        retained=state.slot('correction:admission')
+        if self._ports is None or retained is None or type(retained.record) is not ParentAdmission:return False
+        if state.slot('intent:create_instance') is not None or sum(type(row.record) is ParentAttempt for row in state.events)>=3:return False
+        try:
+            grant=retained.record.grant;port=self._ports.retained(session,grant);port.runtime.assert_available()
+            used=sum(type(row.record) is ParentObservation for row in state.events)
+            return min(grant.maximum_requests-used,port.runtime.requests_remaining)>=9
         except AnnualAccountsError:return False
 
     def reconciliation_available(self,session,state):

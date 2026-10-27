@@ -102,3 +102,7 @@ export function reconcileAccountsDelivery(accessToken: string,command: import("@
 export function accountsDeliveryMfaRequired(error: unknown) {
   return error instanceof TalliApiError && error.problem?.code==="ANNUAL_ACCOUNTS_MFA_REQUIRED";
 }
+
+export function prepareAccountsCorrection(accessToken: string,command: import("@talli/talli-api-client").AccountsPrepareCorrectionRequest,key: string) {
+  return client(accessToken).annualAccountsPrepareDeliveryCorrection(command,{idempotencyKey:key,signal:AbortSignal.timeout(60_000)});
+}

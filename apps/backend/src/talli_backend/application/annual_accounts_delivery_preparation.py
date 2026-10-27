@@ -24,7 +24,7 @@ class AnnualAccountsDeliveryPreparation:
             async with session.transaction(snapshot=True) as snapshot:
                 history=await snapshot.filing_source_snapshot(query)
                 facts=project_annual_accounts_source(query,history)
-                if (history.contract_version not in ('annual-accounts-source-v2','annual-accounts-source-v3')
+                if (history.contract_version not in ('annual-accounts-source-v2','annual-accounts-source-v3','annual-accounts-source-v4')
                         or facts.history_coverage.status!='complete'):raise AnnualAccountsError.unavailable()
                 source=await read_annual_accounts_delivery_source(snapshot,query,corporate=self._corporate,
                     correlation_id=command.correlation_id)

@@ -28,7 +28,8 @@ class StoredAnnualAccountsDeliveryEvent:
     recorded_at: Timestamp
 
     def __post_init__(self):
-        if (type(self.sequence) is not int or self.sequence<1 or type(self.record) not in _RECORDS
+        from .delivery_corrections import CORRECTION_RECORDS
+        if (type(self.sequence) is not int or self.sequence<1 or type(self.record) not in (*_RECORDS,*CORRECTION_RECORDS)
                 or type(self.recorded_at) is not Timestamp):raise ValueError('Accounts retained event identity is invalid.')
 
 

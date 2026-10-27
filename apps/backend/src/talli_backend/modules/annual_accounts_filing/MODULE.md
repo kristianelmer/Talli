@@ -419,3 +419,16 @@ process end/archive timestamps cannot lie after their observation.
 <!-- architecture-inventory
 {"ports":["AnnualAccountsDeliveryTransport"]}
 -->
+
+
+The local correction successor adds `AnnualAccountsCorrectionReadGrant`,
+`AnnualAccountsCorrectionParentAdmission`, `AnnualAccountsCorrectionParentAttempt`, `AnnualAccountsCorrectionParentObservation`
+and `AnnualAccountsCorrectionParentFrame`. `decode_annual_accounts_delivery_record_v2`
+preserves all predecessor record bytes. `assert_annual_accounts_correction_source`
+requires changed owning source and a new finalized signed Corporate decision.
+`inspect_annual_accounts_correction_parent` checks fresh exact archive originals;
+`inspect_annual_accounts_delivery_history` checks the complete unforked chain.
+A child receives separate mutation reviews, credentials and budgets. Parent reads
+use one five-minute grant, at most 27 GETs and three explicitly requested proof
+frames. Each read attempt commits before HTTP and immediately closes child creation until a complete frame covers that latest attempt. Failed and late originals remain independent records; older-attempt responses cannot invalidate a later successful proof or an already-created child. Containment closes
+new work while retaining known responses and access-controlled originals.

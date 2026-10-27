@@ -1313,3 +1313,33 @@ Default Accounts schema composition is lazy. An unavailable bundle closes delive
 <!-- architecture-inventory
 {"adapterBindings":["AnnualAccountsSchemaValidator=>talli_backend.adapters.annual_accounts_schemas.DeferredAnnualAccountsSchemas"],"adapterBindingOwners":["AnnualAccountsSchemaValidator=>backend-system"],"adapterBindingModes":["AnnualAccountsSchemaValidator=>Deferred exact pinned Accounts validation; archive composition/listing/download survives unavailable resources while mutation/frame validation remains closed."]}
 -->
+
+Corporate annual-close facts and Accounts source composition admit the existing verified opening-snapshot and Ledger-entry readers to the Corporate workflow role. The narrow EXECUTE grants preserve the owning reader bodies, actor/RLS checks, schema permissions and direct table denial. Rollback closes those two reader admissions. This adds no provider or filing authority.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261027010818_corporate_accounts_owning_read_admission.sql","supabase/rollback/20261027010818_corporate_accounts_owning_read_admission.sql"]}
+-->
+
+Annual-close lookups read immutable decisions under the already acquired published company guard. A definition-checked migration removes their UPDATE-style row locks without adding UPDATE policies or changing any reader/writer identity, owner, ACL, source validation or RLS predicate. Its rollback restores the exact original function bodies; an unknown definition or company-guard change stops the migration.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql","supabase/rollback/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql"]}
+-->
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql","supabase/rollback/20261027012022_corporate_evidence_authoritative_income_year_v1.sql"]}
+-->
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20261027004007_annual_accounts_delivery_corrections_v1.sql","supabase/rollback/20261027004007_annual_accounts_delivery_corrections_v1.sql"]}
+-->
+
+
+`/api/v1/annual-accounts/delivery-corrections` prepares an inert child from current
+owning source, then independently records its bounded known-parent read attempt before HTTP and retains each original result. The
+existing reconciliation route supports an explicitly requested parent recheck
+within the same lease and request budget. Each child owns its reviews and intents.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/annual-accounts/delivery-corrections"]}
+-->

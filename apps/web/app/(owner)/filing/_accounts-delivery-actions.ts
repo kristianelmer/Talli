@@ -3,7 +3,7 @@
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {getCurrentSessionAccessToken} from "../../lib/supabase/auth-session";
-import {loadAccountsDeliveryWorkspace,prepareAccountsDelivery,reviewAccountsDelivery,advanceAccountsDelivery,
+import {loadAccountsDeliveryWorkspace,prepareAccountsDelivery,prepareAccountsCorrection,reviewAccountsDelivery,advanceAccountsDelivery,
   reconcileAccountsDelivery,annualAccountsActionErrorMessage} from "../../../features/annual-accounts-filing";
 
 const target="/filing/aarsregnskap";
@@ -27,12 +27,17 @@ export async function accountsDeliveryOwnerAction(form: FormData) {
       const row=workspace.rows.find(row=>row.filingId===form.get("filingId"));const allowed=row?.actions.find(value=>value===action);
       if (!row || !allowed) throw new AccountsInputError("Steget er ikke tilgjengelig. Oppdater siden for gjeldende status.");
       const scope={companyId,incomeYear,filingId:row.filingId,draftSha256:row.draftSha256};
-      if (allowed==="review_prepare" || allowed==="review_confirm" || allowed==="review_sign") {
+      if (allowed==="prepare_correction") {
+        const filingId=String(form.get("candidateId") ?? "");
+        if (!uuid.test(filingId)) throw new AccountsInputError("Ugyldig rettingsutkast.");
+        await prepareAccountsCorrection(token,{companyId,incomeYear,filingId,parentFilingId:row.filingId,parentDraftSha256:row.draftSha256,
+          contactEmail:String(form.get("contactEmail") ?? ""),confirmingRepresentative:String(form.get("confirmingRepresentative") ?? "")},"accounts-correction-"+filingId);
+      } else if (allowed==="review_prepare" || allowed==="review_confirm" || allowed==="review_sign") {
         if (form.get("documentsChecked")!=="on" || form.get("actionConfirmed")!=="on") throw new AccountsInputError("Bekreft dokumentene og det valgte steget.");
         if (form.get("reviewSha256")!==row.reviewSha256) throw new AccountsInputError("Dokumentene er endret. Les dem på nytt.");
         await reviewAccountsDelivery(token,{...scope,stage:row.reviewStage,reviewedEvidenceSha256:row.reviewSha256,
           documentsChecked:true,actionConfirmed:true},"accounts-review-"+row.filingId+"-"+row.reviewStage);
-      } else if (allowed==="reconcile") await reconcileAccountsDelivery(token,scope);
+      } else if (allowed==="reconcile" || allowed==="refresh_parent") await reconcileAccountsDelivery(token,scope);
       else await advanceAccountsDelivery(token,{...scope,action:allowed});
     }
   } catch (error) {

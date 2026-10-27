@@ -692,7 +692,19 @@ def annual_accounts_schema_adapter(contract: type[object]):
     return annual_accounts_authority_adapter(contract)
 
 
+from .delivery_corrections import (
+    AnnualAccountsCorrectionReadGrant,AnnualAccountsCorrectionParentAdmission,AnnualAccountsCorrectionParentAttempt,AnnualAccountsCorrectionParentObservation,AnnualAccountsCorrectionParentFrame,
+    decode_annual_accounts_delivery_record_v2,assert_annual_accounts_correction_source,
+    inspect_annual_accounts_correction_parent,inspect_annual_accounts_delivery_history,
+)
+
+
 __all__ = [
+    "AnnualAccountsCorrectionReadGrant",
+    "AnnualAccountsCorrectionParentAttempt",
+    "AnnualAccountsCorrectionParentAdmission","AnnualAccountsCorrectionParentObservation","AnnualAccountsCorrectionParentFrame",
+    "decode_annual_accounts_delivery_record_v2","assert_annual_accounts_correction_source",
+    "inspect_annual_accounts_correction_parent","inspect_annual_accounts_delivery_history",
     "StoredAnnualAccountsDeliveryEvent","AnnualAccountsDeliveryJournalInspection","inspect_annual_accounts_delivery_journal",
     "AnnualAccountsFrameKind","AnnualAccountsDeliveryFrameRecord","AnnualAccountsDeliveryFrameInspection","inspect_annual_accounts_delivery_frame",
     "AnnualAccountsDeliveryObservation","decode_annual_accounts_delivery_record",

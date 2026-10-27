@@ -82,7 +82,16 @@
       "inspect_annual_accounts_delivery_frame",
       "StoredAnnualAccountsDeliveryEvent",
       "AnnualAccountsDeliveryJournalInspection",
-      "inspect_annual_accounts_delivery_journal"
+      "inspect_annual_accounts_delivery_journal",
+      "AnnualAccountsCorrectionParentAdmission",
+      "AnnualAccountsCorrectionParentObservation",
+      "AnnualAccountsCorrectionParentFrame",
+      "decode_annual_accounts_delivery_record_v2",
+      "assert_annual_accounts_correction_source",
+      "inspect_annual_accounts_correction_parent",
+      "inspect_annual_accounts_delivery_history",
+      "AnnualAccountsCorrectionReadGrant",
+      "AnnualAccountsCorrectionParentAttempt"
     ],
     "events": [],
     "errors": [
@@ -268,7 +277,9 @@
     "deliveryJournal": "apps/backend/tests/test_annual_accounts_delivery_journal.py",
     "deliveryEventsDatabase": "apps/backend/tests/test_annual_accounts_delivery_events_database.py",
     "deliveryEventSource": "apps/backend/tests/test_annual_accounts_delivery_event_source.py",
-    "deliveryWorkflow": "apps/backend/tests/test_annual_accounts_delivery_workflow.py"
+    "deliveryWorkflow": "apps/backend/tests/test_annual_accounts_delivery_workflow.py",
+    "deliveryCorrections": "apps/backend/tests/test_annual_accounts_delivery_corrections.py",
+    "deliveryCorrectionsDatabase": "apps/backend/tests/test_annual_accounts_delivery_corrections_database.py"
   },
   "compatibilityExceptions": []
 }

@@ -18,7 +18,9 @@ from .public import (
 _VERSION = 'annual-accounts-source-v1'
 _DELIVERY_VERSION = 'annual-accounts-source-v2'
 _EVENT_VERSION = 'annual-accounts-source-v3'
-_DELIVERY_VERSIONS = (_DELIVERY_VERSION,_EVENT_VERSION)
+_CORRECTION_VERSION = 'annual-accounts-source-v4'
+_EVENT_VERSIONS = (_EVENT_VERSION,_CORRECTION_VERSION)
+_DELIVERY_VERSIONS = (_DELIVERY_VERSION,*_EVENT_VERSIONS)
 _FAMILIES = {
     'filing_previews': 'previews', 'filing_submissions': 'submissions',
     'filing_overrides': 'overrides', 'filing_review_comments': 'review_comments',
@@ -130,7 +132,7 @@ def _coverage(query, snapshot, evidence_reference):
             if snapshot.contract_version==_DELIVERY_VERSION:
                 if type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=0:
                     reasons.append('delivery_event_codec_unavailable')
-            elif (proof.get('deliveryEventCodecVersion')!='annual-accounts-delivery-events-v1'
+            elif (proof.get('deliveryEventCodecVersion')!=('annual-accounts-delivery-events-v2' if snapshot.contract_version==_CORRECTION_VERSION else 'annual-accounts-delivery-events-v1')
                     or proof.get('deliveryEventContractValid') is not True
                     or type(proof.get('deliveryEventCount')) is not int or proof['deliveryEventCount']!=len(snapshot.delivery_events)
                     or proof.get('deliveryEventDigests')!={str(row.sequence):row.record.sha256 for row in snapshot.delivery_events}):
@@ -157,7 +159,7 @@ def project(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnap
     try:
         if snapshot.contract_version not in (_VERSION,*_DELIVERY_VERSIONS):raise ValueError('Unknown Accounts source contract.')
         if snapshot.contract_version==_VERSION and snapshot.delivery_drafts:raise ValueError('Legacy source cannot cover delivery drafts.')
-        if snapshot.contract_version!=_EVENT_VERSION and snapshot.delivery_events:raise ValueError('Source contract cannot cover delivery events.')
+        if snapshot.contract_version not in _EVENT_VERSIONS and snapshot.delivery_events:raise ValueError('Source contract cannot cover delivery events.')
         identities=set();total_bytes=0
         for stored in snapshot.delivery_drafts:
             if (type(stored) is not StoredAnnualAccountsDeliveryDraft or stored.draft.filing_id in identities
@@ -181,7 +183,7 @@ def project(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnap
         value={'version':snapshot.contract_version,'rows':rows,'coverage':snapshot.coverage,
                'completeEnumeration':snapshot.complete_enumeration}
         if snapshot.contract_version in _DELIVERY_VERSIONS:value['deliveryDrafts']=snapshot.delivery_drafts
-        if snapshot.contract_version==_EVENT_VERSION:value['deliveryEvents']=snapshot.delivery_events
+        if snapshot.contract_version in _EVENT_VERSIONS:value['deliveryEvents']=snapshot.delivery_events
         digest = _digest(value)
         evidence = AnnualAccountsSourceEvidence(query.company_id, query.income_year,
             f'annual-accounts:{query.company_id}:{int(query.income_year)}', snapshot.contract_version + ':' + digest, digest, snapshot.as_of)

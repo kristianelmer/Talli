@@ -9,6 +9,8 @@ from talli_backend.application.annual_accounts_delivery_source import read_annua
 from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError,project_annual_accounts_source,AnnualAccountsDeliveryIntent as Intent,
     AnnualAccountsDeliveryObservation as Observation,AnnualAccountsDeliveryStage as Stage,AnnualAccountsFrameKind as Kind,
+    AnnualAccountsCorrectionParentAdmission as ParentAdmission,AnnualAccountsCorrectionParentObservation as ParentObservation,
+    assert_annual_accounts_correction_source,
 )
 
 
@@ -34,9 +36,9 @@ def delivery_originals(stored,events):
         original('prepared_accounts:'+draft.inspection.company_accounts_sha256,'prepared_accounts',draft.company_accounts_xml.encode(),'application/xml')]
     for row in events:
         result.append(original('event:'+row.record.sha256,'operation_record',row.record.canonical_json.encode(),'application/json'))
-        if type(row.record) is Observation and row.record.original.body_base64 is not None:
+        if type(row.record) in (Observation,ParentObservation) and row.record.original.body_base64 is not None:
             value=row.record.original
-            result.append(original('original:'+row.record.sha256,value.purpose.value,value.raw_bytes,value.content_type or 'application/octet-stream'))
+            result.append(original('original:'+row.record.sha256,('parent_' if type(row.record) is ParentObservation else '')+value.purpose.value,value.raw_bytes,value.content_type or 'application/octet-stream'))
     return tuple(result)
 
 
@@ -64,7 +66,7 @@ class AnnualAccountsDeliveryWorkspace:
         if session.actor_id!=query.actor_id:raise AnnualAccountsError.forbidden()
         async with session.transaction(snapshot=True) as transaction:
             snapshot=await transaction.filing_source_snapshot(query);facts=project_annual_accounts_source(query,snapshot)
-        if snapshot.contract_version!='annual-accounts-source-v3' or facts.history_coverage.status!='complete':raise AnnualAccountsError.unavailable()
+        if snapshot.contract_version not in ('annual-accounts-source-v3','annual-accounts-source-v4') or facts.history_coverage.status!='complete':raise AnnualAccountsError.unavailable()
         return snapshot
 
     async def original(self,session,query,filing_id,key):
@@ -83,7 +85,7 @@ class AnnualAccountsDeliveryWorkspace:
         workflow=self._workflow
         async with session.transaction(snapshot=True) as transaction:
             snapshot=await transaction.filing_source_snapshot(query);facts=project_annual_accounts_source(query,snapshot)
-            if snapshot.contract_version!='annual-accounts-source-v3' or facts.history_coverage.status!='complete':raise AnnualAccountsError.unavailable()
+            if snapshot.contract_version not in ('annual-accounts-source-v3','annual-accounts-source-v4') or facts.history_coverage.status!='complete':raise AnnualAccountsError.unavailable()
             try:current=await read_annual_accounts_delivery_source(transaction,query,corporate=workflow._corporate,correlation_id=correlation_id)
             except AnnualAccountsError:current=None
         ports=workflow._ports;configured=ports is not None and ports.available(session,query.company_id,query.income_year)
@@ -92,7 +94,8 @@ class AnnualAccountsDeliveryWorkspace:
             draft=stored.draft;events=tuple(row for row in snapshot.delivery_events if row.record.binding.filing_id==draft.filing_id)
             try:
                 workflow._validate_draft(draft)
-                state=workflow._inspect(stored,events,{str(row.sequence):snapshot.coverage['deliveryEventDigests'][str(row.sequence)] for row in events})
+                state=workflow._inspect(stored,events,{str(row.sequence):snapshot.coverage['deliveryEventDigests'][str(row.sequence)] for row in events},
+                    history_drafts=snapshot.delivery_drafts,history_events=snapshot.delivery_events)
             except AnnualAccountsError:state=None
             same=current==draft.source;actions=[];review_sha=draft.sha256;review_stage=Stage.PREPARE
             if state is not None and state.inspection.state=='confirmation_review':review_stage=Stage.CONFIRM
@@ -107,13 +110,24 @@ class AnnualAccountsDeliveryWorkspace:
                 approval=state.slot('review:'+stage.value)
                 if approval is None:actions.append('review_'+stage.value)
                 elif approval.record.reviewed_evidence_sha256==review_sha and workflow.mutation_available(session,state,stage):actions.append(action.value)
+            if (state is not None and configured and same and operations and draft.prepared_by==query.actor_id
+                    and not workflow.correction_proof_fresh(state) and workflow.correction_refresh_available(session,state)):
+                actions.append('refresh_parent')
             if state is not None and configured and draft.prepared_by==query.actor_id and workflow.reconciliation_available(session,state):actions.append('reconcile')
+            parent=next((row.record.parent_binding.filing_id for row in events if type(row.record) is ParentAdmission),None)
+            if (state is not None and state.inspection.state=='technical_archive' and configured and operations
+                    and snapshot.contract_version=='annual-accounts-source-v4' and snapshot.coverage.get('deliveryCorrectionsEnabled') is True
+                    and ports.correction_available(session,draft) and draft.prepared_by==query.actor_id and current is not None
+                    and not any(type(row.record) is ParentAdmission and row.record.parent_binding.filing_id==draft.filing_id for row in snapshot.delivery_events)):
+                try:assert_annual_accounts_correction_source(draft.source,current)
+                except (ValueError,TypeError,KeyError):pass
+                else:actions.append('prepare_correction')
             issues=[]
             for kind in ((Kind.UPLOAD_REVIEW,Kind.SIGN_REVIEW) if state is not None else ()):
                 _,frame=workflow._frame(state,kind)
                 if frame is not None:issues=list(frame.validation_issues)
             rows.append({'filing_id':draft.filing_id,'recorded_at':stored.recorded_at.value,'draft_sha256':draft.sha256,
-                'source_sha256':draft.source.sha256,'review_sha256':review_sha,'review_stage':review_stage.value,
+                'source_sha256':draft.source.sha256,'parent_filing_id':parent,'review_sha256':review_sha,'review_stage':review_stage.value,
                 'state':state.inspection.state if state is not None else 'inspection_unavailable',
                 'known_instance':state.inspection.known_instance if state is not None else None,'source_current':same,
                 'actions':actions,'fields':document_fields(draft),'validation_issues':issues,

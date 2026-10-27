@@ -12,10 +12,10 @@ const states: Record<AccountsDeliveryWorkspaceRowWire["state"],string>={draft:"U
   creation_unknown:"Oppretting er uavklart",created:"Levering opprettet",main_upload_unknown:"Hovedskjemaets overføring er uavklart",
   main_uploaded:"Hovedskjema kontrollert",accounts_upload_unknown:"Regnskapsdokumentets overføring er uavklart",validation_blocked:"Validering krever kontroll",
   confirmation_review:"Klar for dokumentkontroll",confirmation_unknown:"Bekreftelsessteget er uavklart",person_review:"Klar for personens signeringskontroll",
-  signing_unknown:"Signeringssteget er uavklart",technical_archive:"Teknisk arkivering bekreftet",inspection_unavailable:"Dokumentkontrollen er utilgjengelig"};
+  signing_unknown:"Signeringssteget er uavklart",technical_archive:"Teknisk arkivering bekreftet",correction_parent_unknown:"Tidligere levering må avklares",inspection_unavailable:"Dokumentkontrollen er utilgjengelig"};
 const actions: Record<AccountsDeliveryWorkspaceRowWire["actions"][number],string>={review_prepare:"Bekreft utkastet",review_confirm:"Bekreft dokumentkontrollen",
   review_sign:"Bekreft signeringskontrollen",create_instance:"Opprett levering",upload_main_form:"Overfør hovedskjema",upload_company_accounts:"Overfør regnskapsdokumentet",
-  confirm:"Gå videre til signering",sign:"Utfør personens signeringssteg",reconcile:"Hent og kontroller status"};
+  confirm:"Gå videre til signering",sign:"Utfør personens signeringssteg",reconcile:"Hent og kontroller status",prepare_correction:"Forbered retting",refresh_parent:"Kontroller tidligere levering på nytt"};
 const names: Record<string,string>={prepared_draft:"Lagret utkast",prepared_source:"Tallgrunnlag og beslutninger",prepared_main:"Hovedskjema i utkastet",
   prepared_accounts:"Regnskapsdokument i utkastet",operation_record:"Operasjonsoriginal",instance:"Status og filreferanser",main_form:"Hovedskjema fra leveringen",
   company_accounts:"Regnskapsdokument fra leveringen",validation:"Valideringsoriginal",pdf:"Generert PDF",signature:"Signaturoriginal"};
@@ -56,7 +56,9 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
       <div className="filingStepHead"><h2 className="filingStepTitle">{states[row.state]}</h2></div>
       <div className="filingStepBody">
         <p className={styles.reference}>Levering <code>{row.filingId}</code></p>
+        {row.parentFilingId ? <p className={styles.reference}>Retter levering <code>{row.parentFilingId}</code></p> : null}
         {!row.sourceCurrent ? <Banner variant="warning">Tallgrunnlaget har endret seg eller kan ikke leses nå. Nye leveringssteg er stengt.</Banner> : null}
+        {row.state==="correction_parent_unknown" ? <Banner variant="warning">Kontrollen av den tidligere leveringen er uavklart. Nye leveringssteg er stengt; originalene er lagret.</Banner> : null}
         {row.state==="creation_unknown" ? <Banner variant="warning">Opprettingen må avklares før en ny levering kan starte.</Banner> : null}
         {row.state==="technical_archive" ? <p className="cardNote">Statusen viser teknisk arkivering i prøveløpet.</p> : null}
         {row.state==="inspection_unavailable" ? <Banner variant="warning">Dokumentkontrollen kan ikke verifiseres nå. Originalene er fortsatt tilgjengelige.</Banner> : null}
@@ -71,6 +73,11 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
             <a href={href(workspace,row,original.key)}>Last ned PDF · {original.sha256.slice(0,8)}</a></li>)}</ul></section> : null}
         <div className={styles.actions}>{row.actions.map(action=><form action={accountsDeliveryOwnerAction} key={row.reviewSha256+":"+action}>
           <Scope workspace={workspace} row={row} action={action}/>
+          {action==="prepare_correction" ? <>
+            <input type="hidden" name="candidateId" value={randomUUID()}/>
+            <label className={accountsStyles.inputLabel}>Kontaktadresse<input className={accountsStyles.input} type="email" name="contactEmail" autoComplete="email" required maxLength={1000}/></label>
+            <label className={accountsStyles.inputLabel}>Bekreftende representant<input className={accountsStyles.input} name="confirmingRepresentative" autoComplete="name" required maxLength={1000}/></label>
+          </> : null}
           {action==="review_prepare" || action==="review_confirm" || action==="review_sign" ? <>
             <input type="hidden" name="reviewSha256" value={row.reviewSha256}/>
             <label><input type="checkbox" name="documentsChecked" required/>Jeg har kontrollert dokumentene og alle merknadene.</label>
@@ -80,7 +87,7 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
           <SubmitButton variant={action==="reconcile"?"secondary":"primary"} pendingLabel="Kontrollerer…">{actions[action]}</SubmitButton>
         </form>)}</div>
         <details><summary>Originale dokumenter og svar ({row.originals.length})</summary><ul className={styles.originals}>
-          {row.originals.map(original=><li key={original.key}><a href={href(workspace,row,original.key)}>{names[original.purpose] ?? original.purpose} · {original.sha256.slice(0,8)}</a></li>)}
+          {row.originals.map(original=><li key={original.key}><a href={href(workspace,row,original.key)}>{names[original.purpose] ?? (original.purpose.startsWith("parent_") ? "Tidligere levering · "+(names[original.purpose.slice(7)] ?? original.purpose.slice(7)) : original.purpose)} · {original.sha256.slice(0,8)}</a></li>)}
         </ul></details>
       </div>
     </section>)}

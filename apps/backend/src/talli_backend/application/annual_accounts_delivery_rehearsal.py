@@ -3,6 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass,field
 from datetime import UTC,datetime,timedelta
 import hashlib
+import hmac
 import re
 from threading import Lock
 from uuid import uuid4
@@ -10,6 +11,7 @@ from uuid import uuid4
 from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError,AnnualAccountsFiniteAdmission as Admission,AnnualAccountsAuthorityPort as Port,
     AnnualAccountsDeliveryStage as Stage,AnnualAccountsDeliveryBinding as Binding,annual_accounts_delivery_digest,
+    AnnualAccountsCorrectionReadGrant,
 )
 from talli_backend.shared.kernel import Timestamp
 
@@ -30,7 +32,7 @@ class AccountsRehearsalCredential:
     credential: str=field(repr=False)
 
     def __post_init__(self):
-        if (type(self.admission) is not Admission or type(self.credential) is not str
+        if (type(self.admission) not in (Admission,AnnualAccountsCorrectionReadGrant) or type(self.credential) is not str
                 or re.fullmatch('[0-9a-f]{64}',self.credential) is None
                 or hashlib.sha256(self.credential.encode()).hexdigest()!=self.admission.credential_sha256):raise ValueError()
 
@@ -88,18 +90,29 @@ class AccountsRehearsalPorts:
     process cannot reconstruct or renew a retained grant from its public hash.
     """
     def __init__(self,*,company_id,income_year,actor_id,organization_number,origin,database_scope_sha256,
-            credentials,builders,expires_at,now=None,maximum_filings=2):
+            credentials,builders,expires_at,now=None,maximum_filings=2,parent_read_credential=None,parent_read_builder=None):
         self._company,self._year,self._actor=company_id,income_year,actor_id
         self._organization,self._origin,self._database=organization_number,origin,database_scope_sha256
         self._credentials=dict(credentials);self._builders=dict(builders);self._expires=expires_at
         self._now=now or (lambda:Timestamp(datetime.now(UTC)));self._ports={};self._lock=Lock()
         self._run=str(uuid4());self._maximum_filings=maximum_filings
+        self._parent_credential,self._parent_builder=parent_read_credential,parent_read_builder
+        if (parent_read_credential is None)!=(parent_read_builder is None):raise ValueError()
+        if parent_read_credential is not None and (type(parent_read_credential) is not str
+                or re.fullmatch('[0-9a-f]{64}',parent_read_credential) is None
+                or parent_read_credential in self._credentials.values() or not callable(parent_read_builder)):raise ValueError()
         keys={(Port.SYSTEM_USER,Stage.PREPARE),(Port.SYSTEM_USER,Stage.CONFIRM),(Port.PERSON,Stage.SIGN),(Port.KNOWN_READ,None)}
         if (set(self._credentials)!=keys or set(self._builders)!=keys
                 or len(set(self._credentials.values()))!=4 or type(maximum_filings) is not int or not 1<=maximum_filings<=2
+                or any(type(secret) is not str or re.fullmatch('[0-9a-f]{64}',secret) is None for secret in self._credentials.values())
                 or type(expires_at) is not Timestamp or not 0<(expires_at.value-self.now().value).total_seconds()<=3600):raise ValueError()
 
     def now(self):return self._now()
+
+    def _credential(self,master,key):
+        # A child never receives a parent's transport secret or request budget.
+        message=repr((self._run,*key)).encode()
+        return hmac.new(master.encode(),message,hashlib.sha256).hexdigest()
 
     def available(self,session,company_id,income_year):
         """Non-consuming composition hint; SQL and source still decide at use."""
@@ -136,7 +149,7 @@ class AccountsRehearsalPorts:
             if (draft.filing_id not in filings and len(filings)>=self._maximum_filings
                     or not self.now().value<self._expires.value):raise AnnualAccountsError.unavailable()
             issued=self.now();expiry=Timestamp(min(issued.value+timedelta(seconds=300),self._expires.value))
-            credential=self._credentials[(role,stage)]
+            credential=self._credential(self._credentials[(role,stage)],key)
             grant=Admission(Binding(draft.filing_id,draft.source.company_id,draft.source.income_year,draft.prepared_by,draft.sha256),
                 role,self._run,self._organization,self._origin,self._database,hashlib.sha256(credential.encode()).hexdigest(),
                 issued,expiry,64 if stage is Stage.PREPARE else 16,review.record.sha256 if review else None,
@@ -150,3 +163,29 @@ class AccountsRehearsalPorts:
             matches=[port for port in self._ports.values() if port.runtime.admission==admission]
         if len(matches)!=1:raise AnnualAccountsError.unavailable()
         matches[0].runtime.assert_session(session);return matches[0]
+
+    def correction_available(self,session,draft):
+        return self._parent_builder is not None and self.available(session,draft.source.company_id,draft.source.income_year)
+
+    def issue_parent(self,session,child,*,parent_binding,parent_sign_intent,known_instance,parent_archived_at,parent_archive_frame_sha256):
+        """Separate read-only budget after the child's SQL draft commit."""
+        from talli_backend.modules.annual_accounts_filing.public import AnnualAccountsCorrectionParentAdmission
+        self._scope(session,child.draft)
+        if self._parent_builder is None:raise AnnualAccountsError.unavailable()
+        key=(child.draft.filing_id,'correction_parent',parent_sign_intent.sha256)
+        with self._lock:
+            if key in self._ports:return self._ports[key]
+            filings={item[0] for item in self._ports}
+            issued=self.now()
+            if (child.draft.filing_id not in filings and len(filings)>=self._maximum_filings
+                    or not max(child.recorded_at.value,parent_archived_at.value)<=issued.value<self._expires.value):raise AnnualAccountsError.unavailable()
+            expiry=Timestamp(min(issued.value+timedelta(seconds=300),self._expires.value))
+            credential=self._credential(self._parent_credential,key)
+            grant=AnnualAccountsCorrectionReadGrant(Binding(child.draft.filing_id,child.draft.source.company_id,child.draft.source.income_year,child.draft.prepared_by,child.draft.sha256),
+                Port.KNOWN_READ,self._run,self._organization,self._origin,self._database,
+                hashlib.sha256(credential.encode()).hexdigest(),issued,expiry,27,None,known_instance,None,parent_sign_intent.sha256)
+            # Validate both bindings before granting even a finite GET port.
+            AnnualAccountsCorrectionParentAdmission(grant.binding,parent_binding,parent_sign_intent.sha256,parent_archive_frame_sha256,grant)
+            port=self._parent_builder(AccountsRehearsalRuntime(AccountsRehearsalCredential(grant,credential),now=self._now))
+            self._ports[key]=port
+            return port

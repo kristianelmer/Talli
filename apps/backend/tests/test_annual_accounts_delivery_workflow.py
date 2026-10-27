@@ -97,7 +97,9 @@ class Harness:
     def handle(self,request):
         assert self.depth==0 and not self.guard,'HTTP escaped while a SQL context remained open'
         assert request.url.host=='127.0.0.1' and request.url.port==23456
-        key=request.headers['X-Talli-Rehearsal-Key'];assert key in self.credentials.values()
+        key=request.headers['X-Talli-Rehearsal-Key']
+        retained=[port.runtime.admission for port in self.ports._ports.values() if port.runtime._credential.credential==key]
+        assert len(retained)==1;actual_grant=retained[0]
         self.requests.append((request.method,request.url.path,key))
         def response(raw,status=200,media='application/json'):
             return httpx.Response(status,headers={} if media is None else {'Content-Type':media},stream=httpx.ByteStream(raw))
@@ -109,8 +111,8 @@ class Harness:
             committed=next((row.record for row in self.events if row.record.slot=='intent:'+action.value),None)
             assert type(committed) is Intent and committed.request_body_base64
             assert committed.request_path==request.url.path
-            expected=self.credentials[(Port.PERSON,Stage.SIGN)] if action is Action.SIGN else self.credentials[(Port.SYSTEM_USER,Stage.CONFIRM)] if action is Action.CONFIRM else self.credentials[(Port.SYSTEM_USER,Stage.PREPARE)]
-            assert key==expected,'A different actor port performed this mutation'
+            expected=(Port.PERSON,Stage.SIGN) if action is Action.SIGN else (Port.SYSTEM_USER,Stage.CONFIRM) if action is Action.CONFIRM else (Port.SYSTEM_USER,Stage.PREPARE)
+            assert (actual_grant.port,actual_grant.stage)==expected,'A different actor port performed this mutation'
             if action is Action.CREATE_INSTANCE:
                 return value({'opaque':'missing known identity'},201) if self.unknown_creation else value(self.metadata,201)
             if action in (Action.UPLOAD_MAIN_FORM,Action.UPLOAD_COMPANY_ACCOUNTS):

@@ -86,6 +86,26 @@ def prepare(source):return prepare_annual_accounts_delivery(source,filing_id=str
     actor_id=ACTOR,contact_email='owner@example.test',confirming_representative='Synthetic Person',schemas=PinnedAnnualAccountsSchemas())
 
 
+@pytest.mark.parametrize('ambiguous',[False,True])
+def test_persisted_corporate_receipt_identity_keys_are_preserved_and_ambiguous_aliases_fail(ambiguous):
+    from talli_backend.modules.annual_accounts_filing.delivery import _canonical
+    from talli_backend.modules.annual_accounts_filing.public import annual_accounts_delivery_digest
+    inputs,app,_=source_inputs();source=read(inputs,app)
+    snapshots=json.loads(_canonical(source.owning_snapshots));value=snapshots['corporate']['snapshot']['decisions'][0]['canonical_input']
+    for camel,snake in [('companyId','company_id'),('incomeYear','income_year'),('organizationNumber','organization_number'),('legalName','legal_name'),('generalMeeting','general_meeting')]:
+        value[camel]=value.pop(snake)
+    value['generalMeeting']['meetingDate']=value['generalMeeting'].pop('meeting_date')
+    if ambiguous:value['company_id']=str(source.company_id)
+    current=replace(source,owning_snapshots=snapshots,upstream_sha256={key:annual_accounts_delivery_digest(raw) for key,raw in snapshots.items()})
+    if ambiguous:
+        with pytest.raises(AnnualAccountsError):prepare(current)
+    else:
+        original=prepare(source);draft=prepare(current)
+        assert draft.main_form_xml==original.main_form_xml and draft.company_accounts_xml==original.company_accounts_xml
+        assert draft.source.owning_snapshots['corporate']['snapshot']['decisions'][0]['canonical_input']['companyId']==str(source.company_id)
+        assert decode_annual_accounts_delivery_draft(draft.canonical_json,draft.sha256)==draft
+
+
 def test_snapshot_reuses_current_corporate_owner_policy_without_new_sessions_or_provider_calls():
     inputs,app,transaction=source_inputs();source=read(inputs,app)
     assert source.owning_snapshots['corporate']['readiness']['current_source_matches'] is True

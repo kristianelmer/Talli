@@ -27,7 +27,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError, AnnualAccountsWorkspacePersistence, AnnualAccountsWorkspaceQuery,
     AnnualAccountsFilingRows, annual_accounts_persistence_adapter,
     AnnualAccountsDeliveryDraftPersistence, StoredAnnualAccountsDeliveryDraft, decode_annual_accounts_delivery_draft,
-    AnnualAccountsDeliveryJournalPersistence, StoredAnnualAccountsDeliveryEvent, decode_annual_accounts_delivery_record,
+    AnnualAccountsDeliveryJournalPersistence, StoredAnnualAccountsDeliveryEvent, decode_annual_accounts_delivery_record_v2,
 )
 from talli_backend.modules.ledger.public import LedgerError
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
@@ -182,9 +182,9 @@ class PostgresAnnualAccountsTransaction:
     async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise AnnualAccountsError.forbidden()
-        installed=await self._one_row("select case when pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v3(uuid,integer,text)') is not null then 3 when pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v2(uuid,integer,text)') is not null then 2 else 1 end as version",())
+        installed=await self._one_row("select case when pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)') is not null then 4 when pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v3(uuid,integer,text)') is not null then 3 when pg_catalog.to_regprocedure('annual_accounts_filing.read_source_snapshot_v2(uuid,integer,text)') is not null then 2 else 1 end as version",())
         version=installed.get('version')
-        if type(version) is not int or version not in (1,2,3):raise AnnualAccountsError.unavailable()
+        if type(version) is not int or version not in (1,2,3,4):raise AnnualAccountsError.unavailable()
         successor=version>=2
         row = await self._one_row(
             f'select annual_accounts_filing.read_source_snapshot_v{version}(%s::uuid,%s::integer,%s::text) as result',
@@ -198,7 +198,7 @@ class PostgresAnnualAccountsTransaction:
                 raise ValueError()
             if successor and (value.get('contractVersion')!=f'annual-accounts-source-v{version}'
                     or type(value.get('deliveryDrafts')) is not list):raise ValueError()
-            if version==3 and type(value.get('deliveryEvents')) is not list:raise ValueError()
+            if version>=3 and type(value.get('deliveryEvents')) is not list:raise ValueError()
             rows = AnnualAccountsFilingRows(query.company_id, query.income_year,
                 **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
                     'review_comments', 'permissions', 'test_evidence')})
@@ -206,7 +206,7 @@ class PostgresAnnualAccountsTransaction:
                 Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
                 value['contractVersion'] if successor else 'annual-accounts-source-v1',
                 tuple(self._stored_delivery_draft(row) for row in value['deliveryDrafts']) if successor else (),
-                tuple(self._stored_delivery_event(row) for row in value['deliveryEvents']) if version==3 else ())
+                tuple(self._stored_delivery_event(row) for row in value['deliveryEvents']) if version>=3 else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise AnnualAccountsError.unavailable() from None
 
@@ -251,7 +251,7 @@ class PostgresAnnualAccountsTransaction:
             if (not isinstance(row,Mapping) or set(row)!={'sequence','filing_id','company_id','income_year',
                     'recorded_by','slot','canonical_json','event_sha256','recorded_at'}
                     or type(row['sequence']) is not int or type(row['income_year']) is not int):raise ValueError()
-            record=decode_annual_accounts_delivery_record(row['canonical_json'],row['event_sha256'])
+            record=decode_annual_accounts_delivery_record_v2(row['canonical_json'],row['event_sha256'])
             binding=record.binding
             if (row['filing_id']!=binding.filing_id or row['company_id']!=str(binding.company_id)
                     or row['income_year']!=int(binding.income_year) or row['recorded_by']!=str(binding.actor_id.subject)
@@ -262,7 +262,9 @@ class PostgresAnnualAccountsTransaction:
 
     async def append_delivery_event(self,record):
         if record.binding.actor_id!=self.actor_id:raise AnnualAccountsError.forbidden()
-        row=await self._one_row('select annual_accounts_filing.append_delivery_event_v1(%s::text,%s::text,%s::text) as result',
+        installed=await self._one_row("select pg_catalog.to_regprocedure('annual_accounts_filing.append_delivery_event_v2(text,text,text)') is not null as successor",())
+        version=2 if installed.get('successor') is True else 1
+        row=await self._one_row(f'select annual_accounts_filing.append_delivery_event_v{version}(%s::text,%s::text,%s::text) as result',
             (record.canonical_json,record.sha256,str(self.actor_id.subject)))
         result=row.get('result')
         if not isinstance(result,Mapping) or set(result)!={'event','inserted'} or type(result['inserted']) is not bool:

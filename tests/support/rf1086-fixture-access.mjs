@@ -42,6 +42,8 @@ const allowed = new Set([
   "annual_accounts_filing.filing_previews",
   "annual_accounts_filing.authority_test_runs",
   "annual_accounts_filing.authority_permissions",
+  "annual_accounts_filing.delivery_events",
+  "annual_accounts_filing.delivery_drafts",
 
   "company_tax_filing.filing_submissions",
   "company_tax_filing.filing_review_comments",

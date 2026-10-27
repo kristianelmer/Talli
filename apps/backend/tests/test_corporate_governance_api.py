@@ -3,6 +3,9 @@ from __future__ import annotations
 from base64 import b64decode
 from datetime import date
 from types import SimpleNamespace
+import asyncio
+from dataclasses import replace
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -14,6 +17,7 @@ from talli_backend.modules.ledger.public import (
     ReversedLedgerEntry,
 )
 from talli_backend.shared.kernel import IncomeYear, Money
+from talli_backend.modules.corporate_governance.public import CorporateEventId,CorporateEventRecord
 
 from test_corporate_governance import supported_annual_close, supported_proposal
 from test_corporate_governance_workflow import (
@@ -779,3 +783,20 @@ def test_openapi_exposes_governance_operations() -> None:
         "corporateGovernanceListSupportedEvents",
         "corporateGovernanceRecordSupportedEvent",
     } <= operations
+
+
+def test_annual_close_lifecycle_returns_nested_immutable_canonical_facts_and_event_metadata():
+    client,transaction=client_and_transaction(annual_documents=True)
+    command=supported_annual_close();snapshot=asyncio.run(transaction.read_lifecycle(command.decision_id));decision=snapshot.decisions[0]
+    metadata={'source':{'rows':[{'id':'retained-original','flags':[True,None]}]}}
+    event=CorporateEventRecord(CorporateEventId(str(uuid4())),decision.company_id,decision.income_year,
+        decision.decision_id,decision.document_set_id,None,'signing_requested',decision.created_by,NOW.value,NOW.value,
+        decision.decision_hash,None,metadata,'nested-lifecycle-metadata')
+    snapshot=replace(snapshot,events=(event,))
+    async def loaded(_):return snapshot
+    transaction.read_lifecycle=loaded
+    response=client.get('/api/v1/corporate-governance/decisions/'+str(command.decision_id),headers={'Authorization':'Bearer access-token'})
+    assert response.status_code==200,response.text
+    body=response.json();canonical=body['decisions'][0]['canonicalInput']
+    assert canonical['general_meeting']['chair_name']
+    assert body['events'][0]['metadata']==metadata

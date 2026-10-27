@@ -280,6 +280,7 @@ const annualAccountsOperations = {
   deliveryWorkspace: ["/api/v1/annual-accounts/delivery-workspace","get","annualAccountsGetDeliveryWorkspace"],
   deliveryOriginal: ["/api/v1/annual-accounts/delivery-original","get","annualAccountsGetDeliveryOriginal"],
   prepareDelivery: ["/api/v1/annual-accounts/delivery-drafts","post","annualAccountsPrepareDeliveryDraft"],
+  prepareCorrection: ["/api/v1/annual-accounts/delivery-corrections","post","annualAccountsPrepareDeliveryCorrection"],
   reviewDelivery: ["/api/v1/annual-accounts/delivery-reviews","post","annualAccountsReviewDelivery"],
   advanceDelivery: ["/api/v1/annual-accounts/delivery-advances","post","annualAccountsAdvanceDelivery"],
   reconcileDelivery: ["/api/v1/annual-accounts/delivery-reconciliations","post","annualAccountsReconcileDelivery"],
@@ -919,7 +920,7 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsCorporateBlockerWire", "AnnualAccountsReadinessPreviewRequest", "AnnualAccountsReadinessIssueWire", "AnnualAccountsReadinessPreviewWire",
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
-  "AccountsPrepareDeliveryRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
+  "AccountsPrepareDeliveryRequest","AccountsPrepareCorrectionRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
   "AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
@@ -2826,6 +2827,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
           || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
+            || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
             || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
       return result;
     },
@@ -2840,6 +2842,12 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async annualAccountsPrepareDeliveryDraft(command: AccountsPrepareDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
       const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-drafts\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsPrepareDeliveryCorrection(command: AccountsPrepareCorrectionRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-corrections\`,"POST",request,command,isAccountsDeliveryProgressWire);
       if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
       return result;
     },
