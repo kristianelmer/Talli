@@ -178,7 +178,13 @@ DATABASE_URL="$DB_URL" node scripts/rehearse-governance-contract.mjs
 # no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" npm run test:company-tax-database
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" npm run test:annual-accounts-database
 # Staged RF ACL assertions above intentionally run before this deferred contract.
 # The default HTTP/browser composition requires the narrow V2/V3 RPC closure.

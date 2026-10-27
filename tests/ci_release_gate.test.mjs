@@ -1410,6 +1410,10 @@ if [[ "$2" == "test:supabase-advisors" ]]; then
  fi
 fi
 printf 'PHASE:%s\\n' "$phase"
+if [[ "$2" == "test:company-tax-database" || "$2" == "test:annual-accounts-database" ]]; then
+ [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
+ [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+fi
 if [[ "$2" == "build:web" ]]; then
  [[ "$NEXT_PUBLIC_SUPABASE_URL" == "http://127.0.0.1:54321" && "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == "synthetic" ]]
  [[ "$TALLI_BACKEND_URL" == "http://127.0.0.1:8000" && "$NEXT_TELEMETRY_DISABLED" == "1" ]]

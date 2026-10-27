@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { createHash, webcrypto } from "node:crypto";
 import vm from "node:vm";
 import ts from "typescript";
-import { createTalliApiClient, TalliApiError } from "../../packages/talli-api-client/src/generated/client.ts";
+import { createTalliApiClient, TalliApiError, verifyCompanyTaxDeliveryDraftArchive } from "../../packages/talli-api-client/src/index.ts";
 
 const company = "10000000-0000-4000-8000-000000000001";
 const source = () => ({
@@ -93,7 +93,7 @@ for (const version of ["company-tax-delivery-draft-v1", "company-tax-delivery-dr
       recordCount: 1, records: [{ filingId: draft().filingId, canonicalJson,
         draftSha256: tamper ? "0".repeat(64) : createHash("sha256").update(canonicalJson).digest("hex") }] };
     const exports = {};
-    const dependencies = { backendBaseUrl: () => "https://backend.example", TalliApiError,
+    const dependencies = { backendBaseUrl: () => "https://backend.example", TalliApiError, verifyCompanyTaxDeliveryDraftArchive,
       createTalliApiClient: () => ({ companyTaxGetSourceFacts: async () => source(),
         companyTaxGetDeliveryDraftArchive: async () => original }) };
     const text = readFileSync(new URL("../../apps/web/features/company-tax-filing/transport.ts", import.meta.url), "utf8");
