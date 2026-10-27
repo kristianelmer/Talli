@@ -176,6 +176,9 @@ jobs:
       - name: Prefetch official PostgreSQL fixture images anonymously
         run: bash scripts/prefetch-postgres-fixture-images.sh
 
+      - name: Prefetch the pinned Supabase local stack anonymously
+        run: bash scripts/prefetch-supabase-fixture-images.sh
+
       - name: Rehearse migrations, RLS, storage, and owner persistence
         id: rehearsal
         env:
@@ -242,6 +245,9 @@ jobs:
 
       - name: Prefetch official PostgreSQL fixture images anonymously
         run: bash scripts/prefetch-postgres-fixture-images.sh
+
+      - name: Prefetch the pinned Supabase local stack anonymously
+        run: bash scripts/prefetch-supabase-fixture-images.sh
 
       - name: Run the canonical immutable gate producer
         env:

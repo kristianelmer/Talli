@@ -125,7 +125,7 @@ process.exit(Number(process.env.ADVISOR_TEST_STATUS));
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-function runPostgresPrefetch({ pullFailures = {}, failTag = false } = {}) {
+function runPostgresPrefetch({ pullFailures = {}, failTag = false, supabase = false, clockProbe = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
   try {
     const bin = join(directory, "bin");
@@ -158,8 +158,9 @@ assert.deepEqual(fs.readdirSync(config), ['config.json']);
 const authConfig = JSON.parse(fs.readFileSync(path.join(config, 'config.json')));
 assert.deepEqual(Object.keys(authConfig), ['auths'], 'no credential helper, store or other caller settings');
 assert.deepEqual(authConfig.auths['public.ecr.aws'], {});
-assert.deepEqual(authConfig.auths['https://index.docker.io/v1/'], {});
-assert.ok(Object.keys(authConfig.auths).every(key => ['public.ecr.aws', 'https://index.docker.io/v1/', 'docker.io', 'registry-1.docker.io'].includes(key)));
+const supabase = process.env.PREFETCH_SUPABASE === '1';
+assert.deepEqual(authConfig.auths[supabase ? 'ghcr.io' : 'https://index.docker.io/v1/'], {});
+assert.deepEqual(Object.keys(authConfig.auths).sort(), ['public.ecr.aws', supabase ? 'ghcr.io' : 'https://index.docker.io/v1/'].sort());
 assert.ok(Object.values(authConfig.auths).every(value => JSON.stringify(value) === '{}'), 'both sources stay anonymous');
 assert.equal(fs.statSync(config).mode & 0o077, 0);
 assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
@@ -168,11 +169,20 @@ const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
   ? fs.readFileSync(process.env.PREFETCH_TRACE, 'utf8').trim().split('\\n').map(line => JSON.parse(line)) : [];
 fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
 const tag = args[1].split(':').at(-1);
-assert.ok(['17', '17-alpine', '16-alpine'].includes(tag));
-assert.ok(['public.ecr.aws/docker/library/postgres:' + tag, 'docker.io/library/postgres:' + tag].includes(args[1]), 'fixed official source only');
-assert.equal(args.length, args[0] === 'pull' ? 2 : 3);
-if (args[0] === 'tag') assert.equal(args[2], 'postgres:' + tag);
+const images=['postgres:17.6.1.143','kong:2.8.1','gotrue:v2.192.0','postgrest:v14.14','storage-api:v1.62.5'];
+const image=supabase ? images.find(image=>args[1].endsWith('/'+image)) : null;
+if(supabase){
+ assert.ok(image,'fixed Supabase version only');
+ assert.ok(['public.ecr.aws/supabase/'+image,'ghcr.io/supabase/'+image].includes(args[1]),'fixed publisher mirror only');
+ for(const name of ['DOCKER_TLS_VERIFY','DOCKER_CERT_PATH'])assert.equal(process.env[name],undefined);
+}else{
+ assert.ok(['17','17-alpine','16-alpine'].includes(tag));
+ assert.ok(['public.ecr.aws/docker/library/postgres:'+tag,'docker.io/library/postgres:'+tag].includes(args[1]),'fixed official source only');
+}
+assert.equal(args.length,args[0]==='pull'?2:3);
+if(args[0]==='tag')assert.equal(args[2],supabase?'public.ecr.aws/supabase/'+image:'postgres:'+tag);
 if (args[0] === 'pull') {
+  if(process.env.PREFETCH_CLOCK_PROBE==='1')Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,2100);
   const attempt = previousCalls.filter(call => call.args[0] === 'pull' && call.args[1] === args[1]).length;
   const injected = JSON.parse(process.env.PREFETCH_PULL_FAILURES);
   const failures = injected[args[1]] ?? injected[tag] ?? [];
@@ -182,7 +192,7 @@ if (args[0] === 'pull') {
     process.exit(typeof failure === 'string' ? 23 : failure.status);
   }
 }
-if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && args[1].endsWith(':17-alpine')) process.exit(24);
+if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && (supabase || args[1].endsWith(':17-alpine'))) process.exit(24);
 `);
     chmodSync(shim, 0o755);
     const sleepShim = join(bin, "sleep");
@@ -190,11 +200,31 @@ if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && args[1].endsWi
 require('node:fs').appendFileSync(process.env.PREFETCH_SLEEP_TRACE, JSON.stringify(process.argv.slice(2)) + '\\n');
 `);
     chmodSync(sleepShim, 0o755);
-    const result = spawnSync("bash", [postgresPrefetchPath], {
-      encoding: "utf8", timeout: 10_000,
+    const timeoutShim = join(bin,"timeout");
+    writeFileSync(timeoutShim,`#!${process.execPath}
+const assert=require('node:assert/strict');
+const {spawnSync}=require('node:child_process');
+const args=process.argv.slice(2);
+assert.deepEqual(args.slice(0,2),['--signal=TERM','--kill-after=5s']);
+assert.match(args[2],/^[1-9][0-9]*s$/);
+assert.ok(Number.parseInt(args[2])<=120);
+const r=spawnSync(args[3],args.slice(4),{env:process.env,stdio:'inherit'});
+process.exit(r.status??1);
+`);
+    chmodSync(timeoutShim,0o755);
+    let selectedScript=supabase?fileURLToPath(new URL('../scripts/prefetch-supabase-fixture-images.sh',import.meta.url)):postgresPrefetchPath;
+    if(clockProbe){
+      const original=readFileSync(selectedScript,'utf8');
+      assert.equal(original.split('fixture_budget=600').length,2);
+      selectedScript=join(directory,'bounded-clock-probe.sh');
+      writeFileSync(selectedScript,original.replace('fixture_budget=600','fixture_budget=1'));
+    }
+    const result = spawnSync("bash", [selectedScript], {
+      encoding: "utf8", timeout: 20_000,
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: temporary,
         DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
         DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
+        PREFETCH_SUPABASE: supabase ? "1" : "0", PREFETCH_CLOCK_PROBE: clockProbe ? "1" : "0", DOCKER_TLS_VERIFY: "synthetic-tls", DOCKER_CERT_PATH: "/synthetic-certs",
         PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
         PREFETCH_CREDENTIAL_TRACE: credentialTrace,
         PREFETCH_PULL_FAILURES: JSON.stringify(pullFailures), PREFETCH_FAIL_TAG: failTag ? "1" : "0" },
@@ -404,6 +434,96 @@ test("PostgreSQL prefetch rejects caller-selected image references before any co
   assert.equal(result.status, 2);
   assert.match(result.stderr, /accepts no image overrides/u);
   assert.equal(result.stdout, "");
+});
+
+const supabaseStackImages=['postgres:17.6.1.143','kong:2.8.1','gotrue:v2.192.0','postgrest:v14.14','storage-api:v1.62.5'];
+const supabaseEcr=image=>'public.ecr.aws/supabase/'+image;
+const supabaseGhcr=image=>'ghcr.io/supabase/'+image;
+const supabaseCacheCalls=supabaseStackImages.flatMap(image=>[['pull',supabaseEcr(image)],['tag',supabaseEcr(image),supabaseEcr(image)]]);
+const ghcrThrottle='error pulling image configuration: toomanyrequests: retry-after: 251.948µs, allowed: 44000/minute';
+
+test('Supabase stack prefetch serially fills only the five locked publisher cache names anonymously',()=>{
+  const {result,calls,sleeps}=runPostgresPrefetch({supabase:true});
+  assert.equal(result.status,0,result.stderr);assert.deepEqual(calls,supabaseCacheCalls);assert.deepEqual(sleeps,[]);
+});
+test('Supabase stack prefetch recovers the observed ECR allowance and GHCR configuration throttling',()=>{
+  const image=supabaseStackImages[1],ecr=supabaseEcr(image),ghcr=supabaseGhcr(image);
+  const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:[ecrDataLimit],[ghcr]:[ghcrThrottle,ghcrThrottle]}});
+  assert.equal(result.status,0,result.stderr);
+  assert.deepEqual(calls,[...supabaseCacheCalls.slice(0,2),['pull',ecr],...Array(3).fill(['pull',ghcr]),['tag',ghcr,ecr],...supabaseCacheCalls.slice(4)]);
+  assert.deepEqual(sleeps,[['20'],['40']]);
+});
+test('Supabase stack prefetch bounds repeated GHCR throttles and never tags a failed pull',()=>{
+  const ecr=supabaseEcr(supabaseStackImages[0]),ghcr=supabaseGhcr(supabaseStackImages[0]);
+  const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:[ecrDataLimit],[ghcr]:Array(6).fill(ghcrThrottle)}});
+  assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],...Array(5).fill(['pull',ghcr])]);
+  assert.deepEqual(sleeps,[['20'],['40'],['60'],['60']]);
+});
+test('Supabase stack prefetch bounds ECR transport retries without inventing another fallback',()=>{
+  const ecr=supabaseEcr(supabaseStackImages[0]);
+  const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:Array(4).fill(ecrDeadline)}});
+  assert.equal(result.status,23);assert.deepEqual(calls,Array(3).fill(['pull',ecr]));assert.deepEqual(sleeps,[['20'],['40']]);
+});
+for(const fatal of ['unauthorized','manifest unknown','x509: certificate expired','connection refused','unclassified failure']){
+  test('Supabase stack prefetch stops on ECR permanent or unknown failure: '+fatal,()=>{
+    const ecr=supabaseEcr(supabaseStackImages[0]);
+    const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:[fatal]}});
+    assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr]]);assert.deepEqual(sleeps,[]);
+  });
+}
+for(const failures of [[ecrDataLimit+'\nunauthorized'],['unauthorized\n'+ecrDataLimit]]){
+  test('Supabase stack prefetch fatal diagnosis outranks data allowance: '+failures[0].split('\n')[0],()=>{
+    const ecr=supabaseEcr(supabaseStackImages[0]);
+    const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:failures}});
+    assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr]]);assert.deepEqual(sleeps,[]);
+  });
+}
+for(const fatal of ['denied',ecrDataLimit,'unknown registry failure']){
+  test('Supabase stack prefetch stops on GHCR quota/permanent/unknown failure: '+fatal,()=>{
+    const ecr=supabaseEcr(supabaseStackImages[0]),ghcr=supabaseGhcr(supabaseStackImages[0]);
+    const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:[ecrDataLimit],[ghcr]:[fatal]}});
+    assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],['pull',ghcr]]);assert.deepEqual(sleeps,[]);
+  });
+}
+for(const status of [124,130]){
+  test('Supabase stack prefetch preserves process deadline/interruption '+status,()=>{
+    const ecr=supabaseEcr(supabaseStackImages[0]);
+    const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,pullFailures:{[ecr]:[{message:ecrDataLimit,status}]}});
+    assert.equal(result.status,status);assert.deepEqual(calls,[['pull',ecr]]);assert.deepEqual(sleeps,[]);
+  });
+}
+test('Supabase stack prefetch stops after failed cache aliasing',()=>{
+  const {result,calls,sleeps}=runPostgresPrefetch({supabase:true,failTag:true});
+  assert.equal(result.status,24);assert.deepEqual(calls,supabaseCacheCalls.slice(0,2));assert.deepEqual(sleeps,[]);
+});
+test('Supabase stack prefetch enforces the shared wall budget before another Docker operation',()=>{
+  const {result,calls}=runPostgresPrefetch({supabase:true,clockProbe:true});
+  assert.equal(result.status,124);assert.deepEqual(calls,[supabaseCacheCalls[0]]);
+});
+test('Supabase stack prefetch rejects image overrides before reading dependencies or caller config',()=>{
+  const path=fileURLToPath(new URL('../scripts/prefetch-supabase-fixture-images.sh',import.meta.url));
+  const result=spawnSync('bash',[path,'foreign/image:tag'],{encoding:'utf8',env:{...process.env,RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
+  assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/accepts no image overrides/u);
+});
+test('Supabase stack cache mapping fails closed when the installed CLI differs from the lock',()=>{
+  const directory=mkdtempSync(join(tmpdir(),'talli-cli-version-refusal-'));
+  try{
+    mkdirSync(join(directory,'node_modules/supabase'),{recursive:true});
+    writeFileSync(join(directory,'node_modules/supabase/package.json'),JSON.stringify({version:'2.109.2'}));
+    writeFileSync(join(directory,'package-lock.json'),JSON.stringify({packages:{'node_modules/supabase':{version:'2.109.1'}}}));
+    const script=fileURLToPath(new URL('../scripts/prefetch-supabase-fixture-images.sh',import.meta.url));
+    const result=spawnSync('bash',[script],{cwd:directory,encoding:'utf8',env:{...process.env,RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
+    assert.equal(result.status,2);assert.equal(result.stdout,'');assert.equal(result.stderr,'');
+  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+test('only the full-stack database and immutable jobs prefetch Supabase before their original aggregates',()=>{
+  const workflow=readFileSync(workflowPath,'utf8'),command='bash scripts/prefetch-supabase-fixture-images.sh';
+  assert.equal(workflow.split(command).length-1,2);
+  for(const [job,next,aggregate] of [['database','evidence','npm run test:supabase:local'],['evidence','release-gate','npm run gate:customer-ready']]){
+    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+    assert.ok(section.indexOf(command)>section.indexOf('npm ci'));
+    assert.ok(section.indexOf(command)<section.indexOf(aggregate));
+  }
 });
 
 test("every database-using gate job prefetches the same fixed official PostgreSQL images", () => {
