@@ -131,6 +131,9 @@ jobs:
   database:
     name: Database isolation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     # The full serial RF → Tax → Accounts desktop/touch lane now includes
     # finite delivery, correction and unknown-response recovery for all three.
     timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope == 'rf10-fast-diagnostic' && 40 || 120 }}
@@ -176,7 +179,9 @@ jobs:
       - name: Prefetch official PostgreSQL fixture images anonymously
         run: bash scripts/prefetch-postgres-fixture-images.sh
 
-      - name: Prefetch the pinned Supabase local stack anonymously
+      - name: Prefetch the pinned Supabase local stack
+        env:
+          TALLI_GHCR_JOB_TOKEN: ${{ github.token }}
         run: bash scripts/prefetch-supabase-fixture-images.sh
 
       - name: Rehearse migrations, RLS, storage, and owner persistence
@@ -215,6 +220,9 @@ jobs:
     name: Immutable evidence
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_evidence && (inputs.rf_scope || 'full') == 'full' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     timeout-minutes: 120
     steps:
       - name: Check out the immutable revision
@@ -246,7 +254,9 @@ jobs:
       - name: Prefetch official PostgreSQL fixture images anonymously
         run: bash scripts/prefetch-postgres-fixture-images.sh
 
-      - name: Prefetch the pinned Supabase local stack anonymously
+      - name: Prefetch the pinned Supabase local stack
+        env:
+          TALLI_GHCR_JOB_TOKEN: ${{ github.token }}
         run: bash scripts/prefetch-supabase-fixture-images.sh
 
       - name: Run the canonical immutable gate producer

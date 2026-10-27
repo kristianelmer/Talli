@@ -126,7 +126,7 @@ process.exit(Number(process.env.ADVISOR_TEST_STATUS));
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-function runFixturePrefetch({ pullFailures = {}, failTag = false, supabase = false, clockProbe = false } = {}) {
+function runFixturePrefetch({ pullFailures = {}, failTag = false, supabase = false, clockProbe = false, jobAuth = false, failLogin = false, shellOptions = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
   try {
     const bin = join(directory, "bin");
@@ -153,22 +153,41 @@ const cliArgs = process.argv.slice(2);
 assert.deepEqual(cliArgs.slice(0, 2), ['--context', 'default']);
 const args = cliArgs.slice(2);
 const config = process.env.DOCKER_CONFIG;
-assert.ok(args[0] === 'pull' || args[0] === 'tag', 'unexpected Docker operation');
+assert.ok(['pull','tag','login'].includes(args[0]),'unexpected Docker operation');
 assert.notEqual(config, process.env.PREFETCH_CALLER_CONFIG);
 assert.deepEqual(fs.readdirSync(config), ['config.json']);
 const authConfig = JSON.parse(fs.readFileSync(path.join(config, 'config.json')));
 assert.deepEqual(Object.keys(authConfig), ['auths'], 'no credential helper, store or other caller settings');
 assert.deepEqual(authConfig.auths['public.ecr.aws'], {});
 const supabase = process.env.PREFETCH_SUPABASE === '1';
-assert.deepEqual(authConfig.auths[supabase ? 'ghcr.io' : 'https://index.docker.io/v1/'], {});
-assert.deepEqual(Object.keys(authConfig.auths).sort(), ['public.ecr.aws', supabase ? 'ghcr.io' : 'https://index.docker.io/v1/'].sort());
-assert.ok(Object.values(authConfig.auths).every(value => JSON.stringify(value) === '{}'), 'both sources stay anonymous');
+const jobAuth=process.env.PREFETCH_JOB_AUTH==='1';
+const auth=Buffer.from('synthetic-owner:synthetic-job-token').toString('base64');
+const mirrorAuth=authConfig.auths[supabase?'ghcr.io':'https://index.docker.io/v1/'];
+assert.deepEqual(Object.keys(authConfig.auths).sort(), ['public.ecr.aws',supabase?'ghcr.io':'https://index.docker.io/v1/'].sort());
+if(!supabase||!jobAuth)assert.deepEqual(mirrorAuth,{});
+else assert.ok(JSON.stringify(mirrorAuth)==='{}'||JSON.stringify(mirrorAuth)===JSON.stringify({auth}));
+if(supabase){
+ for(const variable of ['TALLI_GHCR_JOB_TOKEN','GH_TOKEN','GITHUB_TOKEN','fixture_job_token','fixture_job_auth','fixture_output'])assert.equal(process.env[variable],undefined);
+ if(args[1].startsWith('ghcr.io/'))assert.deepEqual(mirrorAuth,jobAuth?{auth}:{});
+}
 assert.equal(fs.statSync(config).mode & 0o077, 0);
 assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
 for (const variable of ['DOCKER_AUTH_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST']) assert.equal(process.env[variable], undefined);
 const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
   ? fs.readFileSync(process.env.PREFETCH_TRACE, 'utf8').trim().split('\\n').map(line => JSON.parse(line)) : [];
 fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
+if(args[0]==='login'){
+ assert.ok(supabase&&jobAuth);
+ assert.deepEqual(args,['login','ghcr.io','--username','synthetic-owner','--password-stdin']);
+ assert.deepEqual(mirrorAuth,{});
+ const token=fs.readFileSync(0,'utf8');assert.equal(token,'synthetic-job-token');
+ process.stdout.write('noisy login '+token+' '+auth);
+ process.stderr.write('noisy login '+token+' '+auth);
+ if(process.env.PREFETCH_FAIL_LOGIN==='1')process.exit(23);
+ authConfig.auths['ghcr.io']={auth};fs.writeFileSync(path.join(config,'config.json'),JSON.stringify(authConfig));
+ process.exit(0);
+}
+
 const tag = args[1].split(':').at(-1);
 const images=${JSON.stringify(supabaseStackImages)};
 const image=supabase ? images.find(image=>args[1].endsWith('/'+image)) : null;
@@ -225,6 +244,11 @@ process.exit(r.status??1);
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: temporary,
         DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
         DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
+        SHELLOPTS: shellOptions ? "allexport:xtrace" : undefined,
+        fixture_job_token: "synthetic-exported-shadow", fixture_job_auth: "synthetic-exported-shadow", fixture_output: "synthetic-exported-shadow",
+        PREFETCH_JOB_AUTH: jobAuth ? "1" : "0", PREFETCH_FAIL_LOGIN: failLogin ? "1" : "0",
+        TALLI_GHCR_JOB_TOKEN: jobAuth ? "synthetic-job-token" : undefined, GH_TOKEN: "synthetic-ambient-token", GITHUB_TOKEN: "synthetic-ambient-token",
+        GITHUB_ACTIONS: jobAuth ? "true" : "", GITHUB_REPOSITORY: jobAuth ? "kristianelmer/Talli" : "", GITHUB_ACTOR: jobAuth ? "synthetic-owner" : "",
         PREFETCH_SUPABASE: supabase ? "1" : "0", PREFETCH_CLOCK_PROBE: clockProbe ? "1" : "0", DOCKER_TLS: "1", DOCKER_TLS_VERIFY: "synthetic-tls", DOCKER_CERT_PATH: "/synthetic-certs",
         PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
         PREFETCH_CREDENTIAL_TRACE: credentialTrace,
@@ -525,6 +549,58 @@ test('Supabase stack cache mapping fails closed when the installed CLI differs f
     assert.equal(result.status,2);assert.equal(result.stdout,'');assert.equal(result.stderr,'');
   }finally{rmSync(directory,{recursive:true,force:true});}
 });
+test('Supabase registry job token is lazy, stdin-only and used once for the fixed GHCR host',()=>{
+  const pullFailures=Object.fromEntries(supabaseStackImages.map(image=>[supabaseEcr(image),[ecrDataLimit]]));
+  const {result,calls,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,pullFailures});
+  assert.equal(result.status,0,result.stderr);
+  const expected=supabaseStackImages.flatMap((image,i)=>[['pull',supabaseEcr(image)],...(i===0?[['login','ghcr.io','--username','synthetic-owner','--password-stdin']]:[]),['pull',supabaseGhcr(image)],['tag',supabaseGhcr(image),supabaseEcr(image)]]);
+  assert.deepEqual(calls,expected);assert.deepEqual(sleeps,[]);
+  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+});
+test('Supabase registry keeps job credentials private under inherited tracing and allexport',()=>{
+  const image=supabaseStackImages[0];
+  const {result}=runFixturePrefetch({supabase:true,jobAuth:true,shellOptions:true,pullFailures:{[supabaseEcr(image)]:[ecrDataLimit]}});
+  assert.equal(result.status,0,result.stderr);
+  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+});
+test('Supabase registry job token is unused while anonymous ECR succeeds',()=>{
+  const {result,calls}=runFixturePrefetch({supabase:true,jobAuth:true});
+  assert.equal(result.status,0,result.stderr);assert.deepEqual(calls,supabaseCacheCalls);
+});
+test('Supabase registry withholds noisy failed login output and never retries anonymously',()=>{
+  const ecr=supabaseEcr(supabaseStackImages[0]);
+  const {result,calls,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,failLogin:true,pullFailures:{[ecr]:[ecrDataLimit]}});
+  assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],['login','ghcr.io','--username','synthetic-owner','--password-stdin']]);
+  assert.deepEqual(sleeps,[]);assert.match(result.stderr,/authentication failed/u);
+  assert.doesNotMatch(result.stdout+result.stderr,/synthetic-job-token|c3ludGhldGljLW93bmVyOnN5bnRoZXRpYy1qb2ItdG9rZW4=/u);
+});
+test('Supabase registry redacts raw and Docker-encoded job credentials from retry diagnostics',()=>{
+  const image=supabaseStackImages[0],auth=Buffer.from('synthetic-owner:synthetic-job-token').toString('base64');
+  const {result,sleeps}=runFixturePrefetch({supabase:true,jobAuth:true,pullFailures:{[supabaseEcr(image)]:[ecrDataLimit],[supabaseGhcr(image)]:[ghcrThrottle+' synthetic-job-token '+auth]}});
+  assert.equal(result.status,0,result.stderr);assert.deepEqual(sleeps,[['20']]);
+  assert.match(result.stderr,/<redacted>/u);assert.ok(!result.stderr.includes('synthetic-job-token'));assert.ok(!result.stderr.includes(auth));
+});
+for(const [name,context] of [
+ ['local process',{GITHUB_ACTIONS:'false',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:'synthetic-owner'}],
+ ['other repository',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'foreign/repository',GITHUB_ACTOR:'synthetic-owner'}],
+ ['missing actor',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:''}],
+ ['unsafe actor',{GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'kristianelmer/Talli',GITHUB_ACTOR:'foreign:actor'}],
+ ])test('Supabase registry rejects a supplied job credential outside its designated context: '+name,()=>{
+  const script=fileURLToPath(new URL('../scripts/prefetch-supabase-fixture-images.sh',import.meta.url));
+  const result=spawnSync('bash',[script],{encoding:'utf8',env:{...process.env,...context,TALLI_GHCR_JOB_TOKEN:'synthetic-job-token',RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
+  assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/designated Actions context/u);assert.doesNotMatch(result.stderr,/synthetic-job-token|mktemp/u);
+ });
+test('registry job credentials are step-scoped and use read-only package permission in exactly two jobs',()=>{
+  const workflow=readFileSync(workflowPath,'utf8');
+  assert.equal(workflow.split('TALLI_GHCR_JOB_TOKEN: ${{ github.token }}').length-1,2);
+  for(const [job,next] of [['database','evidence'],['evidence','release-gate']]){
+    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+    assert.match(section,/permissions:\n\s+contents: read\n\s+packages: read/u);
+    assert.match(section,/Prefetch the pinned Supabase local stack\n\s+env:\n\s+TALLI_GHCR_JOB_TOKEN: \$\{\{ github.token \}\}\n\s+run: bash scripts\/prefetch-supabase-fixture-images.sh/u);
+    assert.doesNotMatch(section,/packages: write|secrets\.|write-all/u);
+  }
+});
+
 test('only the full-stack database and immutable jobs prefetch Supabase before their original aggregates',()=>{
   const workflow=readFileSync(workflowPath,'utf8'),command='bash scripts/prefetch-supabase-fixture-images.sh';
   assert.equal(workflow.split(command).length-1,2);
