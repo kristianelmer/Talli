@@ -59,6 +59,10 @@ export const launchCriticalTables = [
   "corporate_governance.annual_close_artifacts",
   "corporate_governance.annual_close_events",
   "corporate_governance.annual_close_finalizations",
+  "company_tax_filing.delivery_drafts",
+  "company_tax_filing.delivery_events",
+  "annual_accounts_filing.delivery_drafts",
+  "annual_accounts_filing.delivery_events",
 ] as const;
 
 export type RestoreGateRecord = {
@@ -123,6 +127,8 @@ export function buildBackupManifest(archive: Record<string, any>) {
       rf1086SourceSubmissionClaims: archive.rf1086Production?.sourceSubmissionClaims?.length ?? null,
       rf1086SubmissionHeads: archive.rf1086Production == null ? null : archive.rf1086Production.submissionHead == null ? 0 : 1,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
+      companyTaxDeliveryDraftOriginals: archive.companyTaxDeliveryDrafts?.originals?.recordCount ?? null,
+      companyTaxDeliveryJournalEvents: archive.companyTaxDeliveryJournal?.eventCount ?? null,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
       auditEvents: archive.auditEvents?.length ?? 0,
@@ -165,6 +171,8 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       authorityTestRuns: archive.authorityTestRuns ?? [],
       rf1086Submissions: submissionCollections.rf1086Submissions,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
+      companyTaxDeliveryDrafts: archive.companyTaxDeliveryDrafts ?? null,
+      companyTaxDeliveryJournal: archive.companyTaxDeliveryJournal ?? null,
       filingSubmissions: submissionCollections.filingSubmissions,
       productionPilotEntitlements: archive.productionPilotEntitlements ?? [],
       filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
@@ -292,6 +300,48 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.auditEvents.length) failures.push("audit_events_missing");
   const authorityTestRuns = restored.restored.authorityTestRuns;
   const companyTaxSubmissions = restored.restored.companyTaxSubmissions;
+  const taxDrafts = restored.restored.companyTaxDeliveryDrafts;
+  const taxJournal = restored.restored.companyTaxDeliveryJournal;
+  const taxSource = taxDrafts?.sourceFacts;
+  const taxSourceVersion = taxSource?.evidence?.version;
+  const taxSourceGeneration = typeof taxSourceVersion === "string"
+    ? Number(/^company-tax-source-v(\d+):[0-9a-f]{64}$/u.exec(taxSourceVersion)?.[1])
+    : NaN;
+  if (taxDrafts && (!Number.isInteger(taxSourceGeneration) || taxSourceGeneration < 1)) {
+    fail("company_tax_delivery_source_unknown");
+  }
+  const taxOriginals = taxDrafts?.originals;
+  if (taxSourceGeneration >= 2 && (!taxOriginals
+    || taxOriginals.codec !== "company-tax-delivery-draft-archive-v1"
+    || taxOriginals.coverage !== "complete"
+    || taxOriginals.companyId !== restored.sourceCompanyId
+    || taxOriginals.incomeYear !== restored.incomeYear
+    || taxOriginals.sourceSha256 !== taxSource?.evidence?.digest
+    || taxOriginals.recordCount !== taxOriginals.records?.length
+    || restored.manifest.counts.companyTaxDeliveryDraftOriginals !== taxOriginals.recordCount)) {
+    fail("company_tax_delivery_draft_originals_mismatch");
+  }
+  if (taxSourceGeneration >= 3 && !taxJournal) {
+    fail("company_tax_delivery_journal_missing");
+  }
+  if (taxJournal) {
+    if (!taxDrafts || !taxSource || taxSourceGeneration < 3
+      || taxJournal.codec !== "company-tax-delivery-journal-archive-v1"
+      || taxJournal.coverage !== "complete"
+      || taxJournal.companyId !== restored.sourceCompanyId
+      || taxJournal.incomeYear !== restored.incomeYear
+      || taxJournal.draftCount !== taxJournal.drafts?.length
+      || taxJournal.eventCount !== taxJournal.events?.length
+      || taxJournal.sourceSha256 !== taxSource.evidence?.digest
+      || JSON.stringify(taxJournal.sourceFacts) !== JSON.stringify(taxSource)
+      || taxDrafts.originals?.sourceSha256 !== taxJournal.sourceSha256
+      || taxDrafts.originals?.recordCount !== taxJournal.draftCount
+      || JSON.stringify(taxDrafts.originals?.records) !== JSON.stringify(taxJournal.drafts)
+      || restored.manifest.counts.companyTaxDeliveryDraftOriginals !== taxJournal.draftCount
+      || restored.manifest.counts.companyTaxDeliveryJournalEvents !== taxJournal.eventCount) {
+      fail("company_tax_delivery_journal_mismatch");
+    }
+  }
   const authorityRunsById = new Map(authorityTestRuns.map((run: any) => [run.id, run]));
   const linkedAuthorityRunIds = new Set<string>();
   for (const submission of companyTaxSubmissions) {

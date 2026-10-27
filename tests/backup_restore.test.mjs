@@ -127,6 +127,22 @@ function archiveFixture(overrides = {}) {
   };
 }
 
+test("Tax V2 draft originals survive restore and missing originals fail integrity", () => {
+  const digest = "a".repeat(64);
+  const sourceFacts = { evidence: { version: `company-tax-source-v2:${digest}`, digest } };
+  const originals = { codec: "company-tax-delivery-draft-archive-v1", coverage: "complete",
+    companyId: "source-company", incomeYear: 2025, sourceSha256: digest, recordCount: 0, records: [] };
+  const intact = restoreCompanyYearArchive(archiveFixture({
+    companyTaxDeliveryDrafts: { sourceFacts, originals },
+  }), { targetCompanyId: "restored-company" });
+  assert.equal(intact.restored.companyTaxDeliveryDrafts.originals, originals);
+  assert.equal(assertRestoreIntegrity(intact).failures.includes("company_tax_delivery_draft_originals_mismatch"), false);
+  const missing = restoreCompanyYearArchive(archiveFixture({
+    companyTaxDeliveryDrafts: { sourceFacts, originals: null },
+  }), { targetCompanyId: "restored-company" });
+  assert.equal(assertRestoreIntegrity(missing).failures.includes("company_tax_delivery_draft_originals_mismatch"), true);
+});
+
 test("company-tax evidence migration preserves an atomic reference-only backup boundary", () => {
   const migrationPath = new URL(
     "../supabase/migrations/0005_company_tax_feedback_persistence.sql",

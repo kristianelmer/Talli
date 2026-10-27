@@ -6,6 +6,7 @@ import test from "node:test";
 import ts from "typescript";
 import {createTalliApiClient,TalliApiError,verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact} from "../../packages/talli-api-client/src/index.ts";
 import {buildPersistedCompanyArchive} from "../../apps/web/app/lib/archive.ts";
+import {restoreCompanyYearArchive,assertRestoreIntegrity} from "../../apps/web/app/lib/backup-restore.ts";
 
 const company="10000000-0000-4000-8000-000000000001";
 const filing="10000000-0000-4000-8000-000000000002";
@@ -454,6 +455,17 @@ test("company export preserves exact unknown journal originals alongside draft o
   assert.equal(archive.companyTaxDeliveryDrafts.originals.records[0].canonicalJson,value.drafts[0].canonicalJson);
   assert.equal(archive.companyTaxDeliveryDrafts.journal,undefined);
   assert.equal(archive.companyTaxDeliveryJournal.journals[0].status,"uncertain");
+  const intact=restoreCompanyYearArchive(archive,{targetCompanyId:company});
+  assert.equal(intact.manifest.counts.companyTaxDeliveryJournalEvents,value.eventCount);
+  assert.equal(intact.restored.companyTaxDeliveryJournal.events[1].canonicalJson,value.events[1].canonicalJson);
+  assert.equal(assertRestoreIntegrity(intact).failures.includes("company_tax_delivery_journal_mismatch"),false);
+  const missing=restoreCompanyYearArchive({...archive,companyTaxDeliveryJournal:null},{targetCompanyId:company});
+  assert.equal(assertRestoreIntegrity(missing).failures.includes("company_tax_delivery_journal_missing"),true);
+  const changed=restoreCompanyYearArchive({...archive,companyTaxDeliveryJournal:{...archive.companyTaxDeliveryJournal,eventCount:0}},{targetCompanyId:company});
+  assert.equal(assertRestoreIntegrity(changed).failures.includes("company_tax_delivery_journal_mismatch"),true);
+  const mismatchedOriginal=restoreCompanyYearArchive({...archive,companyTaxDeliveryDrafts:{...archive.companyTaxDeliveryDrafts,
+    originals:{...archive.companyTaxDeliveryDrafts.originals,records:[{...archive.companyTaxDeliveryDrafts.originals.records[0],canonicalJson:"{}"}]}}},{targetCompanyId:company});
+  assert.equal(assertRestoreIntegrity(mismatchedOriginal).failures.includes("company_tax_delivery_journal_mismatch"),true);
 });
 
 for(const change of ["original","codec","scope","actor","approval","summary","order","missing-summary","skipped-predecessor","uncertain-predecessor","orphan-completion","mfa-failure"]) {
