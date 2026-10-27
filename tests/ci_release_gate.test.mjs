@@ -529,6 +529,9 @@ if [[ "$1" == "--test" ]]; then
       if [[ "${mode}" == "rf-runtime-verification-failure" ]]; then exit 19; fi
       exit 0
       ;;
+    tests/corporate_annual_close_2025_database.test.mjs)
+      [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" && "$TALLI_CONNECTED_WEB_MODE" == "dev" ]]
+      ;;
     tests/browser_tax_filing.mjs|tests/browser_tax_delivery.mjs|tests/browser_annual_accounts_filing.mjs|tests/browser_accounts_delivery.mjs)
       [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
       [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
@@ -1129,7 +1132,7 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         "HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:annual-accounts-database",
         "RF_SOURCE_RUNTIME", "HARNESS_NODE:--test tests/rf1086_source_runtime_contract.test.mjs",
         "HARNESS_NPM:run test:supabase-advisors",
-        "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing", "HARNESS_NPM:run test:browser-company-tax", "HARNESS_NPM:run test:browser-annual-accounts", "HARNESS_NPM:run test:browser-accounts-delivery", "HARNESS_NODE:--test tests/connected_viewport.test.mjs", "HARNESS_NPM:run build:web", "HARNESS_NODE:--test tests/browser_tax_filing.mjs", "HARNESS_NODE:--test tests/browser_tax_delivery.mjs", "HARNESS_NODE:--test tests/browser_annual_accounts_filing.mjs", "HARNESS_NODE:--test tests/browser_accounts_delivery.mjs",
+        "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NODE:--test tests/corporate_annual_close_2025_database.test.mjs", "HARNESS_NPM:run test:browser-shareholder-register-filing", "HARNESS_NPM:run test:browser-company-tax", "HARNESS_NPM:run test:browser-annual-accounts", "HARNESS_NPM:run test:browser-accounts-delivery", "HARNESS_NODE:--test tests/connected_viewport.test.mjs", "HARNESS_NPM:run build:web", "HARNESS_NODE:--test tests/browser_tax_filing.mjs", "HARNESS_NODE:--test tests/browser_tax_delivery.mjs", "HARNESS_NODE:--test tests/browser_annual_accounts_filing.mjs", "HARNESS_NODE:--test tests/browser_accounts_delivery.mjs",
       ];
       const expected = failures[mode] ? milestones.slice(0, milestones.indexOf(failures[mode][1]) + 1) : milestones;
       const seen = result.stdout.split("\n").filter(line => /^(?:AUTHORITY_TOPOLOGY:|HARNESS_NPM:run |HARNESS_NODE:|GOVERNANCE_CONTRACT$|RF_SOURCE_RUNTIME$)/u.test(line));
