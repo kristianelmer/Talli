@@ -6,8 +6,10 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { TalliApiError } from "@talli/talli-api-client";
 import { loadCompanyAccessContext } from "../features/company-access/transport/load-company-access-context.ts";
+import { requestCompanyCancellation } from "../features/company-access/transport/company-access-cancellation.ts";
+import { pendingCancellationOperationForError } from "../app/lib/cancellation-operation-policy.ts";
 import { backendClientOptions } from "../lib/backend-configuration.ts";
-import { BackendTransportError, createPreviewBackendFetch } from "../lib/protected-backend-fetch.ts";
+import { BackendFetchError, BackendTransportError, createPreviewBackendFetch } from "../lib/protected-backend-fetch.ts";
 
 const origin = "https://backend-preview.example";
 const token = "synthetic.platform.signature";
@@ -100,7 +102,9 @@ test("token-resolution and fetch failures expose no credential-bearing cause and
   assert.equal(calls, 0);
   const noNetwork = createPreviewBackendFetch({ backendOrigin: origin, tokenProvider: async () => token,
     fetchImplementation: async () => { calls++; throw privateError; } });
-  await assert.rejects(noNetwork(origin + "/path"), stableError("BACKEND_FETCH_UNAVAILABLE"));
+  await assert.rejects(noNetwork(origin + "/path"), error => error instanceof BackendFetchError
+    && error instanceof TypeError && error.code === "BACKEND_FETCH_UNAVAILABLE"
+    && error.message === "BACKEND_FETCH_UNAVAILABLE" && error.cause === undefined);
   assert.equal(calls, 1);
 });
 
@@ -129,6 +133,77 @@ test("the platform credential cannot be resolved in a browser context", async t 
     tokenProvider: async () => { assert.fail("browser attempted token resolution"); },
     fetchImplementation: async () => { assert.fail("browser attempted platform request"); } });
   await assert.rejects(send(origin + "/path"), stableError("BACKEND_SERVER_CONTEXT_REQUIRED"));
+});
+
+for (const source of ["init", "Request"]) {
+  test("already-cancelled " + source + " prevents token acquisition and backend dispatch", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("private abort detail"));
+    const send = createPreviewBackendFetch({ backendOrigin: origin,
+      tokenProvider: async () => { assert.fail("cancelled request resolved a token"); },
+      fetchImplementation: async () => { assert.fail("cancelled request reached backend"); } });
+    const input = source === "Request" ? new Request(origin + "/path", { signal: controller.signal }) : origin + "/path";
+    await assert.rejects(send(input, source === "init" ? { signal: controller.signal } : {}),
+      stableError("BACKEND_REQUEST_ABORTED"));
+  });
+}
+
+test("cancellation stops waiting for an opaque token provider and a late token cannot dispatch", { timeout: 5_000 }, async () => {
+  const started = Promise.withResolvers();
+  const pending = Promise.withResolvers();
+  const controller = new AbortController();
+  let calls = 0;
+  const send = createPreviewBackendFetch({ backendOrigin: origin,
+    tokenProvider: () => { started.resolve(); return pending.promise; },
+    fetchImplementation: async () => { calls++; return new Response(); } });
+  const response = send(origin + "/path", { signal: controller.signal });
+  await started.promise;
+  controller.abort(new Error("private abort detail"));
+  await assert.rejects(response, stableError("BACKEND_REQUEST_ABORTED"));
+  pending.resolve(token);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 0);
+});
+
+test("cancellation during token resolution is rechecked before backend dispatch", async () => {
+  const controller = new AbortController();
+  const send = createPreviewBackendFetch({ backendOrigin: origin,
+    tokenProvider: async () => { controller.abort(); return token; },
+    fetchImplementation: async () => { assert.fail("late cancellation reached backend"); } });
+  await assert.rejects(send(origin + "/path", { signal: controller.signal }), stableError("BACKEND_REQUEST_ABORTED"));
+});
+
+test("an explicit init signal overrides the Request signal using fetch semantics", async () => {
+  const cancelled = new AbortController();
+  cancelled.abort();
+  const live = new AbortController();
+  const input = new Request(origin + "/path", { signal: cancelled.signal });
+  let calls = 0;
+  const send = createPreviewBackendFetch({ backendOrigin: origin, tokenProvider: async () => token,
+    fetchImplementation: async (request, init) => {
+      calls++;
+      assert.equal(request, input);
+      assert.equal(init.signal, live.signal);
+      return new Response();
+    } });
+  await send(input, { signal: live.signal });
+  assert.equal(calls, 1);
+});
+
+test("token acquisition removes its cancellation listener after success", async () => {
+  const controller = new AbortController();
+  const signal = controller.signal;
+  const add = signal.addEventListener.bind(signal);
+  const remove = signal.removeEventListener.bind(signal);
+  let registrations = 0;
+  let removals = 0;
+  signal.addEventListener = (...args) => { registrations++; return add(...args); };
+  signal.removeEventListener = (...args) => { removals++; return remove(...args); };
+  const send = createPreviewBackendFetch({ backendOrigin: origin, tokenProvider: async () => token,
+    fetchImplementation: async () => new Response() });
+  await send(origin + "/path", { signal });
+  assert.equal(registrations, 1);
+  assert.equal(removals, 1);
 });
 
 function syntheticToken(id) {
@@ -162,6 +237,31 @@ test("the real Company Access transport resolves current OIDC per request and pr
     assert.equal(init.cache, "no-store");
   }
 });
+
+for (const failure of [new TypeError("private network diagnostic"), new DOMException("private timeout diagnostic", "TimeoutError")]) {
+  test("Preview keeps the cancellation operation identity after an attempted request fails: " + failure.name, async t => {
+    scopeEnvironment(t, { VERCEL_ENV: "preview", TALLI_BACKEND_URL: origin, VERCEL_OIDC_TOKEN: syntheticToken("command") });
+    const previous = globalThis.fetch;
+    t.after(() => globalThis.fetch = previous);
+    const request = { operationId: "20000000-0000-4000-8000-000000000001",
+      companyId: "10000000-0000-4000-8000-000000000001", incomeYear: 2025, reason: "local proof" };
+    const pending = { command: "request", ...request };
+    let calls = 0;
+    globalThis.fetch = async (_url, init) => {
+      calls++;
+      assert.equal(JSON.parse(init.body).operationId, request.operationId);
+      assert.equal(init.headers.get("authorization"), "Bearer user-proof");
+      throw failure;
+    };
+    await assert.rejects(requestCompanyCancellation("user-proof", request), error => {
+      assert.equal(pendingCancellationOperationForError(error, pending), pending);
+      assert.equal(error.message, "BACKEND_FETCH_UNAVAILABLE");
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+    assert.equal(calls, 1);
+  });
+}
 
 test("Preview configuration rejects another origin and insecure loopback without requesting a token", t => {
   scopeEnvironment(t, { VERCEL_ENV: "preview", TALLI_BACKEND_URL: origin });
