@@ -38,7 +38,7 @@ jobs:
     name: Application
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.rf_scope != 'rf10-fast-diagnostic' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out the immutable revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,7 +128,9 @@ jobs:
   database:
     name: Database isolation
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope == 'rf10-fast-diagnostic' && 20 || 90 }}
+    # The full serial RF → Tax → Accounts desktop/touch lane now includes
+    # finite delivery, correction and unknown-response recovery for all three.
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope == 'rf10-fast-diagnostic' && 20 || 120 }}
     env:
       # The repaired bootstrap/stream is outside the sealed bare-restore protocol.
       TALLI_RF_LEGACY_REPLAY: "false"
