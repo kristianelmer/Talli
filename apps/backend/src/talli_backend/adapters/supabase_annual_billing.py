@@ -38,7 +38,8 @@ from talli_backend.modules.billing.public import (
     BillingError,
     billing_persistence_adapter,
 )
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
+from talli_backend.modules.ledger.public import LedgerError
+from talli_backend.shared.kernel import ActorId, CompanyId, ErrorCategory, IncomeYear, Timestamp
 
 
 @billing_persistence_adapter(AnnualBillingReadPersistence)
@@ -190,6 +191,10 @@ class SupabaseAnnualBillingAdapter:
             ledger = await self._authentication.session(access_token)
         except LedgerAuthenticationError:
             raise BillingAuthenticationError from None
+        except LedgerError as error:
+            if error.category != ErrorCategory.DEPENDENCY_UNAVAILABLE:
+                raise
+            raise BillingError.unavailable() from None
         checkout = PostgresAnnualCheckoutSession(self._configuration.database_url, ledger._verified)
         return _AnnualBillingSession(
             PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout), checkout,
