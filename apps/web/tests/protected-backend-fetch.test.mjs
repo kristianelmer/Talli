@@ -25,7 +25,7 @@ function scopeEnvironment(t, values) {
 
 function stableError(code) {
   return error => error instanceof BackendTransportError && error.code === code
-    && error.message === code && error.cause === undefined;
+    && !/BACKEND_|Vercel|OIDC/u.test(error.message) && error.cause === undefined;
 }
 
 test("one protected request retains user auth, command identity, body, cancellation and application response", async () => {
@@ -104,7 +104,7 @@ test("token-resolution and fetch failures expose no credential-bearing cause and
     fetchImplementation: async () => { calls++; throw privateError; } });
   await assert.rejects(noNetwork(origin + "/path"), error => error instanceof BackendFetchError
     && error instanceof TypeError && error.code === "BACKEND_FETCH_UNAVAILABLE"
-    && error.message === "BACKEND_FETCH_UNAVAILABLE" && error.cause === undefined);
+    && error.message === "Kunne ikke bekrefte svaret fra tjenesten. Kontroller status før du prøver igjen." && error.cause === undefined);
   assert.equal(calls, 1);
 });
 
@@ -255,7 +255,7 @@ for (const failure of [new TypeError("private network diagnostic"), new DOMExcep
     };
     await assert.rejects(requestCompanyCancellation("user-proof", request), error => {
       assert.equal(pendingCancellationOperationForError(error, pending), pending);
-      assert.equal(error.message, "BACKEND_FETCH_UNAVAILABLE");
+      assert.equal(error.message, "Kunne ikke bekrefte svaret fra tjenesten. Kontroller status før du prøver igjen.");
       assert.equal(error.cause, undefined);
       return true;
     });
