@@ -1,10 +1,29 @@
-export class BackendTransportError extends Error {
-  readonly code: string;
+export type BackendTransportErrorCode =
+  | "BACKEND_ORIGIN_INVALID"
+  | "BACKEND_SERVER_CONTEXT_REQUIRED"
+  | "BACKEND_REQUEST_INVALID"
+  | "BACKEND_REQUEST_OUTSIDE_ORIGIN"
+  | "BACKEND_CALLER_PROTECTION_HEADER_DENIED"
+  | "BACKEND_REQUEST_ABORTED"
+  | "BACKEND_OIDC_TOKEN_UNAVAILABLE"
+  | "BACKEND_FETCH_UNAVAILABLE";
 
-  constructor(code: string) {
+export class BackendTransportError extends Error {
+  readonly code: BackendTransportErrorCode;
+
+  constructor(code: BackendTransportErrorCode) {
     super(code);
     this.name = "BackendTransportError";
     this.code = code;
+  }
+}
+
+/** Keep attempted-request uncertainty recognizable to existing owner policies. */
+export class BackendFetchError extends TypeError {
+  readonly code = "BACKEND_FETCH_UNAVAILABLE";
+
+  constructor() {
+    super("BACKEND_FETCH_UNAVAILABLE");
   }
 }
 
@@ -20,8 +39,28 @@ const deniedHeaders = [
   "x-vercel-protection-bypass",
 ];
 
-function refuse(code: string): never {
+function refuse(code: BackendTransportErrorCode): never {
   throw new BackendTransportError(code);
+}
+
+async function resolveToken(
+  provider: PreviewFetchOptions["tokenProvider"], signal?: AbortSignal | null,
+): Promise<string> {
+  if (signal?.aborted) refuse("BACKEND_REQUEST_ABORTED");
+  if (!signal) return provider();
+  let onAbort: () => void = () => {};
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(new BackendTransportError("BACKEND_REQUEST_ABORTED"));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([Promise.resolve().then(() => {
+      if (signal.aborted) refuse("BACKEND_REQUEST_ABORTED");
+      return provider();
+    }), cancelled]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 /** Bind the platform token to one backend origin and resolve it per request. */
@@ -52,12 +91,15 @@ export function createPreviewBackendFetch(options: PreviewFetchOptions): typeof 
     if (deniedHeaders.some(header => headers.has(header))) {
       refuse("BACKEND_CALLER_PROTECTION_HEADER_DENIED");
     }
+    const signal = init.signal === undefined && input instanceof Request ? input.signal : init.signal;
     let token: string;
     try {
-      token = await options.tokenProvider();
+      token = await resolveToken(options.tokenProvider, signal);
     } catch {
+      if (signal?.aborted) refuse("BACKEND_REQUEST_ABORTED");
       return refuse("BACKEND_OIDC_TOKEN_UNAVAILABLE");
     }
+    if (signal?.aborted) refuse("BACKEND_REQUEST_ABORTED");
     if (typeof token !== "string" || token.length > 32_768
       || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(token)) {
       refuse("BACKEND_OIDC_TOKEN_UNAVAILABLE");
@@ -70,7 +112,7 @@ export function createPreviewBackendFetch(options: PreviewFetchOptions): typeof 
         ...init, headers, redirect: "error", cache: "no-store",
       });
     } catch {
-      return refuse("BACKEND_FETCH_UNAVAILABLE");
+      throw new BackendFetchError();
     }
   };
 }
