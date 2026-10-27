@@ -438,6 +438,10 @@ new work while retaining known responses and access-controlled originals.
 
 The owner-scoped `company-year-archive` query holds the current company archive
 lock across a repeatable Accounts snapshot, then rechecks current ownership/MFA.
+Its dedicated `lock_company_year_archive_v1` guard admits the existing archive
+storage range, 2000–2100. The separate delivery guard and all preparation/mutation
+contracts retain their 2025-only scope. Historical RF company exports therefore
+do not depend on eligibility to prepare a new Accounts delivery.
 It exports `annual-accounts-company-year-archive-v1`: exact legacy rows, declared
 eight-table coverage, original draft/event JSON and recorded times, including
 Corporate-backed source facts, correction-parent reads and opaque PDF/signature

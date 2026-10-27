@@ -42,6 +42,40 @@ def originals(snapshot):
         tuple(row for row in snapshot.delivery_events if row.record.binding.filing_id == stored.draft.filing_id)))
 
 
+@pytest.mark.parametrize('year', [2024, 2026])
+def test_shared_archive_keeps_non_delivery_years_readable_with_owning_archive_guard(draft, year):
+    query, snapshot, _ = correction_source(draft)
+    query = replace(query, income_year=IncomeYear(year))
+    coverage = dict(snapshot.coverage) | {'incomeYear': year, 'deliveryDraftCount': 0,
+        'deliveryDraftDigests': {}, 'deliveryEventCount': 0, 'deliveryEventDigests': {}}
+    snapshot = replace(snapshot, rows=replace(snapshot.rows, income_year=query.income_year),
+        coverage=coverage, delivery_drafts=(), delivery_events=())
+    calls = []
+    class Session:
+        actor_id = query.actor_id
+        @asynccontextmanager
+        async def transaction(self, *, snapshot=False):
+            repeatable = snapshot
+            class Transaction:
+                async def lock_delivery_archive(self, got):
+                    # The actual delivery guard deliberately admits only2025.
+                    raise AnnualAccountsError.invalid_input()
+                async def lock_company_year_archive(self, got):
+                    assert got == query and not repeatable
+                    calls.append('archive-lock')
+                async def filing_source_snapshot(self, got):
+                    assert got == query and repeatable
+                    return source
+            yield Transaction()
+    source = snapshot
+    app = AuthenticatedAnnualAccounts(Session())
+    archive = asyncio.run(app.company_year_archive(query))
+    assert archive.income_year == year and archive.draft_count == archive.event_count == 0
+    assert parse_annual_accounts_company_archive(archive.canonical_json, query=query, expected_sha256=archive.sha256) == source
+    assert asyncio.run(app.verify_company_year_archive(query, archive.canonical_json, archive.sha256)).income_year == year
+    assert calls == ['archive-lock'] * 4
+
+
 def test_root_correction_and_all_pdf_signature_technical_originals_survive_exact_copy(draft):
     query, snapshot, schemas = correction_source(draft)
     archive = build_annual_accounts_company_archive(query, snapshot)
@@ -98,7 +132,7 @@ def test_archive_holds_current_owner_guard_and_rechecks_after_repeatable_read(dr
         async def transaction(self, *, snapshot=False):
             calls.append('snapshot' if snapshot else 'guard')
             class Transaction:
-                async def lock_delivery_archive(self, got):
+                async def lock_company_year_archive(self, got):
                     assert got == query and not snapshot
                     calls.append('lock')
                     if late_failure and calls.count('lock') == 2: raise AnnualAccountsError.mfa_required()
@@ -134,7 +168,7 @@ def test_company_archive_http_uses_current_authorization_and_preserves_exact_cod
         async def transaction(self, *, snapshot=False):
             owner = self
             class Transaction:
-                async def lock_delivery_archive(self, got):
+                async def lock_company_year_archive(self, got):
                     if got.company_id != query.company_id: raise AnnualAccountsError.not_found()
                     if not owner.mfa: raise AnnualAccountsError.mfa_required()
                 async def filing_source_snapshot(self, got):

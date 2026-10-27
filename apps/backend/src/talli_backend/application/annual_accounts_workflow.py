@@ -90,11 +90,11 @@ class AuthenticatedAnnualAccounts:
         # The current READ COMMITTED guard spans the independent repeatable read;
         # its late check observes revocation after any lock/enumeration wait.
         async with self._session.transaction() as guard:
-            await guard.lock_delivery_archive(query)
+            await guard.lock_company_year_archive(query)
             async with self._session.transaction(snapshot=True) as transaction:
                 snapshot = await transaction.filing_source_snapshot(query)
                 result = build_annual_accounts_company_archive(query, snapshot)
-            await guard.lock_delivery_archive(query)
+            await guard.lock_company_year_archive(query)
             return result
 
     async def verify_company_year_archive(self, query: AnnualAccountsSourceQuery, raw: str, expected_sha256: str):
@@ -102,9 +102,9 @@ class AuthenticatedAnnualAccounts:
         if query.actor_id != self.actor_id:
             raise AnnualAccountsError.forbidden()
         async with self._session.transaction() as guard:
-            await guard.lock_delivery_archive(query)
+            await guard.lock_company_year_archive(query)
             result = verify_annual_accounts_company_archive(raw, query=query, expected_sha256=expected_sha256)
-            await guard.lock_delivery_archive(query)
+            await guard.lock_company_year_archive(query)
             return result
 
     async def verify_filing_source(self, query: AnnualAccountsSourceQuery, evidence: AnnualAccountsSourceEvidence) -> bool:

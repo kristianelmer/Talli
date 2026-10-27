@@ -227,6 +227,12 @@ class PostgresAnnualAccountsTransaction:
         await self._one_row('select annual_accounts_filing.lock_delivery_archive_v1(%s::uuid,%s::integer,%s::text) as result',
             (str(query.company_id),int(query.income_year),str(query.actor_id.subject)))
 
+    async def lock_company_year_archive(self, query):
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        await self._one_row('select annual_accounts_filing.lock_company_year_archive_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(query.actor_id.subject)))
+
     async def delivery_draft_by_key(self,query,key):
         if query.actor_id!=self.actor_id:raise AnnualAccountsError.forbidden()
         row=await self._one_row('select annual_accounts_filing.read_delivery_draft_v1(%s::uuid,%s::integer,%s::text,%s::text) as result',

@@ -667,6 +667,7 @@ class AnnualAccountsDeliveryTransport(Protocol):
 
 class AnnualAccountsSourcePersistence(Protocol):
     async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot: ...
+    async def lock_company_year_archive(self, query: AnnualAccountsSourceQuery) -> None: ...
 
 
 def project_annual_accounts_source(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnapshot) -> AnnualAccountsSourceFacts:

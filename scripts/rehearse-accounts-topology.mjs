@@ -14,7 +14,8 @@ const phases={
     "contract-migrations/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
     "contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
     "contract-migrations/20261027080000_company_access_corporate_owner_read.sql",
-    "contract-migrations/20261027080100_corporate_annual_close_2025.sql"],
+    "contract-migrations/20261027080100_corporate_annual_close_2025.sql",
+    "contract-migrations/20261027150656_annual_accounts_company_archive_read_guard.sql"],
 };
 const enables={"delivery-enable":"20261026221935_annual_accounts_delivery_store_v1.sql",
   "journal-enable":"20261026232554_annual_accounts_delivery_events_v1.sql",
