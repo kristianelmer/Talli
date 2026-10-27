@@ -229,6 +229,15 @@ for accounts_phase in delivery-expand delivery-enable journal-expand journal-ena
   DATABASE_URL="$DB_URL" node scripts/rehearse-accounts-topology.mjs "$accounts_phase"
 done
 
+# Actual signed2025 Corporate approval/signing/finalization must precede RF10
+# and the Accounts journey; historical fixture closure cannot satisfy this lane.
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+TALLI_CONNECTED_WEB_MODE=dev \
+node --test tests/corporate_annual_close_2025_database.test.mjs
+
 # The fresh RF journey must create its own preview, approval and filing journal.
 if [[ "$rf10_diagnostic" == "1" || "$rf10_fast_diagnostic" == "1" ]]; then
   NEXT_PUBLIC_SUPABASE_URL="$API_URL" \

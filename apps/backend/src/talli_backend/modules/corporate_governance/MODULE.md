@@ -645,3 +645,33 @@ same policy path. It checks actor/owner scope, bounded progressing opening and
 ledger pages, current decision facts, and annual-close finalization links to the
 exact signed artifact hashes. Corrupt or incomplete retained links are unavailable.
 No external session or provider I/O occurs in that read.
+
+
+### Explicit 2025 annual-close lifecycle
+
+The supported 2025 annual-close path uses the actual proposal, Documents upload
+and registration, facts approval, signing request, owner-attested signed copies,
+and finalization commands. Accounts consumes the resulting owning readiness and
+immutable originals. Synthetic historical-original replays retain their original
+finite scope; they do not establish this consequential workflow.
+
+`assert_annual_close_owner_v2` uses Company Access
+`company_access_read_corporate_owner_v1` only for consequential 2025 annual-close
+operations. Four exact-hash checked writers consume it: approval, lifecycle
+events, signed-artifact attestation and finalization. Existing nonconsequential
+behavior, the 2026 company-year guard, owner dividends and other writers retain
+their prior admission rules. Unknown years remain closed. No general 2025
+bookkeeping admission, provider activation or signature-authenticity claim is
+introduced.
+
+Signed-artifact attestation reads its immutable unsigned original under the
+already-held company guard. It does not require `FOR SHARE`, which hides the
+row under forced RLS without an UPDATE policy. The immutable triggers, RLS,
+source binding, signer checks and narrow ACLs remain; no UPDATE right is added.
+
+`20261027080100_corporate_annual_close_2025.sql` follows the existing immutable
+decision-read and authoritative evidence-year contracts. Its exact retentive
+rollback restores predecessor writer bodies and closes 2025 writes while keeping
+all decisions, originals and lifecycle evidence readable. Native coverage is
+`tests/corporate_annual_close_2025_database.test.mjs`; the serial Accounts browser
+journey completes this actual owner workflow for both root and correction.

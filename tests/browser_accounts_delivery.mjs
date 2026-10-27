@@ -5,7 +5,7 @@ import test from "node:test";
 import {chromium} from "playwright";
 import {createClient} from "@supabase/supabase-js";
 import {startTaxBrowserFixture} from "./support/tax-browser-fixture.mjs";
-import {seedHistoricalAccountsCorporateSource} from "./support/accounts-browser-governance.mjs";
+import {completeAccountsCorporateAnnualClose} from "./support/accounts-browser-governance.mjs";
 import {establishOwnerAal2} from "./support/tax-browser-auth.mjs";
 import {installBrowserEgressGuard} from "./fixtures/system-user-authority-mock.mjs";
 import {connectedViewport,activateConnectedButton,assertConnectedLayout,assertConnectedReflow} from "./support/connected-viewport.mjs";
@@ -14,18 +14,19 @@ const viewport=connectedViewport();
 const artifactDir=process.env.TALLI_ACCOUNTS_BROWSER_ARTIFACT_DIR;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 
-test('Accounts actual owner reviews, reconciles lost uploads and retains a technical archive',{timeout:300_000},async t=>{
+test('Accounts actual owner reviews, reconciles lost uploads and retains a technical archive',{timeout:480_000},async t=>{
   const fixture=await startTaxBrowserFixture({incomeYear:2025,accountsDelivery:true});let browser,page;
   t.after(async()=>{try{
     if(artifactDir){
       await mkdir(artifactDir,{recursive:true,mode:0o700});await writeFile(artifactDir+'/backend-private.log',fixture.diagnostics(),{mode:0o600});
+      await writeFile(artifactDir+'/web-private.log',fixture.webDiagnostics(),{mode:0o600});
       await writeFile(artifactDir+'/filing-calls-private.json',JSON.stringify(fixture.controls.filingCalls,null,2),{mode:0o600});
       if(page&&!['/mfa','/login'].includes(new URL(page.url()).pathname))await writeFile(artifactDir+'/page-private.txt',await page.locator('body').innerText(),{mode:0o600});
     }
   }finally{try{await browser?.close();}finally{await fixture.close();}}});
   browser=await chromium.launch({headless:true});const context=await browser.newContext(viewport.contextOptions);const blockedRequests=[];
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
-  page=await context.newPage();page.setDefaultTimeout(25_000);
+  page=await context.newPage();page.setDefaultTimeout(60_000);
   async function checkpoint(name){
     await assertConnectedLayout(page,viewport,name);await assertConnectedReflow(page,viewport);
     if(artifactDir){await mkdir(artifactDir,{recursive:true,mode:0o700});await page.screenshot({path:artifactDir+'/'+name+'.png',fullPage:true});}
@@ -46,10 +47,16 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   const unstepped=await fetch(fixture.backendOrigin+'/api/v1/annual-accounts/delivery-drafts',{method:'POST',
     headers:{authorization:'Bearer '+signed.data.session.access_token,'Content-Type':'application/json','Idempotency-Key':randomUUID()},body:JSON.stringify(body)});
   assert.equal(unstepped.status,403,'actual AAL1 owner cannot prepare');
-  await establishOwnerAal2(page,fixture.siteOrigin);await page.goto(fixture.siteOrigin+'/filing/aarsregnskap');
-  const corporate=await seedHistoricalAccountsCorporateSource(fixture);
-  assert.equal(corporate.readiness.finalized,true,'actual owning read must derive readiness from complete synthetic historical originals');
-  await page.reload();
+  await establishOwnerAal2(page,fixture.siteOrigin);
+  for(let attempt=0;attempt<3;attempt++){
+    await page.goto(fixture.siteOrigin+'/filing/aarsregnskap',{waitUntil:'commit',timeout:90_000});
+    if(await page.locator('[data-accounts-delivery="workspace"]').count())break;
+    await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  await page.locator('[data-accounts-delivery="workspace"]').waitFor();
+  const corporate=await completeAccountsCorporateAnnualClose(fixture);
+  assert.equal(corporate.readiness.finalized,true,'actual owning read must derive readiness from the supported2025 owner workflow');
+  await page.reload({waitUntil:'commit',timeout:90_000});
   let panel=page.locator('[data-accounts-delivery="workspace"]');
   await panel.getByRole('button',{name:'Forbered årsregnskapet',exact:true}).waitFor();
   assert.equal((await fixture.accountsDeliveryState()).calls.length,0);
@@ -117,9 +124,9 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   await checkpoint('accounts-root-technical-archive');
   const changed=await fixture.db.query('update public.annual_data set annual_full_time_equivalents=1,updated_at=clock_timestamp() where company_id=$1 and income_year=2025 returning id',[fixture.companyId]);
   assert.equal(changed.rowCount,1,'change only the owned synthetic interview');
-  const correctedCorporate=await seedHistoricalAccountsCorporateSource(fixture);
+  const correctedCorporate=await completeAccountsCorporateAnnualClose(fixture);
   assert.notEqual(correctedCorporate.decisionId,corporate.decisionId);assert.notEqual(correctedCorporate.decisionHash,corporate.decisionHash);
-  await page.reload();panel=page.locator('[data-accounts-filing="'+filingId+'"]');
+  await page.reload({waitUntil:'commit',timeout:90_000});panel=page.locator('[data-accounts-filing="'+filingId+'"]');
   const correction=panel.locator('form').filter({has:page.getByRole('button',{name:'Forbered retting',exact:true})});
   await correction.getByLabel('Kontaktadresse',{exact:true}).fill('owner@example.test');
   await correction.getByLabel('Bekreftende representant',{exact:true}).fill('Synthetic Chair');
@@ -139,7 +146,7 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   const blockedCreate=await fixture.accountsRequest('/api/v1/annual-accounts/delivery-advances',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...childScope,action:'create_instance'})});
   assert.equal(blockedCreate.status,409,'an earlier fresh proof must not authorize creation after a failed refresh');
   assert.equal((await fixture.accountsDeliveryState()).calls.filter(call=>call.method!=='GET').length,5);
-  await page.reload();await panel.getByRole('heading',{name:'Tidligere levering må avklares',exact:true}).waitFor();
+  await page.reload({waitUntil:'commit',timeout:90_000});await panel.getByRole('heading',{name:'Tidligere levering må avklares',exact:true}).waitFor();
   assert.equal(await panel.getByRole('button',{name:'Opprett levering',exact:true}).count(),0);await checkpoint('accounts-failed-parent-refresh');
   await step('Kontroller tidligere levering på nytt','Utkast kontrollert');
   await step('Opprett levering','Levering opprettet');
@@ -167,7 +174,7 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   assert.deepEqual(mutations.map(call=>[call.port,call.stage]),[...stages,...stages]);
   assert.deepEqual(blockedRequests,[]);await checkpoint('accounts-correction-technical-archive');
   if(artifactDir)await writeFile(artifactDir+'/result.json',JSON.stringify({status:'pass',scope:'actual signed JWT+AAL2+restricted SQL, finite loopback only',
-    viewport:viewport.mobile?'390 touch +320 reflow':'desktop',filingId,corporateDecisionId:corporate.decisionId,corporateSourceMode:"synthetic historical originals; no current 2025 Corporate approval claim",
+    viewport:viewport.mobile?'390 touch +320 reflow':'desktop',filingId,corporateDecisionId:corporate.decisionId,corporateSourceMode:"actual 2025 owner approval, signing attestation and finalized annual-close workflow",
     mutations:mutations.length,latestParentAttemptFaultBlocked:true,correctionFilingId:child.filingId,correctionInstance:finalChild.knownInstance,exactSignatureSha256:signature.sha256,sourceSha256:row.sourceSha256,fields:row.fields.length,
     originalCount:row.originals.length,providerActivated:false,signatureAuthenticityProved:false,registryAcceptanceProved:false},null,2)+'\n',{mode:0o600});
 });

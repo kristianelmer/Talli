@@ -377,3 +377,22 @@ replace it. No direct Auth-table access or new SQL/grants are added; actual owne
 Auth version/session/revocation/banned/deleted-user acceptance remains separate.
 `test_company_test_retention_download_policy.py` belongs to the ordinary backend
 lane and uses explicitly qualified Auth/gateway doubles.
+
+
+### Guarded Corporate owner read
+
+`public.company_access_read_corporate_owner_v1(uuid,text)` publishes only current
+owner authorization for Corporate annual close. The non-bypass Company Access
+executor owns this SECURITY DEFINER query; only the Corporate store owner receives
+EXECUTE. The explicit subject must match trusted actor context. READ COMMITTED,
+the company archive guard, and post-wait owner/MFA checks prevent stale authority.
+The query requires current agreement evidence, confirmed/locked active AS identity,
+and no active cancellation or deletion. It returns a versioned company-bound
+affirmative projection and exposes no Company Access tables to its consumer.
+
+This is not a 2025 company-year admission or a new bookkeeping promise. The
+immutable 2026 eligibility manifest, year constraints and general consequential
+predicate retain their existing behavior. Corporate owns its separate 2025
+annual-close scope. The additive reader and exact rollback are
+`20261027080000_company_access_corporate_owner_read.sql`; native coverage is
+`tests/corporate_annual_close_2025_database.test.mjs`.

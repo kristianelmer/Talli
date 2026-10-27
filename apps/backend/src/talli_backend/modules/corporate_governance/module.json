@@ -179,7 +179,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql; supabase/migrations/20261010015851_governance_rf_year_source_proof.sql; supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql; supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql; supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql; supabase/migrations/20261010015851_governance_rf_year_source_proof.sql; supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql; supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql; supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql; supabase/contract-migrations/20261027080100_corporate_annual_close_2025.sql; supabase/rollback/20261027080100_corporate_annual_close_2025.sql"
   },
   "ports": [
     {
@@ -293,7 +293,8 @@
     "reportingRegisterEvidenceAdapter": "apps/backend/tests/test_postgres_corporate_reporting_register_evidence.py",
     "reportingRegisterEvidenceDatabase": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
     "registerEvidenceCompanyGuardDatabase": "apps/backend/tests/test_governance_register_evidence_company_guard_database.py",
-    "sourceRuntimeContract": "tests/rf1086_source_runtime_contract.test.mjs"
+    "sourceRuntimeContract": "tests/rf1086_source_runtime_contract.test.mjs",
+    "corporateAnnualClose2025": "tests/corporate_annual_close_2025_database.test.mjs"
   },
   "compatibilityExceptions": []
 }

@@ -1344,7 +1344,7 @@ const phases=['npm:test:supabase-advisors:initial','topology:rollback:1','npm:te
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
  'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','node:governance-contract','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections',...currentAccountsPhases,'npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections',...currentAccountsPhases,'node:corporate-2025-native','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
@@ -1354,13 +1354,18 @@ if [[ "$1" == "--test" ]]; then
  case "$2" in
   tests/connected_viewport.test.mjs) phase="node:connected-viewport" ;;
   tests/rf1086_source_runtime_contract.test.mjs) phase="node:rf-source-runtime-tests" ;;
+  tests/corporate_annual_close_2025_database.test.mjs) phase="node:corporate-2025-native" ;;
   tests/browser_tax_filing.mjs) phase="node:mobile-tax" ;;
   tests/browser_tax_delivery.mjs) phase="node:mobile-tax-delivery" ;;
   tests/browser_annual_accounts_filing.mjs) phase="node:mobile-accounts" ;;
   tests/browser_accounts_delivery.mjs) phase="node:mobile-accounts-delivery" ;;
   *) exit 97 ;;
  esac
- if [[ "$phase" == "node:rf-source-runtime-tests" ]]; then
+ if [[ "$phase" == "node:corporate-2025-native" ]]; then
+  [[ "$TALLI_CONNECTED_WEB_MODE" == "dev" ]]
+  [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
+  [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+ elif [[ "$phase" == "node:rf-source-runtime-tests" ]]; then
   [[ "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  elif [[ "$phase" != "node:connected-viewport" ]]; then
   [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
@@ -1429,11 +1434,11 @@ if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 const fullFailures=['', 'npm:test:supabase-advisors:initial','topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
  'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','node:governance-contract','topology:recutover','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:supabase-rf-feedback',
  'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
- 'node:accounts:delivery-expand','node:accounts:delivery-enable','node:accounts:journal-expand','node:accounts:journal-enable','node:accounts:correction-expand','node:accounts:correction-enable','npm:test:browser-accounts-delivery',
+ 'node:accounts:delivery-expand','node:accounts:delivery-enable','node:accounts:journal-expand','node:accounts:journal-enable','node:accounts:correction-expand','node:accounts:correction-enable','node:corporate-2025-native','npm:test:browser-accounts-delivery',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
 const fastPhases=['npm:test:supabase-advisors:initial','node:browser-tail-bootstrap','node:rf-source-runtime-tests',
- 'npm:test:supabase-advisors',...currentTaxPhases,...currentAccountsPhases,'npm:test:browser-shareholder-register-filing:rf10-diagnostic',
+ 'npm:test:supabase-advisors',...currentTaxPhases,...currentAccountsPhases,'node:corporate-2025-native','npm:test:browser-shareholder-register-filing:rf10-diagnostic',
  'npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existingGuides=false} of [
@@ -1445,7 +1450,7 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existin
   fail,args:['--rf10-diagnostic'],expected:diagnosticPhases,label:`RF10 diagnostic ${fail||'success'}`,
  })),
  ...['','node:browser-tail-bootstrap','node:rf-source-runtime-tests','npm:test:supabase-advisors',...currentTaxPhases,...currentAccountsPhases,
-   'npm:test:browser-shareholder-register-filing:rf10-diagnostic','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
+   'node:corporate-2025-native','npm:test:browser-shareholder-register-filing:rf10-diagnostic','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
    'npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'].map(fail=>({fail,args:['--rf10-fast-diagnostic'],
    expected:fastPhases,label:`fast RF10 ${fail||'success'}`})),
 ]) {

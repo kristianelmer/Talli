@@ -21,7 +21,7 @@ export async function seedAccountsOpening(database,companyId,ownerId) {
   return {setup,shareholder,entry};
 }
 
-export async function seedHistoricalAccountsCorporateSource(fixture) {
+export async function completeAccountsCorporateAnnualClose(fixture) {
   const call=async(path,body)=>{
     const response=await fixture.governanceRequest(path,body===undefined?{}:{method:'POST',
       headers:{'Content-Type':'application/json','Idempotency-Key':randomUUID()},body:JSON.stringify(body)});
@@ -53,34 +53,23 @@ export async function seedHistoricalAccountsCorporateSource(fixture) {
   const artifacts=[];
   for(const artifact of proposal.artifacts)artifacts.push(await document(artifact,'generated_unsigned'));
   await call('/api/v1/corporate-governance/annual-closes/'+decisionId+'/documents',{...scope,artifacts});
-  // Synthetic historical closure is initial fixture evidence. The current
-  // company-year policy intentionally does not admit consequential 2025 writes.
-  const signedArtifacts=[];
-  for(const artifact of proposal.artifacts) signedArtifacts.push(await document(artifact,'signed_owner_attested'));
+  const approved=await call('/api/v1/corporate-governance/annual-closes/'+decisionId+'/approvals',{...scope,approvalEventId:randomUUID()});
+  assert.equal(approved.state,'facts_approved');
+  const requested=await call('/api/v1/corporate-governance/annual-closes/'+decisionId+'/events',{...scope,eventId:randomUUID(),eventKind:'signing_requested',metadata:{source:'synthetic_actual_corporate_2025_owner_workflow'}});
+  assert.equal(requested.state,'signing_requested');
+  for(const [index,artifact] of proposal.artifacts.entries()) {
+    const signed=await document(artifact,'signed_owner_attested');
+    const unsigned=artifacts.find(item=>item.artifactKind===artifact.artifactKind);
+    const result=await call('/api/v1/corporate-governance/annual-closes/'+decisionId+'/signed-artifacts',{...scope,
+      unsignedArtifactId:unsigned.artifactId,signedArtifactId:signed.artifactId,signedDocumentId:signed.documentId,
+      artifactKind:artifact.artifactKind,filename:artifact.filename,contentSha256:signed.contentSha256,byteLength:signed.byteLength});
+    assert.equal(result.signedArtifactHashes[artifact.artifactKind],signed.contentSha256);
+    assert.equal(Object.keys(result.signedArtifactHashes).length,index+1);
+    assert.equal(result.state,index===proposal.artifacts.length-1?'signed_owner_attested':'signing_requested');
+  }
   const finalizationId=randomUUID();
-  await fixtureTableTransaction(fixture.db,['corporate_governance.annual_close_artifacts','corporate_governance.annual_close_events','corporate_governance.annual_close_finalizations'],async()=>{
-    const decision=(await fixture.db.query('select annual_close_source_id from corporate_governance.annual_close_decisions where id=$1 and company_id=$2',[decisionId,fixture.companyId])).rows[0];
-    assert.ok(decision);
-    async function event(kind,artifact=null) {
-      const id=randomUUID(),key='historical-accounts-'+id;
-      await fixture.db.query(`insert into corporate_governance.annual_close_events(id,decision_id,document_set_id,company_id,income_year,event_kind,artifact_id,decision_hash,content_sha256,metadata,idempotency_key,correlation_id,request_fingerprint,created_by)
-        values($1,$2,$3,$4,2025,$5,$6,$7,$8,$9::jsonb,$10,$10,encode(extensions.digest($9::jsonb::text,'sha256'),'hex'),$11)`,
-        [id,decisionId,documentSetId,fixture.companyId,kind,artifact?.artifactId??null,decisionHash,artifact?.contentSha256??null,
-          JSON.stringify({source:'synthetic_historical_accounts_originals',eventKind:kind,artifactId:artifact?.artifactId??null}),key,fixture.owner.id]);
-    }
-    await event('facts_approved');await event('signing_requested');
-    for(const artifact of signedArtifacts) {
-      const unsigned=artifacts.find(item=>item.artifactKind===artifact.artifactKind);
-      await fixture.db.query(`insert into corporate_governance.annual_close_artifacts(id,decision_id,document_set_id,company_id,income_year,artifact_kind,variant,document_id,content_sha256,byte_length,supersedes_artifact_id,created_by)
-        values($1,$2,$3,$4,2025,$5,'signed_owner_attested',$6,$7,$8,$9,$10)`,
-        [artifact.artifactId,decisionId,documentSetId,fixture.companyId,artifact.artifactKind,artifact.documentId,artifact.contentSha256,artifact.byteLength,unsigned.artifactId,fixture.owner.id]);
-      await event('signed_copy_attested',artifact);
-    }
-    const hashes=Object.fromEntries(signedArtifacts.map(item=>[item.artifactKind,item.contentSha256]));const key='historical-final-'+finalizationId;
-    await fixture.db.query(`insert into corporate_governance.annual_close_finalizations(id,decision_id,document_set_id,company_id,income_year,annual_close_source_id,decision_hash,signed_artifact_hashes,idempotency_key,correlation_id,request_fingerprint,created_by)
-      values($1,$2,$3,$4,2025,$5,$6,$7::jsonb,$8,$8,encode(extensions.digest($7::jsonb::text,'sha256'),'hex'),$9)`,
-      [finalizationId,decisionId,documentSetId,fixture.companyId,decision.annual_close_source_id,decisionHash,JSON.stringify(hashes),key,fixture.owner.id]);
-  });
+  const final=await call('/api/v1/corporate-governance/annual-closes/'+decisionId+'/finalizations',{...scope,finalizationId});
+  assert.equal(final.state,'finalized');assert.equal(final.finalizationId,finalizationId);
   const readiness=await call('/api/v1/corporate-governance/readiness?'+new URLSearchParams({companyId:fixture.companyId,incomeYear:'2025',decisionKind:'annual_close'}));
   assert.equal(readiness.finalizationId,finalizationId);assert.equal(readiness.finalized,true);assert.equal(readiness.currentSourceMatches,true);
   const retained=await call('/api/v1/corporate-governance/decisions/'+decisionId);
