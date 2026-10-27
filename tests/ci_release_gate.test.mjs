@@ -1337,13 +1337,14 @@ test('RF10 diagnostic arguments reject unknown, repeated and extra tokens before
   }
  } finally {rmSync(dir,{recursive:true,force:true});}
 });
+const currentAccountsPhases=['delivery-expand','delivery-enable','journal-expand','journal-enable','correction-expand','correction-enable'].map(phase=>`node:accounts:${phase}`);
+const currentTaxPhases=['delivery-expand','current-expand','current-enable','journal-expand','journal-enable','observation-expand','observation-enable','guarded-upload-expand','guarded-upload-enable','validation-expand','validation-enable','confirmation-expand','confirmation-enable','submission-expand','submission-enable','correction-expand','correction-enable'].map(phase=>`node:tax:${phase}`);
 const phases=['npm:test:supabase-advisors:initial','topology:rollback:1','npm:test:ledger-database-lifecycle','npm:test:banking-database-lifecycle',
  'npm:test:investments-database-lifecycle','npm:test:documents-database-lifecycle','npm:test:marketing-measurement-database',
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
  'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','node:governance-contract','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
- 'node:accounts:delivery-expand','node:accounts:delivery-enable','node:accounts:journal-expand','node:accounts:journal-enable','node:accounts:correction-expand','node:accounts:correction-enable','npm:test:browser-accounts-delivery',
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections',...currentAccountsPhases,'npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
@@ -1366,6 +1367,9 @@ if [[ "$1" == "--test" ]]; then
   [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
   [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  fi
+elif [[ "$1" == "scripts/rehearse-tax-topology.mjs" ]]; then
+ [[ "$#" == "2" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+ phase="node:tax:$2"
 elif [[ "$1" == "scripts/rehearse-accounts-topology.mjs" ]]; then
  [[ "$#" == "2" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  phase="node:accounts:$2"
@@ -1425,9 +1429,9 @@ const fullFailures=['', 'npm:test:supabase-advisors:initial','topology:workspace
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
 const fastPhases=['npm:test:supabase-advisors:initial','node:browser-tail-bootstrap','node:rf-source-runtime-tests',
- 'npm:test:supabase-advisors','npm:test:browser-shareholder-register-filing:rf10-diagnostic',
- 'npm:test:browser-company-tax','npm:test:browser-annual-accounts',
- 'node:accounts:delivery-expand','node:accounts:delivery-enable','node:accounts:journal-expand','node:accounts:journal-enable','node:accounts:correction-expand','node:accounts:correction-enable','npm:test:browser-accounts-delivery','node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
+ 'npm:test:supabase-advisors',...currentTaxPhases,...currentAccountsPhases,'npm:test:browser-shareholder-register-filing:rf10-diagnostic',
+ 'npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
+ 'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'];
 for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existingGuides=false} of [
  ...fullFailures.map(fail=>({fail})),
  {fail:'npm:build:web',existingGuides:true,label:'mobile build failure with existing guides'},
@@ -1436,10 +1440,9 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existin
  ...['','npm:test:authority-connections-database','npm:test:browser-shareholder-register-filing:rf10-diagnostic'].map(fail=>({
   fail,args:['--rf10-diagnostic'],expected:diagnosticPhases,label:`RF10 diagnostic ${fail||'success'}`,
  })),
- ...['','node:browser-tail-bootstrap','node:rf-source-runtime-tests','npm:test:supabase-advisors',
-   'npm:test:browser-shareholder-register-filing:rf10-diagnostic','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
- 'node:accounts:delivery-expand','node:accounts:delivery-enable','node:accounts:journal-expand','node:accounts:journal-enable','node:accounts:correction-expand','node:accounts:correction-enable','npm:test:browser-accounts-delivery',
-   'npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts'].map(fail=>({fail,args:['--rf10-fast-diagnostic'],
+ ...['','node:browser-tail-bootstrap','node:rf-source-runtime-tests','npm:test:supabase-advisors',...currentTaxPhases,...currentAccountsPhases,
+   'npm:test:browser-shareholder-register-filing:rf10-diagnostic','npm:test:browser-company-tax','npm:test:browser-annual-accounts','npm:test:browser-accounts-delivery',
+   'npm:build:web','node:mobile-tax','node:mobile-tax-delivery','node:mobile-accounts','node:mobile-accounts-delivery'].map(fail=>({fail,args:['--rf10-fast-diagnostic'],
    expected:fastPhases,label:`fast RF10 ${fail||'success'}`})),
 ]) {
  test(`real shell stops at ${label} and restores owned generated files`,()=>{

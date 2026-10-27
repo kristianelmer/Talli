@@ -208,6 +208,21 @@ DATABASE_URL="$DB_URL" \
 npm run test:browser-authority-connections
 fi
 
+# The fast bootstrap retains the historical Tax reader topology. Its current
+# browser journey requires the same finite successor contracts as the full lane.
+if [[ "$rf10_fast_diagnostic" == "1" ]]; then
+  for tax_phase in delivery-expand current-expand current-enable journal-expand journal-enable observation-expand observation-enable guarded-upload-expand guarded-upload-enable validation-expand validation-enable confirmation-expand confirmation-enable submission-expand submission-enable correction-expand correction-enable; do
+    DATABASE_URL="$DB_URL" node scripts/rehearse-tax-topology.mjs "$tax_phase"
+  done
+fi
+
+# Install the current shared Corporate/Accounts contracts before RF10, so the
+# independent RF restore and the serial Tax/Accounts journeys use one topology.
+# Historical database lifecycle checks above retain their predecessor phases.
+for accounts_phase in delivery-expand delivery-enable journal-expand journal-enable correction-expand correction-enable; do
+  DATABASE_URL="$DB_URL" node scripts/rehearse-accounts-topology.mjs "$accounts_phase"
+done
+
 # The fresh RF journey must create its own preview, approval and filing journal.
 if [[ "$rf10_diagnostic" == "1" || "$rf10_fast_diagnostic" == "1" ]]; then
   NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
@@ -247,10 +262,6 @@ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-annual-accounts
 
-# The Accounts successor follows its original reader/preparation gates.
-for accounts_phase in delivery-expand delivery-enable journal-expand journal-enable correction-expand correction-enable; do
-  DATABASE_URL="$DB_URL" node scripts/rehearse-accounts-topology.mjs "$accounts_phase"
-done
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
