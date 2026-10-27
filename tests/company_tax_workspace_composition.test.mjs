@@ -144,6 +144,7 @@ function consumerSetup(failed = false) {
       data: [], projection: { companyId, incomeYear, objects: [] }, error: null,
     }),
     loadTaxSettlementArchiveSource: async () => ({ data: [], error: null }),
+    loadAccountsCompanyArchiveSource: async () => ({data: {draftCount: 0}, error: null}),
     loadTaxDeliveryDraftArchiveSource: async () => ({ data: { sourceFacts: {}, originals: null }, error: null }),
     loadArchiveBilling: async () => ({ data: [], error: null }),
     loadArchiveInvestments: async () => ({ data: null, error: null }),
@@ -335,4 +336,13 @@ test("Accounts Archive failure cannot publish a partial sibling archive or compl
   const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
   assert.equal(response.status, 500);
   assert.equal(effects.some(row => ["archive", "company_archive_complete_export"].includes(row.name)), false);
+});
+
+for(const failed of [false,true])test(`Accounts archive ${failed?"failure":"absence"} cannot complete a partial shared export`,async()=>{
+  const {effects,dependencies}=consumerSetup();
+  dependencies.loadAccountsCompanyArchiveSource=async()=>({data:null,error:failed?new Error("unavailable"):null});
+  const get=functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts","GET",dependencies);
+  const response=await get(new Request("https://example.test/archive"),{params:Promise.resolve({companyId:"company",incomeYear:"2025"})});
+  assert.equal(response.status,503);
+  assert.equal(effects.some(row=>["archive","company_archive_complete_export"].includes(row.name)),false);
 });

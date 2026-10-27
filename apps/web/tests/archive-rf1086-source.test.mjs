@@ -119,6 +119,13 @@ function route({ companyId: selectedCompany = companyId, generic = {}, failures 
       },
       presentOpeningSnapshots, loadLedgerEntriesForArchive: empty, presentLedgerEntriesForArchive: value => value,
     },
+    "../../../../../features/annual-accounts-filing": {
+      loadAccountsCompanyArchiveSource: async (access, company, year) => {
+        calls.push("read:accounts-archive-api");
+        assert.equal(access, "verified-owner"); assert.equal(company, companyId);
+        return {data: {companyId: company, incomeYear: year, draftCount: 0}, error: failures.accountsArchive ?? null};
+      },
+    },
     "../../../../../features/company-tax-filing": {
       loadTaxDeliveryDraftArchiveSource: async (access, company, year) => {
         calls.push("read:tax-delivery-api");

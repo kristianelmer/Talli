@@ -1,3 +1,6 @@
+import {spawnSync} from "node:child_process";
+import {copyCompanyYearArchive,assertRestoreIntegrity} from "../apps/web/app/lib/backup-restore.ts";
+import {verifyAccountsCompanyArchive} from "../packages/talli-api-client/src/index.ts";
 import assert from "node:assert/strict";
 import {createHash,randomUUID} from "node:crypto";
 import {mkdir,readFile,writeFile} from "node:fs/promises";
@@ -167,6 +170,36 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
   const parentRecheck=await fixture.accountsRequest('/api/v1/annual-accounts/delivery-reconciliations',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({companyId:fixture.companyId,incomeYear:2025,filingId,draftSha256:row.draftSha256})});
   assert.equal(parentRecheck.status,200);assert.ok((await workspace()).rows.every(item=>item.state==='technical_archive'));
+  // The shared company export must contain the actual Corporate-backed root
+  // and correction, not only the separately downloadable workspace originals.
+  const download=await page.request.get(fixture.siteOrigin+`/archive/${fixture.companyId}/2025/download`);
+  assert.equal(download.status(),200,await download.text());
+  const companyArchiveText=await download.text(),companyArchive=JSON.parse(companyArchiveText),accountsArchive=companyArchive.annualAccountsCompanyArchive;
+  const exportReceipts=(await fixture.db.query('select archive_sha256 from public.company_archive_export_receipts where company_id=$1 and income_year=2025',[fixture.companyId])).rows;
+  assert.equal(exportReceipts.filter(receipt=>receipt.archive_sha256===sha(Buffer.from(companyArchiveText))).length,1);
+  await verifyAccountsCompanyArchive(accountsArchive,fixture.companyId,2025);
+  assert.equal(accountsArchive.draftCount,2);
+  const restored=copyCompanyYearArchive(companyArchiveText,{targetCompanyId:fixture.companyId,expectedArchiveSha256:sha(Buffer.from(companyArchiveText))});
+  const integrity=assertRestoreIntegrity(restored);
+  assert.deepEqual(integrity.failures.filter(code=>code.startsWith('annual_accounts_')),[]);
+  assert.deepEqual(restored.restored.annualAccountsCompanyArchive,accountsArchive);
+  const python=process.env.TALLI_BACKEND_PYTHON_BIN||'apps/backend/.venv/bin/python';
+  const check=spawnSync(python,['scripts/check_accounts_company_archive.py','--company-id',fixture.companyId,'--income-year','2025',
+    '--actor-id',fixture.owner.id,'--expected-sha256',accountsArchive.sha256],{cwd:process.cwd(),input:JSON.stringify(restored.restored.annualAccountsCompanyArchive),
+    encoding:'utf8',timeout:60_000,maxBuffer:2*1024*1024});
+  assert.equal(check.status,0,check.stderr);const isolatedCopy=JSON.parse(check.stdout);
+  const currentHistory=await workspace();
+  assert.equal(isolatedCopy.draftCount,2);assert.equal(isolatedCopy.originalCount,accountsArchive.originalCount);
+  for(const filing of currentHistory.rows)for(const original of filing.originals){
+    const matches=isolatedCopy.originals.filter(value=>value.filingId===filing.filingId&&value.key===original.key);
+    assert.equal(matches.length,1);assert.equal(matches[0].sha256,original.sha256);assert.equal(matches[0].purpose,original.purpose);
+  }
+  assert.ok(isolatedCopy.originals.some(value=>value.purpose==='pdf'));
+  assert.ok(isolatedCopy.originals.some(value=>value.purpose==='signature'));
+  assert.ok(isolatedCopy.originals.some(value=>value.purpose==='parent_signature'));
+  const missing=structuredClone(restored);missing.restored.annualAccountsCompanyArchive=null;
+  assert.ok(assertRestoreIntegrity(missing).failures.includes('annual_accounts_archive_missing'));
+  if(artifactDir)await writeFile(artifactDir+'/accounts-company-archive-copy-private.json',JSON.stringify({companyArchive,isolatedCopy,integrity},null,2)+'\n',{mode:0o600});
   const state=await fixture.accountsDeliveryState();assert.deepEqual(state.errors,[]);
   assert.equal(state.parentReadFailures,1);
   const mutations=state.calls.filter(call=>call.method!=='GET');assert.equal(mutations.length,10);

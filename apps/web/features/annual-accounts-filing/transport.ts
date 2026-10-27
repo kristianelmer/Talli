@@ -106,3 +106,12 @@ export function accountsDeliveryMfaRequired(error: unknown) {
 export function prepareAccountsCorrection(accessToken: string,command: import("@talli/talli-api-client").AccountsPrepareCorrectionRequest,key: string) {
   return client(accessToken).annualAccountsPrepareDeliveryCorrection(command,{idempotencyKey:key,signal:AbortSignal.timeout(60_000)});
 }
+
+export async function loadAccountsCompanyArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const data = await client(accessToken).annualAccountsGetCompanyYearArchive(companyId, incomeYear, {signal: AbortSignal.timeout(60_000)});
+    return {data, error: null};
+  } catch {
+    return {data: null, error: new Error("Accounts company archive source unavailable.")};
+  }
+}

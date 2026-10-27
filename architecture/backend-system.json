@@ -540,7 +540,8 @@
         "/api/v1/annual-accounts/delivery-reviews",
         "/api/v1/annual-accounts/delivery-advances",
         "/api/v1/annual-accounts/delivery-reconciliations",
-        "/api/v1/annual-accounts/delivery-corrections"
+        "/api/v1/annual-accounts/delivery-corrections",
+        "/api/v1/annual-accounts/company-year-archive"
       ]
     },
     {

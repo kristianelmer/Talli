@@ -279,7 +279,8 @@
     "deliveryEventSource": "apps/backend/tests/test_annual_accounts_delivery_event_source.py",
     "deliveryWorkflow": "apps/backend/tests/test_annual_accounts_delivery_workflow.py",
     "deliveryCorrections": "apps/backend/tests/test_annual_accounts_delivery_corrections.py",
-    "deliveryCorrectionsDatabase": "apps/backend/tests/test_annual_accounts_delivery_corrections_database.py"
+    "deliveryCorrectionsDatabase": "apps/backend/tests/test_annual_accounts_delivery_corrections_database.py",
+    "companyArchive": "apps/backend/tests/test_annual_accounts_company_archive.py"
   },
   "compatibilityExceptions": []
 }

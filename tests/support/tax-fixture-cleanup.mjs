@@ -24,7 +24,7 @@ const relations=[...(eventsExists?["company_tax_filing.delivery_events"]:[]),...
  ...(accountsExists?accountsRelations:[]),...(filingExists?filingRelations:[]),"company_tax_filing.settlements","ledger.entries","backend_system.ledger_workflow_receipts",
  "backend_system.ledger_command_receipts","banking.transactions","public.documents",
  "ledger.opening_bank_inputs","shareholder_register_filing.opening_shareholders","shareholder_register_filing.opening_balance_setups","public.audit_events",
- "public.company_archive_source_generations","public.company_year_acceptances","public.company_year_admissions",
+ "public.company_archive_export_receipts","public.company_archive_export_attempts","public.company_archive_source_generations","public.company_year_acceptances","public.company_year_admissions",
  "public.company_eligibility_assessments","public.customer_agreement_acceptances","public.company_memberships","public.companies"];
 try {
  await fixtureTableTransaction(db,relations,async()=>{

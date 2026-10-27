@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  companyYearArchive: ["/api/v1/annual-accounts/company-year-archive","get","annualAccountsGetCompanyYearArchive"],
   deliveryWorkspace: ["/api/v1/annual-accounts/delivery-workspace","get","annualAccountsGetDeliveryWorkspace"],
   deliveryOriginal: ["/api/v1/annual-accounts/delivery-original","get","annualAccountsGetDeliveryOriginal"],
   prepareDelivery: ["/api/v1/annual-accounts/delivery-drafts","post","annualAccountsPrepareDeliveryDraft"],
@@ -921,7 +922,7 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
   "AccountsPrepareDeliveryRequest","AccountsPrepareCorrectionRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
-  "AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
+  "AccountsCompanyArchiveWire","AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -1124,6 +1125,7 @@ const source = `// Generated from contracts/openapi/talli-v1.json. Do not edit b
 // Contract version: ${contract.info.version}
 import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
 import {verifyAccountsDeliveryOriginal} from "../accounts-delivery-evidence.ts";
+import {verifyAccountsCompanyArchive} from "../accounts-company-archive.ts";
 
 ${renderInterface("SystemBoundaryStatus", successSchema)}
 
@@ -2829,6 +2831,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
             || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
             || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsGetCompanyYearArchive(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsCompanyArchiveWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive?" + new URLSearchParams({companyId,incomeYear:String(incomeYear)}),
+        "GET",request,undefined,isAccountsCompanyArchiveWire);
+      try { await verifyAccountsCompanyArchive(result,companyId,incomeYear); }
+      catch { throw new TalliApiError(502,undefined); }
       return result;
     },
 

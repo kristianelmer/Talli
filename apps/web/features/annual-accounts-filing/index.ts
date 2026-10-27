@@ -10,3 +10,4 @@ export type { AnnualAccountsSourceFactsWire, AnnualAccountsSourceEvidenceWire, A
 export {loadAccountsDeliveryWorkspace,loadAccountsDeliveryOriginal,prepareAccountsDelivery,prepareAccountsCorrection,reviewAccountsDelivery,
   advanceAccountsDelivery,reconcileAccountsDelivery,accountsDeliveryMfaRequired} from "./transport.ts";
 export type {AccountsDeliveryWorkspaceWire,AccountsDeliveryWorkspaceRowWire,AccountsAdvanceDeliveryRequest} from "@talli/talli-api-client";
+export {loadAccountsCompanyArchiveSource} from "./transport.ts";

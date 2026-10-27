@@ -432,3 +432,27 @@ A child receives separate mutation reviews, credentials and budgets. Parent read
 use one five-minute grant, at most 27 GETs and three explicitly requested proof
 frames. Each read attempt commits before HTTP and immediately closes child creation until a complete frame covers that latest attempt. Failed and late originals remain independent records; older-attempt responses cannot invalidate a later successful proof or an already-created child. Containment closes
 new work while retaining known responses and access-controlled originals.
+
+
+## Company-year archive and isolated copy
+
+The owner-scoped `company-year-archive` query holds the current company archive
+lock across a repeatable Accounts snapshot, then rechecks current ownership/MFA.
+It exports `annual-accounts-company-year-archive-v1`: exact legacy rows, declared
+eight-table coverage, original draft/event JSON and recorded times, including
+Corporate-backed source facts, correction-parent reads and opaque PDF/signature
+bytes. `build_annual_accounts_company_archive` and
+`parse_annual_accounts_company_archive` are the owning serialization/copy
+contracts. The parser checks the external archive digest, original company/year,
+strict codecs, enumeration commitments, schema-bound drafts and complete finite
+history. It rejects missing parents, events, changed originals and unsupported
+extents; an unresolved predecessor effect alone does not erase retained evidence.
+
+The shared company archive consumes this projection under its existing export
+generation receipt. Its manifest retains the Accounts digest and draft/event/
+original counts. Isolated copies preserve original company/user/filing identities;
+changing fixture target metadata never rewrites evidence or grants access.
+Missing Accounts coverage fails restore integrity. The standalone copy checker
+reconstructs through the same owning parser in another process. This contract
+and fixture do not authorize a runtime database import, new provider operation,
+production activation or a whole-service recovery claim.

@@ -235,7 +235,7 @@ test("restore fixture preserves launch-critical accounting state in isolated wor
   assert.equal(restored.restored.corporateDecisions[0].id, "decision-id");
   assert.equal(restored.restored.corporateDocumentArtifacts[1].content_sha256, "c".repeat(64));
   assert.equal(restored.restored.corporateDecisionFinalizations[0].accounting_policy_version, "no-holding-v1");
-  assert.equal(integrity.ok, true);
+  assert.deepEqual(integrity.failures, ["annual_accounts_archive_missing"]);
 });
 
 test("company-tax submissions are counted and round-trip with generic filing submissions", () => {
@@ -285,7 +285,7 @@ test("company-tax submissions are counted and round-trip with generic filing sub
     ["submission-id", "company-tax-submission-id"],
   );
   assert.equal(restored.restored.filingSubmissions[1].submittedPayload, null);
-  assert.equal(integrity.ok, true);
+  assert.deepEqual(integrity.failures, ["annual_accounts_archive_missing"]);
 });
 
 test("restore integrity rejects missing and mismatched company-tax authority evidence pairs", () => {
@@ -498,7 +498,7 @@ const restoreFullYear = archive => restoreCompanyYearArchive(archive, { targetCo
 test("full-year restore preserves captured company identity, source lineage, claims and head", () => {
   const archive = fullYearArchiveFixture();
   const restored = restoreFullYear(archive);
-  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, ["annual_accounts_archive_missing"]);
   assert.equal(restored.restored.company.id, "isolated-restore-target");
   assert.deepEqual(restored.restored.rf1086Production, archive.rf1086Production);
   assert.equal(restored.restored.rf1086Production.sourceSubmissionClaims[0].companyId, archive.company.id);
@@ -586,7 +586,7 @@ test("full-year restore uses captured prior-year originals independently of curr
   assert.equal(archive.rf1086Production.sourceOriginals[0].sourceIncomeYear, 2024);
   assert.equal(archive.incomeYear, 2025);
   const restored = restoreFullYear(archive);
-  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, ["annual_accounts_archive_missing"]);
   assert.equal(restored.manifest.counts.rf1086SourceOriginals, 1);
 });
 
@@ -595,7 +595,7 @@ test("approval-only source archives require lineage and originals but no claim o
   archive.rf1086Production.productionSubmissions = [];
   archive.rf1086Production.sourceSubmissionClaims = [];
   archive.rf1086Production.submissionHead = null;
-  assert.equal(assertRestoreIntegrity(restoreFullYear(archive)).ok, true);
+  assert.deepEqual(assertRestoreIntegrity(restoreFullYear(archive)).failures, ["annual_accounts_archive_missing"]);
   archive.rf1086Production.submissionHead = { companyId: archive.company.id };
   assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_head_mismatch"));
 });
@@ -633,7 +633,7 @@ test('restore preserves unapproved v2 history and rejects missing historical ori
     incomeYear: rf.incomeYear, rf1086Production: rf });
   archive.documentBackupProjection.companyId = rf.companyId;
   const restored = restoreFullYear(archive);
-  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, ["annual_accounts_archive_missing"]);
   assert.deepEqual(restored.restored.rf1086Production, rf);
   assert.equal(restored.manifest.counts.rf1086SourceOriginals, 5);
   archive.rf1086Production.sourceOriginals.pop();
@@ -647,7 +647,7 @@ test('portable v3 feedback verifies without current bucket metadata and detects 
     incomeYear: rf.incomeYear, rf1086Production: rf });
   archive.documentBackupProjection.companyId = rf.companyId;
   const restored = restoreFullYear(archive);
-  assert.deepEqual(assertRestoreIntegrity(restored).failures, []);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, ["annual_accounts_archive_missing"]);
   assert.deepEqual(restored.restored.rf1086Production, rf);
   assert.equal(restored.manifest.counts.rf1086FeedbackOriginals, 1);
   archive.rf1086Production.feedbackOriginals = [];

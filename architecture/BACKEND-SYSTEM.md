@@ -1343,3 +1343,18 @@ within the same lease and request budget. Each child owns its reviews and intent
 <!-- architecture-inventory
 {"routes":["/api/v1/annual-accounts/delivery-corrections"]}
 -->
+
+
+## Accounts company-year archive
+
+`/api/v1/annual-accounts/company-year-archive` uses the current owner/MFA archive
+guard before and after a repeatable source snapshot. The Accounts public codec
+retains exact drafts, complete event/correction history, original read bytes and
+Corporate-backed source evidence. Shared export includes that projection inside
+its existing generation receipt. The independent copy checker verifies the
+expected archive digest and reconstructs original identities through the owning
+parser; it has no runtime database-import or provider authority.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/annual-accounts/company-year-archive"]}
+-->

@@ -632,6 +632,18 @@ class AccountsDeliveryOriginalWire(AccountsDeliveryOriginalRefWire):
     body_base64: str
 
 
+class AccountsCompanyArchiveWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    codec: Literal['annual-accounts-company-year-archive-v1']
+    canonical_json: str = Field(max_length=192 * 1024 * 1024)
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    draft_count: int = Field(ge=0, le=64)
+    event_count: int = Field(ge=0, le=10000)
+    original_count: int = Field(ge=0, le=20256)
+
+
 class AccountsDeliveryFieldWire(TransportModel):
     document: str
     path: str
@@ -11943,6 +11955,18 @@ def create_app(
             result=await session.delivery_workspace(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),
                 correlation_id=ledger_correlation(request))
             return AccountsDeliveryWorkspaceWire.model_validate(company_tax_json_wire(result))
+        return await annual_accounts_call(execute)
+
+    @application.get('/api/v1/annual-accounts/company-year-archive', operation_id='annualAccountsGetCompanyYearArchive',
+        response_model=AccountsCompanyArchiveWire, responses=ledger_errors, tags=['annual-accounts'],
+        openapi_extra={'parameters': [REQUEST_ID_PARAMETER]})
+    async def accounts_company_year_archive(company_id: Annotated[UUID, Query(alias='companyId')],
+        income_year: Annotated[int, Query(alias='incomeYear', ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY):
+        async def execute():
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.company_year_archive(AnnualAccountsSourceQuery(CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id))
+            return AccountsCompanyArchiveWire(**asdict(result))
         return await annual_accounts_call(execute)
 
     @application.get('/api/v1/annual-accounts/delivery-original',operation_id='annualAccountsGetDeliveryOriginal',

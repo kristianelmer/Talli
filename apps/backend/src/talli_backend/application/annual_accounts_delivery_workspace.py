@@ -1,8 +1,4 @@
 """Evidence-only Accounts workspace and access-controlled exact originals."""
-from dataclasses import dataclass
-import base64
-import hashlib
-import json
 from xml.etree import ElementTree
 
 from talli_backend.application.annual_accounts_delivery_source import read_annual_accounts_delivery_source
@@ -10,36 +6,9 @@ from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError,project_annual_accounts_source,AnnualAccountsDeliveryIntent as Intent,
     AnnualAccountsDeliveryObservation as Observation,AnnualAccountsDeliveryStage as Stage,AnnualAccountsFrameKind as Kind,
     AnnualAccountsCorrectionParentAdmission as ParentAdmission,AnnualAccountsCorrectionParentObservation as ParentObservation,
-    assert_annual_accounts_correction_source,
+    assert_annual_accounts_correction_source, AccountsDeliveryOriginal, annual_accounts_delivery_originals as delivery_originals,
 )
 
-
-@dataclass(frozen=True,slots=True)
-class AccountsDeliveryOriginal:
-    key: str
-    purpose: str
-    source_filing_id: str
-    sha256: str
-    media_type: str
-    body_base64: str
-
-
-def delivery_originals(stored,events):
-    draft=stored.draft
-    def original(key,purpose,raw,media):
-        return AccountsDeliveryOriginal(key,purpose,draft.filing_id,hashlib.sha256(raw).hexdigest(),media,base64.b64encode(raw).decode())
-    source=json.dumps(json.loads(draft.canonical_json)['draft']['source'],sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False).encode()
-    if hashlib.sha256(source).hexdigest()!=draft.source.sha256:raise AnnualAccountsError.unavailable()
-    result=[original('draft:'+draft.sha256,'prepared_draft',draft.canonical_json.encode(),'application/json'),
-        original('source:'+draft.source.sha256,'prepared_source',source,'application/json'),
-        original('prepared_main:'+draft.inspection.main_form_sha256,'prepared_main',draft.main_form_xml.encode(),'application/xml'),
-        original('prepared_accounts:'+draft.inspection.company_accounts_sha256,'prepared_accounts',draft.company_accounts_xml.encode(),'application/xml')]
-    for row in events:
-        result.append(original('event:'+row.record.sha256,'operation_record',row.record.canonical_json.encode(),'application/json'))
-        if type(row.record) in (Observation,ParentObservation) and row.record.original.body_base64 is not None:
-            value=row.record.original
-            result.append(original('original:'+row.record.sha256,('parent_' if type(row.record) is ParentObservation else '')+value.purpose.value,value.raw_bytes,value.content_type or 'application/octet-stream'))
-    return tuple(result)
 
 
 def document_fields(draft):

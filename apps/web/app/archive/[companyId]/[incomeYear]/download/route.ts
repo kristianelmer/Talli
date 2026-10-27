@@ -1,3 +1,4 @@
+import { loadAccountsCompanyArchiveSource } from "../../../../../features/annual-accounts-filing";
 import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";
 import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";
 import { loadTaxSettlementArchiveSource, loadTaxDeliveryDraftArchiveSource } from "../../../../../features/company-tax-filing";
@@ -361,11 +362,13 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   const taxDeliveryDrafts = await loadTaxDeliveryDraftArchiveSource(accessToken, companyId, incomeYear);
   if (taxDeliveryDrafts.error || !taxDeliveryDrafts.data) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 503 });
+  const accountsCompanyArchive = await loadAccountsCompanyArchiveSource(accessToken, companyId, incomeYear);
+  if (accountsCompanyArchive.error || !accountsCompanyArchive.data) return new Response("Kunne ikke lese komplett årsregnskapsarkiv", {status: 503});
   const taxEvidenceIds = new Set(taxSource.submissions.filter((row) => row.mode === "test_authority")
     .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
   if (!submissions?.length && !rf1086.data?.submissions.length
       && !rf1086.data?.production?.productionSubmissions.length && !taxSource.submissions.length
-      && (taxDeliveryDrafts.data.originals?.recordCount ?? 0) === 0) {
+      && (taxDeliveryDrafts.data.originals?.recordCount ?? 0) === 0 && accountsCompanyArchive.data.draftCount === 0) {
     if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
@@ -446,6 +449,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
     taxDeliveryDrafts: taxDeliveryDrafts.data,
+    accountsCompanyArchive: accountsCompanyArchive.data,
     authorityPermissions: mergeArchiveRfRows(mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []), taxSource.authorityPermissions),
     authorityTestRuns: mergeArchiveRfRows(mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []), taxSource.authorityTestRuns.filter((row) => taxEvidenceIds.has(row.id))),
     auditEvents: auditEvents ?? [],

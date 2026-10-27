@@ -83,6 +83,20 @@ class AuthenticatedAnnualAccounts:
         async with self._session.transaction(snapshot=True) as transaction:
             return project_annual_accounts_source(query, await transaction.filing_source_snapshot(query))
 
+    async def company_year_archive(self, query: AnnualAccountsSourceQuery):
+        from talli_backend.modules.annual_accounts_filing.public import build_annual_accounts_company_archive
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        # The current READ COMMITTED guard spans the independent repeatable read;
+        # its late check observes revocation after any lock/enumeration wait.
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_archive(query)
+            async with self._session.transaction(snapshot=True) as transaction:
+                snapshot = await transaction.filing_source_snapshot(query)
+                result = build_annual_accounts_company_archive(query, snapshot, schemas=self._delivery_required()._schemas)
+            await guard.lock_delivery_archive(query)
+            return result
+
     async def verify_filing_source(self, query: AnnualAccountsSourceQuery, evidence: AnnualAccountsSourceEvidence) -> bool:
         if query.actor_id != self.actor_id:
             raise AnnualAccountsError.forbidden()

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { inspectAccountsCompanyArchive } from "@talli/talli-api-client";
 import { rf1086SourceRestoreFailures } from "./rf1086-restore-integrity.ts";
 
 export const launchCriticalTables = [
@@ -108,6 +110,8 @@ export function buildBackupManifest(archive: Record<string, any>) {
     )].sort(),
     objectReferences,
     rf1086ProductionEvidenceAvailability: archive.rf1086Production ? "included" : "unavailable",
+    annualAccountsEvidenceAvailability: archive.annualAccountsCompanyArchive ? "included" : "unavailable",
+    annualAccountsArchiveSha256: archive.annualAccountsCompanyArchive?.sha256 ?? null,
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
       holdingActions: archive.taxSettlements?.length ?? 0,
@@ -129,6 +133,9 @@ export function buildBackupManifest(archive: Record<string, any>) {
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       companyTaxDeliveryDraftOriginals: archive.companyTaxDeliveryDrafts?.originals?.recordCount ?? null,
       companyTaxDeliveryJournalEvents: archive.companyTaxDeliveryJournal?.eventCount ?? null,
+      annualAccountsDeliveryDrafts: archive.annualAccountsCompanyArchive?.draftCount ?? null,
+      annualAccountsDeliveryEvents: archive.annualAccountsCompanyArchive?.eventCount ?? null,
+      annualAccountsDeliveryOriginals: archive.annualAccountsCompanyArchive?.originalCount ?? null,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
       auditEvents: archive.auditEvents?.length ?? 0,
@@ -173,6 +180,8 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
       companyTaxDeliveryDrafts: archive.companyTaxDeliveryDrafts ?? null,
       companyTaxDeliveryJournal: archive.companyTaxDeliveryJournal ?? null,
+      // Copy original identities and bytes; targetCompanyId is only fixture metadata.
+      annualAccountsCompanyArchive: archive.annualAccountsCompanyArchive == null ? null : structuredClone(archive.annualAccountsCompanyArchive),
       filingSubmissions: submissionCollections.filingSubmissions,
       productionPilotEntitlements: archive.productionPilotEntitlements ?? [],
       filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
@@ -194,6 +203,22 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
     },
     warnings: missingObjectWarnings,
   };
+}
+
+/** Copy one receipt-bound export; never remap identities inside retained facts. */
+export function copyCompanyYearArchive(raw: string, options: {targetCompanyId: string; expectedArchiveSha256: string}) {
+  if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 512*1024*1024
+      || !/^[a-f0-9]{64}$/u.test(options.expectedArchiveSha256)
+      || createHash("sha256").update(raw, "utf8").digest("hex") !== options.expectedArchiveSha256) {
+    throw new Error("Company archive differs from its export receipt.");
+  }
+  const archive = JSON.parse(raw);
+  if (archive?.archiveType !== "talli_company_year_archive" || typeof archive.company?.id !== "string"
+      || !Number.isInteger(archive.incomeYear) || archive.incomeYear < 2000 || archive.incomeYear > 2100
+      || !archive.annualAccountsCompanyArchive) throw new Error("Complete Accounts archive source is required.");
+  inspectAccountsCompanyArchive(archive.annualAccountsCompanyArchive, archive.company.id, archive.incomeYear,
+    text => createHash("sha256").update(text).digest("hex"));
+  return {...restoreCompanyYearArchive(archive, options), sourceArchiveSha256: options.expectedArchiveSha256};
 }
 
 export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompanyYearArchive>) {
@@ -341,6 +366,18 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
       || restored.manifest.counts.companyTaxDeliveryJournalEvents !== taxJournal.eventCount) {
       fail("company_tax_delivery_journal_mismatch");
     }
+  }
+  const accounts = restored.restored.annualAccountsCompanyArchive;
+  if (!accounts) fail("annual_accounts_archive_missing");
+  if (accounts) {
+    try {
+      inspectAccountsCompanyArchive(accounts, restored.sourceCompanyId, restored.incomeYear,
+        raw => createHash("sha256").update(raw).digest("hex"));
+      if (restored.manifest.counts.annualAccountsDeliveryDrafts !== accounts.draftCount
+          || restored.manifest.counts.annualAccountsDeliveryEvents !== accounts.eventCount
+          || restored.manifest.counts.annualAccountsDeliveryOriginals !== accounts.originalCount
+          || restored.manifest.annualAccountsArchiveSha256 !== accounts.sha256) throw new Error("Accounts manifest differs.");
+    } catch { fail("annual_accounts_archive_mismatch"); }
   }
   const authorityRunsById = new Map(authorityTestRuns.map((run: any) => [run.id, run]));
   const linkedAuthorityRunIds = new Set<string>();

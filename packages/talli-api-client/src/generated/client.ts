@@ -2,6 +2,7 @@
 // Contract version: 1.0.0
 import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
 import {verifyAccountsDeliveryOriginal} from "../accounts-delivery-evidence.ts";
+import {verifyAccountsCompanyArchive} from "../accounts-company-archive.ts";
 
 export interface SystemBoundaryStatus {
   apiVersion: string;
@@ -3089,6 +3090,18 @@ export interface AccountsAdvanceDeliveryRequest {
   draftSha256: string;
   filingId: string;
   incomeYear: number;
+}
+
+export interface AccountsCompanyArchiveWire {
+  canonicalJson: string;
+  codec: "annual-accounts-company-year-archive-v1";
+  companyId: string;
+  draftCount: number;
+  eventCount: number;
+  incomeYear: number;
+  originalCount: number;
+  sha256: string;
+  sourceSha256: string;
 }
 
 export interface AccountsDeliveryProgressWire {
@@ -9353,6 +9366,22 @@ function isAccountsAdvanceDeliveryRequest(value: unknown): value is AccountsAdva
   );
 }
 
+function isAccountsCompanyArchiveWire(value: unknown): value is AccountsCompanyArchiveWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["canonicalJson","codec","companyId","draftCount","eventCount","incomeYear","originalCount","sha256","sourceSha256"]) &&
+    (typeof value.canonicalJson === "string" && value.canonicalJson.length <= 201326592) &&
+    value.codec === "annual-accounts-company-year-archive-v1" &&
+    isUuid(value.companyId) &&
+    (typeof value.draftCount === "number" && Number.isInteger(value.draftCount) && value.draftCount >= 0 && value.draftCount <= 64) &&
+    (typeof value.eventCount === "number" && Number.isInteger(value.eventCount) && value.eventCount >= 0 && value.eventCount <= 10000) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.originalCount === "number" && Number.isInteger(value.originalCount) && value.originalCount >= 0 && value.originalCount <= 20256) &&
+    (typeof value.sha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sha256)) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256))
+  );
+}
+
 function isAccountsDeliveryProgressWire(value: unknown): value is AccountsDeliveryProgressWire {
   return (
     isRecord(value) &&
@@ -13853,6 +13882,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
             || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
             || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsGetCompanyYearArchive(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsCompanyArchiveWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive?" + new URLSearchParams({companyId,incomeYear:String(incomeYear)}),
+        "GET",request,undefined,isAccountsCompanyArchiveWire);
+      try { await verifyAccountsCompanyArchive(result,companyId,incomeYear); }
+      catch { throw new TalliApiError(502,undefined); }
       return result;
     },
 
