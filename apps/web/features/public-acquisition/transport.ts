@@ -4,7 +4,7 @@ import {
   createTalliApiClient,
   type MarketingFunnelReportResponse,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendBaseUrl, backendClientOptions } from "#backend-configuration";
 
 import {
   marketingConsentFirstLayerText,
@@ -34,8 +34,7 @@ export function createMarketingMeasurementTransport(options: TransportOptions) {
     throw new Error("marketing_measurement_internal_key_invalid");
   }
   const client = createTalliApiClient({
-    baseUrl: options.baseUrl,
-    fetch: options.fetch,
+    ...backendClientOptions({ baseUrl: options.baseUrl, fetch: options.fetch }),
     headers: {
       "X-Talli-Marketing-Measurement-Key": options.internalKey,
     },
@@ -77,8 +76,7 @@ export function createMarketingMeasurementTransport(options: TransportOptions) {
       windowDays = 30,
     ): Promise<MarketingFunnelReportResponse> {
       const operatorClient = createTalliApiClient({
-        baseUrl: options.baseUrl,
-        fetch: options.fetch,
+        ...backendClientOptions({ baseUrl: options.baseUrl, fetch: options.fetch }),
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "X-Talli-Marketing-Measurement-Key": options.internalKey,

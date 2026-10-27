@@ -178,7 +178,7 @@ function ownerSnapshotLoader(fetch, name = "loadAnnualBillingSnapshot") {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../features/billing/transport.ts", import.meta.url), "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText, { exports, AbortSignal, URL, require: (id) => id === "#backend-configuration"
-    ? { backendBaseUrl: () => "https://backend.example" }
+    ? { backendClientOptions: () => ({ baseUrl: "https://backend.example" }) }
     : { TalliApiError, createTalliApiClient: (options) => createTalliApiClient({ ...options, fetch }) } });
   return exports[name];
 }

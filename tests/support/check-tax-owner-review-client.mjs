@@ -14,7 +14,7 @@ const api=createTalliApiClient({baseUrl:'https://finite-client.invalid',headers:
   assert.equal(request.method,'GET');assert.equal(request.cache,'no-store');
   return Response.json(value);
 }});
-const exports={};const dependencies={verifyCompanyTaxOwnerReviewArtifact,backendBaseUrl:()=>'https://finite-client.invalid',TalliApiError,createTalliApiClient:()=>api};
+const exports={};const dependencies={verifyCompanyTaxOwnerReviewArtifact,backendClientOptions: () => ({ baseUrl: 'https://finite-client.invalid' }),TalliApiError,createTalliApiClient:()=>api};
 const source=readFileSync(new URL('../../apps/web/features/company-tax-filing/transport.ts',import.meta.url),'utf8');
 vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
   {exports,require:()=>dependencies,AbortSignal,TextEncoder,TextDecoder,atob,btoa,crypto:webcrypto});

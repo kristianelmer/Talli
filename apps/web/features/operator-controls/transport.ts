@@ -1,8 +1,8 @@
 import { createTalliApiClient, TalliApiError, type LaunchSignoffCommandWire } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
-  return createTalliApiClient({ baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` } });
+  return createTalliApiClient({ ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` } });
 }
 function request() { return { signal: AbortSignal.timeout(15_000) }; }
 

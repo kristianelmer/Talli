@@ -6,17 +6,17 @@ import {
   type EligibilityDefinitiveRequest,
   type EligibilityPrecheckRequest,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
   return createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
 
 function publicClient() {
-  return createTalliApiClient({ baseUrl: backendBaseUrl() });
+  return createTalliApiClient({ ...backendClientOptions() });
 }
 
 function request(requestId?: string) {

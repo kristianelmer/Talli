@@ -1,3 +1,7 @@
+import { getVercelOidcToken } from "@vercel/oidc";
+import type { TalliApiClientOptions } from "@talli/talli-api-client";
+import { BackendTransportError, createPreviewBackendFetch } from "./protected-backend-fetch.ts";
+
 export type BackendConfigurationErrorCode =
   | "BACKEND_URL_MISSING"
   | "BACKEND_URL_INVALID"
@@ -40,4 +44,31 @@ export function backendBaseUrl(): string {
     throw new BackendConfigurationError("BACKEND_URL_INSECURE");
   }
   return url.origin;
+}
+
+/** Platform transport configuration; feature transports retain their own auth. */
+export function backendClientOptions(
+  supplied?: Pick<TalliApiClientOptions, "baseUrl" | "fetch">,
+): Pick<TalliApiClientOptions, "baseUrl" | "fetch"> {
+  const options = supplied ?? { baseUrl: backendBaseUrl() };
+  if (process.env.VERCEL_ENV !== "preview") return options;
+  const configured = backendBaseUrl();
+  let target: URL;
+  try {
+    target = new URL(options.baseUrl);
+  } catch {
+    throw new BackendTransportError("BACKEND_ORIGIN_INVALID");
+  }
+  if (target.origin !== configured || target.username || target.password
+    || target.pathname !== "/" || target.search || target.hash) {
+    throw new BackendTransportError("BACKEND_REQUEST_OUTSIDE_ORIGIN");
+  }
+  return {
+    baseUrl: configured,
+    fetch: createPreviewBackendFetch({
+      backendOrigin: configured,
+      tokenProvider: getVercelOidcToken,
+      fetchImplementation: options.fetch ?? globalThis.fetch,
+    }),
+  };
 }

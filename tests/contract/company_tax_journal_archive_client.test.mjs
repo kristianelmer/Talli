@@ -40,7 +40,7 @@ function client(value) {
   return createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json(value)});
 }
 function feature(api) {
-  const exports={};const dependencies={verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact,backendBaseUrl:()=>"https://backend.example",TalliApiError,createTalliApiClient:()=>api};
+  const exports={};const dependencies={verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact,backendClientOptions: () => ({ baseUrl: "https://backend.example" }),TalliApiError,createTalliApiClient:()=>api};
   const source=readFileSync(new URL("../../apps/web/features/company-tax-filing/transport.ts",import.meta.url),"utf8");
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,
     {exports,require:()=>dependencies,AbortSignal,TextEncoder,TextDecoder,atob,btoa,crypto:webcrypto});
