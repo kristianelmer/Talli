@@ -5,8 +5,9 @@ cannot open a target. Policy and reconciliation decisions remain with owners.
 """
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from typing import Mapping, Protocol
+
+from talli_backend.application.disposition_receipts import progress_receipts
 
 from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition
 from talli_backend.modules.documents.public import (
@@ -46,19 +47,9 @@ def _require_owners(entries, stores):
 
 
 def _progress_receipts(command):
-    # Technical progress codec v1 is independent of Python class repr/field order.
     fields = ('operation_id','company_id','document_id','income_year','generation',
-              'content_sha256','company_generation','plan_sha256')
-    payload = {name: str(getattr(command,name)) if name.endswith('_id') else getattr(command,name) for name in fields}
-    payload['action'] = command.action
-    raw = json.dumps(payload, sort_keys=True, separators=(',',':'), ensure_ascii=False, allow_nan=False).encode()
-    current = 'document-disposition-progress-v1:' + sha256(raw).hexdigest()
-    # Frozen encodings from7cf9d060 and46e8a357. Accept only an exact commitment
-    # for this same command/action; never rewrite an existing durable prefix.
-    legacy = 'DocumentDisposition(' + ', '.join(name+'='+repr(getattr(command,name)) for name in fields) + ')'
-    legacy_with_action = legacy[:-1] + ', action=' + repr(command.action) + ')'
-    return current, (sha256((legacy+':'+command.action).encode()).hexdigest(),
-                     sha256(legacy_with_action.encode()).hexdigest())
+              'content_sha256','company_generation','plan_sha256','action')
+    return progress_receipts({name:getattr(command,name) for name in fields})
 
 
 async def _apply(journal, target, sequence, commands, later_commands, store):

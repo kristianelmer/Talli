@@ -397,6 +397,19 @@ class RecoveredIdentity:
     bootstrap: str
     proof: dict
     budget: object = None
+    publication: object = None
+
+    def verify_publication(self):
+        if self.publication is None:
+            return
+        try:
+            self.publication.require_open()
+            verify_target_auth(self.database_url, self.auth_url, budget=self.budget)
+            self.proof["authHttpTargetBindingVerified"] = True
+            self.proof["nativePublicationVerified"] = True
+        except BaseException:
+            self.publication.revoke()
+            raise
 
     def reader_url(self, source_reader):
         source = conninfo_to_dict(source_reader)
@@ -404,23 +417,25 @@ class RecoveredIdentity:
         return make_conninfo(source_reader, host=recovered['host'], port=recovered['port'], dbname=recovered['dbname'])
 
 
-def restored_identity(source_url, workdir, boundary, *, budget=None):
+def restored_identity(source_url, workdir, boundary, *, budget=None, publication=None):
     """Explicit construction selection; a failed repair never falls back to replay."""
     if budget is not None:
-        return _restored_identity_scoped(source_url, workdir, boundary, budget)
+        return _restored_identity_scoped(source_url, workdir, boundary, budget, publication)
+    if publication is not None:
+        raise ValueError("Native quarantine requires bounded repaired construction")
     return _restored_identity_legacy(source_url, workdir, boundary)
 
 
 @contextmanager
-def _restored_identity_scoped(source_url, workdir, boundary, budget):
+def _restored_identity_scoped(source_url, workdir, boundary, budget, publication=None):
     from rf1086_restore_control import bounded_boundary, budget_scope
     with budget_scope(budget):
-        with _restored_identity_repaired(source_url,workdir,bounded_boundary(boundary,budget),budget) as value:
+        with _restored_identity_repaired(source_url,workdir,bounded_boundary(boundary,budget),budget,publication) as value:
             yield value
 
 
 @contextmanager
-def _restored_identity_repaired(source_url, workdir, boundary, budget):
+def _restored_identity_repaired(source_url, workdir, boundary, budget, publication=None):
     from functools import partial
     import rf1086_restore_control as construction
     import rf1086_restore_metadata as metadata
@@ -556,12 +571,16 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         reserved=tuple(int(published_port(service,target_port).split(':')[1] or '0')
                        for service,target_port in (('DB',5432),('AUTH',9999)))
         with construction.internal_loopback_ports(owner,reserved,budget=budget) as (db_port,port):
-            with construction.io_deadline(budget), httpx.Client(trust_env=False) as client:
-                while True:
-                    try:
-                        if client.get(f'http://127.0.0.1:{port}/health',timeout=min(1,budget.remaining())).status_code==200:break
-                    except httpx.HTTPError:pass
-                    budget.pause(.1)
+            if publication is None:
+                with construction.io_deadline(budget), httpx.Client(trust_env=False) as client:
+                    while True:
+                        try:
+                            if client.get(f'http://127.0.0.1:{port}/health',timeout=min(1,budget.remaining())).status_code==200:break
+                        except httpx.HTTPError:pass
+                        budget.pause(.1)
+            else:
+                publication.bind(owner)
+                publication.wait_internal_auth(owner, budget)
             database_url=make_conninfo(source_url,host='127.0.0.1',port=db_port)
             verify_target_session(database_url,target,operator,budget=budget)
             construction.require(source_query(source,'select system_identifier from pg_control_system();',
@@ -572,15 +591,19 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
             admin_key=storage_env.get('SERVICE_KEY','')
             construction.require(bool(admin_key),'source_binding')
             with auth_gateway(port,budget=budget) as gateway:
-                verify_target_auth(database_url,gateway,budget=budget)
+                if publication is None:
+                    verify_target_auth(database_url,gateway,budget=budget)
                 recovered_identity=RecoveredIdentity(database_url,gateway,admin_key,target,operator,
                     {'independentClusterRestored':True,'independentAuthRestored':True,
                      'roleAttributesAndMembershipsRestored':True,'ownershipGrantsAndRlsRestored':True,
-                     'authRowsRestoredExactly':True,'authHttpTargetBindingVerified':True,
+                     'authRowsRestoredExactly':True,'authHttpTargetBindingVerified':publication is None,
                      'authSigningConfigSource':'captured-local-service-config','hostedKeyRecoveryVerified':False},
-                    budget=budget)
+                    budget=budget,publication=publication)
                 context_edge='yield_boundary'
                 yield recovered_identity
+                if publication is not None and not recovered_identity.proof.get("nativePublicationVerified"):
+                    publication.revoke()
+                    raise ValueError("Native target left without committed replay/publication verification")
                 business_complete=True
                 context_edge='after_yield'
     finally:
