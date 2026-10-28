@@ -625,6 +625,18 @@
         "/api/v1/company-tax/delivery-workspace",
         "/api/v1/company-tax/delivery-original"
       ]
+    },
+    {
+      "name": "company-disposition",
+      "purpose": "Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined.",
+      "publicPackages": [
+        "talli_backend.modules.company_access.public",
+        "talli_backend.modules.documents.public",
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "offline:company-disposition"
+      ]
     }
   ],
   "operationalControlState": {
@@ -789,7 +801,8 @@
     "idempotency": "Durable idempotency records are required for consequential commands before provider I/O.",
     "eventDelivery": "public.notification_outbox persists outbound deliveries. annual_notification_inbox.receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
-    "durableWorker": "The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions."
+    "durableWorker": "The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions.",
+    "deletionRecovery": "Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler."
   },
   "adapterBindings": [
     {
@@ -1365,7 +1378,8 @@
       "talli_backend.application.company_tax_delivery_submission",
       "talli_backend.adapters.annual_accounts_schemas",
       "talli_backend.application.annual_accounts_delivery_preparation",
-      "talli_backend.application.annual_accounts_delivery_workflow"
+      "talli_backend.application.annual_accounts_delivery_workflow",
+      "talli_backend.adapters.restore_quarantine"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1479,7 +1493,13 @@
       "urllib.request",
       "talli_backend.adapters.company_tax_loopback_read",
       "talli_backend.adapters.annual_accounts_schemas",
-      "talli_backend.adapters.loopback_annual_accounts_delivery"
+      "talli_backend.adapters.loopback_annual_accounts_delivery",
+      "contextlib",
+      "pathlib",
+      "sqlite3",
+      "uuid",
+      "talli_backend.application.company_disposition",
+      "talli_backend.adapters.deletion_journal"
     ]
   }
 }

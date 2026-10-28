@@ -3059,6 +3059,8 @@ def _invitation_not_found() -> CompanyAccessError:
 
 
 __all__ = [
+    "AuthorizedCompanyDisposition", "CompanyDispositionPlan", "DispositionAuthorizationFacts",
+    "DispositionExport", "DispositionRecord", "DispositionSession", "authorize_company_disposition",
     "CompanyArchiveDownloadAuthorization",
     "CompanyYearLegalEvidence",
     "CompanyYearPurchaseBasis",
@@ -3137,3 +3139,9 @@ __all__ = [
     "company_access_adapter",
     "company_registry_adapter",
 ]
+
+# Offline disposition authorization is separate from selected-year cancellation.
+from .disposition import (
+    AuthorizedCompanyDisposition, CompanyDispositionPlan, DispositionAuthorizationFacts,
+    DispositionExport, DispositionRecord, DispositionSession, authorize_company_disposition,
+)

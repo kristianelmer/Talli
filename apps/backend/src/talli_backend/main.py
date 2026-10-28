@@ -26,6 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
+from talli_backend.adapters.restore_quarantine import RestoreQuarantineMiddleware, configured_restore_gate
 from talli_backend.adapters.dependency_readiness import (
     CachedReadiness, ReadinessProbe, configured_readiness,
 )
@@ -5936,6 +5937,8 @@ def create_app(
         docs_url=None,
         redoc_url=None,
     )
+    application.add_middleware(RestoreQuarantineMiddleware, gate=configured_restore_gate(os.environ),
+                               problem_response=_problem_response)
     application.add_middleware(RequestIdMiddleware)
     application.router.add_event_handler("shutdown", dependency_readiness.close)
     gateway = (

@@ -274,3 +274,31 @@ SQL cases live in `test_documents_historical_original_integrity_database.py`.
 Collection and native codec/ACL probes with explicit authorization/lock stubs are
 not full Supabase/RLS/concurrency execution evidence. Consumer grants and final
 Governance admission remain a separate canonical owner turn.
+
+
+### Restricted offline disposition seam
+
+`DocumentDisposition` binds a reviewed plan to exact company/year/document,
+generation and byte hash. `DocumentDispositionStore` must serialize against owner
+evidence writes, reject retained originals/references, fence before I/O, enumerate
+and erase every selected object generation plus raw metadata, and reconcile the
+same command from durable receipts and actual stores. `dispose_document` never
+blindly repeats an unknown result. Retained records are verified before erase.
+The current adapter is a disposable local SQLite/files fixture only. No production
+Supabase delete adapter, public purge route, trigger bypass or new access grant
+is provided. SQL DELETE/filesystem unlink is distinct from forensic media erasure
+and from backup expiry. Normal removal remains its existing lifecycle operation.
+
+Owner disposition must fence the complete company generation/inventory before
+I/O. `READY` requires an exact durable receipt with intact selected bytes; partial
+I/O remains `UNKNOWN`. Every selected record is preflighted before the first erase.
+
+
+`validate_document_dispositions` and `apply_document_dispositions` own retained
+supersession and reconciliation-state decisions. Workflows only sequence public
+commands and journal receipts. `fence_inventory` validates a current source plan;
+`fence_replay_history` instead validates immutable selectors against an authorized
+historical cut anchored to the restored generation. It must accept compatible
+known READY prefixes from that cut and reject unrelated pending work, unknown
+originals or unattributed stores. It cannot require all historical company
+generations to equal the live snapshot generation. No production adapter exists.
