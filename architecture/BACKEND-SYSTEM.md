@@ -1372,3 +1372,10 @@ That explicit legacy profile still fails complete restore integrity.
 <!-- architecture-inventory
 {"routes":["/api/v1/annual-accounts/company-year-archive-verifications"]}
 -->
+
+
+Accounts delivery contract fingerprints use function-owner names and policy meaning (qualified relation/name, command, permissiveness, sorted role names and predicates). Database-local catalog IDs do not participate. The existing-v4 upgrade requires its installed contract to validate before replacement and preserves the reader owner, ACLs and role memberships. An already-invalid legacy contract requires separate recovery review.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/migrations/20261028005310_annual_accounts_portable_delivery_contract.sql"]}
+-->

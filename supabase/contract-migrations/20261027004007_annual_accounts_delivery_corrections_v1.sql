@@ -242,7 +242,7 @@ do $patch_root$ declare body text; definition text; changed text; begin
 end; $patch_root$;
 do $install_reader$ declare expected_contract jsonb; begin
 select coalesce(pg_catalog.jsonb_object_agg(item.key,item.hash),'{}'::jsonb) into expected_contract from (
- select 'function:'||p.proname as key,pg_catalog.md5(pg_catalog.pg_get_functiondef(p.oid)||':'||p.proowner::text) as hash
+ select 'function:'||p.proname as key,pg_catalog.md5(pg_catalog.jsonb_build_array(pg_catalog.pg_get_functiondef(p.oid),pg_catalog.pg_get_userbyid(p.proowner)::text)::text) as hash
  from pg_catalog.pg_proc p where p.oid in (
   'annual_accounts_filing.delivery_canonical_json_v1(jsonb,integer)'::regprocedure,
   'annual_accounts_filing.delivery_bytes_v1(text,integer)'::regprocedure,
@@ -264,8 +264,16 @@ select coalesce(pg_catalog.jsonb_object_agg(item.key,item.hash),'{}'::jsonb) int
  union all
  select 'index:'||c.relname,pg_catalog.md5(pg_catalog.pg_get_indexdef(c.oid)||':'||i.indisvalid::text||':'||i.indisunique::text) from pg_catalog.pg_class c join pg_catalog.pg_index i on i.indexrelid=c.oid where c.oid='annual_accounts_filing.accounts_delivery_one_child_v1'::regclass
  union all
- select 'policy:'||p.polname,pg_catalog.md5(pg_catalog.to_jsonb(p)::text)
- from pg_catalog.pg_policy p where p.polrelid in ('annual_accounts_filing.delivery_events'::regclass,'annual_accounts_filing.delivery_drafts'::regclass)
+ select 'policy:'||n.nspname||'.'||c.relname||'.'||p.polname,
+  pg_catalog.md5(pg_catalog.jsonb_build_object(
+   'command',p.polcmd::text,'permissive',p.polpermissive,
+   'roles',(select pg_catalog.jsonb_agg(case when r=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(r)::text end
+    order by (case when r=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(r)::text end) collate pg_catalog."C") from pg_catalog.unnest(p.polroles) r),
+   'using',pg_catalog.pg_get_expr(p.polqual,p.polrelid),
+   'check',pg_catalog.pg_get_expr(p.polwithcheck,p.polrelid))::text)
+ from pg_catalog.pg_policy p join pg_catalog.pg_class c on c.oid=p.polrelid
+ join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+ where p.polrelid in ('annual_accounts_filing.delivery_events'::regclass,'annual_accounts_filing.delivery_drafts'::regclass)
 ) item;
  execute pg_catalog.replace($reader$
 create function annual_accounts_filing.read_source_snapshot_v4(p_company uuid,p_year integer,p_subject text) returns jsonb
@@ -278,7 +286,7 @@ declare result jsonb; events jsonb; n bigint; bytes bigint; contract boolean; cu
  select coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(e) order by e.sequence),'[]'::jsonb) into events
   from annual_accounts_filing.delivery_events e where e.company_id=p_company and e.income_year=p_year;
  select coalesce(pg_catalog.jsonb_object_agg(item.key,item.hash),'{}'::jsonb) into current_contract from (
- select 'function:'||p.proname as key,pg_catalog.md5(pg_catalog.pg_get_functiondef(p.oid)||':'||p.proowner::text) as hash
+ select 'function:'||p.proname as key,pg_catalog.md5(pg_catalog.jsonb_build_array(pg_catalog.pg_get_functiondef(p.oid),pg_catalog.pg_get_userbyid(p.proowner)::text)::text) as hash
  from pg_catalog.pg_proc p where p.oid in (
   'annual_accounts_filing.delivery_canonical_json_v1(jsonb,integer)'::regprocedure,
   'annual_accounts_filing.delivery_bytes_v1(text,integer)'::regprocedure,
@@ -300,8 +308,16 @@ declare result jsonb; events jsonb; n bigint; bytes bigint; contract boolean; cu
  union all
  select 'index:'||c.relname,pg_catalog.md5(pg_catalog.pg_get_indexdef(c.oid)||':'||i.indisvalid::text||':'||i.indisunique::text) from pg_catalog.pg_class c join pg_catalog.pg_index i on i.indexrelid=c.oid where c.oid='annual_accounts_filing.accounts_delivery_one_child_v1'::regclass
  union all
- select 'policy:'||p.polname,pg_catalog.md5(pg_catalog.to_jsonb(p)::text)
- from pg_catalog.pg_policy p where p.polrelid in ('annual_accounts_filing.delivery_events'::regclass,'annual_accounts_filing.delivery_drafts'::regclass)
+ select 'policy:'||n.nspname||'.'||c.relname||'.'||p.polname,
+  pg_catalog.md5(pg_catalog.jsonb_build_object(
+   'command',p.polcmd::text,'permissive',p.polpermissive,
+   'roles',(select pg_catalog.jsonb_agg(case when r=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(r)::text end
+    order by (case when r=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(r)::text end) collate pg_catalog."C") from pg_catalog.unnest(p.polroles) r),
+   'using',pg_catalog.pg_get_expr(p.polqual,p.polrelid),
+   'check',pg_catalog.pg_get_expr(p.polwithcheck,p.polrelid))::text)
+ from pg_catalog.pg_policy p join pg_catalog.pg_class c on c.oid=p.polrelid
+ join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+ where p.polrelid in ('annual_accounts_filing.delivery_events'::regclass,'annual_accounts_filing.delivery_drafts'::regclass)
 ) item;
  contract:=current_contract=expected_contract;
  -- The contract covers executable helpers, exact checks and all retention

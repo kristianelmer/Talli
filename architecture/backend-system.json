@@ -779,7 +779,8 @@
       "supabase/contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
       "supabase/rollback/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
       "supabase/contract-migrations/20261027004007_annual_accounts_delivery_corrections_v1.sql",
-      "supabase/rollback/20261027004007_annual_accounts_delivery_corrections_v1.sql"
+      "supabase/rollback/20261027004007_annual_accounts_delivery_corrections_v1.sql",
+      "supabase/migrations/20261028005310_annual_accounts_portable_delivery_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

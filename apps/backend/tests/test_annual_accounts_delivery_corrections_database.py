@@ -8,7 +8,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from test_annual_accounts_delivery_events_database import event_database,operations,approval,grant
+from test_annual_accounts_delivery_events_database import event_database,operations,approval,grant,recreate_insert_policy
 from test_annual_accounts_delivery_store_database import session,COMPANY,ACTOR,accounts_database,draft_database,database,draft,writes,store,fresh
 from test_annual_accounts_delivery_journal import complete_world
 from test_annual_accounts_delivery_corrections import changed_source
@@ -26,6 +26,8 @@ from talli_backend.shared.kernel import Timestamp,IncomeYear
 pytestmark=pytest.mark.accounts_database
 ROOT=Path(__file__).resolve().parents[3]
 MIGRATION='20261027004007_annual_accounts_delivery_corrections_v1.sql'
+PORTABLE_MIGRATION=ROOT/'supabase/migrations/20261028005310_annual_accounts_portable_delivery_contract.sql'
+LEGACY_READER=ROOT/'apps/backend/tests/fixtures/accounts_delivery_v4_catalog_ids.sql'
 
 
 @pytest.fixture(scope='module')
@@ -44,6 +46,128 @@ def read(database):
             return (await tx._one_row('select annual_accounts_filing.read_source_snapshot_v4(%s,2025,%s) as result',
                 (str(COMPANY),str(ACTOR.subject))))['result']
     return asyncio.run(exercise())
+
+
+def test_equivalent_recreated_policy_keeps_correction_contract_complete(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        recreate_insert_policy(db)
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+def test_legacy_catalog_manifest_upgrades_and_survives_new_policy_ids(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        query="select pg_get_functiondef(oid),proowner,proacl::text from pg_proc where oid='annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)'::regprocedure"
+        original=db.execute(query).fetchone()
+        members='select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3'
+        memberships=db.execute(members).fetchall()
+        try:
+            db.execute(LEGACY_READER.read_text())
+            assert 'pg_catalog.to_jsonb(p)::text' in db.execute(query).fetchone()[0]
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+            db.execute(PORTABLE_MIGRATION.read_text())
+            assert db.execute(query).fetchone()==original
+            assert db.execute(members).fetchall()==memberships
+            recreate_insert_policy(db)
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+        finally:
+            db.execute('rollback')
+            db.execute(original[0])
+
+
+def test_upgrade_refuses_an_already_invalid_legacy_catalog_manifest(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        original=db.execute("select pg_get_functiondef('annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)'::regprocedure)").fetchone()[0]
+        try:
+            db.execute(LEGACY_READER.read_text())
+            recreate_insert_policy(db)
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is False
+            with pytest.raises(psycopg.errors.RaiseException,match='annual_accounts_portable_contract_changed'):
+                db.execute(PORTABLE_MIGRATION.read_text())
+        finally:
+            db.execute('rollback')
+            db.execute(original)
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+def test_portable_upgrade_preserves_an_already_attested_reader_and_role_grants(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        query="select pg_get_functiondef(oid),proowner,proacl::text from pg_proc where oid='annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)'::regprocedure"
+        before=db.execute(query).fetchone()
+        members='select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3'
+        memberships=db.execute(members).fetchall()
+        db.execute(PORTABLE_MIGRATION.read_text())
+        assert db.execute(query).fetchone()==before
+        assert db.execute(members).fetchall()==memberships
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+def test_portable_upgrade_is_empty_before_the_capability_contract_exists(correction_database):
+    name='accounts_portable_not_installed_'+uuid4().hex[:20]
+    sql=PORTABLE_MIGRATION.read_text()
+    body=sql.replace('\nbegin;\n','\n',1).removesuffix('commit;\n')
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        members='select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3'
+        before=db.execute(members).fetchall()
+        db.execute('begin')
+        try:
+            # A rollback-only namespace rename reproduces fresh-install lookup
+            # without widening the fixture's postgres-only host authentication.
+            db.execute('alter schema annual_accounts_filing rename to '+name)
+            db.execute(body)
+            assert db.execute("select to_regnamespace('annual_accounts_filing')").fetchone()[0] is None
+            assert db.execute(members).fetchall()==before
+        finally:
+            db.execute('rollback')
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+def test_portable_upgrade_borrows_only_required_set_authority(correction_database):
+    role='accounts_portable_operator_'+uuid4().hex
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        db.execute('create role '+role+' nologin noinherit nobypassrls')
+        db.execute('grant usage on schema annual_accounts_filing to '+role)
+        try:
+            db.execute('grant annual_accounts_filing_store_owner to '+role+' with admin true, inherit false, set false')
+            query='select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members where member=%s::regrole order by 1,2,3'
+            before=db.execute(query,(role,)).fetchall()
+            db.execute('set role '+role)
+            assert db.execute("select pg_has_role(current_user,'annual_accounts_filing_store_owner','SET')").fetchone()[0] is False
+            db.execute(PORTABLE_MIGRATION.read_text())
+            assert db.execute('select current_user').fetchone()[0]==role
+            db.execute('reset role')
+            assert db.execute(query,(role,)).fetchall()==before
+        finally:
+            db.execute('rollback')
+            db.execute('reset role')
+            db.execute('revoke usage on schema annual_accounts_filing from '+role)
+            db.execute('drop role '+role)
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+@pytest.mark.parametrize('defect',['predicate','policy-role','public-append','helper-owner','duplicate-policy-name'])
+def test_portable_upgrade_never_rebaselines_changed_permission_meaning(correction_database,defect):
+    sql=PORTABLE_MIGRATION.read_text()
+    # Keep all intentional damage and the migration in one rollback-only test.
+    assert sql.count('\nbegin;\n')==1 and sql.endswith('commit;\n')
+    body=sql.replace('\nbegin;\n','\n',1).removesuffix('commit;\n')
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        db.execute('begin')
+        try:
+            if defect=='predicate':
+                db.execute('alter policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events with check(true)')
+            elif defect=='policy-role':
+                db.execute('alter policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events to public')
+            elif defect=='public-append':
+                db.execute('grant execute on function annual_accounts_filing.append_delivery_event_v2(text,text,text) to public')
+            elif defect=='helper-owner':
+                db.execute('alter function annual_accounts_filing.delivery_creation_permitted_v2(uuid,uuid,integer) owner to postgres')
+            else:
+                db.execute('create policy accounts_delivery_event_insert on annual_accounts_filing.delivery_drafts for insert to annual_accounts_filing_store_owner with check(true)')
+            with pytest.raises(psycopg.errors.RaiseException,match='annual_accounts_portable_contract_(changed|permission_mismatch)'):
+                db.execute(body)
+        finally:
+            db.execute('rollback')
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
 
 
 def test_successor_captures_positive_contract_and_keeps_new_authority_closed(correction_database):

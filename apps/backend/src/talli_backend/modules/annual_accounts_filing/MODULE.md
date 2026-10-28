@@ -468,3 +468,6 @@ must match. TypeScript checks only portable scope/bytes/enumeration; they never
 replace owning journal interpretation. Raw restored fixtures remain unverified.
 The preceding workspace may support an explicitly empty delivery overlap on an
 older backend; this preserves export availability, not complete restore coverage.
+
+
+Native recovery retains portable delivery-contract attestation: helper definitions bind to owner role names; policy fingerprints bind to qualified relation/name, command, permissiveness, sorted role names, USING and WITH CHECK. Recreated equivalent policies retain coverage, while changed ownership, predicates or grants invalidate it. The guarded existing-v4 upgrade validates the original contract before replacing its private fingerprint format; it rejects an already-invalid legacy manifest.
