@@ -99,9 +99,12 @@ class NativeDispositionPreflight:
             subject=UUID(user['id']); session=UUID(claims['session_id'])
             if claims['sub']!=str(subject) or claims.get('aal')!='aal2':
                 raise ValueError()
+            totp=[entry['timestamp'] for entry in claims['amr'] if entry['method']=='totp']
+            if len(totp)!=1 or type(totp[0]) is not int:
+                raise ValueError()
         except Exception:
             raise ValueError('local_disposition_session') from None
-        return subject,session
+        return subject,session,totp[0]
 
     def _query(self, statement, *values):
         self.target.validate()
@@ -139,12 +142,16 @@ class NativeDispositionPreflight:
         )""",*owner,*reviewer,company,case)
 
     @staticmethod
-    def _authority(source, company, case):
+    def _authority(source, company, case, owner_mfa_timestamp, reviewer_mfa_timestamp):
         now=_instant(source['now']); sessions=[]
-        for name,role in (('owner','owner'),('reviewer','reviewer')):
+        # Supabase Auth signs the AMR claim's updated_at (Unix seconds) after verification.
+        # Match it to the server row so an older token cannot borrow a later MFA event.
+        for name,role,token_mfa_timestamp in (('owner','owner',owner_mfa_timestamp),
+                                              ('reviewer','reviewer',reviewer_mfa_timestamp)):
             value=source[name]
             if (not value or value['aal']!='aal2' or not value['mfaAt']
                     or not timedelta(0)<=now-_instant(value['mfaAt'])<=timedelta(minutes=5)
+                    or int(_instant(value['mfaAt']).timestamp())!=token_mfa_timestamp
                     or (value['notAfter'] and _instant(value['notAfter'])<=now)):
                 raise ValueError('local_disposition_fresh_session')
             sessions.append(DispositionSession(subject=UUID(value['subject']),session_id=UUID(value['session']),
@@ -173,8 +180,8 @@ class NativeDispositionPreflight:
         if not 1<=len(erase_ids)<=16 or len(set(erase_ids))!=len(erase_ids):
             raise ValueError('local_disposition_selection')
         owner=self._session(owner_token); reviewer=self._session(reviewer_token)
-        source=self._source(company,case,owner,reviewer)
-        now,owner_session,reviewer_session=self._authority(source,company,case)
+        source=self._source(company,case,owner[:2],reviewer[:2])
+        now,owner_session,reviewer_session=self._authority(source,company,case,owner[2],reviewer[2])
         rows=source['documents']
         if not 1<=len(rows)<=256 or not set(map(str,erase_ids))<=set(rows):
             raise ValueError('local_disposition_inventory_unavailable')
