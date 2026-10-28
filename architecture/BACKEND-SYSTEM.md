@@ -1390,9 +1390,21 @@ complete export receipts, bounded holds, fresh verified owner MFA and independen
 review facts. No selected-year cancellation marker authorizes physical deletion.
 Documents owns exact selectors, write fencing, evidence-reference refusal, every
 ordinary object generation, retained-original checks and uncertain-outcome
-reconciliation. The current vertical slice supplies a local synthetic adapter in
-its tests, not a production Supabase purge adapter or real Billing/session-fact
-resolver. Unsupported owners and unavailable inventory fail closed.
+reconciliation. `NativeDispositionPreflight` is an offline operational adapter on
+an explicitly owned disposable target. It resolves server-backed Auth sessions
+and TOTP time, active case authority, complete recorded Billing purchase history,
+Documents rows/references/retained originals, and every ordinary Storage version.
+Its export contains actual scoped Documents bytes. Only the synthetic company ID
+derived from the target nonce can receive its `synthetic-local-documents-only`
+permit. The same checked operator session holds the company advisory write fence
+through journal admission and native owner I/O. A missing source fails closed.
+
+ADR-0011 review: this is a declared operational control read across Auth, Company
+Access and Documents tables. It uses the private owner-controlled native source
+and never composes into an HTTP or hosted business repository. Real-company
+disposition still needs source-owned public contracts for every capability, legal
+holds and complete company export bytes/receipts. The local Documents export is
+not a company export receipt; no whole-company permit is issued from it.
 
 `deletionRecovery` uses the technical `DeletionJournal`/`ReplayReceiptStore`
 contracts in `talli_backend.application.company_disposition`, with local SQLite
@@ -1422,7 +1434,7 @@ purge, offsite custody, journal-retention duration or future paid backup rotatio
 No journal expiry is guessed; a real destination/rotation horizon remains required.
 
 <!-- architecture-inventory
-{"workflows":["company-disposition"],"workflowPurposes":["company-disposition=>Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined."],"routes":["offline:company-disposition"],"infrastructure":["deletionRecovery=>Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler."],"transportDependencies":["talli_backend.adapters.restore_quarantine"],"adapterDependencies":["contextlib","pathlib","sqlite3","uuid","talli_backend.application.company_disposition","talli_backend.adapters.deletion_journal"]}
+{"workflows":["company-disposition"],"workflowPurposes":["company-disposition=>Offline synthetic Documents disposition with owner-resolved Auth, Company Access, Billing and Documents facts; whole-company owner/legal/export coverage remains unavailable."],"routes":["offline:company-disposition"],"infrastructure":["deletionRecovery=>Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler. Synthetic local preflight verifies Auth sessions/MFA, case authority, Billing history, Documents bytes and generation via an explicitly owned native control channel; a scoped export and same-session company write fence bind the native command. Whole-company owner/legal/export coverage stays unavailable."],"transportDependencies":["talli_backend.adapters.restore_quarantine"],"adapterDependencies":["contextlib","pathlib","sqlite3","uuid","talli_backend.application.company_disposition","talli_backend.adapters.deletion_journal","talli_backend.adapters.native_disposition_preflight"]}
 -->
 
 

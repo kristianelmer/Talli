@@ -16,6 +16,16 @@ import {
 
 const repositoryRoot = new URL("..", import.meta.url);
 
+test("synthetic native disposition fact reads are declared and absent from HTTP composition", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../architecture/backend-system.json", import.meta.url), "utf8"));
+  const operational = "talli_backend.adapters.native_disposition_preflight";
+  assert.ok(manifest.allowedDependencies.adapters.includes(operational));
+  assert.ok(manifest.workflows.some((workflow) => workflow.name === "company-disposition"
+    && workflow.routes.length === 1 && workflow.routes[0] === "offline:company-disposition"));
+  const main = readFileSync(new URL("../apps/backend/src/talli_backend/main.py", import.meta.url), "utf8");
+  assert.doesNotMatch(main, /native_disposition_preflight|AuthorizedLocalDocumentsDisposition/u);
+});
+
 test("Python architecture inspection consumes one framed request without waiting for EOF", async (t) => {
   const python = fileURLToPath(new URL("../apps/backend/.venv/bin/python", import.meta.url));
   const helper = fileURLToPath(new URL("../scripts/python-imports.py", import.meta.url));
@@ -430,12 +440,68 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:company_access"
   },
   {
+    "from": "backend-system:company-disposition",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:company-disposition",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:company-disposition",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
     "from": "backend-system:company-tax-assessment-previews",
     "imports": [
       "talli_backend.modules.company_tax_filing.public"
     ],
     "kind": "workflow",
     "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-delivery-draft-archive",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-delivery-preparation",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-delivery-preparation",
+    "imports": [
+      "talli_backend.modules.investments.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:investments"
+  },
+  {
+    "from": "backend-system:company-tax-delivery-preparation",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
   },
   {
     "from": "backend-system:company-tax-filing-preparation",
@@ -447,6 +513,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   },
   {
     "from": "backend-system:company-tax-filing-reads",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-finite-delivery",
     "imports": [
       "talli_backend.modules.company_tax_filing.public"
     ],

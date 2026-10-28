@@ -12,7 +12,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict
@@ -126,6 +126,7 @@ class NativeDispositionPreflight:
           'reviewer', (select jsonb_build_object('subject',s.user_id,'session',s.id,'aal',s.aal,'notAfter',s.not_after,
              'mfaAt',(select max(m.updated_at) from auth.mfa_amr_claims m where m.session_id=s.id and m.authentication_method='totp'))
              from auth.sessions s where s.user_id={2} and s.id={3}),
+          'company',(select to_jsonb(c) from public.companies c where c.id={4}),
           'membership',(select to_jsonb(m) from public.company_memberships m where m.company_id={4} and m.user_id={0}),
           'operator',(select to_jsonb(o) from public.support_operators o where o.user_id={2}),
           'grant',(select to_jsonb(g) from public.support_access_grants g where g.case_id={5} and g.company_id={4} and g.operator_user_id={2}),
@@ -151,12 +152,13 @@ class NativeDispositionPreflight:
         if sessions[0].subject==sessions[1].subject or sessions[0].session_id==sessions[1].session_id:
             raise ValueError('local_disposition_independent_review')
         member=source['membership']; operator=source['operator']; grant=source['grant']
+        if not source['company'] or source['company']['created_by']!=str(sessions[0].subject):
+            raise ValueError('local_disposition_fixture_owner')
         if not member or member['role']!='owner' or not member['accepted_at']:
             raise ValueError('local_disposition_owner')
         if not operator or not operator['active'] or operator['role']!='admin':
             raise ValueError('local_disposition_reviewer')
         if (not grant or not source['opening'] or grant['revoked_at'] is not None
-                or grant['granted_by']!=str(sessions[1].subject)
                 or not _instant(grant['starts_at'])<=now<_instant(grant['expires_at'])
                 or not {'documents','billing','cancellation'}<=set(grant['scopes'])):
             raise ValueError('local_disposition_support_authority')
@@ -165,6 +167,8 @@ class NativeDispositionPreflight:
     async def observe(self, *, operation_id, company_id, support_case_id, erase_ids, owner_token, reviewer_token):
         """Selectors only; approval, dates, inventories and completeness are not inputs."""
         operation_id=UUID(str(operation_id)); company=UUID(str(company_id)); case=UUID(str(support_case_id))
+        if company!=uuid5(UUID(self.target.target),'local-documents-disposition-fixture-v1'):
+            raise ValueError('local_disposition_fixture_identity')
         erase_ids=tuple(UUID(str(v)) for v in erase_ids)
         if not 1<=len(erase_ids)<=16 or len(set(erase_ids))!=len(erase_ids):
             raise ValueError('local_disposition_selection')
@@ -229,16 +233,21 @@ class NativeDispositionPreflight:
         plan=plan.model_copy(update={'inventory_sha256':plan.inventory_digest()})
         exported=json.loads(self.target._run('exec','-i',self.target.storage,'node','-e',_EXPORT,
             data=_bytes({'files':[f for o in objects.values() for f in o['files']]})))
-        archive=_bytes({'scope':'local-documents-only','companyId':str(company),'generation':plan.generation,
+        archive=_bytes({'scope':'synthetic-local-documents-only','companyId':str(company),'generation':plan.generation,
             'documents':rows,'references':source['references'],'originals':source['originals'],'files':exported})
         digest=sha256(archive).hexdigest(); path=self.directory/(digest+'.documents-export.json')
         self._write_once(path,archive)
+        current_generations=dict(generations)
+        company_receipts=tuple({'id':receipt['id'],'incomeYear':receipt['income_year'],
+            'archiveSha256':receipt['archive_sha256'],
+            'currentGeneration':current_generations.get(receipt['income_year'])==receipt['source_generation'],
+            'archiveBodyVerified':False} for receipt in source['companyExports'])
         return {'plan':plan,'source':stable,'source_sha256':source_sha,'objects':objects,'rows':rows,
             'now':now,'owner':owner_session,'reviewer':reviewer_session,'paid_expires_at':period.paid_expires_at,
             'recorded_export_until':period.read_export_until,'export_until':export_until,
             'export_sha256':digest,'generations':generations,
             'whole_company':{'available':False,'reason':'owning_inventory_legal_and_export_coverage_unavailable',
-                'observedCompanyExportReceipts':len(source['companyExports'])}}
+                'observedCompanyExportReceiptCommitments':company_receipts}}
 
     def _write_once(self,path,body):
         if path.exists():
@@ -254,7 +263,7 @@ class NativeDispositionPreflight:
         observed=await self.observe(**selectors)
         plan=observed['plan']; commitment=sha256(plan.model_dump_json().encode()).hexdigest()
         if reviewed_plan_sha256!=commitment:raise ValueError('local_disposition_review_changed')
-        facts=LocalDocumentsFacts(source_sha256=observed['source_sha256'],source_generations=observed['generations'],
+        facts=LocalDocumentsFacts(target_id=UUID(self.target.target),source_sha256=observed['source_sha256'],source_generations=observed['generations'],
             paid_expires_at=observed['paid_expires_at'],recorded_export_until=observed['recorded_export_until'],
             export_until=observed['export_until'],documents_export_sha256=observed['export_sha256'],
             owner=observed['owner'],reviewer=observed['reviewer'],review_plan_sha256=commitment,
@@ -279,6 +288,8 @@ class NativeDispositionPreflight:
         """
         from talli_backend.application.company_disposition import execute_authorized_disposition
         if store.target is not self.target:
+            raise ValueError('local_disposition_execution_target')
+        if permit.facts.target_id!=UUID(self.target.target):
             raise ValueError('local_disposition_execution_target')
         with self.target.source_fence(permit.plan.company_id):
             observed=await self.revalidate(permit,**selectors)

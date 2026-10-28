@@ -6,7 +6,7 @@ nor a replacement for the company-wide completeness/export policy.
 from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
@@ -15,7 +15,8 @@ from .disposition import CompanyDispositionPlan, DispositionSession
 
 class LocalDocumentsFacts(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
-    scope: Literal['local-documents-only'] = 'local-documents-only'
+    scope: Literal['synthetic-local-documents-only'] = 'synthetic-local-documents-only'
+    target_id: UUID
     source_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     source_generations: tuple[tuple[int, int], ...]
     paid_expires_at: AwareDatetime
@@ -48,6 +49,8 @@ def authorize_local_documents_disposition(plan: CompanyDispositionPlan, facts: L
     require(now.tzinfo is not None, 'local_disposition_clock')
     require(plan.choice == 'delete' and plan.inventory_digest() == plan.inventory_sha256,
             'local_disposition_plan')
+    require(plan.company_id == uuid5(facts.target_id,'local-documents-disposition-fixture-v1'),
+            'local_disposition_fixture_identity')
     require(all(r.owner == 'documents' for r in plan.records)
             and len({r.record_id for r in plan.records}) == len(plan.records)
             and plan.years == tuple(sorted({r.income_year for r in plan.records})),
