@@ -114,6 +114,11 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
         body.replace('  const taxSource =', '  await supabase.from("other_submissions").select();\n  const taxSource ='),
         body.replace('  const taxSource =', '  await supabase.from("filing_submissions").delete();\n  const taxSource ='),
         body.replace('  const taxSource =', '  await unexpectedBusinessOperation();\n  const taxSource ='),
+        ...(operation === "GET" ? [
+          body.replace('archiveAttemptError?.code === "P0001"', 'archiveAttemptError?.code === "42501"'),
+          body.replace('archiveAttemptError.message === "company_access_not_found"', 'archiveAttemptError.message.startsWith("company_access_not_found")'),
+          body.replace('await requireStepUpForAction({', 'await skipStepUpForAction({'),
+        ] : []),
       ]) {
         assert.notEqual(mutated, body);
         assert.ok(readCheck(head + mutated).length > 0, `${operation} rejects changed persistence or composition: ${mutated.slice(Math.max(0, mutated.indexOf("const taxSource") - 100), mutated.indexOf("const taxSource") + 15)}`);

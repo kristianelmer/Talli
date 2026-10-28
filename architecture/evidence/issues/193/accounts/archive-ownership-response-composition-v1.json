@@ -1,0 +1,17 @@
+{
+  "schema": "talli-bounded-archive-ownership-response-composition-v1",
+  "baselineRevision": "98321dca35d5dfe5efeb77e144d9f9741ffbdfb6",
+  "trackingPullRequest": "#224",
+  "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+  "operation": "GET",
+  "prior": {
+    "sourceDigest": "sha256:4fbb7cfb9fa62f3071244119e9f2a5bf3d5d86917d7eb22c04b43c6f25be23b2",
+    "occurrences": 1
+  },
+  "candidate": {
+    "sourceDigest": "sha256:4fe538c65536ab9e343c5349f5ca8c1f0abc3625d54aacab15624b672fa9d8fc",
+    "occurrences": 1
+  },
+  "exactAddition": "  if (archiveAttemptError?.code === \"P0001\" && archiveAttemptError.message === \"company_access_not_found\") {\n    return new Response(\"Fant ikke arkivet\", { status: 404 });\n  }\n",
+  "scope": "Map only the known ownership rejection to the existing non-disclosing404 after unchanged MFA and RPC authorization. Preserve unknown500 behavior, successful exports, every retained persistence chain and receipt ordering. No compatibility retirement, business API, provider or original P/H authority."
+}
