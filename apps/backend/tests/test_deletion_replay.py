@@ -4,6 +4,7 @@ This adapter is deliberately NOT registered as production Supabase purge authori
 The current product has no such adapter; unsupported owner stores remain closed.
 """
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
@@ -177,6 +178,10 @@ class SyntheticDocumentStore:
             if current|erased!={str(c.document_id) for c in commands}:
                 raise ValueError('owner_inventory_incomplete')
             db.execute('update company_state set fence=? where company=?',(first.plan_sha256,str(first.company_id)))
+    @asynccontextmanager
+    async def replay_scope(self,commands):
+        yield
+
     async def fence_replay_history(self,commands):
         # This fixture has no concurrent writer. A production owner must keep
         # this complete-cut fence durable against its ordinary writer paths.
@@ -237,6 +242,18 @@ class SyntheticDocumentStore:
     async def get_document(self, document):
         assert self.row(document) is None
         return None
+
+
+class PartialVersionSyntheticDocumentStore(SyntheticDocumentStore):
+    """Test a known native-style prefix using a bound receipt and real files."""
+    async def reconcile(self, command):
+        receipt=self.receipt(command);row=self.row(command.document_id);objects=self.objects(command.document_id)
+        if (receipt and receipt[-1]=='fenced' and row
+                and row[1:5]==(str(command.company_id),command.income_year,command.generation,command.content_sha256)
+                and self.erasable(row) and len(objects)==1 and objects[0].name in {'1','2'}
+                and sha256(objects[0].read_bytes()).hexdigest()==command.content_sha256):
+            return 'RESUMABLE'
+        return await super().reconcile(command)
 
 
 def run(awaitable): return asyncio.run(awaitable)
@@ -427,6 +444,76 @@ def test_later_authorized_erase_supersedes_historical_retain_on_every_retry(tmp_
         assert replay_is_current(journal,receipt=receipt.path,target=target,minimum=head)
         assert all(store.row(r.record_id) is None and not store.objects(r.record_id) for r in plan.records)
     assert store.erase_calls==2  # one per record across all three complete replays
+
+
+def test_historical_retain_is_superseded_by_bound_partial_version_prefix(tmp_path):
+    plan,facts=authorization_fixture();first=authorize_company_disposition(plan,facts,now=NOW)
+    source=SyntheticDocumentStore(tmp_path/'source',plan=plan)
+    restored=PartialVersionSyntheticDocumentStore(tmp_path/'restored',plan=plan)
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=source.root)
+    first_head=journal.append(first);target=str(uuid4());receipt=LocalReplayReceipt(restored.root/'ready.json')
+    run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,
+        minimum=first_head,stores={'documents':restored}))
+    assert restored.row(plan.records[0].record_id) is None
+    later_at=NOW+timedelta(days=31);restored.clock=later_at
+    former_retain=plan.records[1].model_copy(update={'action':'erase'})
+    later=revised_authorization(plan.model_copy(update={'operation_id':uuid4(),
+        'generation':'company-generation-18','records':(former_retain,)}),facts,now=later_at)
+    head=journal.append(later)
+    from talli_backend.application.company_disposition import _commands
+    later_erase=_commands(later)[0]
+    run(restored.prepare(later_erase))
+    erased_version=restored.objects(former_retain.record_id)[0]
+    erased_version.unlink()
+    assert len(restored.objects(former_retain.record_id))==1
+    assert restored.receipt(later_erase)[-1]=='fenced'
+    assert run(restored.reconcile(later_erase))=='RESUMABLE'
+    assert not run(restored.retained_matches(_commands(first)[1]))
+    run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,
+        minimum=head,stores={'documents':restored}))
+    assert replay_is_current(journal,receipt=receipt.path,target=target,minimum=head)
+    assert restored.row(former_retain.record_id) is None
+    assert not restored.objects(former_retain.record_id)
+    assert restored.receipt(later_erase)[-1]=='erased'
+    assert restored.erase_calls==2
+
+
+@pytest.mark.parametrize('fail_during_replay',[False,True])
+def test_replay_scope_covers_publication_and_releases_after_failure(tmp_path,fail_during_replay):
+    class ScopedStore(SyntheticDocumentStore):
+        active=False
+        @asynccontextmanager
+        async def replay_scope(self,commands):
+            assert not self.active
+            self.active=True
+            try:yield
+            finally:self.active=False
+        async def fence_replay_history(self,commands):
+            assert self.active
+            await super().fence_replay_history(commands)
+
+    class ScopedReceipt(LocalReplayReceipt):
+        published_inside_scope=False
+        def publish(self,target,head):
+            assert store.active
+            self.published_inside_scope=True
+            super().publish(target,head)
+
+    plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
+    store=ScopedStore(tmp_path/'customer',plan=plan)
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=store.root)
+    head=journal.append(permit);target=str(uuid4());receipt=ScopedReceipt(store.root/'ready.json')
+    if fail_during_replay:
+        store.objects(plan.records[1].record_id)[0].write_bytes(b'changed retained evidence')
+        with pytest.raises(ValueError,match='retained_evidence_changed'):
+            run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,
+                minimum=head,stores={'documents':store}))
+        assert not receipt.path.exists() and not receipt.published_inside_scope
+    else:
+        run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,
+            minimum=head,stores={'documents':store}))
+        assert receipt.published_inside_scope and receipt.path.exists()
+    assert not store.active
 
 
 @pytest.mark.parametrize('case',['pagination','missing_year','outsider','pending','created_refund','unknown_refund','uncancelled_renewal','uncaptured'])

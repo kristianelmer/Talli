@@ -99,3 +99,49 @@ def test_body_read_gate_closure_prevents_auth_mutation_dispatch(monkeypatch):
     handler.unavailable=lambda code=503:denied.append(code)
     handler.forward()
     assert denied==[503] and requests==[]
+
+
+def test_native_control_stream_preserves_quiet_source_fence_until_client_closes(monkeypatch):
+    import socket
+    import threading
+    from types import SimpleNamespace
+    import native_restored_gateway as gateway
+
+    client,request=socket.socketpair();upstream,database=socket.socketpair()
+    client.settimeout(3);database.settimeout(5);clock=[0.0]
+    first_received=threading.Event();quiet_wait=threading.Event();real_select=gateway.select.select
+    def select_ready(*args):
+        if first_received.is_set():quiet_wait.set()
+        return real_select(*args)
+    monkeypatch.setattr(gateway,'socket',SimpleNamespace(create_connection=lambda *a,**k:upstream))
+    monkeypatch.setattr(gateway,'time',SimpleNamespace(monotonic=lambda:clock[0]),raising=False)
+    monkeypatch.setattr(gateway,'select',SimpleNamespace(select=select_ready))
+    handler=object.__new__(gateway.ControlHandler)
+    handler.request=request;handler.server=SimpleNamespace(config={'database_host':'owned_database'})
+    def proxy():
+        try:handler.handle()
+        finally:request.close()
+    def echo():
+        try:
+            while raw:=database.recv(1024):database.sendall(raw)
+        except OSError:pass
+        finally:database.close()
+    proxy_thread=threading.Thread(target=proxy,daemon=True)
+    database_thread=threading.Thread(target=echo,daemon=True)
+    database_thread.start();proxy_thread.start()
+    try:
+        clock[0]=0;client.sendall(b'fence');assert client.recv(1024)==b'fence'
+        first_received.set();assert quiet_wait.wait(2)
+        # Backup verification uses other control channels while this checked
+        # SQL session must retain its advisory lock without sending SQL bytes.
+        clock[0]=40;proxy_thread.join(1.5)
+        assert proxy_thread.is_alive(), 'quiet verification retired the source fence connection'
+        for instant,message in ((40,b'prepare'),(80,b'retire'),(120,b'finalize')):
+            clock[0]=instant;client.sendall(message)
+            assert client.recv(1024)==message, 'active replay connection was closed at the absolute time limit'
+        client.close()
+        proxy_thread.join(2)
+        assert not proxy_thread.is_alive(), 'client disconnect must release the control stream'
+    finally:
+        clock[0]=1000;client.close()
+        proxy_thread.join(2);database_thread.join(2)

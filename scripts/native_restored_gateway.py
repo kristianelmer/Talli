@@ -15,7 +15,6 @@ import select
 import socket
 import socketserver
 import threading
-import time
 from uuid import UUID
 
 from talli_backend.adapters.restored_publication import publication_is_current
@@ -85,8 +84,10 @@ class ControlServer(socketserver.ThreadingTCPServer):
 class ControlHandler(socketserver.BaseRequestHandler):
     def handle(self):
         with socket.create_connection((self.server.config['database_host'],5432),timeout=5) as other:
-            self.request.setblocking(False);other.setblocking(False);end=time.monotonic()+30
-            while time.monotonic()<end:
+            self.request.setblocking(False);other.setblocking(False)
+            # The source fence owns this session's lifetime. Verification on
+            # other control channels can leave the lock-holding session quiet.
+            while True:
                 for source in select.select([self.request,other],[],[],1)[0]:
                     raw=source.recv(65536)
                     if not raw:return

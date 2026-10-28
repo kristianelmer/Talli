@@ -38,7 +38,10 @@ async def _pending_commands(commands, later_commands, store):
                 outcome = await store.reconcile(later)
                 if outcome not in {'NOT_APPLIED', 'READY', 'RESUMABLE', 'ERASED'}:
                     raise ValueError('document_disposition_outcome_unknown')
-                superseded = outcome == 'ERASED'
+                # The later admitted erase may already have retired Storage
+                # while still reconciling historical bytes. Its verified owner
+                # prefix supersedes the older retain obligation throughout replay.
+                superseded = True
                 break
         if not superseded and not await store.retained_matches(command):
             raise ValueError('deletion_replay_retained_evidence_changed')

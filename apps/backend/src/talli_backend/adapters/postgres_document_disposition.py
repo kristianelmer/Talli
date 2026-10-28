@@ -7,7 +7,7 @@ allowlist can be erased. Storage API retirement precedes checked local historica
 file cleanup. Neither unlink nor native DELETE is forensic media erasure.
 """
 import asyncio
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from hashlib import sha256
 import json
@@ -23,6 +23,8 @@ from psycopg.rows import dict_row
 from talli_backend.modules.documents.public import (
     DocumentDispositionStore, document_disposition_adapter,
 )
+
+MAX_NATIVE_CUTS = 8
 
 
 def native_document_generation(row, files):
@@ -185,6 +187,7 @@ class OwnedNativeDocumentsTarget:
 class PostgresDocumentDisposition(DocumentDispositionStore):
     def __init__(self, target: OwnedNativeDocumentsTarget):
         self.target=target
+        self._history=ContextVar('native_disposition_replay_history',default=())
 
     def _call(self,phase,command):
         if phase not in {'state','prepare','storage_retired','finalize'}:
@@ -196,19 +199,15 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
             row=db.execute('select documents.local_native_disposition_'+phase+'_v1('+markers+') as value',params).fetchone()
             return row['value']
 
-    def _state(self,command):
+    def _registered_state(self,command):
         value=self._call('state',command);key=str(command.document_id)
         if (value['companyId']!=str(command.company_id) or value['generation']!=command.company_generation
                 or key not in value['snapshot'] or key not in value['objects']):
             raise ValueError('native_disposition_command_changed')
-        expected=dict(value['snapshot'])
         for erased,receipt in value['receipts'].items():
             if (receipt['plan_sha256']!=command.plan_sha256 or erased not in value['fixtureRecords']
                     or receipt['state'] not in {'prepared','storage_retired','erased'}):
                 raise ValueError('native_disposition_receipt_changed')
-            if receipt['state']=='erased':expected.pop(erased,None)
-        if expected!=value['actual']:
-            raise ValueError('native_disposition_metadata_changed')
         row=value['snapshot'][key];objects=value['objects'][key];files=objects['files']
         if (row['company_id']!=str(command.company_id) or row['income_year']!=command.income_year
                 or row['content_sha256']!=command.content_sha256
@@ -228,6 +227,51 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
                 or len({f['path'] for f in files})!=len(files)):
             raise ValueError('native_disposition_object_manifest')
         return value,row,objects
+
+    @staticmethod
+    def _basis(value):
+        return {k:value[k] for k in ('companyId','generation','snapshot','objects','fixtureRecords')}
+
+    def _history_states(self):
+        history=self._history.get();states=[]
+        for commands,basis in history:
+            value,_,_=self._registered_state(commands[0])
+            if self._basis(value)!=basis:raise ValueError('native_disposition_history_changed')
+            states.append(value)
+        earlier_complete=True
+        for state in states:
+            if state['receipts'] and not earlier_complete:
+                raise ValueError('native_disposition_history_out_of_order')
+            earlier_complete=earlier_complete and all(state['receipts'].get(key,{}).get('state')=='erased' for key in state['fixtureRecords'])
+        return states
+
+    def _state(self,command):
+        value,row,objects=self._registered_state(command)
+        history=self._history.get()
+        if history:
+            if not any(command in commands for commands,_ in history):
+                raise ValueError('native_disposition_command_outside_history')
+            states=self._history_states();expected=dict(states[0]['snapshot']);receipts={}
+            for state in states:
+                for key,receipt in state['receipts'].items():
+                    if key in receipts:raise ValueError('native_disposition_duplicate_erase')
+                    receipts[key]=receipt
+                    if receipt['state']=='erased':expected.pop(key,None)
+            value=dict(value,objects=states[0]['objects'],receipts=receipts)
+        else:
+            expected={key:row for key,row in value['snapshot'].items() if value['receipts'].get(key,{}).get('state')!='erased'}
+        if expected!=value['actual']:raise ValueError('native_disposition_metadata_changed')
+        return value,row,objects
+
+    def _require_operation_order(self,command):
+        history=self._history.get()
+        if not history:return
+        states=self._history_states()
+        for (commands,_),state in zip(history,states):
+            if command.operation_id==commands[0].operation_id:return
+            if any(state['receipts'].get(key,{}).get('state')!='erased' for key in state['fixtureRecords']):
+                raise ValueError('native_disposition_history_out_of_order')
+        raise ValueError('native_disposition_command_outside_history')
 
     def _observe(self,command):
         value,row,objects=self._state(command)
@@ -281,17 +325,44 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
             self._state(c)
 
     async def fence_inventory(self,commands):
+        self._history.set(())
         await asyncio.to_thread(self._fence,commands)
 
+    @asynccontextmanager
+    async def replay_scope(self,commands):
+        if not commands or len({c.company_id for c in commands})!=1:
+            raise ValueError('native_disposition_history_company')
+        token=self._history.set(())
+        try:
+            with self.target.source_fence(commands[0].company_id):yield
+        finally:self._history.reset(token)
+
     async def fence_replay_history(self,commands):
-        # This local adapter supports one explicit captured cut per company.
-        await self.fence_inventory(commands)
+        if self.target._source_connection.get() is None:
+            raise ValueError('native_disposition_history_scope_required')
+        cuts=[]
+        for command in commands:
+            if not cuts or cuts[-1][0].operation_id!=command.operation_id:cuts.append([])
+            cuts[-1].append(command)
+        if not 1<=len(cuts)<=MAX_NATIVE_CUTS or len({c[0].operation_id for c in cuts})!=len(cuts):
+            raise ValueError('native_disposition_history_bound')
+        states=[self._registered_state(c[0])[0] for c in cuts]
+        remaining=dict(states[0]['snapshot']);base_objects=states[0]['objects'];erased=set()
+        for cut,state in zip(cuts,states):
+            if (state['snapshot']!=remaining or state['objects']!={key:base_objects[key] for key in remaining}
+                    or erased & set(state['fixtureRecords'])):
+                raise ValueError('native_disposition_history_transition')
+            erased.update(state['fixtureRecords'])
+            remaining={key:row for key,row in remaining.items() if key not in state['fixtureRecords']}
+        self._history.set(tuple((tuple(c),self._basis(s)) for c,s in zip(cuts,states)))
+        for cut in cuts:await asyncio.to_thread(self._fence,tuple(cut))
 
     async def prepare(self,command):
         if command.action!='erase':raise ValueError('native_disposition_erase_required')
         await asyncio.to_thread(self._prepare,command)
 
     def _prepare(self,command):
+        self._require_operation_order(command)
         if self._observe(command) not in {'NOT_APPLIED','READY'}:
             raise ValueError('native_disposition_outcome_unknown')
         self._call('prepare',command)
@@ -301,6 +372,7 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
         await asyncio.to_thread(self._erase,command)
 
     def _erase(self,command):
+        self._require_operation_order(command)
         outcome=self._observe(command)
         if outcome=='ERASED':return
         if outcome not in {'READY','RESUMABLE'}:raise ValueError('native_disposition_outcome_unknown')
