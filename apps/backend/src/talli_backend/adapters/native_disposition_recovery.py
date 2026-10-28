@@ -14,6 +14,7 @@ from psycopg import sql
 
 from talli_backend.adapters.native_disposition_preflight import NativeDispositionPreflight, _bytes, _sha, _EXPORT
 from talli_backend.adapters.postgres_document_disposition import native_document_generation
+from talli_backend.adapters.native_restore_binding import verify_native_restore
 from talli_backend.modules.company_access.public import AuthorizedLocalDocumentsDisposition
 
 
@@ -56,6 +57,8 @@ class NativeDispositionRecovery:
                 or str(permit.facts.target_id)==self.target.target or minimum.sequence<1):
             raise ValueError('native_recovery_authorization')
         head,entries=journal.read(minimum=minimum)
+        if len(entries)!=1 or head!=minimum:
+            raise ValueError('native_recovery_history_unavailable')
         admitted=[p for p in entries if p.plan.operation_id==permit.plan.operation_id]
         if (len(admitted)!=1 or admitted[0].model_dump_json()!=permit.model_dump_json()
                 or next(i for i,p in enumerate(entries,1) if p.plan.operation_id==permit.plan.operation_id)>minimum.sequence):
@@ -74,6 +77,7 @@ class NativeDispositionRecovery:
                 or archive['generation']!=plan.generation):
             raise ValueError('native_recovery_export_changed')
         with self.target.source_fence(company):
+            native_profile=verify_native_restore(self.target,backup_directory)
             source=self._query("""select jsonb_build_object(
               'documents',(select coalesce(jsonb_object_agg(d.id::text,to_jsonb(d)),'{{}}') from public.documents d where company_id={0}),
               'references',(select coalesce(jsonb_agg(to_jsonb(e) order by e.document_id,e.source_capability,e.source_record_id),'[]') from documents.evidence_references e where company_id={0}),
@@ -108,6 +112,7 @@ class NativeDispositionRecovery:
             binding={'version':1,'sourceTarget':str(permit.facts.target_id),'target':self.target.target,
                 'sourceSystemIdentifier':prior['system_identifier'],'sourceSnapshotSha256':prior['source_snapshot_sha256'],
                 'systemIdentifier':self.target.system,'operatorLogin':self.target.login,'backupSha256':backup_sha256,
+                'nativeProfile':native_profile,
                 'authorizationSha256':commitment,'exportSha256':permit.facts.documents_export_sha256,
                 'journal':{'stream':head.stream,'sequence':head.sequence,'sha256':head.sha256},
                 'operationId':str(plan.operation_id),'companyGeneration':plan.generation}
