@@ -15,7 +15,6 @@ import select
 import socket
 import socketserver
 import threading
-import time
 from uuid import UUID
 
 from talli_backend.adapters.restored_publication import publication_is_current
@@ -85,16 +84,15 @@ class ControlServer(socketserver.ThreadingTCPServer):
 class ControlHandler(socketserver.BaseRequestHandler):
     def handle(self):
         with socket.create_connection((self.server.config['database_host'],5432),timeout=5) as other:
-            self.request.setblocking(False);other.setblocking(False);idle_deadline=time.monotonic()+30
-            while time.monotonic()<idle_deadline:
+            self.request.setblocking(False);other.setblocking(False)
+            # The source fence owns this session's lifetime. Verification on
+            # other control channels can leave the lock-holding session quiet.
+            while True:
                 for source in select.select([self.request,other],[],[],1)[0]:
                     raw=source.recv(65536)
                     if not raw:return
                     destination=other if source is self.request else self.request
                     destination.settimeout(5);destination.sendall(raw);destination.setblocking(False)
-                    # A checked source fence can span several admitted cuts.
-                    # Bound inactivity without retiring an active SQL session.
-                    idle_deadline=time.monotonic()+30
 
 
 def main():

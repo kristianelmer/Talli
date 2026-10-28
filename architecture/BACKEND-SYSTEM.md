@@ -1426,8 +1426,9 @@ traffic and readiness even when an injected dependency probe reports healthy.
 Liveness remains available. This check bypasses positive dependency-health cache.
 Auth/Storage must remain internal until orchestration checks the same replay gate;
 the backend middleware cannot protect an independently exposed Supabase gateway.
-The local credentialed PostgreSQL control stream expires after 30 seconds of
-inactivity, allowing an active source fence to span the complete admitted prefix.
+The local credentialed PostgreSQL control stream follows its client/server
+connection lifetime. Verification through other control channels may leave the
+lock-holding session quiet; transport does not expire that source fence.
 
 The finite tests copy populated synthetic Documents rows and ordinary version
 files before deletion, persist an external tombstone, physically DELETE/unlink,
