@@ -8,7 +8,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from test_annual_accounts_delivery_events_database import event_database,operations,approval,grant
+from test_annual_accounts_delivery_events_database import event_database,operations,approval,grant,recreate_insert_policy
 from test_annual_accounts_delivery_store_database import session,COMPANY,ACTOR,accounts_database,draft_database,database,draft,writes,store,fresh
 from test_annual_accounts_delivery_journal import complete_world
 from test_annual_accounts_delivery_corrections import changed_source
@@ -27,6 +27,7 @@ pytestmark=pytest.mark.accounts_database
 ROOT=Path(__file__).resolve().parents[3]
 MIGRATION='20261027004007_annual_accounts_delivery_corrections_v1.sql'
 PORTABLE_MIGRATION=ROOT/'supabase/migrations/20261028005310_annual_accounts_portable_delivery_contract.sql'
+LEGACY_READER=ROOT/'apps/backend/tests/fixtures/accounts_delivery_v4_catalog_ids.sql'
 
 
 @pytest.fixture(scope='module')
@@ -49,11 +50,42 @@ def read(database):
 
 def test_equivalent_recreated_policy_keeps_correction_contract_complete(correction_database):
     with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
-        original=db.execute("select oid,pg_get_expr(polwithcheck,polrelid) from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()
-        db.execute('drop policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events')
-        db.execute('create policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events for insert to annual_accounts_filing_store_owner with check('+original[1]+')')
-        recreated=db.execute("select oid from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()[0]
-        assert recreated!=original[0], 'the catalog identity must actually change'
+        recreate_insert_policy(db)
+    assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+
+
+def test_legacy_catalog_manifest_upgrades_and_survives_new_policy_ids(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        query="select pg_get_functiondef(oid),proowner,proacl::text from pg_proc where oid='annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)'::regprocedure"
+        original=db.execute(query).fetchone()
+        members='select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3'
+        memberships=db.execute(members).fetchall()
+        try:
+            db.execute(LEGACY_READER.read_text())
+            assert 'pg_catalog.to_jsonb(p)::text' in db.execute(query).fetchone()[0]
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+            db.execute(PORTABLE_MIGRATION.read_text())
+            assert db.execute(query).fetchone()==original
+            assert db.execute(members).fetchall()==memberships
+            recreate_insert_policy(db)
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
+        finally:
+            db.execute('rollback')
+            db.execute(original[0])
+
+
+def test_upgrade_refuses_an_already_invalid_legacy_catalog_manifest(correction_database):
+    with psycopg.connect(**correction_database,user='postgres',autocommit=True) as db:
+        original=db.execute("select pg_get_functiondef('annual_accounts_filing.read_source_snapshot_v4(uuid,integer,text)'::regprocedure)").fetchone()[0]
+        try:
+            db.execute(LEGACY_READER.read_text())
+            recreate_insert_policy(db)
+            assert read(correction_database)['coverage']['deliveryEventContractValid'] is False
+            with pytest.raises(psycopg.errors.RaiseException,match='annual_accounts_portable_contract_changed'):
+                db.execute(PORTABLE_MIGRATION.read_text())
+        finally:
+            db.execute('rollback')
+            db.execute(original)
     assert read(correction_database)['coverage']['deliveryEventContractValid'] is True
 
 

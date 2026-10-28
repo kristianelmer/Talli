@@ -29,13 +29,18 @@ def event_database(accounts_database):
     return accounts_database
 
 
+def recreate_insert_policy(db):
+    original=db.execute("select oid,pg_get_expr(polwithcheck,polrelid),polcmd,polpermissive,array(select r::regrole::text from unnest(polroles) r) from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()
+    assert original[2:]==('a',True,['annual_accounts_filing_store_owner'])
+    db.execute('drop policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events')
+    db.execute('create policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events for insert to annual_accounts_filing_store_owner with check('+original[1]+')')
+    recreated=db.execute("select oid from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()[0]
+    assert recreated!=original[0], 'the catalog identity must actually change'
+
+
 def test_equivalent_recreated_policy_keeps_event_contract_complete(event_database):
     with psycopg.connect(**event_database,user='postgres',autocommit=True) as db:
-        original=db.execute("select oid,pg_get_expr(polwithcheck,polrelid) from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()
-        db.execute('drop policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events')
-        db.execute('create policy accounts_delivery_event_insert on annual_accounts_filing.delivery_events for insert to annual_accounts_filing_store_owner with check('+original[1]+')')
-        recreated=db.execute("select oid from pg_policy where polrelid='annual_accounts_filing.delivery_events'::regclass and polname='accounts_delivery_event_insert'").fetchone()[0]
-        assert recreated!=original[0], 'the catalog identity must actually change'
+        recreate_insert_policy(db)
     async def read():
         async with session(event_database).transaction(snapshot=True) as tx:
             return await tx._one_row('select annual_accounts_filing.read_source_snapshot_v3(%s,2025,%s) as result',(str(COMPANY),str(ACTOR.subject)))
