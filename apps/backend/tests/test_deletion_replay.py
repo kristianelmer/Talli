@@ -153,7 +153,17 @@ class SyntheticDocumentStore:
     def objects(self, document):
         p=self.root/str(document)
         return sorted(p.iterdir()) if p.exists() else []
+    def assert_physical_inventory_attributed(self,commands):
+        expected={str(c.document_id) for c in commands}
+        for entry in self.root.iterdir():
+            if entry.is_symlink():raise ValueError('owner_unattributed_object')
+            if entry.name in {'documents.sqlite','ready.json','replay-ready.json'} and entry.is_file():continue
+            if not entry.is_dir() or entry.name not in expected:
+                raise ValueError('owner_unattributed_object')
+            if any(p.is_symlink() or not p.is_file() or p.name not in {'1','2'} for p in entry.iterdir()):
+                raise ValueError('owner_unattributed_object_generation')
     async def fence_inventory(self, commands):
+        self.assert_physical_inventory_attributed(commands)
         assert commands and len({c.company_id for c in commands})==1
         if len({c.company_generation for c in commands})!=1: raise ValueError('owner_company_generation_changed')
         first=commands[0]
@@ -170,6 +180,7 @@ class SyntheticDocumentStore:
     async def fence_replay_history(self,commands):
         # This fixture has no concurrent writer. A production owner must keep
         # this complete-cut fence durable against its ordinary writer paths.
+        self.assert_physical_inventory_attributed(commands)
         assert commands and len({c.company_id for c in commands})==1
         first=commands[0];expected={str(c.document_id) for c in commands}
         approved={(str(c.operation_id),str(c.document_id),c.plan_sha256,str(c.company_id),
@@ -293,7 +304,7 @@ def test_predeletion_backup_disposition_restore_replay_and_denied_download(tmp_p
         'physicalScope':'SQLite DELETE and filesystem unlink, not forensic media erasure or encrypted-backup expiry'},indent=2))
 
 
-@pytest.mark.parametrize('failure',['missing_journal','tampered','rollback','missing_owner','unknown_outcome','retained_changed','stale_owner_generation','unattributed_store_record'])
+@pytest.mark.parametrize('failure',['missing_journal','tampered','rollback','missing_owner','unknown_outcome','retained_changed','stale_owner_generation','unattributed_store_record','unattributed_object','unattributed_generation','unattributed_quarantine','unattributed_symlink'])
 def test_incomplete_or_unavailable_replay_never_opens_target(tmp_path,monkeypatch,failure):
     plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
     store=SyntheticDocumentStore(tmp_path/'customer',plan=plan)
@@ -315,6 +326,13 @@ def test_incomplete_or_unavailable_replay_never_opens_target(tmp_path,monkeypatc
         with store.db() as db:
             db.execute('insert into documents values(?,?,?,?,?,?,?,?,?)',(str(uuid4()),str(plan.company_id),2026,'unknown','f'*64,0,'unknown-original',(NOW-timedelta(days=1)).isoformat(),None))
 
+    if failure=='unattributed_object':
+        orphan=store.root/str(uuid4());orphan.mkdir();(orphan/'1').write_bytes(b'unattributed')
+    elif failure=='unattributed_generation':store.objects(plan.records[0].record_id)[0].with_name('3').write_bytes(b'unattributed version')
+    elif failure=='unattributed_quarantine':(store.root/'quarantine-original.bin').write_bytes(b'unattributed quarantine')
+    elif failure=='unattributed_symlink':
+        outside=tmp_path/'outside-preserve.bin';outside.write_bytes(b'preserve outside owned data')
+        (store.root/'unattributed-link').symlink_to(outside)
     with pytest.raises(Exception):
         run(replay_company_dispositions(journal=journal,target=target,receipt=LocalReplayReceipt(receipt),minimum=head,stores=stores))
     async def healthy(): return True
@@ -322,6 +340,9 @@ def test_incomplete_or_unavailable_replay_never_opens_target(tmp_path,monkeypatc
     assert client.get('/health/ready').status_code==503
     assert client.get('/api/v1/company-access/context').status_code==503
     assert not receipt.exists()
+    if failure.startswith('unattributed_') or failure=='stale_owner_generation':
+        assert store.erase_calls==0
+    if failure=='unattributed_symlink':assert outside.read_bytes()==b'preserve outside owned data'
     if failure=='unknown_outcome':
         with pytest.raises(ValueError,match='outcome_unknown'):
             run(replay_company_dispositions(journal=journal,target=target,receipt=LocalReplayReceipt(receipt),minimum=head,stores=stores))
