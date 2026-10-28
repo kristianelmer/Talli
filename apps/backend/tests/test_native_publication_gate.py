@@ -99,3 +99,39 @@ def test_body_read_gate_closure_prevents_auth_mutation_dispatch(monkeypatch):
     handler.unavailable=lambda code=503:denied.append(code)
     handler.forward()
     assert denied==[503] and requests==[]
+
+
+def test_native_control_stream_survives_active_replay_but_expires_when_idle(monkeypatch):
+    import socket
+    import threading
+    from types import SimpleNamespace
+    import native_restored_gateway as gateway
+
+    client,request=socket.socketpair();upstream,database=socket.socketpair()
+    client.settimeout(2);database.settimeout(2);clock=[0.0]
+    monkeypatch.setattr(gateway,'socket',SimpleNamespace(create_connection=lambda *a,**k:upstream))
+    monkeypatch.setattr(gateway,'time',SimpleNamespace(monotonic=lambda:clock[0]))
+    handler=object.__new__(gateway.ControlHandler)
+    handler.request=request;handler.server=SimpleNamespace(config={'database_host':'owned_database'})
+    def proxy():
+        try:handler.handle()
+        finally:request.close()
+    def echo():
+        try:
+            while raw:=database.recv(1024):database.sendall(raw)
+        except OSError:pass
+        finally:database.close()
+    proxy_thread=threading.Thread(target=proxy,daemon=True)
+    database_thread=threading.Thread(target=echo,daemon=True)
+    database_thread.start();proxy_thread.start()
+    try:
+        for instant,message in ((0,b'prepare'),(20,b'retire'),(40,b'finalize')):
+            clock[0]=instant;client.sendall(message)
+            assert client.recv(1024)==message, 'active replay connection was closed at the absolute time limit'
+        clock[0]=100
+        proxy_thread.join(2)
+        assert not proxy_thread.is_alive(), 'idle control connections must still expire'
+        assert client.recv(1024)==b''
+    finally:
+        clock[0]=1000;client.close()
+        proxy_thread.join(2);database_thread.join(2)
