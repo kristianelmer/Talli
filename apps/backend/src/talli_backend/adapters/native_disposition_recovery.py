@@ -18,8 +18,7 @@ from talli_backend.adapters.native_restore_binding import verify_native_restore
 from talli_backend.modules.company_access.public import AuthorizedLocalDocumentsDisposition
 
 
-def native_backup_commitment(directory):
-    """Commit the finite native input bundle; the expected digest is held separately."""
+def _read_native_backup(directory):
     directory=Path(directory)
     if directory.is_symlink() or not directory.is_dir():
         raise ValueError('native_recovery_backup_unavailable')
@@ -28,15 +27,27 @@ def native_backup_commitment(directory):
               'object-manifest.json','object-attributes.json','bindings.private.json'}
     if not 7<=len(files)<=32 or not required<={p.name for p in files}:
         raise ValueError('native_recovery_backup_unavailable')
-    pins={}
+    if sum(p.stat().st_size for p in files)>256*1024*1024:
+        raise ValueError('native_recovery_backup_unavailable')
+    pins={};metadata={}
     for path in files:
         if path.is_symlink() or not path.is_file() or path.stat().st_size>2*1024**3:
             raise ValueError('native_recovery_backup_unavailable')
-        digest=sha256()
+        digest=sha256();size=0;parts=[]
         with path.open('rb') as source:
-            for chunk in iter(lambda:source.read(1024*1024),b''):digest.update(chunk)
-        pins[path.name]={'bytes':path.stat().st_size,'sha256':digest.hexdigest()}
-    return _sha(pins)
+            for chunk in iter(lambda:source.read(1024*1024),b''):
+                digest.update(chunk);size+=len(chunk)
+                if path.name in {'bindings.private.json','object-manifest.json','object-attributes.json'}:
+                    if size>32*1024*1024:raise ValueError('native_recovery_backup_unavailable')
+                    parts.append(chunk)
+        pins[path.name]={'bytes':size,'sha256':digest.hexdigest()}
+        if parts:metadata[path.name]=b''.join(parts)
+    return _sha(pins),metadata
+
+
+def native_backup_commitment(directory):
+    """Commit the finite native input bundle; the expected digest is held separately."""
+    return _read_native_backup(directory)[0]
 
 
 class NativeDispositionRecovery:
@@ -63,7 +74,8 @@ class NativeDispositionRecovery:
         if (len(admitted)!=1 or admitted[0].model_dump_json()!=permit.model_dump_json()
                 or next(i for i,p in enumerate(entries,1) if p.plan.operation_id==permit.plan.operation_id)>minimum.sequence):
             raise ValueError('native_recovery_authorization')
-        if native_backup_commitment(backup_directory)!=backup_sha256:
+        observed_backup,backup_metadata=_read_native_backup(backup_directory)
+        if observed_backup!=backup_sha256:
             raise ValueError('native_recovery_backup_changed')
         path=Path(documents_export)
         if path.is_symlink() or not path.is_file() or path.stat().st_size>32*1024*1024:
@@ -77,7 +89,7 @@ class NativeDispositionRecovery:
                 or archive['generation']!=plan.generation):
             raise ValueError('native_recovery_export_changed')
         with self.target.source_fence(company):
-            native_profile=verify_native_restore(self.target,backup_directory)
+            native_profile=verify_native_restore(self.target,backup_metadata)
             source=self._query("""select jsonb_build_object(
               'documents',(select coalesce(jsonb_object_agg(d.id::text,to_jsonb(d)),'{{}}') from public.documents d where company_id={0}),
               'references',(select coalesce(jsonb_agg(to_jsonb(e) order by e.document_id,e.source_capability,e.source_record_id),'[]') from documents.evidence_references e where company_id={0}),

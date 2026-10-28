@@ -2,7 +2,6 @@
 import json
 import re
 from hashlib import sha256
-from pathlib import Path
 
 from psycopg import sql
 
@@ -24,15 +23,64 @@ if(stat.isDirectory())for(const name of fs.readdirSync(file).sort())walk(path.jo
 walk('.');process.stdout.write(JSON.stringify(entries));
 """
 
+GUARDS_SQL="""
+set search_path='';
+select jsonb_build_object(
+ 'functions',(select coalesce(jsonb_agg(jsonb_build_object(
+   'signature',p.oid::regprocedure::text,'definition',pg_get_functiondef(p.oid),'owner',pg_get_userbyid(p.proowner),
+   'acl',(select coalesce(jsonb_agg(a.item order by a.item::text),'[]') from
+      (select jsonb_build_array(pg_get_userbyid(x.grantor),case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type,x.is_grantable) item
+       from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) x) a)) order by p.oid::regprocedure::text),'[]')
+   from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents'
+   and p.proname in ('local_native_disposition_state_v1','local_native_disposition_prepare_v1',
+     'local_native_disposition_storage_retired_v1','local_native_disposition_delete_allowed_v1',
+     'local_native_disposition_finalize_v1','local_native_disposition_row_guard_v1')),
+ 'triggers',(select coalesce(jsonb_agg(jsonb_build_object('table',t.tgrelid::regclass::text,
+     'name',t.tgname,'enabled',t.tgenabled,'definition',pg_get_triggerdef(t.oid,false))
+     order by t.tgrelid::regclass::text,t.tgname),'[]') from pg_trigger t
+   where not t.tgisinternal and (t.tgname in ('local_native_disposition_guard',
+     'local_native_disposition_reference_guard','local_native_disposition_original_guard')
+     or t.tgfoid='documents.local_native_disposition_row_guard_v1()'::regprocedure)),
+ 'relations',(select jsonb_agg(jsonb_build_object('table',c.oid::regclass::text,
+     'owner',pg_get_userbyid(c.relowner),'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity,
+     'acl',(select coalesce(jsonb_agg(a.item order by a.item::text),'[]') from
+       (select jsonb_build_array(pg_get_userbyid(x.grantor),case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type,x.is_grantable) item
+        from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) x) a)) order by c.oid::regclass::text)
+   from pg_class c where c.oid=any(array['public.documents'::regclass,'documents.evidence_references'::regclass,
+     'documents.retained_originals'::regclass,'documents.local_native_disposition_plans'::regclass,
+     'documents.local_native_disposition_targets'::regclass,'documents.local_native_disposition_receipts'::regclass])),
+ 'policies',(select jsonb_agg(jsonb_build_object('table',p.polrelid::regclass::text,'name',p.polname,
+     'command',p.polcmd,'permissive',p.polpermissive,
+     'roles',(select jsonb_agg(case when r=0 then 'PUBLIC' else pg_get_userbyid(r) end order by case when r=0 then 'PUBLIC' else pg_get_userbyid(r) end) from unnest(p.polroles) r),
+     'using',pg_get_expr(p.polqual,p.polrelid),'check',pg_get_expr(p.polwithcheck,p.polrelid)) order by p.polrelid::regclass::text,p.polname)
+   from pg_policy p where p.polrelid=any(array['public.documents'::regclass,'documents.evidence_references'::regclass,
+     'documents.retained_originals'::regclass,'documents.local_native_disposition_plans'::regclass,
+     'documents.local_native_disposition_targets'::regclass,'documents.local_native_disposition_receipts'::regclass])));
+"""
 
-def verify_native_restore(target, backup_directory):
+
+def native_disposition_guard_profile(target):
+    """The consequential native guard definitions/attachments, without catalog-wide acceptance."""
+    target.validate();profile=json.loads(target._query(GUARDS_SQL))
+    if (len(profile['functions'])!=6 or len(profile['triggers'])!=3 or len(profile['relations'])!=6
+            or not any(p['table']=='public.documents' and p['name']=='documents_store_local_native_delete' for p in profile['policies'])):
+        raise ValueError('native_recovery_guard_profile_unavailable')
+    return profile
+
+
+def verify_native_restore(target, backup_metadata):
     """Compare the complete captured census, rows, roles, files and attributes.
 
     Called before recovery registration or public Auth access changes any state.
-    It consumes a bundle whose full file commitment was checked independently.
+    It consumes the exact metadata bytes read while verifying the full bundle
+    commitment, so later path replacement cannot change the comparison inputs.
     """
-    target.validate();directory=Path(backup_directory)
-    binding=json.loads((directory/'bindings.private.json').read_bytes());expected=binding['tableFacts']
+    target.validate()
+    binding=json.loads(backup_metadata['bindings.private.json']);expected=binding['tableFacts']
+    expected_guards=binding.get('nativeDispositionGuardProfile')
+    if not expected_guards:raise ValueError('native_recovery_guard_profile_unavailable')
+    observed_guards=native_disposition_guard_profile(target)
+    if observed_guards!=expected_guards:raise ValueError('native_recovery_guard_profile_changed')
     if (not isinstance(expected,dict) or not 1<=len(expected)<=512
             or any(not isinstance(v,dict) or set(v)!={'rows','bytes','sha256'}
                 or any(type(v[k]) is not int or v[k]<0 for k in ('rows','bytes'))
@@ -56,11 +104,12 @@ def verify_native_restore(target, backup_directory):
     if sha256(target._query(ROLE_SQL)).hexdigest()!=binding['fingerprint']['roles']:
         raise ValueError('native_recovery_roles_changed')
     objects=target.objects(action='manifest')
-    if objects!=json.loads((directory/'object-manifest.json').read_bytes()):
+    if objects!=json.loads(backup_metadata['object-manifest.json']):
         raise ValueError('native_recovery_all_storage_changed')
     attributes=json.loads(target._run('exec',target.storage,'node','-e',ATTRIBUTES))
-    if attributes!=json.loads((directory/'object-attributes.json').read_bytes()):
+    if attributes!=json.loads(backup_metadata['object-attributes.json']):
         raise ValueError('native_recovery_storage_attributes_changed')
     return {'tables':len(expected),'tableBytes':sum(v['bytes'] for v in expected.values()),
-        'rolesSha256':binding['fingerprint']['roles'],'objectManifestSha256':sha256((directory/'object-manifest.json').read_bytes()).hexdigest(),
-        'objectAttributesSha256':sha256((directory/'object-attributes.json').read_bytes()).hexdigest()}
+        'dispositionGuardSha256':sha256(json.dumps(observed_guards,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
+        'rolesSha256':binding['fingerprint']['roles'],'objectManifestSha256':sha256(backup_metadata['object-manifest.json']).hexdigest(),
+        'objectAttributesSha256':sha256(backup_metadata['object-attributes.json']).hexdigest()}
