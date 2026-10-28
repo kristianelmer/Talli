@@ -205,6 +205,10 @@ const TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST =
 // receipt. The inverse composition proof pins every predecessor sibling read.
 const ACCOUNTS_COMPANY_ARCHIVE_COMPOSITION_DIGEST =
   "sha256:4fbb7cfb9fa62f3071244119e9f2a5bf3d5d86917d7eb22c04b43c6f25be23b2";
+// PR224 adds only the known ownership-rejection response before source reads.
+// Its inverse restores the exact predecessor; sibling chains stay frozen.
+const ARCHIVE_OWNERSHIP_RESPONSE_COMPOSITION_DIGEST =
+  "sha256:4fe538c65536ab9e343c5349f5ca8c1f0abc3625d54aacab15624b672fa9d8fc";
 // #152 routes Tax through its declared API while preserving every retained
 // Accounts and Audit chain. This pins behavior, not a new persistence exception.
 const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
@@ -2306,7 +2310,7 @@ export function validateCompatibilityRegistry(path, {
         || (currentCapability === "annual_accounts_filing" && registry.migration?.currentIssue === "#153"))
       && !registry.records.some(record => ["compat-annual-accounts-persistence", "compat-company-tax-persistence"].includes(record.id))
       && analysis?.state === "found"
-      && [RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST,TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST,ACCOUNTS_COMPANY_ARCHIVE_COMPOSITION_DIGEST].includes(analysis.sourceDigest)
+      && [RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST,TAX_DELIVERY_DRAFT_ARCHIVE_COMPOSITION_DIGEST,ACCOUNTS_COMPANY_ARCHIVE_COMPOSITION_DIGEST,ARCHIVE_OWNERSHIP_RESPONSE_COMPOSITION_DIGEST].includes(analysis.sourceDigest)
       && resources.every(resource => resourceOwner?.(resource) === "backend:annual_accounts_filing"
         && (analysis.persistenceOccurrences.get(resource) ?? 0) === 0)
       && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));

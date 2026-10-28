@@ -7,6 +7,8 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { execFileSync } from "node:child_process";
+import { legacyOperationProof } from "../../../scripts/check-architecture.mjs";
 import { presentOpeningSnapshots } from "../features/ledger/presentation.ts";
 import * as rfPresentation from "../features/shareholder-register-filing/presentation.ts";
 import { loadRf1086ArchiveSource } from "../features/shareholder-register-filing/transport.ts";
@@ -403,6 +405,17 @@ test("Accounts source errors retain priority and precede all sibling reads", asy
   assert.equal(first.calls.includes("read:rf-api"), false);
   assert.equal(first.calls.includes("read:opening-api"), false);
   assert.equal(first.calls.includes("company_archive_complete_export"), false);
+});
+
+test("ownership response amendment restores the exact predecessor and retained persistence chains", () => {
+  const proof = JSON.parse(readFileSync(new URL("../../../architecture/evidence/issues/193/accounts/archive-ownership-response-composition-v1.json", import.meta.url), "utf8"));
+  const original = execFileSync("git", ["show", `${proof.baselineRevision}:${proof.path}`], { encoding: "utf8" });
+  assert.equal(source.split(proof.exactAddition).length, 2);
+  assert.equal(source.replace(proof.exactAddition, ""), original);
+  const scope = { operation: proof.operation, rule: "direct-web-business-persistence", resource: "table:audit_events" };
+  assert.deepEqual(legacyOperationProof(original, proof.path, scope), proof.prior);
+  assert.deepEqual(legacyOperationProof(source, proof.path, scope), proof.candidate);
+  assert.deepEqual(queryChains(source), queryChains(original));
 });
 
 test("archive ownership RPC rejection returns 404 before any source read", async () => {
