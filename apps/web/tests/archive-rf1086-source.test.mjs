@@ -73,7 +73,7 @@ function route({ companyId: selectedCompany = companyId, generic = {}, failures 
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
   const supabase = {
     auth: { getUser: async () => { calls.push("user"); return { data: { user: user ? { id: uid(1) } : null } }; } },
-    rpc: async name => { calls.push(name); return { data: uid(9), error: failures[name] ?? null }; },
+    rpc: async name => { calls.push(name); return { data: failures[name] ? null : uid(9), error: failures[name] ?? null }; },
     from(table) {
       const filters = []; let columns;
       const query = {
@@ -403,6 +403,48 @@ test("Accounts source errors retain priority and precede all sibling reads", asy
   assert.equal(first.calls.includes("read:rf-api"), false);
   assert.equal(first.calls.includes("read:opening-api"), false);
   assert.equal(first.calls.includes("company_archive_complete_export"), false);
+});
+
+test("archive ownership RPC rejection returns 404 before any source read", async () => {
+  const fixture = route({ failures: { company_archive_begin_export: {
+    code: "P0001", message: "company_access_not_found", details: null, hint: null,
+  } } });
+  const response = await fixture.run();
+  assert.equal(response.status, 404);
+  assert.equal(await response.text(), "Fant ikke arkivet");
+  assert.equal(response.headers.get("content-disposition"), null);
+  assert.deepEqual(fixture.calls, ["user", "mfa", "company_archive_begin_export"]);
+  assert.deepEqual(fixture.readTables, []);
+  assert.equal(fixture.captures.length, 0);
+});
+
+test("unrecognized archive RPC failures retain 500 and cannot read sources or publish an archive", async () => {
+  for (const error of [
+    { code: "P0001", message: "company_access_invalid_request" },
+    { code: "42501", message: "company_access_not_found" },
+    { code: "P0001", message: "company_access_not_found: unexpected failure" },
+    { message: "company_access_not_found" },
+  ]) {
+    const fixture = route({ failures: { company_archive_begin_export: error } });
+    const response = await fixture.run();
+    assert.equal(response.status, 500, JSON.stringify(error));
+    assert.equal(await response.text(), "Kunne ikke starte autoritativ arkiveksport");
+    assert.equal(response.headers.get("content-disposition"), null);
+    assert.deepEqual(fixture.calls, ["user", "mfa", "company_archive_begin_export"]);
+    assert.equal(fixture.captures.length, 0);
+  }
+});
+
+test("admitted owner still receives the archive only after MFA and its completed receipt", async () => {
+  const fixture = route();
+  const response = await fixture.run();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-disposition"), 'attachment; filename="talli-923456789-2025-archive.json"');
+  assert.equal((await response.json()).originalArchiveInput.company.id, companyId);
+  assert.ok(fixture.calls.indexOf("mfa") < fixture.calls.indexOf("company_archive_begin_export"));
+  assert.ok(fixture.calls.indexOf("company_archive_begin_export") < fixture.calls.indexOf("read:accounts-filing-api"));
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+  assert.equal(fixture.captures.length, 1);
 });
 
 for (const options of [{ user: false }, { token: false }, { mfa: false }]) {

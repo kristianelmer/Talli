@@ -340,6 +340,9 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     "company_archive_begin_export",
     { p_company_id: companyId, p_income_year: incomeYear },
   );
+  if (archiveAttemptError?.code === "P0001" && archiveAttemptError.message === "company_access_not_found") {
+    return new Response("Fant ikke arkivet", { status: 404 });
+  }
   if (archiveAttemptError || typeof archiveAttemptId !== "string") {
     return new Response("Kunne ikke starte autoritativ arkiveksport", { status: 500 });
   }
