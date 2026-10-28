@@ -8,6 +8,7 @@ file cleanup. Neither unlink nor native DELETE is forensic media erasure.
 """
 import asyncio
 from contextlib import contextmanager
+from contextvars import ContextVar
 from hashlib import sha256
 import json
 from pathlib import PurePosixPath
@@ -95,6 +96,7 @@ class OwnedNativeDocumentsTarget:
                 or any(key in info for key in ('service','passfile','options'))):
             raise ValueError('native_operator_connection')
         self.login=info['user']
+        self._source_connection=ContextVar('native_disposition_source_connection',default=None)
         self.system=self._query("select system_identifier::text from pg_control_system();").strip().decode()
         self.validate()
 
@@ -129,6 +131,14 @@ class OwnedNativeDocumentsTarget:
     @contextmanager
     def connection(self):
         self.validate()
+        bound=self._source_connection.get()
+        if bound is not None:
+            with bound.transaction():
+                bound.execute('set local role documents_disposition_executor')
+                bound.execute("set local lock_timeout='3s'")
+                bound.execute("set local statement_timeout='5s'")
+                yield bound
+            return
         marker='native_disposition_'+uuid4().hex
         with psycopg.connect(self.database_url,connect_timeout=3,application_name=marker,row_factory=dict_row) as db:
             pid=db.execute('select pg_backend_pid() as pid').fetchone()['pid']
@@ -143,6 +153,28 @@ class OwnedNativeDocumentsTarget:
             db.execute("set local lock_timeout='3s'")
             db.execute("set local statement_timeout='5s'")
             yield db
+
+    @contextmanager
+    def source_fence(self, company_id):
+        """Same-session company write fence across independently durable phases.
+
+        Native prepare/finalize take the same advisory key. Reusing this checked
+        connection avoids a second session deadlocking against our own lease.
+        ContextVar propagates to the sequential owner calls in asyncio.to_thread.
+        """
+        if self._source_connection.get() is not None:
+            raise ValueError('native_disposition_nested_source_fence')
+        with self.connection() as db:
+            db.execute('select pg_advisory_lock(hashtextextended(%s,157))',(str(UUID(str(company_id))),))
+            db.commit()
+            token=self._source_connection.set(db)
+            try:
+                yield
+            finally:
+                self._source_connection.reset(token)
+                db.rollback()
+                db.execute('select pg_advisory_unlock(hashtextextended(%s,157))',(str(company_id),))
+                db.commit()
 
     def objects(self,**request):
         self.validate()
