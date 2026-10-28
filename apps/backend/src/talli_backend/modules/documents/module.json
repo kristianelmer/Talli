@@ -181,7 +181,8 @@
     "originalArchive": "apps/backend/tests/test_document_original_archive.py",
     "historicalOriginalIntegrityCodec": "apps/backend/tests/test_documents_historical_original_integrity_codec.py",
     "historicalOriginalIntegrityDatabase": "apps/backend/tests/test_documents_historical_original_integrity_database.py",
-    "disposition": "apps/backend/tests/test_deletion_replay.py"
+    "disposition": "apps/backend/tests/test_deletion_replay.py",
+    "nativeMultigeneration": "apps/backend/tests/test_native_multigeneration_disposition.py"
   },
   "compatibilityExceptions": []
 }

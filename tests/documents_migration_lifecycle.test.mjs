@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
-import { emptyDocumentsRetentionTeardown, documentsOnlyCompanyGuards, governanceOnlyCompanyGuards } from "./support/documents_retention_rehearsal.mjs";
+import { emptyNativeDocumentsDispositionTeardown, emptyDocumentsRetentionTeardown, documentsOnlyCompanyGuards, governanceOnlyCompanyGuards } from "./support/documents_retention_rehearsal.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -25,6 +25,20 @@ async function integrityState(client) {
     from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
     where n.nspname='documents' and (p.proname='assert_historical_original_integrity_v1'
       or p.proname like 'original_integrity_%_internal_v1')
+    order by p.proname,arguments`)).rows;
+}
+
+async function nativeState(client) {
+  return (await client.query(`select p.proname,
+    pg_catalog.pg_get_function_identity_arguments(p.oid) as arguments,
+    pg_catalog.pg_get_userbyid(p.proowner) as owner,
+    pg_catalog.pg_get_functiondef(p.oid) as definition,
+    pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE') as browser,
+    pg_catalog.has_function_privilege('service_role',p.oid,'EXECUTE') as service,
+    case when to_regrole('documents_disposition_executor') is not null then
+      pg_catalog.has_function_privilege('documents_disposition_executor',p.oid,'EXECUTE') else null end as executor
+    from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='documents' and p.proname like 'local_native_disposition_%_v1'
     order by p.proname,arguments`)).rows;
 }
 
@@ -69,6 +83,7 @@ test(
       historicalAssertionForward,
       historicalAssertionRollback,
       integrityForward,
+      nativeForward,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -87,24 +102,32 @@ test(
       readFile(new URL("../supabase/migrations/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${integrityMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20261028042019_documents_local_native_disposition.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
       const initial = await state(client);
       const initialIntegrity = await integrityState(client);
+      const initialNative = await nativeState(client);
       assert.ok(initialIntegrity.length === 0 || initialIntegrity.length === 5,
         "integrity successor must be absent or completely installed");
       const { rows: [guards] } = await client.query(`select
         to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null as documents,
         to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance,
-        to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as historical_assertion`);
+        to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as historical_assertion,
+        to_regclass('documents.local_native_disposition_plans') is not null as native`);
       assert.equal(initial.table_owner, "documents_store_owner");
       assert.equal(initial.capability_schema, true);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         // The originals rollback is empty-only and sees all rows under FORCE RLS.
         // Never use CASCADE or a test cleanup to discard retained customer bytes.
+        if (guards.native) {
+          await client.query("begin");
+          try { await client.query(emptyNativeDocumentsDispositionTeardown); await client.query("commit"); }
+          catch (error) { await client.query("rollback"); throw error; }
+        }
         if (guards.historical_assertion) await client.query(historicalAssertionRollback);
         await client.query(historicalRollback);
         await client.query(originalsRollback);
@@ -149,6 +172,9 @@ test(
         if (guards.governance) await client.query(governanceOnlyCompanyGuards(governanceGuardForward));
         if (guards.historical_assertion) await client.query(historicalAssertionForward);
         if (initialIntegrity.length) await client.query(integrityForward);
+        if (guards.native) await client.query(nativeForward);
+        assert.deepEqual(await nativeState(client), initialNative,
+          "recutover restores exact native definitions, owners and executor denials");
         assert.deepEqual(await integrityState(client), initialIntegrity,
           "recutover restores exact integrity definitions, owners and runtime denials");
         const successor = await state(client);

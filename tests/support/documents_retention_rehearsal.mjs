@@ -135,3 +135,63 @@ export function governanceOnlyCompanyGuards(migration) {
   }
   return result;
 }
+
+
+/** Empty-only local native extension teardown for disposable predecessor tests.
+ * Approvals, target bindings and receipts are durable evidence: any row blocks
+ * this helper. Exact inventory only; never CASCADE or a production rollback.
+ */
+export const emptyNativeDocumentsDispositionTeardown = String.raw`
+set local lock_timeout='5s';
+set local statement_timeout='120s';
+set local search_path='';
+create temporary table native_disposition_borrowed_role(prior jsonb) on commit drop;
+do $borrow$
+declare p jsonb;
+begin
+ if not pg_catalog.pg_has_role(current_user,'documents_store_owner','SET') then
+  select pg_catalog.jsonb_build_object('admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option) into p
+  from pg_catalog.pg_auth_members m where m.roleid=(select oid from pg_catalog.pg_roles where rolname='documents_store_owner')
+   and m.member=(select oid from pg_catalog.pg_roles where rolname=current_user) and m.grantor=m.member;
+  insert into pg_temp.native_disposition_borrowed_role values(p);
+  execute pg_catalog.format('grant documents_store_owner to %I with set true granted by %I',current_user,current_user);
+ end if;
+end; $borrow$;
+set local role documents_store_owner;
+lock table documents.local_native_disposition_plans,documents.local_native_disposition_targets,
+ documents.local_native_disposition_receipts in access exclusive mode;
+do $empty$
+declare t text; forced boolean; populated boolean;
+begin
+ foreach t in array array['local_native_disposition_plans','local_native_disposition_targets','local_native_disposition_receipts'] loop
+  select relforcerowsecurity into strict forced from pg_catalog.pg_class where oid=pg_catalog.to_regclass('documents.'||t);
+  execute pg_catalog.format('alter table documents.%I no force row level security',t);
+  execute pg_catalog.format('select exists(select 1 from documents.%I)',t) into populated;
+  if forced then execute pg_catalog.format('alter table documents.%I force row level security',t);end if;
+  if populated then raise exception 'documents_native_disposition_evidence_blocks_rehearsal_teardown';end if;
+ end loop;
+end; $empty$;
+drop trigger local_native_disposition_guard on public.documents;
+drop trigger local_native_disposition_reference_guard on documents.evidence_references;
+drop trigger local_native_disposition_original_guard on documents.retained_originals;
+drop policy documents_store_local_native_delete on public.documents;
+revoke delete on public.documents from documents_store_owner;
+drop function documents.local_native_disposition_row_guard_v1();
+drop function documents.local_native_disposition_finalize_v1(uuid,text,uuid,text,uuid);
+drop function documents.local_native_disposition_storage_retired_v1(uuid,text,uuid,text,uuid);
+drop function documents.local_native_disposition_prepare_v1(uuid,text,uuid,text,uuid);
+drop function documents.local_native_disposition_state_v1(uuid,text,uuid,text);
+drop function documents.local_native_disposition_delete_allowed_v1(uuid,uuid);
+drop table documents.local_native_disposition_receipts;
+drop table documents.local_native_disposition_targets;
+drop table documents.local_native_disposition_plans;
+reset role;
+do $restore$
+declare r record;
+begin
+ for r in select * from pg_temp.native_disposition_borrowed_role loop
+  execute pg_catalog.format('revoke documents_store_owner from %I granted by %I',current_user,current_user);
+  if r.prior is not null then execute pg_catalog.format('grant documents_store_owner to %I with admin %s,inherit %s,set %s granted by %I',current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);end if;
+ end loop;
+end; $restore$;
+`;
