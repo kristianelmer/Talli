@@ -3061,6 +3061,7 @@ def _invitation_not_found() -> CompanyAccessError:
 __all__ = [
     "AuthorizedCompanyDisposition", "CompanyDispositionPlan", "DispositionAuthorizationFacts",
     "DispositionExport", "DispositionRecord", "DispositionSession", "authorize_company_disposition",
+    "AuthorizedLocalDocumentsDisposition", "LocalDocumentsFacts", "authorize_local_documents_disposition",
     "CompanyArchiveDownloadAuthorization",
     "CompanyYearLegalEvidence",
     "CompanyYearPurchaseBasis",
@@ -3144,4 +3145,7 @@ __all__ = [
 from .disposition import (
     AuthorizedCompanyDisposition, CompanyDispositionPlan, DispositionAuthorizationFacts,
     DispositionExport, DispositionRecord, DispositionSession, authorize_company_disposition,
+)
+from .local_disposition import (
+    AuthorizedLocalDocumentsDisposition, LocalDocumentsFacts, authorize_local_documents_disposition,
 )

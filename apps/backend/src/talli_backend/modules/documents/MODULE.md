@@ -316,8 +316,12 @@ The adapter checks Docker ownership, internal-only upstreams, actual host-sessio
 PID, metadata, generation bytes, existing evidence links and retention. Storage
 API retirement comes before local historical generation cleanup and native row
 finalization. RESUMABLE is an explicit known native prefix; arbitrary partial
-changes still close replay. This does not supply hosted erasure authority,
-production owner/reviewer/Billing/export fact resolvers or a whole-company fence.
+changes still close replay. The local preflight now resolves current Auth,
+Company Access and Billing facts for a target-derived synthetic company, plus
+Documents rows/references/retained originals and ordinary Storage versions. It
+holds a same-session company advisory fence across admission and owner I/O.
+This does not supply hosted erasure authority or real-company all-owner/legal/
+export coverage.
 
 <!-- architecture-inventory
 {"ownedTables":["documents.local_native_disposition_plans","documents.local_native_disposition_targets","documents.local_native_disposition_receipts"],"ports":["DocumentDispositionStore"]}

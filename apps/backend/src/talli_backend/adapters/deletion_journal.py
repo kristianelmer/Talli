@@ -16,10 +16,24 @@ from uuid import UUID, uuid4
 from talli_backend.adapters.restored_publication import publication_is_current
 from talli_backend.application.company_disposition import JournalHead
 from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition, authorize_company_disposition
+from talli_backend.modules.company_access.public import AuthorizedLocalDocumentsDisposition, authorize_local_documents_disposition
 
 MAX_BODY = 1024 * 1024
 MAX_JOURNAL = 16 * MAX_BODY
 GENESIS = '0' * 64
+
+
+def _validated_permit(body):
+    version = json.loads(body).get('policy_version')
+    if version == 'local-documents-disposition-v1':
+        permit = AuthorizedLocalDocumentsDisposition.model_validate_json(body)
+        validate = authorize_local_documents_disposition
+    else:
+        permit = AuthorizedCompanyDisposition.model_validate_json(body)
+        validate = authorize_company_disposition
+    if validate(permit.plan, permit.facts, now=permit.authorized_at) != permit:
+        raise ValueError('deletion_journal_authorization_changed')
+    return permit
 
 
 
@@ -87,9 +101,7 @@ class LocalDeletionJournal:
             if (sequence != len(entries) + 1 or previous != digest or len(body.encode()) > MAX_BODY
                     or total > MAX_JOURNAL or _digest(previous, sequence, body) != observed):
                 raise ValueError('deletion_journal_incomplete')
-            permit = AuthorizedCompanyDisposition.model_validate_json(body)
-            if authorize_company_disposition(permit.plan, permit.facts, now=permit.authorized_at) != permit:
-                raise ValueError('deletion_journal_authorization_changed')
+            permit = _validated_permit(body)
             if str(permit.plan.operation_id) != operation:
                 raise ValueError('deletion_journal_operation_changed')
             digest = observed; entries.append(permit)
@@ -114,9 +126,7 @@ class LocalDeletionJournal:
                 if prior != (body,):
                     raise ValueError('deletion_journal_idempotency_conflict')
                 return head
-            validated = AuthorizedCompanyDisposition.model_validate_json(body)
-            if authorize_company_disposition(validated.plan, validated.facts, now=validated.authorized_at) != validated:
-                raise ValueError('deletion_journal_authorization_changed')
+            _validated_permit(body)
             if head.sequence >= 1000 or db.execute('select coalesce(sum(length(body)),0) from tombstones').fetchone()[0] + len(body.encode()) > MAX_JOURNAL:
                 raise ValueError('deletion_journal_bound_exceeded')
             sequence = head.sequence + 1; digest = _digest(head.sha256, sequence, body)

@@ -402,6 +402,14 @@ rollback rehearsal and before Corporate's 2025 writer policy.
 
 ### Offline company disposition authorization
 
+`authorize_local_documents_disposition` validates `LocalDocumentsFacts` and
+returns `AuthorizedLocalDocumentsDisposition`, a separate synthetic-only journal
+version. It binds a target-derived disposable company ID, real local Auth sessions
+and fresh TOTP, independent active case reviewer, recorded Billing expiry, a
+Documents-only byte export and the current native source generation. It cannot
+authorize a real company or assert all-owner inventory, legal holds or complete
+company export. Unknown sources keep the whole-company path unavailable.
+
 The public immutable `CompanyDispositionPlan`, authorization facts and permit
 separate all-company-year disposition from selected-year cancellation markers.
 `authorize_company_disposition` requires explicit delete choice, complete current

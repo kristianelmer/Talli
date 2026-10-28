@@ -415,6 +415,9 @@ def test_actual_authority_wait_precedes_billing_lock_and_rechecks_expiry(state, 
         @asynccontextmanager
         async def observed(query):
             async with admission(query) as scope:
+                # This expiry probe intentionally holds Authority for up to six
+                # seconds. Its fixture budget must exceed that deliberate wait.
+                await scope._connection.execute("set local lock_timeout='10s';set local statement_timeout='12s'")
                 ready.set_result((await (await scope._connection.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
                 yield scope
         state.store.source_admission = observed
@@ -424,7 +427,9 @@ def test_actual_authority_wait_precedes_billing_lock_and_rechecks_expiry(state, 
                 blocker.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()+interval '0.3 seconds' where id=%s", (state.entitlement,))
             else:
                 claims = json.loads(state.store._verified.claims_json)
-                claims['amr'][0]['timestamp'] = int(blocker.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-898
+                # Keep ample time to reach the Authority row lock on a busy CI
+                # runner. The test expires MFA *after* observing that wait.
+                claims['amr'][0]['timestamp'] = int(blocker.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-894
                 state.store._verified = replace(state.store._verified, claims_json=json.dumps(claims))
             task = asyncio.create_task(state.approval_workflow.read_review('synthetic-token', **state.approval_arguments))
             try:
@@ -437,7 +442,11 @@ def test_actual_authority_wait_precedes_billing_lock_and_rechecks_expiry(state, 
                             break
                     await asyncio.sleep(.01)
                 else: raise AssertionError('Actual v3 context did not wait on Authority request')
-                await asyncio.sleep(.4 if expired == 'pilot' else 2.1)
+                if expired == 'pilot':
+                    await asyncio.sleep(.4)
+                else:
+                    current = float(blocker.execute('select extract(epoch from clock_timestamp())').fetchone()[0])
+                    await asyncio.sleep(max(.5, claims['amr'][0]['timestamp'] + 900 - current + .3))
             except BaseException:
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)

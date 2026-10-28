@@ -628,7 +628,7 @@
     },
     {
       "name": "company-disposition",
-      "purpose": "Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined.",
+      "purpose": "Offline synthetic Documents disposition with owner-resolved Auth, Company Access, Billing and Documents facts; whole-company owner/legal/export coverage remains unavailable.",
       "publicPackages": [
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.documents.public",
@@ -802,7 +802,7 @@
     "eventDelivery": "public.notification_outbox persists outbound deliveries. annual_notification_inbox.receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
     "durableWorker": "The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions.",
-    "deletionRecovery": "Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler."
+    "deletionRecovery": "Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler. Synthetic local preflight verifies Auth sessions/MFA, case authority, Billing history, Documents bytes and generation via an explicitly owned native control channel; a scoped export and same-session company write fence bind the native command. Whole-company owner/legal/export coverage stays unavailable. Fresh-target recovery compares the complete native table census and row-byte facts, role state, all object bytes and attributes, plus the native disposition guard functions, trigger attachments/enabled states and scoped RLS/ACL policy with the independently pinned backup, then retains the original admitted permit bytes. Its declared operational writes register only Documents native targets/plans; ordinary erasure remains the restricted Documents owner command."
   },
   "adapterBindings": [
     {
@@ -1499,7 +1499,10 @@
       "sqlite3",
       "uuid",
       "talli_backend.application.company_disposition",
-      "talli_backend.adapters.deletion_journal"
+      "talli_backend.adapters.deletion_journal",
+      "talli_backend.adapters.native_disposition_preflight",
+      "talli_backend.adapters.native_disposition_recovery",
+      "talli_backend.adapters.native_restore_binding"
     ]
   }
 }
