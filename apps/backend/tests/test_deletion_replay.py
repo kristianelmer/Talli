@@ -431,3 +431,33 @@ def test_journal_refuses_constructed_permit_with_invalid_authorization(tmp_path)
     invalid=permit.model_copy(update={'plan':plan.model_copy(update={'choice':None})})
     with pytest.raises(ValueError,match='customer_choice_required'):journal.append(invalid)
     assert journal.read()[0].sequence==0
+
+
+@pytest.mark.parametrize('prior_format',['7cf','46e'])
+def test_existing_durable_progress_prefix_resumes_across_codec_change(tmp_path,prior_format):
+    import importlib.util
+    from talli_backend.application.company_disposition import _commands
+    spec=importlib.util.spec_from_file_location('frozen_deletion_progress',Path(__file__).parent/'fixtures/deletion_progress_before_v1.py')
+    old=importlib.util.module_from_spec(spec)
+    # dataclasses looks up its defining module while processing annotations.
+    import sys
+    sys.modules[spec.name]=old;spec.loader.exec_module(old)
+    encode=old.receipt_7cf if prior_format=='7cf' else old.receipt_46e
+    plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
+    store=SyntheticDocumentStore(tmp_path/'customer',plan=plan)
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=store.root)
+    head=journal.append(permit);target=str(uuid4());receipt=LocalReplayReceipt(store.root/'ready.json')
+    run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
+    commands=_commands(permit)
+    with sqlite3.connect(journal.path) as db:
+        for command in commands:
+            db.execute('update applied set receipt=? where target=? and record=?',
+                       (encode(command),target,str(command.document_id)))
+    run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
+    assert store.erase_calls==1 and replay_is_current(journal,receipt=receipt.path,target=target,minimum=head)
+    with sqlite3.connect(journal.path) as db:
+        assert db.execute('select receipt from applied where target=? and record=?',(target,str(commands[0].document_id))).fetchone()==(encode(commands[0]),)
+        db.execute('update applied set receipt=? where target=? and record=?',('f'*64,target,str(commands[0].document_id)))
+    with pytest.raises(ValueError,match='receipt_changed'):
+        run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
+    assert not receipt.path.exists() and store.erase_calls==1

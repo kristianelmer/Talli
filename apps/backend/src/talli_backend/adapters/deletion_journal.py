@@ -123,11 +123,11 @@ class LocalDeletionJournal:
                        (sequence, str(permit.plan.operation_id), head.sha256, body, digest))
         return JournalHead(self.stream, sequence, digest)
 
-    def applied(self, target: str, sequence: int, record: str, receipt: str) -> None:
+    def applied(self, target: str, sequence: int, record: str, receipt: str, *, compatible_receipts: tuple[str, ...] = ()) -> None:
         with self._connection(write=True) as db:
             prior = db.execute('select receipt from applied where target=? and sequence=? and record=?',
                                (target, sequence, record)).fetchone()
-            if prior and prior != (receipt,):
+            if prior and prior[0] not in (receipt, *compatible_receipts):
                 raise ValueError('deletion_replay_receipt_changed')
             db.execute('insert or ignore into applied values(?,?,?,?)', (target, sequence, record, receipt))
 

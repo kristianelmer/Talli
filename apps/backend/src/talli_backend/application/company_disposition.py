@@ -5,6 +5,7 @@ cannot open a target. Policy and reconciliation decisions remain with owners.
 """
 from dataclasses import dataclass
 from hashlib import sha256
+import json
 from typing import Mapping, Protocol
 
 from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition
@@ -24,7 +25,7 @@ class JournalHead:
 class DeletionJournal(Protocol):
     def append(self, permit: AuthorizedCompanyDisposition) -> JournalHead: ...
     def read(self, *, minimum: JournalHead | None = None) -> tuple[JournalHead, tuple[AuthorizedCompanyDisposition, ...]]: ...
-    def applied(self, target: str, sequence: int, record: str, receipt: str) -> None: ...
+    def applied(self, target: str, sequence: int, record: str, receipt: str, *, compatible_receipts: tuple[str, ...] = ()) -> None: ...
 
 
 class ReplayReceiptStore(Protocol):
@@ -44,10 +45,27 @@ def _require_owners(entries, stores):
         raise ValueError('deletion_replay_owner_unavailable')
 
 
+def _progress_receipts(command):
+    # Technical progress codec v1 is independent of Python class repr/field order.
+    fields = ('operation_id','company_id','document_id','income_year','generation',
+              'content_sha256','company_generation','plan_sha256')
+    payload = {name: str(getattr(command,name)) if name.endswith('_id') else getattr(command,name) for name in fields}
+    payload['action'] = command.action
+    raw = json.dumps(payload, sort_keys=True, separators=(',',':'), ensure_ascii=False, allow_nan=False).encode()
+    current = 'document-disposition-progress-v1:' + sha256(raw).hexdigest()
+    # Frozen encodings from7cf9d060 and46e8a357. Accept only an exact commitment
+    # for this same command/action; never rewrite an existing durable prefix.
+    legacy = 'DocumentDisposition(' + ', '.join(name+'='+repr(getattr(command,name)) for name in fields) + ')'
+    legacy_with_action = legacy[:-1] + ', action=' + repr(command.action) + ')'
+    return current, (sha256((legacy+':'+command.action).encode()).hexdigest(),
+                     sha256(legacy_with_action.encode()).hexdigest())
+
+
 async def _apply(journal, target, sequence, commands, later_commands, store):
     completed = await apply_document_dispositions(commands, later_commands, store)
     for command in completed:
-        journal.applied(target, sequence, str(command.document_id), sha256(repr(command).encode()).hexdigest())
+        receipt, compatible = _progress_receipts(command)
+        journal.applied(target, sequence, str(command.document_id), receipt, compatible_receipts=compatible)
 
 
 async def execute_authorized_disposition(permit: AuthorizedCompanyDisposition, *, journal: DeletionJournal,

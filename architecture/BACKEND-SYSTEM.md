@@ -1457,3 +1457,9 @@ selectors across the approved cut, anchors the restored generation, and accepts
 only compatible READY prefixes from that cut. It does not equate historical
 company generations or require an earlier permit hash to replace a later known
 prepared command. Unrelated pending commands and unattributed records stay closed.
+
+Technical progress uses the explicit `document-disposition-progress-v1` encoding,
+not a mutable dataclass repr. Exact legacy commitments from7cf9d060 and46e8a357
+remain acceptable for the same complete selector/action. Existing prefixes are
+never rewritten or accepted for a different command; the owner still verifies
+actual data/outcomes on every replay before any readiness publication.
