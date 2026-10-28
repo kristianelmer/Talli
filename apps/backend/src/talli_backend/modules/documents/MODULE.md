@@ -274,3 +274,17 @@ SQL cases live in `test_documents_historical_original_integrity_database.py`.
 Collection and native codec/ACL probes with explicit authorization/lock stubs are
 not full Supabase/RLS/concurrency execution evidence. Consumer grants and final
 Governance admission remain a separate canonical owner turn.
+
+
+### Restricted offline disposition seam
+
+`DocumentDisposition` binds a reviewed plan to exact company/year/document,
+generation and byte hash. `DocumentDispositionStore` must serialize against owner
+evidence writes, reject retained originals/references, fence before I/O, enumerate
+and erase every selected object generation plus raw metadata, and reconcile the
+same command from durable receipts and actual stores. `dispose_document` never
+blindly repeats an unknown result. Retained records are verified before erase.
+The current adapter is a disposable local SQLite/files fixture only. No production
+Supabase delete adapter, public purge route, trigger bypass or new access grant
+is provided. SQL DELETE/filesystem unlink is distinct from forensic media erasure
+and from backup expiry. Normal removal remains its existing lifecycle operation.

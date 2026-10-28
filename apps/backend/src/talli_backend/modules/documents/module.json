@@ -10,7 +10,8 @@
   "exports": {
     "commands": [
       "BeginDocumentUploadCommand",
-      "DocumentEvidenceRetentionCommand"
+      "DocumentEvidenceRetentionCommand",
+      "DocumentDisposition"
     ],
     "queries": [
       "DocumentBackupObject",
@@ -27,7 +28,8 @@
       "RetainedDocumentOriginalQuery",
       "RetainedDocumentOriginalSnapshot",
       "serialize_retained_document_original",
-      "parse_retained_document_original"
+      "parse_retained_document_original",
+      "dispose_document"
     ],
     "events": [],
     "errors": [
@@ -52,7 +54,8 @@
       "DocumentEvidenceRetentionPersistence",
       "document_evidence_retention_adapter",
       "DocumentOriginalPersistence",
-      "document_original_persistence_adapter"
+      "document_original_persistence_adapter",
+      "DocumentDispositionStore"
     ]
   },
   "owns": {
@@ -147,7 +150,7 @@
   "forbiddenResponsibilities": [
     "Corporate-governance, filing, ledger, investment, authority, or archive composition policy",
     "Provider-specific object policy in the public contract",
-    "Direct browser metadata mutation, bucket listing, arbitrary object keys, or object deletion"
+    "Direct browser metadata mutation, bucket listing, arbitrary object keys, or unreviewed object deletion"
   ],
   "tests": {
     "policy": "apps/backend/tests/test_documents.py",
@@ -162,7 +165,8 @@
     "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py",
     "originalArchive": "apps/backend/tests/test_document_original_archive.py",
     "historicalOriginalIntegrityCodec": "apps/backend/tests/test_documents_historical_original_integrity_codec.py",
-    "historicalOriginalIntegrityDatabase": "apps/backend/tests/test_documents_historical_original_integrity_database.py"
+    "historicalOriginalIntegrityDatabase": "apps/backend/tests/test_documents_historical_original_integrity_database.py",
+    "disposition": "apps/backend/tests/test_deletion_replay.py"
   },
   "compatibilityExceptions": []
 }

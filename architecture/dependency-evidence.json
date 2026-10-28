@@ -185,6 +185,22 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:company-disposition",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-disposition",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
       "from": "backend-system:company-tax-assessment-previews",
       "imports": [
         "talli_backend.modules.company_tax_filing.public"

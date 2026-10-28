@@ -398,3 +398,20 @@ annual-close scope. The additive reader and exact rollback are
 `tests/corporate_annual_close_2025_database.test.mjs`.
 The reader is a deferred contract: install it after the historical Governance
 rollback rehearsal and before Corporate's 2025 writer policy.
+
+
+### Offline company disposition authorization
+
+The public immutable `CompanyDispositionPlan`, authorization facts and permit
+separate all-company-year disposition from selected-year cancellation markers.
+`authorize_company_disposition` requires explicit delete choice, complete current
+inventory/generation, actual complete export-receipt facts for every covered year,
+Billing-derived paid expiry followed by at least90days read/export, bounded
+retention/holds, fresh non-revoked owner MFA and a distinct reviewed support-case
+operator bound to the exact plan. These are trusted owning read/session facts;
+there is no HTTP endpoint accepting them as customer assertions. The current
+local exercise supplies explicit synthetic facts; no production resolver exists.
+The policy grants no cross-owner SQL or generic administrative deletion.
+
+`AuthorizedCompanyDisposition`, `DispositionAuthorizationFacts`, `DispositionExport`,
+`DispositionRecord` and `DispositionSession` are the immutable offline policy facts.

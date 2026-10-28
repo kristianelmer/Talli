@@ -1379,3 +1379,48 @@ Accounts delivery contract fingerprints use function-owner names and policy mean
 <!-- architecture-inventory
 {"technicalMigrations":["supabase/migrations/20261028005310_annual_accounts_portable_delivery_contract.sql"]}
 -->
+
+
+## Offline disposition and restored quarantine
+
+`company-disposition` is an offline workflow (`offline:company-disposition`), not
+an HTTP purge endpoint. Company Access owns immutable all-company-year choice,
+inventory/generation, Billing-derived expiry plus at least90days read/export,
+complete export receipts, bounded holds, fresh verified owner MFA and independent
+review facts. No selected-year cancellation marker authorizes physical deletion.
+Documents owns exact selectors, write fencing, evidence-reference refusal, every
+ordinary object generation, retained-original checks and uncertain-outcome
+reconciliation. The current vertical slice supplies a local synthetic adapter in
+its tests, not a production Supabase purge adapter or real Billing/session-fact
+resolver. Unsupported owners and unavailable inventory fail closed.
+
+`deletionRecovery` uses the technical `DeletionJournal`/`ReplayReceiptStore`
+contracts in `talli_backend.application.company_disposition`, with local SQLite
+and atomic-file adapters in `talli_backend.adapters.deletion_journal`. The journal
+is outside the customer snapshot, committed with synchronous FULL before owner
+I/O and retained independently of replay receipts. Chain/sequence checking and a
+separately supplied minimum head detect missing/gapped/rolled-back input. OS
+custody controls the writer; hashes do not authenticate a malicious custodian.
+Per-target owner prefixes are durable. A lost success is reconciled against the
+owner's exact receipt and actual stores; uncertainty cannot become absence.
+
+Any `TALLI_RESTORE_` configuration opts into a fail-closed backend traffic barrier.
+It requires TARGET_ID (fresh UUID), CUSTOMER_ROOT, JOURNAL_PATH, JOURNAL_STREAM,
+MIN_SEQUENCE, MIN_SHA256 and REPLAY_RECEIPT. A missing/unreadable journal, missing
+or wrong-target receipt, incomplete replay or newer journal head blocks business
+traffic and readiness even when an injected dependency probe reports healthy.
+Liveness remains available. This check bypasses positive dependency-health cache.
+Auth/Storage must remain internal until orchestration checks the same replay gate;
+the backend middleware cannot protect an independently exposed Supabase gateway.
+
+The finite tests copy populated synthetic Documents rows and ordinary version
+files before deletion, persist an external tombstone, physically DELETE/unlink,
+restore, replay before opening readiness, deny the erased owning download, and
+retain exact lawful-evidence rows/bytes and original actor identity. This is not a
+native all-three recovery rerun, forensic media erasure, Auth erasure, hosted
+purge, offsite custody, journal-retention duration or future paid backup rotation.
+No journal expiry is guessed; a real destination/rotation horizon remains required.
+
+<!-- architecture-inventory
+{"workflows":["company-disposition"],"workflowPurposes":["company-disposition=>Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined."],"routes":["offline:company-disposition"],"infrastructure":["deletionRecovery=>Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler."],"transportDependencies":["talli_backend.adapters.restore_quarantine"],"adapterDependencies":["contextlib","pathlib","sqlite3","uuid","talli_backend.application.company_disposition","talli_backend.adapters.deletion_journal"]}
+-->

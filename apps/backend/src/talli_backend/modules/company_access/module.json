@@ -8,11 +8,11 @@
   "documentation": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
-    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "FinalizeCompanyDeletionRequest", "GrantSupportAccessRequest", "InvitationTokenRequest", "OpenSupportCaseRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "RevokeSupportAccessRequest", "ReviewCompanyDeletionRequest"],
-    "queries": ["CompanyArchiveDownloadAuthorization", "CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "CompanyYearLegalEvidence", "CompanyYearPurchaseBasis", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
+    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "CompanyDispositionPlan", "FinalizeCompanyDeletionRequest", "GrantSupportAccessRequest", "InvitationTokenRequest", "OpenSupportCaseRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "RevokeSupportAccessRequest", "ReviewCompanyDeletionRequest"],
+    "queries": ["authorize_company_disposition", "CompanyArchiveDownloadAuthorization", "CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "CompanyYearLegalEvidence", "CompanyYearPurchaseBasis", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
+    "identifiers": ["AuthorizedCompanyDisposition", "DispositionAuthorizationFacts", "DispositionExport", "DispositionRecord", "DispositionSession", "CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
@@ -47,6 +47,7 @@
   ],
   "tests": {
     "contract": "apps/backend/tests/test_company_access.py",
+    "disposition": "apps/backend/tests/test_deletion_replay.py",
     "archiveDownloadPolicy": "apps/backend/tests/test_company_test_retention_download_policy.py",
     "purchaseBasis": "apps/backend/tests/test_annual_purchase_basis_runtime.py",
     "rfAdmissionGuard": "apps/backend/tests/test_company_access_rf_admission_database.py",
