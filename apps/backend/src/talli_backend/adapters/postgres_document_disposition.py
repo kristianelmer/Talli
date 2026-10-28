@@ -173,7 +173,14 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
                 or native_document_generation(row,files)!=command.generation
                 or objects['storageKey']!=row['storage_key']):
             raise ValueError('native_disposition_generation_changed')
+        expected_key=str(command.company_id)+'/'+str(command.income_year)+'/'+str(command.document_id)+'/'
+        if (not row['storage_key'].startswith(expected_key) or '..' in PurePosixPath(row['storage_key']).parts
+                or str(UUID(objects['currentVersion']))!=objects['currentVersion']):
+            raise ValueError('native_disposition_storage_identity')
         prefix='stub/stub/company-documents/'+row['storage_key']+'/'
+        if not any(f=={'path':prefix+objects['currentVersion'],'bytes':row['byte_length'],
+                      'sha256':command.content_sha256} for f in files):
+            raise ValueError('native_disposition_current_bytes_changed')
         if (not files or any(not f['path'].startswith(prefix) or '..' in PurePosixPath(f['path']).parts
                               or f['bytes']<1 or not re.fullmatch('[a-f0-9]{64}',f['sha256']) for f in files)
                 or len({f['path'] for f in files})!=len(files)):
@@ -234,7 +241,12 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
 
     async def prepare(self,command):
         if command.action!='erase':raise ValueError('native_disposition_erase_required')
-        await asyncio.to_thread(self._call,'prepare',command)
+        await asyncio.to_thread(self._prepare,command)
+
+    def _prepare(self,command):
+        if self._observe(command) not in {'NOT_APPLIED','READY'}:
+            raise ValueError('native_disposition_outcome_unknown')
+        self._call('prepare',command)
 
     async def erase(self,command):
         if command.action!='erase':raise ValueError('native_disposition_erase_required')

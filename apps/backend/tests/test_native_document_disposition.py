@@ -52,3 +52,37 @@ def test_document_owner_resumes_only_explicit_known_native_prefix():
         async def prepare(self,c):raise AssertionError('known native prefix must not be prepared again')
         async def erase(self,c):self.erased=True
     store=Known();asyncio.run(dispose_document(command,store));assert store.erased
+
+
+def test_native_current_version_bytes_must_match_approved_selector():
+    from talli_backend.adapters.postgres_document_disposition import (
+        PostgresDocumentDisposition,native_document_generation,
+    )
+    company,document,operation,version=uuid4(),uuid4(),uuid4(),str(uuid4())
+    key=f'{company}/2010/{document}/fixture.pdf'
+    row={'company_id':str(company),'income_year':2010,'content_sha256':'b'*64,
+         'storage_key':key,'byte_length':10}
+    files=[{'path':'stub/stub/company-documents/'+key+'/'+version,'bytes':10,'sha256':'a'*64}]
+    command=DocumentDisposition(operation,company,document,2010,native_document_generation(row,files),'b'*64,'cg','c'*64,'erase')
+    state={'companyId':str(company),'generation':'cg','snapshot':{str(document):row},
+           'actual':{str(document):row},'receipts':{},'fixtureRecords':[str(document)],
+           'objects':{str(document):{'files':files,'storageKey':key,'currentVersion':version}}}
+    store=PostgresDocumentDisposition(None)
+    store._call=lambda phase,c:state
+    # Both metadata and generation commitment are internally consistent. The
+    # current bytes still contradict the approved content selector.
+    with pytest.raises(ValueError,match='current_bytes_changed'):
+        store._state(command)
+    with pytest.raises(ValueError,match='current_bytes_changed'):
+        asyncio.run(store.prepare(command))
+
+
+def test_prepare_cannot_attribute_preexisting_unknown_storage_loss():
+    from talli_backend.adapters.postgres_document_disposition import PostgresDocumentDisposition
+    command=DocumentDisposition(uuid4(),uuid4(),uuid4(),2010,'g','a'*64,'cg','b'*64,'erase')
+    store=PostgresDocumentDisposition(None);writes=[]
+    store._observe=lambda c:'UNKNOWN'
+    store._call=lambda phase,c:writes.append(phase)
+    with pytest.raises(ValueError,match='outcome_unknown'):
+        asyncio.run(store.prepare(command))
+    assert writes==[]

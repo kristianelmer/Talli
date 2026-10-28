@@ -417,6 +417,19 @@ class RecoveredIdentity:
         return make_conninfo(source_reader, host=recovered['host'], port=recovered['port'], dbname=recovered['dbname'])
 
 
+def _restored_ingress(construction, owner, reserved, *, budget, publication):
+    """An opt-in controller must own gated ingress before any port is opened.
+
+    Never allocate the default raw Auth relay for a deletion replay. The
+    controller's ingress context must publish only owned loopback gates, while
+    internal health checks use its privileged control path.
+    """
+    if publication is None:
+        return construction.internal_loopback_ports(owner, reserved, budget=budget)
+    publication.bind(owner)
+    return publication.ingress(owner, reserved, budget=budget)
+
+
 def restored_identity(source_url, workdir, boundary, *, budget=None, publication=None):
     """Explicit construction selection; a failed repair never falls back to replay."""
     if budget is not None:
@@ -570,7 +583,7 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget, publicati
         budget.command(['docker','start',target_auth],cap=4096)
         reserved=tuple(int(published_port(service,target_port).split(':')[1] or '0')
                        for service,target_port in (('DB',5432),('AUTH',9999)))
-        with construction.internal_loopback_ports(owner,reserved,budget=budget) as (db_port,port):
+        with _restored_ingress(construction,owner,reserved,budget=budget,publication=publication) as (db_port,port):
             if publication is None:
                 with construction.io_deadline(budget), httpx.Client(trust_env=False) as client:
                     while True:
@@ -579,7 +592,6 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget, publicati
                         except httpx.HTTPError:pass
                         budget.pause(.1)
             else:
-                publication.bind(owner)
                 publication.wait_internal_auth(owner, budget)
             database_url=make_conninfo(source_url,host='127.0.0.1',port=db_port)
             verify_target_session(database_url,target,operator,budget=budget)

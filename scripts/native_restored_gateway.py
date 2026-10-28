@@ -60,6 +60,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             body=self.rfile.read(length)
             if len(body)!=length:return self.unavailable(400)
             headers={k:v for k,v in self.headers.items() if k.lower() not in {'host','connection','content-length','transfer-encoding'}}
+            if not allowed(self.server.config):return self.unavailable()
             connection.request(self.command,path,body,headers)
             response=connection.getresponse();raw=response.read(MAX_BODY+1)
             if len(raw)>MAX_BODY:return self.unavailable(502)
