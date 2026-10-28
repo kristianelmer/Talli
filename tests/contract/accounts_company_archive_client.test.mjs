@@ -111,9 +111,15 @@ test("Accounts shared export adds only its owned source inside the frozen genera
   const {legacyOperationProof}=await import("../../scripts/check-architecture.mjs");
   const evidence=JSON.parse(readFileSync(new URL("../../architecture/evidence/issues/193/accounts/company-archive-composition-v1.json",import.meta.url),"utf8"));
   const current=readFileSync(new URL("../../"+evidence.path,import.meta.url),"utf8");
+  const response=JSON.parse(readFileSync(new URL("../../architecture/evidence/issues/193/accounts/archive-ownership-response-composition-v1.json",import.meta.url),"utf8"));
   const scope={operation:evidence.operation,resource:"table:filing_submissions"};
-  assert.deepEqual(legacyOperationProof(current,evidence.path,scope),evidence.candidate);
-  let prior=current;
+  assert.equal(response.path,evidence.path);
+  assert.equal(response.operation,evidence.operation);
+  assert.equal(legacyOperationProof(current,evidence.path,scope).sourceDigest,response.candidate.sourceDigest);
+  assert.equal(current.split(response.exactAddition).length,2);
+  let prior=current.replace(response.exactAddition,"");
+  assert.equal(legacyOperationProof(prior,evidence.path,scope).sourceDigest,response.prior.sourceDigest);
+  assert.deepEqual(legacyOperationProof(prior,evidence.path,scope),evidence.candidate);
   for(const addition of evidence.exactAdditions){assert.equal(prior.split(addition).length,2);prior=prior.replace(addition,"");}
   assert.deepEqual(legacyOperationProof(prior,evidence.path,scope),evidence.prior);
 });
