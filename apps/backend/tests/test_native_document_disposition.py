@@ -1,12 +1,14 @@
 """Changed native boundaries; full PostgreSQL/Storage proof uses the owned runner."""
 import asyncio
+from contextvars import ContextVar
 import json
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from talli_backend.adapters.postgres_document_disposition import (
-    OwnedNativeDocumentsTarget, _storage_presence,
+    OwnedNativeDocumentsTarget, PostgresDocumentDisposition, _storage_presence,
 )
 from talli_backend.modules.documents.public import DocumentDisposition,dispose_document
 
@@ -86,3 +88,49 @@ def test_prepare_cannot_attribute_preexisting_unknown_storage_loss():
     with pytest.raises(ValueError,match='outcome_unknown'):
         asyncio.run(store.prepare(command))
     assert writes==[]
+
+
+@pytest.mark.parametrize(('case','error'),[
+    ('reordered','history_transition'),
+    ('omitted_retain','incomplete_inventory'),
+    ('duplicate_eraser','history_bound'),
+    ('changed_retained_bytes','history_transition'),
+])
+def test_native_history_fence_rejects_invalid_cuts_before_owner_write(case,error):
+    company,first_operation,second_operation,erased,retained=(uuid4() for _ in range(5))
+    first_erase=DocumentDisposition(first_operation,company,erased,2010,'g-erase','a'*64,'company-1','p-1','erase')
+    first_retain=DocumentDisposition(first_operation,company,retained,2011,'g-retain','b'*64,'company-1','p-1','retain')
+    second_erase=DocumentDisposition(second_operation,company,retained,2011,'g-retain','b'*64,'company-2','p-2','erase')
+    rows={str(erased):{'id':str(erased)},str(retained):{'id':str(retained)}}
+    objects={str(erased):{'files':[{'sha256':'a'*64}]},str(retained):{'files':[{'sha256':'b'*64}]}}
+    first={'companyId':str(company),'generation':'company-1','snapshot':rows,'objects':objects,
+           'actual':rows,'fixtureRecords':[str(erased)],'receipts':{}}
+    second={'companyId':str(company),'generation':'company-2',
+            'snapshot':{str(retained):rows[str(retained)]},
+            'objects':{str(retained):objects[str(retained)]},'actual':rows,
+            'fixtureRecords':[str(retained)],'receipts':{}}
+    if case=='changed_retained_bytes':
+        second['objects']={str(retained):{'files':[{'sha256':'c'*64}]}}
+    states={first_operation:first,second_operation:second}
+    lease=ContextVar('test_native_company_lease',default=None)
+    store=PostgresDocumentDisposition(SimpleNamespace(_source_connection=lease))
+    store._registered_state=lambda command:(states[command.operation_id],None,None)
+    commands={'reordered':(second_erase,first_erase,first_retain),
+              'omitted_retain':(first_erase,),
+              'duplicate_eraser':(first_erase,first_retain,second_erase,first_erase),
+              'changed_retained_bytes':(first_erase,first_retain,second_erase)}[case]
+    token=lease.set(object())
+    try:
+        with pytest.raises(ValueError,match=error):
+            asyncio.run(store.fence_replay_history(commands))
+    finally:
+        lease.reset(token)
+    # Validation itself must not enter the native prepare/erase phases.
+    assert not first['receipts'] and not second['receipts']
+
+
+def test_native_history_fence_requires_active_company_lease():
+    command=DocumentDisposition(uuid4(),uuid4(),uuid4(),2010,'g','a'*64,'cg','p','erase')
+    store=PostgresDocumentDisposition(SimpleNamespace(_source_connection=ContextVar('unheld_lease',default=None)))
+    with pytest.raises(ValueError,match='history_scope_required'):
+        asyncio.run(store.fence_replay_history((command,)))

@@ -4,6 +4,7 @@ This finite slice binds Documents only. Missing capability ownership or evidence
 cannot open a target. Policy and reconciliation decisions remain with owners.
 """
 from dataclasses import dataclass
+from contextlib import AsyncExitStack
 from hashlib import sha256
 from typing import Mapping, Protocol
 
@@ -82,15 +83,17 @@ async def replay_company_dispositions(*, journal: DeletionJournal, target: str, 
         companies.setdefault(commands[0].company_id, []).extend(commands)
     # Owners distinguish historical compatibility from a current source fence;
     # neither the workflow nor a selected-year marker supplies that decision.
-    for commands in companies.values():
-        await stores['documents'].fence_replay_history(tuple(commands))
-    for index, commands in enumerate(cuts):
-        later = tuple(c for following in cuts[index+1:] for c in following)
-        await validate_document_dispositions(commands, later, stores['documents'])
-    for index, commands in enumerate(cuts):
-        later = tuple(c for following in cuts[index+1:] for c in following)
-        await _apply(journal, target, index+1, commands, later, stores['documents'])
-    if journal.read(minimum=minimum)[0] != head:
-        raise ValueError('deletion_journal_changed_during_replay')
-    receipt.publish(target, head)
+    async with AsyncExitStack() as scopes:
+        for commands in companies.values():
+            await scopes.enter_async_context(stores['documents'].replay_scope(tuple(commands)))
+            await stores['documents'].fence_replay_history(tuple(commands))
+        for index, commands in enumerate(cuts):
+            later = tuple(c for following in cuts[index+1:] for c in following)
+            await validate_document_dispositions(commands, later, stores['documents'])
+        for index, commands in enumerate(cuts):
+            later = tuple(c for following in cuts[index+1:] for c in following)
+            await _apply(journal, target, index+1, commands, later, stores['documents'])
+        if journal.read(minimum=minimum)[0] != head:
+            raise ValueError('deletion_journal_changed_during_replay')
+        receipt.publish(target, head)
     return head

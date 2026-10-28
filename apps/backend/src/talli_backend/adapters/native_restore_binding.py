@@ -59,16 +59,26 @@ select jsonb_build_object(
 """
 
 
-def native_disposition_guard_profile(target):
+def native_disposition_guard_profile(target, *, generation=False):
     """The consequential native guard definitions/attachments, without catalog-wide acceptance."""
     target.validate();profile=json.loads(target._query(GUARDS_SQL))
     if (len(profile['functions'])!=6 or len(profile['triggers'])!=3 or len(profile['relations'])!=6
             or not any(p['table']=='public.documents' and p['name']=='documents_store_local_native_delete' for p in profile['policies'])):
         raise ValueError('native_recovery_guard_profile_unavailable')
+    if generation:
+        profile['generation']=json.loads(target._query("""set search_path='';select jsonb_build_object(
+          'function',pg_get_functiondef('public.company_archive_track_source_write_v1()'::regprocedure),
+          'owner',(select pg_get_userbyid(proowner) from pg_proc where oid='public.company_archive_track_source_write_v1()'::regprocedure),
+          'trigger',(select jsonb_build_object('definition',pg_get_triggerdef(oid,false),'enabled',tgenabled,
+            'arguments',encode(tgargs,'hex'),'type',tgtype) from pg_trigger where tgrelid='public.documents'::regclass
+            and tgname='company_archive_track_documents' and tgfoid='public.company_archive_track_source_write_v1()'::regprocedure));"""))
+        trigger=profile['generation']['trigger']
+        if not trigger or trigger['enabled']!='O' or trigger['type']!=31 or trigger['arguments']!=b'year\0company_id\0'.hex():
+            raise ValueError('native_recovery_generation_guard_unavailable')
     return profile
 
 
-def verify_native_restore(target, backup_metadata):
+def verify_native_restore(target, backup_metadata, *, require_generation_guard=False):
     """Compare the complete captured census, rows, roles, files and attributes.
 
     Called before recovery registration or public Auth access changes any state.
@@ -79,7 +89,9 @@ def verify_native_restore(target, backup_metadata):
     binding=json.loads(backup_metadata['bindings.private.json']);expected=binding['tableFacts']
     expected_guards=binding.get('nativeDispositionGuardProfile')
     if not expected_guards:raise ValueError('native_recovery_guard_profile_unavailable')
-    observed_guards=native_disposition_guard_profile(target)
+    if require_generation_guard and 'generation' not in expected_guards:
+        raise ValueError('native_recovery_generation_guard_unavailable')
+    observed_guards=native_disposition_guard_profile(target,generation='generation' in expected_guards)
     if observed_guards!=expected_guards:raise ValueError('native_recovery_guard_profile_changed')
     if (not isinstance(expected,dict) or not 1<=len(expected)<=512
             or any(not isinstance(v,dict) or set(v)!={'rows','bytes','sha256'}

@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 import re
 from collections.abc import Callable, Mapping
-from typing import Literal, Protocol, TypeVar
+from typing import AsyncContextManager, Literal, Protocol, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear
@@ -509,10 +509,13 @@ class DocumentDispositionStore(Protocol):
     its receipt. reconcile distinguishes NOT_APPLIED, ERASED and UNKNOWN from the
     actual stores; READY means an exact durable fence with all selected bytes intact.
     Unavailable reads must never look like absence. RESUMABLE means a known native owner prefix whose remaining generations match
-    an approved subset; arbitrary partial writes remain UNKNOWN. No hosted purge
-    endpoint is supplied by this contract.
+    an approved subset; arbitrary partial writes remain UNKNOWN. replay_scope
+    spans history validation, every cut and receipt publication; native owners
+    hold their source fence for that scope and release it on failure. No hosted
+    purge endpoint is supplied by this contract.
     """
     async def fence_inventory(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
+    def replay_scope(self, commands: tuple[DocumentDisposition, ...]) -> AsyncContextManager[None]: ...
     async def fence_replay_history(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
     async def prepare(self, command: DocumentDisposition) -> None: ...
     async def erase(self, command: DocumentDisposition) -> None: ...

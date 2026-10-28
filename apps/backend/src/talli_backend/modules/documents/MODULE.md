@@ -320,6 +320,11 @@ changes still close replay. The local preflight now resolves current Auth,
 Company Access and Billing facts for a target-derived synthetic company, plus
 Documents rows/references/retained originals and ordinary Storage versions. It
 holds a same-session company advisory fence across admission and owner I/O.
+`NativeDispositionRecovery.bind_prefix` binds at most eight chronological,
+same-company, deletion-only captured cuts and their exact exports to a fresh
+restore. New multi-cut bindings require a source generation guard; the existing
+single-cut `bind` remains compatible without it. Replay holds the native company
+source fence across every cut and receipt publication, then releases it on exit.
 This does not supply hosted erasure authority or real-company all-owner/legal/
 export coverage.
 
