@@ -1480,3 +1480,20 @@ not a mutable dataclass repr. Exact legacy commitments from7cf9d060 and46e8a357
 remain acceptable for the same complete selector/action. Existing prefixes are
 never rewritten or accepted for a different command; the owner still verifies
 actual data/outcomes on every replay before any readiness publication.
+
+
+## Local encrypted backup generations
+
+`LocalBackupGenerations` packages an approved, quiescent native capture into a bounded encrypted generation. AES-256-GCM binds its file manifest, source capture times, generation identity, recovery-key fingerprint and admitted journal cut; RSA-3072 OAEP/SHA-256 wraps a fresh data key. The writer needs only the public recovery key. The separate private recovery key, completion catalog, deletion journal and held Documents exports stay outside customer snapshots. OS custody remains trusted.
+
+A generation becomes usable only after ciphertext readback/decryption and native-bundle integrity verification, durable directory publication, and one SQLite transaction committing both completion and the successful attempt. Interrupted or corrupt publication cannot refresh usable age. The age starts at source capture, not upload/completion. Local sampled readiness exposes the last complete generation, current usability/age, an interrupted or failed attempt, corruption and staleness. It is not an operating health or RPO/RTO signoff.
+
+The concrete local policy is a 30-minute intended interval, 15-minute completion budget, one-hour usable-age limit and seven-day source-age rotation. A repository is capped at 512 creation attempts and 256MiB per native bundle. There is no installed scheduler. Rotation first verifies a surviving generation, excludes expiring generations before physical unlink, resumes interrupted expiry and protects the final verified survivor even if stale, reporting overdue retention. It never prunes admitted deletion obligations or their held exports.
+
+Native recovery accepts an explicit captured journal cut only when all captured erasures have exact restored terminal owner receipts, plan/authorization bytes, metadata lineage, source generations and object absence. Later obligations still replay before Auth/Storage publication. Unknown or partially captured erasure, a stale or substituted current cut and missing held exports fail closed. This extends the finite synthetic Documents profile; it does not authorize whole-company or real-company erasure.
+
+ADR-0011 review: this is operational filesystem/crypto state outside customer data. It introduces no business tables, hosted service, database principal or provider side effect. Native capture continues through the existing explicitly owned control channel; original strict-constructor/compatibility gates, hosted/offsite and operating acceptance remain unchanged.
+
+<!-- architecture-inventory
+{"infrastructure":["localBackupGenerations=>Local synthetic encrypted native generations with a separate SQLite completion catalog, public-key-only writer, external recovery key and admitted-journal/export custody. Capture and verified AEAD readback precede atomic completion; source capture time determines usable age. Seven-day rotation removes only catalog-owned generations and protects a verified survivor. Local sampled readiness records failed, incomplete, corrupt or stale generations. No scheduler, remote service, new backup principal, hosted operation, alert delivery or operating RPO/RTO acceptance."],"adapterDependencies":["base64","fcntl","io","shutil","stat","tarfile","cryptography.hazmat.primitives","cryptography.hazmat.primitives.asymmetric","cryptography.hazmat.primitives.ciphers.aead","talli_backend.adapters.local_backup_generations"]}
+-->
