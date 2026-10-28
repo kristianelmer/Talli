@@ -29,7 +29,9 @@
       "RetainedDocumentOriginalSnapshot",
       "serialize_retained_document_original",
       "parse_retained_document_original",
-      "dispose_document"
+      "dispose_document",
+      "validate_document_dispositions",
+      "apply_document_dispositions"
     ],
     "events": [],
     "errors": [

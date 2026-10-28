@@ -1849,6 +1849,7 @@ class AnnualNotificationPersistence(Protocol):
 
 
 __all__ = [
+    "DispositionAccessPeriod", "disposition_access_period",
     "SuspendProductionPilotForAuthorityFailureCommand",
     "AuthorityFailurePilotSuspension",
     "AnnualSupportCleanupRecoveryQuery",
@@ -1982,3 +1983,5 @@ __all__ = [
     "billing_provider_adapter",
     "expected_payment_status",
 ]
+
+from .disposition import DispositionAccessPeriod, disposition_access_period

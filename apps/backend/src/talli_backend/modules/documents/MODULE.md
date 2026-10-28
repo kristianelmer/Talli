@@ -292,3 +292,13 @@ and from backup expiry. Normal removal remains its existing lifecycle operation.
 Owner disposition must fence the complete company generation/inventory before
 I/O. `READY` requires an exact durable receipt with intact selected bytes; partial
 I/O remains `UNKNOWN`. Every selected record is preflighted before the first erase.
+
+
+`validate_document_dispositions` and `apply_document_dispositions` own retained
+supersession and reconciliation-state decisions. Workflows only sequence public
+commands and journal receipts. `fence_inventory` validates a current source plan;
+`fence_replay_history` instead validates immutable selectors against an authorized
+historical cut anchored to the restored generation. It must accept compatible
+known READY prefixes from that cut and reject unrelated pending work, unknown
+originals or unattributed stores. It cannot require all historical company
+generations to equal the live snapshot generation. No production adapter exists.

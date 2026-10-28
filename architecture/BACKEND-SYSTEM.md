@@ -1426,7 +1426,7 @@ No journal expiry is guessed; a real destination/rotation horizon remains requir
 -->
 
 
-`company_disposition_access` projects the complete recorded Billing
+Billing's `disposition_access_period` projects the complete recorded Billing
 `AnnualPurchasePage` into expiry facts; inclusive paid/export through-dates end at
 the next UTC midnight. Missing pages/years, pending/unknown outcomes, another
 company or an uncancelled recurring consent fail closed. Refund requests do not
@@ -1447,3 +1447,13 @@ that history without rewriting original identities. Tombstones retain the review
 facts and actual synthetic export-receipt hashes; the adapter revalidates the
 historical policy decision and commitment on append/read. The trusted journal
 writer still owns fact provenance; no public caller gains authority from a model.
+
+
+Billing owns recorded-expiry derivation; Documents owns historical retention
+supersession and all reconciliation-state decisions. Application code transports
+immutable commands and sequences owner operations. A source inventory fence and
+a replay-history fence have distinct contracts: the latter checks exact immutable
+selectors across the approved cut, anchors the restored generation, and accepts
+only compatible READY prefixes from that cut. It does not equate historical
+company generations or require an earlier permit hash to replace a later known
+prepared command. Unrelated pending commands and unattributed records stay closed.

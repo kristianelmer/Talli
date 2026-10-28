@@ -20,7 +20,7 @@ from talli_backend.adapters.deletion_journal import (
     GENESIS, JournalHead, LocalDeletionJournal, LocalReplayReceipt, replay_is_current,
 )
 from talli_backend.application.company_disposition import execute_authorized_disposition, replay_company_dispositions
-from talli_backend.application.company_disposition_access import disposition_access_period
+from talli_backend.modules.billing.public import disposition_access_period
 from talli_backend.modules.billing.public import AnnualPurchasePage, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, AnnualOperationCounts
 from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp
 from talli_backend.main import create_app
@@ -131,7 +131,7 @@ class SyntheticDocumentStore:
     aal2 = True
     clock = NOW
     def __init__(self, root, *, plan=None):
-        self.root = root; self.erase_calls = 0; self.drop_response = False; self.fail_after_objects = False
+        self.root = root; self.erase_calls = 0; self.drop_response = False; self.fail_after_objects = False; self.drop_prepare_record = None
         if plan:
             root.mkdir()
             with self.db() as db:
@@ -167,6 +167,31 @@ class SyntheticDocumentStore:
             if current|erased!={str(c.document_id) for c in commands}:
                 raise ValueError('owner_inventory_incomplete')
             db.execute('update company_state set fence=? where company=?',(first.plan_sha256,str(first.company_id)))
+    async def fence_replay_history(self,commands):
+        # This fixture has no concurrent writer. A production owner must keep
+        # this complete-cut fence durable against its ordinary writer paths.
+        assert commands and len({c.company_id for c in commands})==1
+        first=commands[0];expected={str(c.document_id) for c in commands}
+        approved={(str(c.operation_id),str(c.document_id),c.plan_sha256,str(c.company_id),
+                   c.income_year,c.generation,c.content_sha256) for c in commands}
+        with self.db() as db:
+            db.execute('begin immediate')
+            state=db.execute('select generation from company_state where company=?',(str(first.company_id),)).fetchone()
+            if not state or state[0] not in {c.company_generation for c in commands}:
+                raise ValueError('owner_company_generation_changed')
+            rows=db.execute('select * from documents where company=?',(str(first.company_id),)).fetchall()
+            if any(row[0] not in expected or not any(str(c.document_id)==row[0] and
+                    row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256) for c in commands) for row in rows):
+                raise ValueError('owner_inventory_incomplete')
+            receipts=db.execute('select * from receipts where company=?',(str(first.company_id),)).fetchall()
+            if any(r[:7] not in approved for r in receipts if r[-1]!='erased'):
+                raise ValueError('owner_unrelated_pending_command')
+            missing=expected-{r[0] for r in rows}
+            for record in missing:
+                if self.objects(record) or not any(r[:7] in approved and r[1]==record and r[-1]=='erased' for r in receipts):
+                    raise ValueError('owner_inventory_incomplete')
+            cut=sha256('\n'.join(repr(c) for c in commands).encode()).hexdigest()
+            db.execute('update company_state set fence=? where company=?',(cut,str(first.company_id)))
     async def retained_matches(self,c):
         row=self.row(c.document_id)
         return bool(row and row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256)
@@ -185,6 +210,8 @@ class SyntheticDocumentStore:
         if await self.reconcile(c)!='NOT_APPLIED': raise ValueError('owner_inventory_changed')
         with self.db() as db:
             db.execute('insert into receipts values(?,?,?,?,?,?,?,?)',(str(c.operation_id),str(c.document_id),c.plan_sha256,str(c.company_id),c.income_year,c.generation,c.content_sha256,'fenced'))
+        if self.drop_prepare_record==c.document_id:
+            self.drop_prepare_record=None;raise ConnectionError('synthetic response lost after durable prepare')
     async def erase(self,c):
         assert self.receipt(c)[-1]=='fenced'
         self.erase_calls+=1
@@ -329,7 +356,7 @@ def test_exact_operation_conflict_and_unsupported_owner_are_not_success(tmp_path
 
 def revised_authorization(plan,facts,*,now=NOW):
     plan=plan.model_copy(update={'inventory_sha256':plan.inventory_digest()})
-    facts=facts.model_copy(update={'current_inventory_sha256':plan.inventory_sha256,
+    facts=facts.model_copy(update={'current_generation':plan.generation,'current_inventory_sha256':plan.inventory_sha256,
         'owner':facts.owner.model_copy(update={'mfa_at':now}),
         'reviewer':facts.reviewer.model_copy(update={'mfa_at':now}),
         'review_plan_sha256':sha256(plan.model_dump_json().encode()).hexdigest(),
@@ -351,7 +378,8 @@ def test_unknown_second_erase_is_preflighted_before_first_physical_deletion(tmp_
     assert len(store.objects(plan.records[0].record_id))==2
 
 
-def test_later_authorized_erase_supersedes_historical_retain_on_every_retry(tmp_path):
+@pytest.mark.parametrize('interrupted',[False,True])
+def test_later_authorized_erase_supersedes_historical_retain_on_every_retry(tmp_path,interrupted):
     plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
     source=SyntheticDocumentStore(tmp_path/'source',plan=plan)
     backup=tmp_path/'pre-first-deletion';shutil.copytree(source.root,backup)
@@ -359,11 +387,20 @@ def test_later_authorized_erase_supersedes_historical_retain_on_every_retry(tmp_
     run(execute_authorized_disposition(permit,journal=journal,target='source',stores={'documents':source}))
     after_hold=NOW+timedelta(days=31);source.clock=after_hold
     former_retain=plan.records[1].model_copy(update={'action':'erase'})
-    later=revised_authorization(plan.model_copy(update={'operation_id':uuid4(),'records':(former_retain,)}),facts,now=after_hold)
+    later=revised_authorization(plan.model_copy(update={'operation_id':uuid4(),'generation':'company-generation-18','records':(former_retain,)}),facts,now=after_hold)
+    with source.db() as db:db.execute('update company_state set generation=?',('company-generation-18',))
     head=run(execute_authorized_disposition(later,journal=journal,target='source',stores={'documents':source}))
     assert source.row(former_retain.record_id) is None
     root=tmp_path/'restored';shutil.copytree(backup,root);store=SyntheticDocumentStore(root);store.clock=after_hold
     target=str(uuid4());receipt=LocalReplayReceipt(root/'ready.json')
+    if interrupted:
+        store.drop_prepare_record=former_retain.record_id
+        with pytest.raises(ConnectionError,match='durable prepare'):
+            run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
+        assert not receipt.path.exists() and store.erase_calls==1
+        with store.db() as db:
+            assert db.execute('select status from receipts where document=?',(str(former_retain.record_id),)).fetchone()==('fenced',)
+        assert store.row(former_retain.record_id) is not None and len(store.objects(former_retain.record_id))==2
     for _ in range(3):
         run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
         assert replay_is_current(journal,receipt=receipt.path,target=target,minimum=head)

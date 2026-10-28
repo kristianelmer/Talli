@@ -34,7 +34,9 @@
       "AnnualCheckoutPreparationQuery",
       "AnnualSupportRefundRecoveryQuery",
       "AnnualSupportRefundRecoveryTargetsQuery",
-      "AnnualSupportCleanupRecoveryQuery"
+      "AnnualSupportCleanupRecoveryQuery",
+      "DispositionAccessPeriod",
+      "disposition_access_period"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -387,7 +389,8 @@
     "annualRuntimeConfiguration": "apps/backend/tests/test_annual_billing_runtime_configuration.py",
     "annualSupportCleanupRecovery": "apps/backend/tests/test_annual_support_cleanup_service.py",
     "annualSupportCleanupRecoveryApi": "apps/backend/tests/test_annual_support_cleanup_api.py",
-    "annualSupportCleanupRecoveryDatabase": "apps/backend/tests/test_annual_support_cleanup_runtime.py"
+    "annualSupportCleanupRecoveryDatabase": "apps/backend/tests/test_annual_support_cleanup_runtime.py",
+    "disposition": "apps/backend/tests/test_deletion_replay.py"
   },
   "compatibilityExceptions": []
 }

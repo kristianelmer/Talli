@@ -451,6 +451,7 @@ def parse_retained_document_original(value: str, *, query: RetainedDocumentOrigi
 
 __all__ = [
     "DocumentDisposition", "DocumentDispositionStore", "dispose_document",
+    "validate_document_dispositions", "apply_document_dispositions",
     "serialize_retained_document_original", "parse_retained_document_original",
     "RetainedDocumentOriginalQuery", "RetainedDocumentOriginalSnapshot",
     "RetainedDocumentOriginalReceipt", "RetainedDocumentOriginal", "DocumentOriginalPersistence",
@@ -486,4 +487,5 @@ __all__ = [
     "document_binding_persistence_adapter"
 ]
 
-from .disposition import DocumentDisposition, DocumentDispositionStore, dispose_document
+from .disposition import (DocumentDisposition, DocumentDispositionStore, dispose_document,
+    validate_document_dispositions, apply_document_dispositions)

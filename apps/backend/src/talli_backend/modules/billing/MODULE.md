@@ -821,3 +821,16 @@ under FORCE RLS. Neither direction changes data, ACLs or role membership options
 replay preserves both profile histories. Existing unknown-profile entitlement
 queries continue ordinary Billing fallback; consequential RF admission must bind
 an exact supported profile and entitlement separately.
+
+
+### Recorded access periods for offline disposition
+
+`DispositionAccessPeriod` and `disposition_access_period` project complete
+company-wide `AnnualPurchasePage` history for Company Access. Billing owns the
+purchase/refund/renewal-state decisions: another company, incomplete pages/years,
+pending purchases, created/pending/unknown refund work or uncancelled recurring
+consent keep expiry unavailable. Recorded paid/export through-dates are inclusive
+and expire at the next UTC midnight; refund requests never shorten them. Company
+Access separately owns the approved minimum90day read/export floor. Local fixtures
+use these real public purchase contracts; no provider, charge or billing mutation
+is performed and no production disposition fact resolver is supplied.
