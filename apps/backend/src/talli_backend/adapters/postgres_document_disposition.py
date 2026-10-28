@@ -36,6 +36,16 @@ const input=JSON.parse(fs.readFileSync(0,'utf8'));const root='/mnt';
 function manifest(){const rows=[];function walk(rel){const file=path.join(root,rel),s=fs.lstatSync(file);if(s.isSymbolicLink())throw Error('symlink');if(s.isDirectory()){for(const n of fs.readdirSync(file).sort())walk(path.posix.join(rel,n));}else{if(!s.isFile())throw Error('unsupported');const b=fs.readFileSync(file);rows.push({path:rel,bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')});}}walk('.');return rows;}
 (async()=>{
  if(input.action==='manifest'){process.stdout.write(JSON.stringify(manifest()));return;}
+ if(input.action==='inventory'){
+  if(!Array.isArray(input.keys)||!input.keys.length||input.keys.length>256||new Set(input.keys).size!==input.keys.length)throw Error('inventory bound');
+  const objects={};const files=manifest();
+  await Promise.all(input.keys.map(async key=>{
+   if(typeof key!=='string'||key.length>1024||key.split('/').includes('..'))throw Error('invalid approved key');
+   const response=await fetch('http://127.0.0.1:5000/object/info/authenticated/company-documents/'+key.split('/').map(encodeURIComponent).join('/'),{headers:{Authorization:'Bearer '+process.env.SERVICE_KEY,apikey:process.env.SERVICE_KEY},redirect:'error',signal:AbortSignal.timeout(5000)});
+   const raw=await response.text();if(raw.length>65536)throw Error('response bound');objects[key]={status:response.status,body:raw};
+  }));
+  process.stdout.write(JSON.stringify({files,objects}));return;
+ }
  if(input.action==='gc'){
   const approved=new Map(input.files.map(f=>[f.path,f]));
   const observed=manifest().filter(f=>f.path.startsWith(input.prefix));
@@ -191,7 +201,8 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
         value,row,objects=self._state(command)
         key=str(command.document_id);receipt=value['receipts'].get(key)
         # Full company object census; unapproved extra objects cannot be ignored.
-        allfiles=self.target.objects(action='manifest')
+        inventory=self.target.objects(action='inventory',keys=[item['storageKey'] for item in value['objects'].values()])
+        allfiles=inventory['files']
         company_prefix='stub/stub/company-documents/'+str(command.company_id)+'/'
         actual={f['path']:f for f in allfiles if f['path'].startswith(company_prefix)}
         approved={f['path']:f for item in value['objects'].values() for f in item['files']}
@@ -201,11 +212,15 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
             state=value['receipts'].get(document,{}).get('state')
             expected={f['path']:f for f in item['files']}
             present={p:f for p,f in actual.items() if p in expected}
-            if state is None and present!=expected or state=='erased' and present:
+            exists=_storage_presence(inventory['objects'][item['storageKey']],item['currentVersion'])
+            # A prepared peer is not permission to ignore its missing history.
+            # Only absent Storage metadata can justify its known retirement
+            # prefix; otherwise ALL approved generations must still be intact.
+            if (state is None and (not exists or present!=expected)
+                    or state=='prepared' and exists and present!=expected
+                    or state in {'storage_retired','erased'} and (exists or present)):
                 raise ValueError('native_disposition_other_object_changed')
-        from urllib.parse import quote
-        response=self.target.objects(action='http',method='GET',path='/object/info/authenticated/company-documents/'+quote(row['storage_key'],safe='/'))
-        exists=_storage_presence(response,objects['currentVersion'])
+        exists=_storage_presence(inventory['objects'][row['storage_key']],objects['currentVersion'])
         present=[f for f in objects['files'] if f['path'] in actual]
         if exists:
             if receipt is None and len(present)==len(objects['files']):return 'NOT_APPLIED'
@@ -223,6 +238,7 @@ class PostgresDocumentDisposition(DocumentDispositionStore):
 
     def _fence(self,commands):
         if not commands:raise ValueError('native_disposition_empty_inventory')
+        if len(commands)>256:raise ValueError('native_disposition_inventory_bound')
         value,_,_=self._state(commands[0])
         if (len(commands)!=len(value['snapshot']) or len({c.document_id for c in commands})!=len(commands)
                 or {str(c.document_id) for c in commands}!=set(value['snapshot'])

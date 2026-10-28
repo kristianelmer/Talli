@@ -322,3 +322,13 @@ production owner/reviewer/Billing/export fact resolvers or a whole-company fence
 <!-- architecture-inventory
 {"ownedTables":["documents.local_native_disposition_plans","documents.local_native_disposition_targets","documents.local_native_disposition_receipts"],"ports":["DocumentDispositionStore"]}
 -->
+
+
+Native multi-generation replay checks Storage metadata for every covered record
+alongside the complete ordinary file inventory before destructive work. A prepared
+peer whose current Storage metadata exists must still have every approved
+historical generation intact. Missing or changed history, unexpected generation
+files, unavailable metadata and incompatible terminal receipts close the whole
+local cut. Only an owning prepared prefix plus absent Storage metadata permits
+resuming an approved remaining generation subset. The local adapter supports up
+to 256 covered documents. This adds no production versioning or purge endpoint.
