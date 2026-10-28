@@ -13,8 +13,9 @@ from uuid import UUID
 from psycopg import sql
 
 from talli_backend.adapters.native_disposition_preflight import NativeDispositionPreflight, _bytes, _sha, _EXPORT
-from talli_backend.adapters.postgres_document_disposition import MAX_NATIVE_CUTS, native_document_generation
+from talli_backend.adapters.postgres_document_disposition import MAX_NATIVE_CUTS, native_document_generation, _storage_presence
 from talli_backend.adapters.native_restore_binding import verify_native_restore
+from talli_backend.application.company_disposition import JournalHead
 from talli_backend.modules.company_access.public import AuthorizedLocalDocumentsDisposition
 
 
@@ -173,7 +174,61 @@ class NativeDispositionRecovery:
         self.target.validate();observed=json.loads(self.target._query('\n'.join(statements)))
         if observed!={'plans':len(prepared),'binding':binding_sha}:raise ValueError('native_recovery_registration_changed')
 
-    def bind_prefix(self, *, journal, minimum, permits, backup_directory, backup_sha256, documents_exports):
+    def _captured_state(self,permits,archives,captured):
+        """A captured terminal prefix is proved by restored owner receipts, not age."""
+        first=permits[0];company=first.plan.company_id
+        source=self._query("""select jsonb_build_object(
+          'documents',(select coalesce(jsonb_object_agg(d.id::text,to_jsonb(d)),'{{}}') from public.documents d where company_id={0}),
+          'references',(select coalesce(jsonb_agg(to_jsonb(e) order by e.document_id,e.source_capability,e.source_record_id),'[]') from documents.evidence_references e where company_id={0}),
+          'originals',(select coalesce(jsonb_agg(to_jsonb(o) order by o.document_id),'[]') from documents.retained_originals o where company_id={0}),
+          'generations',(select coalesce(jsonb_agg(jsonb_build_array(income_year,generation) order by income_year),'[]') from public.company_archive_source_generations where company_id={0}),
+          'sourceTarget',(select to_jsonb(t) from documents.local_native_disposition_targets t where target_id={1}),
+          'plans',(select coalesce(jsonb_object_agg(p.operation_id::text,to_jsonb(p)),'{{}}') from documents.local_native_disposition_plans p where company_id={0}),
+          'receipts',(select coalesce(jsonb_agg(to_jsonb(r) order by r.operation_id,r.document_id),'[]') from documents.local_native_disposition_receipts r join documents.local_native_disposition_plans p using(operation_id) where p.company_id={0}))""",company,first.facts.target_id)
+        prior=source['sourceTarget'];plans=source['plans']
+        if (not prior or prior['system_identifier']==self.target.system or prior['operator_login']!=self.target.login
+                or set(plans)!={str(p.plan.operation_id) for p in permits[:captured.sequence]}):
+            raise ValueError('native_recovery_captured_binding')
+        rows=archives[0]['documents'];objects=plans[str(first.plan.operation_id)]['object_manifest']
+        if not 1<=len(rows)<=256 or set(objects)!=set(rows):raise ValueError('native_recovery_captured_binding')
+        remaining=dict(rows);generations=dict(first.facts.source_generations);erased=set();receipts=[]
+        for permit,archive in zip(permits[:captured.sequence],archives):
+            key=str(permit.plan.operation_id);p=plans[key];body=permit.model_dump_json();digest=sha256(body.encode()).hexdigest()
+            selected=sorted(str(r.record_id) for r in permit.plan.records if r.action=='erase')
+            if (p['company_id']!=str(company) or p['plan_sha256']!=digest or p['operator_login']!=self.target.login
+                    or p['approved_owner']!=str(permit.owner_subject) or p['company_generation']!=permit.plan.generation
+                    or p['authorization_evidence']!=json.loads(body) or p['metadata_snapshot']!=archive['documents']
+                    or p['object_manifest']!={k:objects[k] for k in remaining}
+                    or sorted(p['fixture_records'])!=selected):
+                raise ValueError('native_recovery_captured_authorization')
+            for document in selected:
+                receipts.append({'operation_id':key,'document_id':document,'plan_sha256':digest,'state':'erased'})
+                if document not in remaining:raise ValueError('native_recovery_captured_transition')
+                generations[remaining[document]['income_year']]+=1;remaining.pop(document);erased.add(document)
+        if (sorted(source['receipts'],key=lambda r:(r['operation_id'],r['document_id']))!=sorted(receipts,key=lambda r:(r['operation_id'],r['document_id']))
+                or source['documents']!=remaining or source['generations']!=[list(v) for v in sorted(generations.items())]
+                or any(source[k]!=archives[0][k] for k in ('references','originals'))):
+            raise ValueError('native_recovery_captured_transition')
+        files=[f for item in objects.values() for f in item['files']]
+        expected_export=[{k:f[k] for k in ('path','bytes','sha256')} for f in archives[0]['files']]
+        if sorted(files,key=lambda f:f['path'])!=sorted(expected_export,key=lambda f:f['path']):
+            raise ValueError('native_recovery_captured_storage')
+        inventory=self.target.objects(action='inventory',keys=[r['storage_key'] for r in rows.values()])
+        prefix='stub/stub/company-documents/'+str(company)+'/'
+        actual=[f for f in inventory['files'] if f['path'].startswith(prefix)]
+        expected_files=[f for key,item in objects.items() if key not in erased for f in item['files']]
+        if sorted(actual,key=lambda f:f['path'])!=sorted(expected_files,key=lambda f:f['path']):
+            raise ValueError('native_recovery_captured_storage')
+        for key,item in objects.items():
+            if _storage_presence(inventory['objects'][item['storageKey']],item['currentVersion'])!=(key not in erased):
+                raise ValueError('native_recovery_captured_storage')
+        exported=json.loads(self.target._run('exec','-i',self.target.storage,'node','-e',_EXPORT,data=_bytes({'files':actual})))
+        wanted={f['path'] for f in expected_files}
+        if sorted(exported,key=lambda f:f['path'])!=sorted([f for f in archives[0]['files'] if f['path'] in wanted],key=lambda f:f['path']):
+            raise ValueError('native_recovery_captured_storage')
+        return rows,objects,prior
+
+    def bind_prefix(self, *, journal, minimum, permits, backup_directory, backup_sha256, documents_exports, captured=None):
         """Bind an exact current prefix of deletion-only captured Documents cuts."""
         head,entries=journal.read(minimum=minimum)
         if (head!=minimum or not 1<=len(entries)<=MAX_NATIVE_CUTS or len(permits)!=len(entries)
@@ -182,7 +237,10 @@ class NativeDispositionRecovery:
         if any(not isinstance(p,AuthorizedLocalDocumentsDisposition) or p.model_dump_json()!=e.model_dump_json()
                for p,e in zip(permits,entries)):
             raise ValueError('native_recovery_authorization')
-        if len(entries)==1:
+        captured=captured or JournalHead(head.stream,0,'0'*64)
+        journal.read(minimum=captured)
+        if captured.sequence>head.sequence:raise ValueError('native_recovery_captured_binding')
+        if len(entries)==1 and captured.sequence==0:
             return self.bind(journal=journal,minimum=minimum,permit=permits[0],backup_directory=backup_directory,
                 backup_sha256=backup_sha256,documents_export=documents_exports[0])
         first=permits[0];company=first.plan.company_id
@@ -196,7 +254,8 @@ class NativeDispositionRecovery:
         archives=[self._export(p,path) for p,path in zip(permits,documents_exports)]
         with self.target.source_fence(company):
             profile=verify_native_restore(self.target,metadata,require_generation_guard=True)
-            rows,base_objects,prior=self._initial_state(first,archives[0])
+            rows,base_objects,prior=(self._captured_state(permits,archives,captured) if captured.sequence
+                                    else self._initial_state(first,archives[0]))
             generations=dict(first.facts.source_generations);remaining=dict(rows);prepared=[];operations=[]
             remaining_files=archives[0]['files'];seen=set()
             for sequence,(permit,archive) in enumerate(zip(permits,archives),1):
@@ -226,6 +285,7 @@ class NativeDispositionRecovery:
                 'systemIdentifier':self.target.system,'operatorLogin':self.target.login,'backupSha256':backup_sha256,
                 'nativeProfile':profile,'journal':{'stream':head.stream,'sequence':head.sequence,'sha256':head.sha256},
                 'operations':operations,'historyProfile':'captured-documents-delete-only-v1'}
+            if captured.sequence:binding['capturedJournal']={'stream':captured.stream,'sequence':captured.sequence,'sha256':captured.sha256}
             # Admission or a changed cut during observation cannot authorize a
             # partly bound target. Publication checks the current head again.
             if journal.read(minimum=minimum)[0]!=head:raise ValueError('native_recovery_history_changed')

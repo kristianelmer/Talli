@@ -355,3 +355,18 @@ These proofs do not establish a full retention inventory or change retention
 policy. Independent Auth/role recovery, hosted Storage and legacy feedback
 backfill remain outside this local rehearsal. Finalization retains business
 records; it does not purge them.
+
+
+## Local encrypted generation controller
+
+The opt-in `talli_backend.adapters.local_backup_generations.LocalBackupGenerations` implements the finite local publication/rotation controller. Its interface is `create(capture=..., minimum=...)`, `readiness(minimum=...)`, `rotate(minimum=...)` and `restore(generation=..., destination=..., recovery_key=..., minimum=...)`. Construction is explicit; no environment discovery, scheduler or hosted factory is provided.
+
+Use distinct owner-private paths for encrypted generations, the independent completion catalog, plaintext scratch, the external deletion journal/held Documents exports and the separate RSA-3072 recovery key. The capture callback receives a nonexistent snapshot path and must use the approved owned-native DB/roles/config/object capture. Capture must be quiescent and must preserve the observed admitted journal cut; packaging is not a replacement for source consistency or a restore drill. Plaintext scratch is removed after a normal attempt and reconciled after interruption. Filesystem unlink is not forensic media erasure.
+
+The checked local policy is 30-minute intended frequency, completion within 15 minutes, maximum usable age 1 hour and initial 7-day rotation. These are controller values, not a deployed schedule or accepted recovery promise. At most 512 attempts and 256MiB per native bundle are supported; capacity exhaustion fails readiness. A generation is not complete until encrypted readback verification and catalog commit. Age uses source capture time. A failed/incomplete generation preserves the prior verified backup and cannot reset its age. `control/readiness.json` is a sampled local test sink, not delivered paging.
+
+Rotation physically removes only catalog-owned expired generations while a verified survivor remains. A lone expired survivor is protected and reported stale/overdue; this is not successful retention compliance. The journal and original held Documents export bytes remain independent and are never pruned by generation rotation. Current independently held journal identity/sequence/hash and every required export must be available for recovery. Missing or substituted custody fails closed.
+
+For restore, independently recover the private key and catalog/journal custody, decrypt into a new isolated directory, verify its native backup commitment, then bind the explicit captured cut through `NativeDispositionRecovery.bind_prefix(..., captured=...)`. Captured obligations require exact terminal owner receipts; current later obligations still replay through the owning Documents seam before the fresh target can publish Auth/Storage. The decrypt receipt itself never authorizes publication.
+
+This narrows the local implementation gap only. Approved paid/offsite resources, new backup-principal/access approval, actual scheduled execution, delivered alerts/human acknowledgment, operating RPO/RTO/load and hosted/full-service signoff remain outstanding. Original RF retention and strict-constructor findings above are historical evidence and are not reclassified by this controller.
