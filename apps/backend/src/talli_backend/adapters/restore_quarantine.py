@@ -41,8 +41,8 @@ def configured_restore_gate(environment: Mapping[str, str]):
 
 
 class RestoreQuarantineMiddleware:
-    def __init__(self, app, gate):
-        self.app, self.gate = app, gate
+    def __init__(self, app, gate, problem_response):
+        self.app, self.gate, self.problem_response = app, gate, problem_response
 
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http' or scope['path'] == '/health/live' or self.gate is None:
@@ -50,8 +50,11 @@ class RestoreQuarantineMiddleware:
         if await self.gate():
             return await self.app(scope, receive, send)
         from starlette.responses import JSONResponse
-        body = {'status': 'not_ready'} if scope['path'] == '/health/ready' else {
-            'type': 'about:blank', 'title': 'Restored target is quarantined',
-            'status': 503, 'code': 'RESTORE_QUARANTINED',
-        }
-        await JSONResponse(body, status_code=503, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+        if scope['path'] == '/health/ready':
+            response = JSONResponse({'status': 'not_ready'}, status_code=503)
+        else:
+            from starlette.requests import Request
+            response = self.problem_response(Request(scope), status=503, code='RESTORE_QUARANTINED',
+                title='Restored target is quarantined', detail='Deletion-journal replay is not verified for this restored target.')
+        response.headers['Cache-Control'] = 'no-store'
+        await response(scope, receive, send)

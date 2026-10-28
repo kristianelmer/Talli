@@ -1424,3 +1424,26 @@ No journal expiry is guessed; a real destination/rotation horizon remains requir
 <!-- architecture-inventory
 {"workflows":["company-disposition"],"workflowPurposes":["company-disposition=>Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined."],"routes":["offline:company-disposition"],"infrastructure":["deletionRecovery=>Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler."],"transportDependencies":["talli_backend.adapters.restore_quarantine"],"adapterDependencies":["contextlib","pathlib","sqlite3","uuid","talli_backend.application.company_disposition","talli_backend.adapters.deletion_journal"]}
 -->
+
+
+`company_disposition_access` projects the complete recorded Billing
+`AnnualPurchasePage` into expiry facts; inclusive paid/export through-dates end at
+the next UTC midnight. Missing pages/years, pending/unknown outcomes, another
+company or an uncancelled recurring consent fail closed. Refund requests do not
+shorten the recorded periods. The local fixture uses the real immutable Billing
+purchase contracts without calling a provider or changing billing records.
+
+<!-- architecture-inventory
+{"publicPackages":["talli_backend.modules.billing.public"]}
+-->
+
+
+Replay preflights the complete journal cut and every selected outcome before any
+erase, then keeps execution-time owner fencing. `READY` denotes an exact durable
+owner fence with intact selected bytes; it is not an unknown result. A historical
+retain may be superseded only by a later exact-generation/hash erase whose owner
+proves its matching terminal receipt and actual absence. Repeated replay preserves
+that history without rewriting original identities. Tombstones retain the reviewed
+facts and actual synthetic export-receipt hashes; the adapter revalidates the
+historical policy decision and commitment on append/read. The trusted journal
+writer still owns fact provenance; no public caller gains authority from a model.

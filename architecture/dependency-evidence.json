@@ -187,6 +187,14 @@
     {
       "from": "backend-system:company-disposition",
       "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:company-disposition",
+      "imports": [
         "talli_backend.modules.company_access.public"
       ],
       "kind": "workflow",

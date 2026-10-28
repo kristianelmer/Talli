@@ -4,7 +4,7 @@ This adapter is deliberately NOT registered as production Supabase purge authori
 The current product has no such adapter; unsupported owner stores remain closed.
 """
 import asyncio
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 import json
@@ -20,6 +20,9 @@ from talli_backend.adapters.deletion_journal import (
     GENESIS, JournalHead, LocalDeletionJournal, LocalReplayReceipt, replay_is_current,
 )
 from talli_backend.application.company_disposition import execute_authorized_disposition, replay_company_dispositions
+from talli_backend.application.company_disposition_access import disposition_access_period
+from talli_backend.modules.billing.public import AnnualPurchasePage, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, AnnualOperationCounts
+from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp
 from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
     CompanyDispositionPlan, DispositionAuthorizationFacts, DispositionExport,
@@ -32,14 +35,41 @@ NOW = datetime(2026, 10, 28, 12, tzinfo=UTC)
 PDF = b'%PDF-1.7\nSynthetic unlinked object; never a real customer document.\n'
 
 
+def synthetic_billing_purchases(company,years):
+    purchases = tuple(AnnualPurchaseSummary(
+        purchase_id=AnnualPurchaseId(str(uuid4())), company_id=CompanyId(str(company)), income_year=IncomeYear(y),
+        status=AnnualPurchaseStatus.PAID, accepted_at=Timestamp(NOW-timedelta(days=400)),
+        offer_version='synthetic-recorded-terms-v1', terms_digest='e'*64, terms_text='Synthetic recorded terms',
+        currency='NOK', gross_minor=100, net_minor=100, vat_minor=0, vat_basis_points=0,
+        captured_minor=100, refunded_minor=0, captured_at=Timestamp(NOW-timedelta(days=400)),
+        recurring_consent=False, renewal_canceled_at=None, paid_through=(NOW-timedelta(days=101)).date(),
+        export_through=(NOW-timedelta(days=11)).date(), renewal_date=(NOW-timedelta(days=100)).date(),
+        recorded_refund_minor=0, refund_initiate_by=None, refund_request_count=0,
+        latest_refund_requested_at=None, refund_operations=AnnualOperationCounts(0,0,0,0,0)) for y in years)
+    return AnnualPurchasePage(purchases)
+
+
+def document_body(record_id):
+    return PDF + ('document:' + str(record_id)).encode()
+
+
+def synthetic_archive_sha(plan,year):
+    records=[r for r in plan.records if r.income_year==year]
+    raw=json.dumps({'year':year,'records':[r.model_dump(mode='json') for r in records],
+                    'originals':[document_body(r.record_id).hex() for r in records]},sort_keys=True).encode()
+    return sha256(raw).hexdigest()
+
+
 def authorization_fixture():
     company, owner, reviewer = uuid4(), uuid4(), uuid4()
-    records = tuple(DispositionRecord(owner='documents', record_id=uuid4(), income_year=year,
-        generation='object-generation-2', content_sha256=sha256(PDF).hexdigest(), action=action,
-        retention_until=NOW + timedelta(days=30) if action == 'retain' else NOW - timedelta(days=1),
-        hold_basis='synthetic bounded investigation case' if action == 'retain' else None,
-        hold_until=NOW + timedelta(days=15) if action == 'retain' else None)
-        for year, action in ((2025, 'erase'), (2026, 'retain')))
+    def record(year,action):
+        record_id=uuid4()
+        return DispositionRecord(owner='documents',record_id=record_id,income_year=year,
+            generation='object-generation-2',content_sha256=sha256(document_body(record_id)).hexdigest(),action=action,
+            retention_until=NOW+timedelta(days=30) if action=='retain' else NOW-timedelta(days=1),
+            hold_basis='synthetic bounded investigation case' if action=='retain' else None,
+            hold_until=NOW+timedelta(days=15) if action=='retain' else None)
+    records=(record(2025,'erase'),record(2026,'retain'))
     plan = CompanyDispositionPlan(operation_id=uuid4(), company_id=company, choice='delete',
         years=(2025, 2026), generation='company-generation-17', records=records,
         inventory_sha256='0'*64, support_case_id=uuid4())
@@ -47,10 +77,12 @@ def authorization_fixture():
     def session(subject, role):
         return DispositionSession(subject=subject, session_id=uuid4(), role=role, company_id=company,
                                   mfa_at=NOW-timedelta(seconds=20))
+    purchases = synthetic_billing_purchases(company,plan.years)
+    period=disposition_access_period(purchases,company_id=company,all_company_years=plan.years)
     facts = DispositionAuthorizationFacts(company_id=company, all_company_years=plan.years,
         current_generation=plan.generation, current_inventory_sha256=plan.inventory_sha256,
-        paid_access_expires_at=NOW-timedelta(days=100), read_export_until=NOW-timedelta(days=10),
-        exports=tuple(DispositionExport(income_year=y, receipt_id=uuid4(), inventory_sha256=plan.inventory_sha256,
+        paid_access_expires_at=period.paid_expires_at, read_export_until=period.read_export_until,
+        exports=tuple(DispositionExport(income_year=y, receipt_id=uuid4(), archive_sha256=synthetic_archive_sha(plan,y), inventory_sha256=plan.inventory_sha256,
                                        complete=True) for y in plan.years),
         owner=session(owner, 'owner'), reviewer=session(reviewer, 'reviewer'), support_case_id=plan.support_case_id,
         review_plan_sha256=sha256(plan.model_dump_json().encode()).hexdigest(), inventory_complete=True)
@@ -59,15 +91,15 @@ def authorization_fixture():
 
 @pytest.mark.parametrize('case', ['choice', 'paid_period', 'short_export_period', 'missing_billing', 'active_hold',
     'incomplete_export', 'generation', 'years', 'outsider', 'self_review', 'revoked', 'old_mfa',
-    'future_mfa', 'case', 'changed_review', 'unattributed', 'inventory_digest'])
+    'future_mfa', 'case', 'changed_review', 'unattributed', 'inventory_digest', 'blank_hold'])
 def test_every_authorization_negative_before_destructive_execution(case):
     plan, facts = authorization_fixture()
     if case == 'choice': plan = plan.model_copy(update={'choice': None})
     elif case == 'paid_period': facts = facts.model_copy(update={'read_export_until': NOW+timedelta(days=1)})
-    elif case == 'short_export_period': facts = facts.model_copy(update={'read_export_until': NOW-timedelta(days=11)})
+    elif case == 'short_export_period': facts = facts.model_copy(update={'read_export_until': facts.paid_access_expires_at+timedelta(days=89)})
     elif case == 'missing_billing': facts = facts.model_copy(update={'paid_access_expires_at': None})
-    elif case == 'active_hold':
-        changed = plan.records[0].model_copy(update={'hold_basis': 'bounded hold', 'hold_until': NOW+timedelta(days=1)})
+    elif case in ('active_hold','blank_hold'):
+        changed = plan.records[0].model_copy(update={'hold_basis': 'bounded hold' if case=='active_hold' else '   ', 'hold_until': NOW+timedelta(days=1) if case=='active_hold' else NOW-timedelta(days=1)})
         plan = plan.model_copy(update={'records': (changed, plan.records[1])})
         plan = plan.model_copy(update={'inventory_sha256': plan.inventory_digest()})
         facts = facts.model_copy(update={'current_inventory_sha256': plan.inventory_sha256,
@@ -97,16 +129,18 @@ class SyntheticDocumentStore:
     bypassed. Filesystem unlink/SQL DELETE are not forensic secure media erasure.
     """
     aal2 = True
+    clock = NOW
     def __init__(self, root, *, plan=None):
         self.root = root; self.erase_calls = 0; self.drop_response = False; self.fail_after_objects = False
         if plan:
             root.mkdir()
             with self.db() as db:
-                db.executescript('create table documents(id text primary key,company text,year integer,generation text,sha text,retained integer,actor text); create table receipts(operation text,document text,plan text,company text,year integer,generation text,sha text,status text,primary key(operation,document));')
+                db.executescript('create table documents(id text primary key,company text,year integer,generation text,sha text,retained integer,actor text,retention_until text,hold_until text); create table company_state(company text primary key,generation text,fence text); create table receipts(operation text,document text,plan text,company text,year integer,generation text,sha text,status text,primary key(operation,document));')
+                db.execute('insert into company_state values(?,?,null)',(str(plan.company_id),plan.generation))
                 for record in plan.records:
-                    db.execute('insert into documents values(?,?,?,?,?,?,?)', (str(record.record_id),str(plan.company_id),record.income_year,record.generation,record.content_sha256,int(record.action=='retain'),'original-author-identity'))
+                    db.execute('insert into documents values(?,?,?,?,?,?,?,?,?)', (str(record.record_id),str(plan.company_id),record.income_year,record.generation,record.content_sha256,int(record.action=='retain'),'original-author-identity',record.retention_until.isoformat(),record.hold_until.isoformat() if record.hold_until else None))
                     directory=root/str(record.record_id);directory.mkdir()
-                    for generation in ('1','2'): (directory/generation).write_bytes(PDF)
+                    for generation in ('1','2'): (directory/generation).write_bytes(document_body(record.record_id))
     def db(self): return sqlite3.connect(self.root/'documents.sqlite')
     def row(self, document):
         with self.db() as db: return db.execute('select * from documents where id=?',(str(document),)).fetchone()
@@ -119,16 +153,33 @@ class SyntheticDocumentStore:
     def objects(self, document):
         p=self.root/str(document)
         return sorted(p.iterdir()) if p.exists() else []
+    async def fence_inventory(self, commands):
+        assert commands and len({c.company_id for c in commands})==1
+        if len({c.company_generation for c in commands})!=1: raise ValueError('owner_company_generation_changed')
+        first=commands[0]
+        with self.db() as db:
+            db.execute('begin immediate')
+            state=db.execute('select generation,fence from company_state where company=?',(str(first.company_id),)).fetchone()
+            if not state or state[0]!=first.company_generation or (state[1] not in (None,first.plan_sha256) and db.execute("select count(*) from receipts where status!='erased'").fetchone()[0]):
+                raise ValueError('owner_company_generation_changed')
+            current={r[0] for r in db.execute('select id from documents where company=?',(str(first.company_id),))}
+            erased={r[0] for r in db.execute('select document from receipts where company=? and status=?',(str(first.company_id),'erased'))} & {str(c.document_id) for c in commands}
+            if current|erased!={str(c.document_id) for c in commands}:
+                raise ValueError('owner_inventory_incomplete')
+            db.execute('update company_state set fence=? where company=?',(first.plan_sha256,str(first.company_id)))
     async def retained_matches(self,c):
         row=self.row(c.document_id)
         return bool(row and row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256)
             and row[5]==1 and len(self.objects(c.document_id))==2
             and all(sha256(p.read_bytes()).hexdigest()==c.content_sha256 for p in self.objects(c.document_id)))
+    def erasable(self,row):
+        return datetime.fromisoformat(row[7])<=self.clock and (row[8] is None or datetime.fromisoformat(row[8])<=self.clock)
     async def reconcile(self,c):
         r=self.receipt(c);row=self.row(c.document_id);objects=self.objects(c.document_id)
         if r and r[-1]=='erased' and row is None and not objects: return 'ERASED'
+        if r and r[-1]=='fenced' and row and row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256) and self.erasable(row) and len(objects)==2 and all(sha256(p.read_bytes()).hexdigest()==c.content_sha256 for p in objects): return 'READY'
         if r: return 'UNKNOWN'
-        if row and row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256) and row[5]==0 and len(objects)==2 and all(sha256(p.read_bytes()).hexdigest()==c.content_sha256 for p in objects): return 'NOT_APPLIED'
+        if row and row[1:5]==(str(c.company_id),c.income_year,c.generation,c.content_sha256) and self.erasable(row) and len(objects)==2 and all(sha256(p.read_bytes()).hexdigest()==c.content_sha256 for p in objects): return 'NOT_APPLIED'
         return 'UNKNOWN'
     async def prepare(self,c):
         if await self.reconcile(c)!='NOT_APPLIED': raise ValueError('owner_inventory_changed')
@@ -141,7 +192,7 @@ class SyntheticDocumentStore:
         (self.root/str(c.document_id)).rmdir()
         if self.fail_after_objects: raise ConnectionError('synthetic partial owner failure')
         with self.db() as db:
-            db.execute('delete from documents where id=? and retained=0',(str(c.document_id),))
+            db.execute('delete from documents where id=?',(str(c.document_id),))
             db.execute('update receipts set status=? where operation=? and document=?',('erased',str(c.operation_id),str(c.document_id)))
         if self.drop_response:
             self.drop_response=False;raise ConnectionError('synthetic response lost after durable commit')
@@ -181,7 +232,12 @@ def test_predeletion_backup_disposition_restore_replay_and_denied_download(tmp_p
     app=create_app(readiness_probe=healthy);client=TestClient(app)
     assert client.get('/health/live').status_code==200
     assert client.get('/health/ready').status_code==503
-    assert client.get('/api/v1/documents/'+str(plan.records[0].record_id)).status_code==503
+    blocked=client.get('/api/v1/documents/'+str(plan.records[0].record_id))
+    assert blocked.status_code==503 and blocked.headers['content-type'].startswith('application/problem+json')
+    from talli_backend.main import ProblemDetails
+    problem=ProblemDetails.model_validate(blocked.json())
+    assert problem.code=='RESTORE_QUARANTINED' and problem.request_id==blocked.headers['x-request-id']
+
     assert restored.row(plan.records[0].record_id) is not None
     run(replay_company_dispositions(journal=journal,target=target,receipt=LocalReplayReceipt(receipt),minimum=head,stores={'documents':restored}))
     assert client.get('/health/ready').status_code==200
@@ -210,7 +266,7 @@ def test_predeletion_backup_disposition_restore_replay_and_denied_download(tmp_p
         'physicalScope':'SQLite DELETE and filesystem unlink, not forensic media erasure or encrypted-backup expiry'},indent=2))
 
 
-@pytest.mark.parametrize('failure',['missing_journal','tampered','rollback','missing_owner','unknown_outcome','retained_changed'])
+@pytest.mark.parametrize('failure',['missing_journal','tampered','rollback','missing_owner','unknown_outcome','retained_changed','stale_owner_generation','unattributed_store_record'])
 def test_incomplete_or_unavailable_replay_never_opens_target(tmp_path,monkeypatch,failure):
     plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
     store=SyntheticDocumentStore(tmp_path/'customer',plan=plan)
@@ -226,6 +282,12 @@ def test_incomplete_or_unavailable_replay_never_opens_target(tmp_path,monkeypatc
     elif failure=='missing_owner': stores={}
     elif failure=='unknown_outcome': store.fail_after_objects=True
     elif failure=='retained_changed': store.objects(plan.records[1].record_id)[0].write_bytes(b'changed')
+    elif failure=='stale_owner_generation':
+        with store.db() as db: db.execute('update company_state set generation=?',('changed',))
+    elif failure=='unattributed_store_record':
+        with store.db() as db:
+            db.execute('insert into documents values(?,?,?,?,?,?,?,?,?)',(str(uuid4()),str(plan.company_id),2026,'unknown','f'*64,0,'unknown-original',(NOW-timedelta(days=1)).isoformat(),None))
+
     with pytest.raises(Exception):
         run(replay_company_dispositions(journal=journal,target=target,receipt=LocalReplayReceipt(receipt),minimum=head,stores=stores))
     async def healthy(): return True
@@ -263,3 +325,72 @@ def test_exact_operation_conflict_and_unsupported_owner_are_not_success(tmp_path
     with pytest.raises(ValueError,match='owner_unavailable'):
         run(execute_authorized_disposition(changed_permit,journal=journal,target='source',stores={'documents':store}))
     assert store.erase_calls==0 and journal.read()[0]==head
+
+
+def revised_authorization(plan,facts,*,now=NOW):
+    plan=plan.model_copy(update={'inventory_sha256':plan.inventory_digest()})
+    facts=facts.model_copy(update={'current_inventory_sha256':plan.inventory_sha256,
+        'owner':facts.owner.model_copy(update={'mfa_at':now}),
+        'reviewer':facts.reviewer.model_copy(update={'mfa_at':now}),
+        'review_plan_sha256':sha256(plan.model_dump_json().encode()).hexdigest(),
+        'exports':tuple(e.model_copy(update={'inventory_sha256':plan.inventory_sha256,'archive_sha256':synthetic_archive_sha(plan,e.income_year)}) for e in facts.exports)})
+    return authorize_company_disposition(plan,facts,now=now)
+
+
+def test_unknown_second_erase_is_preflighted_before_first_physical_deletion(tmp_path):
+    plan,facts=authorization_fixture()
+    second=plan.records[1].model_copy(update={'action':'erase','retention_until':NOW-timedelta(days=1),
+                                           'hold_basis':None,'hold_until':None})
+    permit=revised_authorization(plan.model_copy(update={'records':(plan.records[0],second)}),facts)
+    store=SyntheticDocumentStore(tmp_path/'customer',plan=permit.plan)
+    store.objects(second.record_id)[0].write_bytes(b'unknown second object outcome')
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=store.root)
+    with pytest.raises(ValueError,match='outcome_unknown'):
+        run(execute_authorized_disposition(permit,journal=journal,target='source',stores={'documents':store}))
+    assert store.erase_calls==0 and all(store.row(r.record_id) is not None for r in permit.plan.records)
+    assert len(store.objects(plan.records[0].record_id))==2
+
+
+def test_later_authorized_erase_supersedes_historical_retain_on_every_retry(tmp_path):
+    plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
+    source=SyntheticDocumentStore(tmp_path/'source',plan=plan)
+    backup=tmp_path/'pre-first-deletion';shutil.copytree(source.root,backup)
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=source.root)
+    run(execute_authorized_disposition(permit,journal=journal,target='source',stores={'documents':source}))
+    after_hold=NOW+timedelta(days=31);source.clock=after_hold
+    former_retain=plan.records[1].model_copy(update={'action':'erase'})
+    later=revised_authorization(plan.model_copy(update={'operation_id':uuid4(),'records':(former_retain,)}),facts,now=after_hold)
+    head=run(execute_authorized_disposition(later,journal=journal,target='source',stores={'documents':source}))
+    assert source.row(former_retain.record_id) is None
+    root=tmp_path/'restored';shutil.copytree(backup,root);store=SyntheticDocumentStore(root);store.clock=after_hold
+    target=str(uuid4());receipt=LocalReplayReceipt(root/'ready.json')
+    for _ in range(3):
+        run(replay_company_dispositions(journal=journal,target=target,receipt=receipt,minimum=head,stores={'documents':store}))
+        assert replay_is_current(journal,receipt=receipt.path,target=target,minimum=head)
+        assert all(store.row(r.record_id) is None and not store.objects(r.record_id) for r in plan.records)
+    assert store.erase_calls==2  # one per record across all three complete replays
+
+
+@pytest.mark.parametrize('case',['pagination','missing_year','outsider','pending','created_refund','unknown_refund','uncancelled_renewal','uncaptured'])
+def test_disposition_uses_complete_recorded_billing_history(case):
+    company=uuid4();page=synthetic_billing_purchases(company,(2025,2026));first=page.purchases[0]
+    if case=='pagination':page=replace(page,next_purchase_id=AnnualPurchaseId(str(uuid4())))
+    elif case=='missing_year':page=replace(page,purchases=(first,))
+    else:
+        if case=='outsider':first=replace(first,company_id=CompanyId(str(uuid4())))
+        elif case=='pending':first=replace(first,status=AnnualPurchaseStatus.PENDING)
+        elif case=='created_refund':first=replace(first,refund_operations=replace(first.refund_operations,created=1))
+        elif case=='unknown_refund':first=replace(first,refund_operations=replace(first.refund_operations,unknown=1))
+        elif case=='uncancelled_renewal':first=replace(first,recurring_consent=True,renewal_canceled_at=None)
+        elif case=='uncaptured':first=replace(first,captured_at=None)
+        page=replace(page,purchases=(first,page.purchases[1]))
+    with pytest.raises(ValueError,match='billing_history_incomplete'):
+        disposition_access_period(page,company_id=company,all_company_years=(2025,2026))
+
+
+def test_journal_refuses_constructed_permit_with_invalid_authorization(tmp_path):
+    plan,facts=authorization_fixture();permit=authorize_company_disposition(plan,facts,now=NOW)
+    journal=LocalDeletionJournal.initialize(tmp_path/'journal.sqlite',customer_root=tmp_path/'customer')
+    invalid=permit.model_copy(update={'plan':plan.model_copy(update={'choice':None})})
+    with pytest.raises(ValueError,match='customer_choice_required'):journal.append(invalid)
+    assert journal.read()[0].sequence==0

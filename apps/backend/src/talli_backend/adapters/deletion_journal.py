@@ -14,7 +14,7 @@ import sqlite3
 from uuid import UUID, uuid4
 
 from talli_backend.application.company_disposition import JournalHead
-from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition
+from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition, authorize_company_disposition
 
 MAX_BODY = 1024 * 1024
 MAX_JOURNAL = 16 * MAX_BODY
@@ -49,6 +49,13 @@ class LocalDeletionJournal:
                   receipt text not null, primary key(target, sequence, record));
             ''')
             db.execute('insert into identity values(?)', (stream,))
+        # Bind the newly created directory entry before any tombstone can be
+        # acknowledged. SQLite FULL handles subsequent transaction durability.
+        with path.open('rb') as source:
+            os.fsync(source.fileno())
+        parent = os.open(path.parent, os.O_RDONLY)
+        try: os.fsync(parent)
+        finally: os.close(parent)
         return journal
 
     @contextmanager
@@ -80,6 +87,8 @@ class LocalDeletionJournal:
                     or total > MAX_JOURNAL or _digest(previous, sequence, body) != observed):
                 raise ValueError('deletion_journal_incomplete')
             permit = AuthorizedCompanyDisposition.model_validate_json(body)
+            if authorize_company_disposition(permit.plan, permit.facts, now=permit.authorized_at) != permit:
+                raise ValueError('deletion_journal_authorization_changed')
             if str(permit.plan.operation_id) != operation:
                 raise ValueError('deletion_journal_operation_changed')
             digest = observed; entries.append(permit)
@@ -104,6 +113,9 @@ class LocalDeletionJournal:
                 if prior != (body,):
                     raise ValueError('deletion_journal_idempotency_conflict')
                 return head
+            validated = AuthorizedCompanyDisposition.model_validate_json(body)
+            if authorize_company_disposition(validated.plan, validated.facts, now=validated.authorized_at) != validated:
+                raise ValueError('deletion_journal_authorization_changed')
             if head.sequence >= 1000 or db.execute('select coalesce(sum(length(body)),0) from tombstones').fetchone()[0] + len(body.encode()) > MAX_JOURNAL:
                 raise ValueError('deletion_journal_bound_exceeded')
             sequence = head.sequence + 1; digest = _digest(head.sha256, sequence, body)

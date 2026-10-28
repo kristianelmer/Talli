@@ -631,7 +631,8 @@
       "purpose": "Offline Company Access authorization and Documents-owned finite disposition/replay; missing owner coverage keeps restored target quarantined.",
       "publicPackages": [
         "talli_backend.modules.company_access.public",
-        "talli_backend.modules.documents.public"
+        "talli_backend.modules.documents.public",
+        "talli_backend.modules.billing.public"
       ],
       "routes": [
         "offline:company-disposition"

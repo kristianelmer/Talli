@@ -5937,7 +5937,8 @@ def create_app(
         docs_url=None,
         redoc_url=None,
     )
-    application.add_middleware(RestoreQuarantineMiddleware, gate=configured_restore_gate(os.environ))
+    application.add_middleware(RestoreQuarantineMiddleware, gate=configured_restore_gate(os.environ),
+                               problem_response=_problem_response)
     application.add_middleware(RequestIdMiddleware)
     application.router.add_event_handler("shutdown", dependency_readiness.close)
     gateway = (

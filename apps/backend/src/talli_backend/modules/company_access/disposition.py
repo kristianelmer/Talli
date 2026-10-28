@@ -39,6 +39,7 @@ class DispositionRecord(_Immutable):
 class DispositionExport(_Immutable):
     income_year: int = Field(ge=2000, le=2100)
     receipt_id: UUID
+    archive_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     inventory_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     complete: bool
 
@@ -75,6 +76,8 @@ class DispositionAuthorizationFacts(_Immutable):
 
 class AuthorizedCompanyDisposition(_Immutable):
     plan: CompanyDispositionPlan
+    facts: DispositionAuthorizationFacts
+    policy_version: Literal["company-disposition-v1"] = "company-disposition-v1"
     authorized_at: AwareDatetime
     owner_subject: UUID
     reviewer_subject: UUID
@@ -108,12 +111,13 @@ def authorize_company_disposition(plan: CompanyDispositionPlan, facts: Dispositi
     for session, role in ((facts.owner, "owner"), (facts.reviewer, "reviewer")):
         require(session.company_id == plan.company_id and session.role == role and not session.revoked
                 and timedelta(0) <= now - session.mfa_at <= timedelta(minutes=5), "disposition_fresh_session_required")
-    require(facts.owner.subject != facts.reviewer.subject, "disposition_independent_review_required")
+    require(facts.owner.subject != facts.reviewer.subject and facts.owner.session_id != facts.reviewer.session_id, "disposition_independent_review_required")
     require(facts.support_case_id == plan.support_case_id
             and facts.review_plan_sha256 == sha256(plan.model_dump_json().encode()).hexdigest(),
             "disposition_review_changed")
     for record in plan.records:
         require((record.hold_basis is None) == (record.hold_until is None), "disposition_unbounded_hold")
+        require(record.hold_basis is None or bool(record.hold_basis.strip()), "disposition_hold_basis_required")
         if record.action == "erase":
             require(record.retention_until <= now and (record.hold_until is None or record.hold_until <= now),
                     "disposition_active_retention_or_hold")
@@ -121,5 +125,5 @@ def authorize_company_disposition(plan: CompanyDispositionPlan, facts: Dispositi
             require(record.retention_until > now or (record.hold_until is not None and record.hold_until > now),
                     "disposition_retention_basis_required")
     body = facts.model_dump_json().encode() + now.isoformat().encode()
-    return AuthorizedCompanyDisposition(plan=plan, authorized_at=now, owner_subject=facts.owner.subject,
+    return AuthorizedCompanyDisposition(plan=plan, facts=facts, authorized_at=now, owner_subject=facts.owner.subject,
         reviewer_subject=facts.reviewer.subject, authorization_sha256=sha256(body).hexdigest())

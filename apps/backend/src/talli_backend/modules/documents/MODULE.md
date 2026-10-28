@@ -288,3 +288,7 @@ The current adapter is a disposable local SQLite/files fixture only. No producti
 Supabase delete adapter, public purge route, trigger bypass or new access grant
 is provided. SQL DELETE/filesystem unlink is distinct from forensic media erasure
 and from backup expiry. Normal removal remains its existing lifecycle operation.
+
+Owner disposition must fence the complete company generation/inventory before
+I/O. `READY` requires an exact durable receipt with intact selected bytes; partial
+I/O remains `UNKNOWN`. Every selected record is preflighted before the first erase.
