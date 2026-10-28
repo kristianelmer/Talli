@@ -256,7 +256,8 @@ class NativeDispositionPreflight:
             'whole_company':{'available':False,'reason':'owning_inventory_legal_and_export_coverage_unavailable',
                 'observedCompanyExportReceiptCommitments':company_receipts}}
 
-    def _write_once(self,path,body):
+    @staticmethod
+    def _write_once(path,body):
         if path.exists():
             if path.is_symlink() or path.read_bytes()!=body:raise ValueError('local_disposition_evidence_changed')
             return

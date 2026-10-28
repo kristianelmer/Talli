@@ -1500,7 +1500,8 @@
       "uuid",
       "talli_backend.application.company_disposition",
       "talli_backend.adapters.deletion_journal",
-      "talli_backend.adapters.native_disposition_preflight"
+      "talli_backend.adapters.native_disposition_preflight",
+      "talli_backend.adapters.native_disposition_recovery"
     ]
   }
 }

@@ -415,6 +415,9 @@ def test_actual_authority_wait_precedes_billing_lock_and_rechecks_expiry(state, 
         @asynccontextmanager
         async def observed(query):
             async with admission(query) as scope:
+                # This expiry probe intentionally holds Authority for up to six
+                # seconds. Its fixture budget must exceed that deliberate wait.
+                await scope._connection.execute("set local lock_timeout='10s';set local statement_timeout='12s'")
                 ready.set_result((await (await scope._connection.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
                 yield scope
         state.store.source_admission = observed

@@ -20,10 +20,11 @@ test("synthetic native disposition fact reads are declared and absent from HTTP 
   const manifest = JSON.parse(readFileSync(new URL("../architecture/backend-system.json", import.meta.url), "utf8"));
   const operational = "talli_backend.adapters.native_disposition_preflight";
   assert.ok(manifest.allowedDependencies.adapters.includes(operational));
+  assert.ok(manifest.allowedDependencies.adapters.includes("talli_backend.adapters.native_disposition_recovery"));
   assert.ok(manifest.workflows.some((workflow) => workflow.name === "company-disposition"
     && workflow.routes.length === 1 && workflow.routes[0] === "offline:company-disposition"));
   const main = readFileSync(new URL("../apps/backend/src/talli_backend/main.py", import.meta.url), "utf8");
-  assert.doesNotMatch(main, /native_disposition_preflight|AuthorizedLocalDocumentsDisposition/u);
+  assert.doesNotMatch(main, /native_disposition_preflight|native_disposition_recovery|AuthorizedLocalDocumentsDisposition/u);
 });
 
 test("Python architecture inspection consumes one framed request without waiting for EOF", async (t) => {
