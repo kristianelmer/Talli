@@ -302,3 +302,23 @@ historical cut anchored to the restored generation. It must accept compatible
 known READY prefixes from that cut and reject unrelated pending work, unknown
 originals or unattributed stores. It cannot require all historical company
 generations to equal the live snapshot generation. No production adapter exists.
+
+
+`DocumentDispositionStore`, declared with `document_disposition_adapter`, now has
+an opt-in `PostgresDocumentDisposition` adapter for an explicitly owned disposable
+native PostgreSQL/file-backed Storage target. It is absent from ordinary backend
+composition. `documents.local_native_disposition_plans` pins an operator-approved
+new synthetic record allowlist and complete company metadata/object inventory;
+`documents.local_native_disposition_targets` binds fresh target/system identities;
+`documents.local_native_disposition_receipts` fences the exact native prefix.
+An unprivileged NOINHERIT operator can execute narrow Documents functions only.
+The adapter checks Docker ownership, internal-only upstreams, actual host-session
+PID, metadata, generation bytes, existing evidence links and retention. Storage
+API retirement comes before local historical generation cleanup and native row
+finalization. RESUMABLE is an explicit known native prefix; arbitrary partial
+changes still close replay. This does not supply hosted erasure authority,
+production owner/reviewer/Billing/export fact resolvers or a whole-company fence.
+
+<!-- architecture-inventory
+{"ownedTables":["documents.local_native_disposition_plans","documents.local_native_disposition_targets","documents.local_native_disposition_receipts"],"ports":["DocumentDispositionStore"]}
+-->

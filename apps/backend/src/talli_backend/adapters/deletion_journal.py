@@ -13,6 +13,7 @@ from pathlib import Path
 import sqlite3
 from uuid import UUID, uuid4
 
+from talli_backend.adapters.restored_publication import publication_is_current
 from talli_backend.application.company_disposition import JournalHead
 from talli_backend.modules.company_access.public import AuthorizedCompanyDisposition, authorize_company_disposition
 
@@ -153,10 +154,9 @@ def replay_is_current(journal: LocalDeletionJournal, *, receipt: Path, target: s
         if receipt.is_symlink() or not receipt.is_file() or receipt.stat().st_size > 4096:
             return False
         head, _ = journal.read(minimum=minimum)
-        observed = json.loads(receipt.read_bytes())
-        return (isinstance(observed, dict) and type(observed.get('sequence')) is int and observed == {
-            'target': target, 'stream': head.stream, 'sequence': head.sequence, 'sha256': head.sha256,
-        })
+        return publication_is_current(journal=journal.path,receipt=receipt,target=target,
+            stream=minimum.stream,minimum_sequence=minimum.sequence,minimum_sha256=minimum.sha256)
+
     except Exception:
         return False
 

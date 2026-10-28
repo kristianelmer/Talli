@@ -474,6 +474,24 @@
       "owner": "backend:documents"
     },
     {
+      "name": "documents.local_native_disposition_plans",
+      "kind": "capability-business",
+      "owner": "backend:documents",
+      "compatibilityResources": []
+    },
+    {
+      "name": "documents.local_native_disposition_receipts",
+      "kind": "capability-business",
+      "owner": "backend:documents",
+      "compatibilityResources": []
+    },
+    {
+      "name": "documents.local_native_disposition_targets",
+      "kind": "capability-business",
+      "owner": "backend:documents",
+      "compatibilityResources": []
+    },
+    {
       "name": "documents.retained_originals",
       "kind": "capability-business",
       "owner": "backend:documents"

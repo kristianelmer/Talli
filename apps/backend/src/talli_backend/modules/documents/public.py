@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 import re
 from collections.abc import Callable, Mapping
-from typing import Protocol, TypeVar
+from typing import Literal, Protocol, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear
@@ -450,7 +450,7 @@ def parse_retained_document_original(value: str, *, query: RetainedDocumentOrigi
 
 
 __all__ = [
-    "DocumentDisposition", "DocumentDispositionStore", "dispose_document",
+    "DocumentDisposition", "DocumentDispositionStore", "document_disposition_adapter", "dispose_document",
     "validate_document_dispositions", "apply_document_dispositions",
     "serialize_retained_document_original", "parse_retained_document_original",
     "RetainedDocumentOriginalQuery", "RetainedDocumentOriginalSnapshot",
@@ -487,5 +487,45 @@ __all__ = [
     "document_binding_persistence_adapter"
 ]
 
-from .disposition import (DocumentDisposition, DocumentDispositionStore, dispose_document,
+@dataclass(frozen=True, slots=True)
+class DocumentDisposition:
+    operation_id: UUID
+    company_id: UUID
+    document_id: UUID
+    income_year: int
+    generation: str
+    content_sha256: str
+    company_generation: str
+    plan_sha256: str
+    action: Literal["erase", "retain"]
+
+
+class DocumentDispositionStore(Protocol):
+    """Implementations serialize against evidence writes and keep immutable receipts.
+
+    prepare must compare exact company/year/generation/bytes, reject any retained
+    original/evidence reference, and durably fence the item before returning.
+    erase removes every enumerated object generation and raw metadata, then commits
+    its receipt. reconcile distinguishes NOT_APPLIED, ERASED and UNKNOWN from the
+    actual stores; READY means an exact durable fence with all selected bytes intact.
+    Unavailable reads must never look like absence. RESUMABLE means a known native owner prefix whose remaining generations match
+    an approved subset; arbitrary partial writes remain UNKNOWN. No hosted purge
+    endpoint is supplied by this contract.
+    """
+    async def fence_inventory(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
+    async def fence_replay_history(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
+    async def prepare(self, command: DocumentDisposition) -> None: ...
+    async def erase(self, command: DocumentDisposition) -> None: ...
+    async def reconcile(self, command: DocumentDisposition) -> str: ...
+    async def retained_matches(self, command: DocumentDisposition) -> bool: ...
+
+
+def document_disposition_adapter(contract: type[object]) -> Callable[[DocumentsAdapter], DocumentsAdapter]:
+    def declare(adapter: DocumentsAdapter) -> DocumentsAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+from .disposition import (dispose_document,
     validate_document_dispositions, apply_document_dispositions)

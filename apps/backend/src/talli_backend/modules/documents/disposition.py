@@ -1,39 +1,12 @@
 """Restricted Documents disposition seam; no generic bucket-delete authority."""
-from dataclasses import dataclass
-from typing import Literal, Protocol
-from uuid import UUID
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .public import DocumentDisposition, DocumentDispositionStore
 
 
-@dataclass(frozen=True, slots=True)
-class DocumentDisposition:
-    operation_id: UUID
-    company_id: UUID
-    document_id: UUID
-    income_year: int
-    generation: str
-    content_sha256: str
-    company_generation: str
-    plan_sha256: str
-    action: Literal["erase", "retain"]
-
-
-class DocumentDispositionStore(Protocol):
-    """Implementations serialize against evidence writes and keep immutable receipts.
-
-    prepare must compare exact company/year/generation/bytes, reject any retained
-    original/evidence reference, and durably fence the item before returning.
-    erase removes every enumerated object generation and raw metadata, then commits
-    its receipt. reconcile distinguishes NOT_APPLIED, ERASED and UNKNOWN from the
-    actual stores; READY means an exact durable fence with all selected bytes intact.
-    Unavailable reads must never look like absence. No production
-    adapter or general purge endpoint is supplied by this contract.
-    """
-    async def fence_inventory(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
-    async def fence_replay_history(self, commands: tuple[DocumentDisposition, ...]) -> None: ...
-    async def prepare(self, command: DocumentDisposition) -> None: ...
-    async def erase(self, command: DocumentDisposition) -> None: ...
-    async def reconcile(self, command: DocumentDisposition) -> str: ...
-    async def retained_matches(self, command: DocumentDisposition) -> bool: ...
 
 
 async def dispose_document(command: DocumentDisposition, store: DocumentDispositionStore) -> None:
@@ -42,7 +15,7 @@ async def dispose_document(command: DocumentDisposition, store: DocumentDisposit
     outcome = await store.reconcile(command)
     if outcome == "ERASED":
         return
-    if outcome not in {"NOT_APPLIED", "READY"}:
+    if outcome not in {"NOT_APPLIED", "READY", "RESUMABLE"}:
         raise ValueError("document_disposition_outcome_unknown")
     if outcome == "NOT_APPLIED":
         await store.prepare(command)
@@ -63,7 +36,7 @@ async def _pending_commands(commands, later_commands, store):
                     and later.document_id == command.document_id and later.generation == command.generation
                     and later.content_sha256 == command.content_sha256):
                 outcome = await store.reconcile(later)
-                if outcome not in {'NOT_APPLIED', 'READY', 'ERASED'}:
+                if outcome not in {'NOT_APPLIED', 'READY', 'RESUMABLE', 'ERASED'}:
                     raise ValueError('document_disposition_outcome_unknown')
                 superseded = outcome == 'ERASED'
                 break
@@ -73,7 +46,7 @@ async def _pending_commands(commands, later_commands, store):
     for command in commands:
         if command.action == 'erase':
             outcome = await store.reconcile(command)
-            if outcome not in {'NOT_APPLIED', 'READY', 'ERASED'}:
+            if outcome not in {'NOT_APPLIED', 'READY', 'RESUMABLE', 'ERASED'}:
                 raise ValueError('document_disposition_outcome_unknown')
             if outcome == 'NOT_APPLIED':
                 pending.append(command)
