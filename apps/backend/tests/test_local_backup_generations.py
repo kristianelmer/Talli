@@ -102,7 +102,8 @@ def test_corrupt_cipher_and_wrong_key_cannot_restore_or_refresh_age(repository,t
     assert not (tmp_path/'corrupt').exists() and not (tmp_path/'wrong').exists()
 
 
-def test_real_process_interruption_after_rename_never_becomes_complete(repository,tmp_path,keys):
+@pytest.mark.parametrize('crash_cut',['before_commit','after_commit'])
+def test_real_process_interruption_has_atomic_completion_and_no_plaintext(repository,tmp_path,keys,crash_cut):
     repo,head,clock,key,args=repository;good=repo.create(capture=capture,minimum=head)
     public=tmp_path/'public.pem';public.write_bytes(keys[1])
     code='''
@@ -113,20 +114,30 @@ from talli_backend.adapters.deletion_journal import LocalDeletionJournal
 from talli_backend.adapters.local_backup_generations import LocalBackupGenerations
 p=Path(sys.argv[1]);j=LocalDeletionJournal(p/'journal.sqlite',customer_root=p/'customer',stream=sys.argv[2])
 r=LocalBackupGenerations(root=p/'encrypted',control=p/'independent-control',scratch=p/'scratch',journal=j,obligations=p/'obligations',public_key=(p/'public.pem').read_bytes(),clock=lambda:datetime(2026,10,28,tzinfo=timezone.utc))
-r._commit=lambda *a:os._exit(73)
+real_commit=r._commit
+def stop(*a):
+ if sys.argv[3]=='after_commit':real_commit(*a)
+ os._exit(73)
+r._commit=stop
 def capture(d):
  d.mkdir(mode=0o700)
  for name in ('database.dump','roles.sql','storage_vectors.dump','objects.tar','object-manifest.json','object-attributes.json','bindings.private.json'):(d/name).write_bytes(b'private synthetic input')
 r.create(capture=capture,minimum=j.read()[0])
 '''
     env={**os.environ,'PYTHONPATH':str(Path(__file__).resolve().parents[1]/'src')}
-    completed=subprocess.run([sys.executable,'-c',code,str(tmp_path),head.stream],env=env,capture_output=True,timeout=20)
+    completed=subprocess.run([sys.executable,'-c',code,str(tmp_path),head.stream,crash_cut],env=env,capture_output=True,timeout=20)
     assert completed.returncode==73
     fresh=LocalBackupGenerations(**args);report=fresh.readiness(minimum=head)
-    assert report['reason']=='creation_incomplete' and report['usableGeneration']==good and not report['ready']
+    assert not any(repo.scratch.iterdir())
     assert len(list((repo.root/'generations').iterdir()))==2
-    fresh.rotate(minimum=head)
-    assert len(list((repo.root/'generations').iterdir()))==1 and not any(repo.scratch.iterdir())
+    if crash_cut=='before_commit':
+        assert report['reason']=='creation_incomplete' and report['usableGeneration']==good and not report['ready']
+        fresh.rotate(minimum=head)
+        assert len(list((repo.root/'generations').iterdir()))==1
+    else:
+        assert report['ready'] and report['lastAttempt']['status']=='succeeded'
+        other=next(p.name for p in (repo.root/'generations').iterdir() if p.name!=good)
+        fresh.restore(generation=other,destination=tmp_path/'committed',recovery_key=key,minimum=head)
     fresh.restore(generation=good,destination=tmp_path/'restored',recovery_key=key,minimum=head)
 
 
@@ -168,3 +179,18 @@ def test_publication_budget_cannot_be_hidden_by_fast_source_capture(repository,m
     with pytest.raises(ValueError,match='backup_generation_failed'):repo.create(capture=capture,minimum=head)
     report=repo.readiness(minimum=head)
     assert report['usableGeneration']==good and report['usableAgeSeconds']==960 and not report['ready']
+
+
+def test_plaintext_cleanup_failure_does_not_publish_or_refresh_age(repository):
+    repo,head,clock,_,_=repository;good=repo.create(capture=capture,minimum=head)
+    clock[0]+=timedelta(minutes=10);original=repo._remove_owned
+    def failed_cleanup(parent,identifier):
+        if parent==repo.scratch:raise OSError('owned scratch cleanup denied')
+        return original(parent,identifier)
+    repo._remove_owned=failed_cleanup
+    with pytest.raises(ValueError):repo.create(capture=capture,minimum=head)
+    report=repo.readiness(minimum=head)
+    assert report['usableGeneration']==good and report['usableAgeSeconds']==600 and not report['ready']
+    with repo._db() as db:assert db.execute("select count(*) from generations where state='ready'").fetchone()[0]==1
+    repo._remove_owned=original;repo.rotate(minimum=head)
+    assert not any(repo.scratch.iterdir())

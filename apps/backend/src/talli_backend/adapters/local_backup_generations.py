@@ -261,6 +261,9 @@ class LocalBackupGenerations:
                 self._journal(minimum);phase='publication'
                 with self._db() as db:db.execute("update attempts set phase='publication' where id=?",(identifier,))
                 os.rename(pending,self.root/'generations'/identifier);_sync(self.root/'generations');_sync(self.root/'pending')
+                # Completion also promises that the owned plaintext staging is
+                # gone. A cleanup failure must not advance the usable source age.
+                phase='cleanup';self._remove_owned(self.scratch,identifier)
                 completed=self._now()
                 if completed<started or completed-started>POLICY['completionBudgetSeconds'] or time.monotonic()-wall>POLICY['completionBudgetSeconds']:
                     raise ValueError('backup_completion_deadline')
@@ -271,7 +274,8 @@ class LocalBackupGenerations:
                 if isinstance(error,(KeyboardInterrupt,SystemExit)):raise
                 raise ValueError('backup_generation_failed') from None
             finally:
-                try:self._remove_owned(self.scratch,identifier)
+                try:
+                    if work.exists():self._remove_owned(self.scratch,identifier)
                 except BaseException:
                     with self._db() as db:db.execute("update attempts set status='failed',phase='cleanup' where id=?",(identifier,))
                     raise ValueError('backup_cleanup_failed') from None
