@@ -386,6 +386,7 @@ class DerivedCorporateDecisionFacts:
     shareholders: tuple[PersistedShareholderFacts, ...]
     annual_basis: ApprovedAnnualBasis
     reviewed_facts: ReviewedOwnerDividendFacts
+    source_hash: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -704,6 +704,7 @@ class CorporateGovernanceService:
             tuple(shareholders),
             basis,
             reviewed,
+            _basis_source_hash(basis),
         )
 
     def source_hash(self, source: CorporateReadinessSource) -> str:

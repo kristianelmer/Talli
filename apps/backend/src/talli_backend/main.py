@@ -3963,6 +3963,7 @@ class CorporateDecisionFactsWire(StrictTransportModel):
     shareholders: list[CorporateShareholderWire]
     annual_basis: CorporateAnnualBasisWire
     reviewed_facts: CorporateReviewedFactsWire
+    source_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class CorporateBoardMeetingWire(StrictTransportModel):
@@ -7690,6 +7691,7 @@ def create_app(
         value: DerivedCorporateDecisionFacts,
     ) -> CorporateDecisionFactsWire:
         return CorporateDecisionFactsWire(
+            source_hash=value.source_hash,
             company=CorporateCompanyFactsWire(
                 organization_number=value.company.organization_number,
                 legal_name=value.company.legal_name,

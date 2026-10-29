@@ -33,6 +33,7 @@ test("decision-facts transport sends only identity and accepts the generated res
     fetch: async (url, request) => {
       captured.push({ url: String(url), request });
       return Response.json({
+        sourceHash: sha,
         company: { organizationNumber: "310279617", legalName: "Talli AS" },
         shareholders: [{ shareholderId: "owner-1", name: "Owner", shareCount: 100, order: 0 }],
         annualBasis: {
@@ -66,6 +67,7 @@ test("decision-facts transport sends only identity and accepts the generated res
   });
 
   assert.equal(result.annualBasis.incomeYear, 2024);
+  assert.equal(result.sourceHash, sha);
   assert.equal(
     captured[0].url,
     `https://backend.example/api/v1/corporate-governance/decision-facts?companyId=${companyId}&incomeYear=2025&decisionKind=owner_dividend`,

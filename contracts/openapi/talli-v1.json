@@ -12081,13 +12081,19 @@
             },
             "title": "Shareholders",
             "type": "array"
+          },
+          "sourceHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sourcehash",
+            "type": "string"
           }
         },
         "required": [
           "company",
           "shareholders",
           "annualBasis",
-          "reviewedFacts"
+          "reviewedFacts",
+          "sourceHash"
         ],
         "title": "CorporateDecisionFactsWire",
         "type": "object"
