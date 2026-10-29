@@ -849,6 +849,12 @@
       "mode": "injected bounded HTTPS public-registry adapter"
     },
     {
+      "port": "CompanyRegistryGateway",
+      "adapter": "talli_backend.adapters.preview_synthetic_company_registry.PreviewSyntheticCompanyRegistryAdapter",
+      "owner": "backend-system",
+      "mode": "opt-in designated private Preview synthetic fixture; ordinary orgs retain Brreg"
+    },
+    {
       "port": "LedgerPersistence",
       "adapter": "talli_backend.adapters.supabase_ledger.SupabaseLedgerSession",
       "owner": "backend-system",
@@ -1310,6 +1316,7 @@
       "talli_backend.adapters.annual_billing_runtime",
       "talli_backend.adapters.authority_callback_transport",
       "talli_backend.adapters.brreg_company_registry",
+    "talli_backend.adapters.preview_synthetic_company_registry",
       "talli_backend.adapters.postgres_authority_connections",
       "talli_backend.adapters.postgres_company_tax_filing",
       "talli_backend.adapters.postgres_launch_signoffs",

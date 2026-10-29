@@ -805,7 +805,7 @@ class CompanyRegistryIdentity(CompanyAccessCommandModel):
     postal_code: str
     city: str
     status_text: str
-    source: Literal["brreg"]
+    source: Literal["brreg", "browser_test"]
 
 
 class CompanyYearAdmissionGatewayCommand(CompanyAccessCommandModel):
@@ -2033,6 +2033,11 @@ class CompanyAccessService:
         replay = await self._gateway.company_year_admission_replay(
             access_token, str(command.operation_id)
         )
+        if replay is not None and replay.get("registry_source") == "browser_test":
+            # Re-enter the guarded writer so current fixture identity and ownership
+            # are checked before SQL returns an existing synthetic receipt.
+            _require_fresh_mfa(access_token)
+            replay = None
         if replay is not None:
             replay_answers = replay.get("answers")
             if (
@@ -2097,6 +2102,8 @@ class CompanyAccessService:
             raise _company_access_unavailable()
         raw_company = await self._company_registry.lookup_company(command.org_number)
         company = _registry_identity(raw_company, expected_org_number=command.org_number)
+        if company.source == "browser_test":
+            _require_fresh_mfa(access_token)
         eligibility = self._evaluate_definitive(company, definitive_command)
         if eligibility.decision != "supported" or eligibility.company_year_promise is None:
             raise CompanyAccessError(
@@ -2161,6 +2168,8 @@ class CompanyAccessService:
         )
         if raw_context is None:
             raise _company_access_not_found()
+        if raw_context.get("registry_source") == "browser_test":
+            _require_fresh_mfa(access_token)
         try:
             context_admission_id = UUID(str(raw_context["company_year_admission_id"]))
             company_id = UUID(str(raw_context["company_id"]))
@@ -2296,6 +2305,8 @@ class CompanyAccessService:
             capability_manifest_sha256=manifest_sha256,
             answers=cast(dict[str, EligibilityAnswer], effective_answers),
         )
+        if company.source == "browser_test":
+            _require_fresh_mfa(access_token)
         eligibility = self._evaluate_definitive(company, definitive_command)
         outcomes = _manifest_mapping("outcomes", accounting_year=accounting_year)
         if eligibility.decision == "supported":

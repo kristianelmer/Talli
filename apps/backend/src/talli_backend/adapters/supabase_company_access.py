@@ -526,6 +526,7 @@ class SupabaseCompanyAccessAdapter:
                 as capability_manifest_sha256,
               x.customer_org_number as org_number,
               e.public_facts_sha256,
+              e.public_facts ->> 'source' as registry_source,
               e.answers,
               x.business_terms_version, x.business_terms_sha256,
               x.dpa_version, x.dpa_sha256,
@@ -553,7 +554,7 @@ class SupabaseCompanyAccessAdapter:
             access_token,
             """
             select a.id as company_year_admission_id, a.company_id,
-              a.accounting_year, c.org_number,
+              a.accounting_year, c.org_number, c.source as registry_source,
               a.capability_manifest_version as accepted_capability_manifest_version,
               a.capability_manifest_sha256 as accepted_capability_manifest_sha256,
               a.company_year_promise as accepted_company_year_promise,
@@ -605,6 +606,12 @@ class SupabaseCompanyAccessAdapter:
               limit 1
             ) replay on true
             where a.id = %s::uuid
+              and (c.source is distinct from 'browser_test' or (
+                c.created_by = public.company_access_auth_uid_v1()
+                and c.identity_confirmed_at is not null
+                and c.identity_locked_at is not null
+                and public.company_access_is_accepted_owner_v1(a.company_id)
+              ))
             """,
             (operation_id, company_year_admission_id),
         )

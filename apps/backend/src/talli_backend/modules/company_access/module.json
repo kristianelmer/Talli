@@ -12,7 +12,7 @@
     "queries": ["authorize_company_disposition", "authorize_local_documents_disposition", "CompanyArchiveDownloadAuthorization", "CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "CompanyYearLegalEvidence", "CompanyYearPurchaseBasis", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["AuthorizedCompanyDisposition", "AuthorizedLocalDocumentsDisposition", "LocalDocumentsFacts", "DispositionAuthorizationFacts", "DispositionExport", "DispositionRecord", "DispositionSession", "CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
+    "identifiers": ["AuthorizedCompanyDisposition", "AuthorizedLocalDocumentsDisposition", "LocalDocumentsFacts", "DispositionAuthorizationFacts", "DispositionExport", "DispositionRecord", "DispositionSession", "CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyRegistryIdentity", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
@@ -34,7 +34,7 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.company_access.public.CompanyRegistryGateway",
       "registrationDecorator": "talli_backend.modules.company_access.public.company_registry_adapter",
-      "adapters": ["talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter"]
+      "adapters": ["talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter", "talli_backend.adapters.preview_synthetic_company_registry.PreviewSyntheticCompanyRegistryAdapter"]
     }
   ],
   "dependencies": [],

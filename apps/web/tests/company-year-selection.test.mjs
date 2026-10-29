@@ -67,7 +67,7 @@ test("public precheck and interview actions forward the selected year instead of
     const calls=[];
     const value=continuation(year);
     const result={decision:"supported",provisional:false,accountingYear:year,
-      publicFacts:{orgNumber:value.orgNumber,name:value.companyName},
+      publicFacts:{orgNumber:value.orgNumber,name:value.companyName,source:"brreg"},
       publicFactsSha256:value.publicFactsSha256,capabilityManifestVersion:value.capabilityManifestVersion,
       capabilityManifestSha256:value.capabilityManifestSha256,answers:value.answers,answersSha256:value.answersSha256,
       companyYearPromise:{reconstructionRequiredFrom:value.reconstructFrom,onlyAccountingAndFilingProduct:true,
@@ -336,5 +336,90 @@ test("real setup and bank actions retain company/year on success, preview and un
       assert.equal(calls[0].companyId, companyId);
       assert.equal(calls[0].incomeYear, year);
     }
+  }
+});
+
+
+test("synthetic registry provenance survives the private continuation and cannot become an unknown source", async () => {
+  const harness = continuationHarness();
+  const value = continuation(2025);
+  const result = {
+    decision: "supported", provisional: false, accountingYear: 2025,
+    publicFacts: { orgNumber: value.orgNumber, name: value.companyName, source: "browser_test" },
+    publicFactsSha256: value.publicFactsSha256, capabilityManifestVersion: value.capabilityManifestVersion,
+    capabilityManifestSha256: value.capabilityManifestSha256, answers: value.answers, answersSha256: value.answersSha256,
+    companyYearPromise: { reconstructionRequiredFrom: value.reconstructFrom, onlyAccountingAndFilingProduct: true, customerClaims: value.customerClaims },
+  };
+  const next = harness.module.eligibilityContinuationFromResult(result);
+  assert.equal(next.registrySource, "browser_test");
+  await harness.module.setEligibilityContinuation(next);
+  assert.equal((await harness.module.readEligibilityContinuation()).registrySource, "browser_test");
+  harness.raw(JSON.stringify({ ...value, registrySource: "unverified-new-source" }));
+  assert.equal(await harness.module.readEligibilityContinuation(), null);
+  assert.equal(harness.module.eligibilityContinuationFromResult({ ...result, publicFacts: { ...result.publicFacts, source: "unverified-new-source" } }), null);
+});
+
+test("the rendered synthetic check is labelled and offers the existing account without acquisition events", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  for (const source of ["browser_test", "brreg"]) {
+    const events = [];
+    const buttons = [];
+    const result = {
+      decision: "supported", provisional: false, accountingYear: 2025,
+      publicFacts: { name: "Synthetic private Preview UI-fixture", orgNumber: "992803750", entityType: "AS", statusText: "aktiv", source },
+      companyYearPromise: { startsOn: "2025-01-01" },
+    };
+    const definitive = () => {};
+    const module = compile("sjekk-selskapet/EligibilityChecker.tsx", {
+      react: { ...React, useRef: () => ({ current: null }), useEffect() {},
+        useActionState: action => [action === definitive ? { result } : {}, () => {}, false] },
+      "next/link": { __esModule: true, default: props => React.createElement("a", { href: props.href }, props.children) },
+      "../../features/public-acquisition/MarketingEvent": { MarketingEvent: props => React.createElement("i", { "data-acquisition": props.event }) },
+      "../../features/public-acquisition/measurement-client": { queueMarketingMeasurementEvent: event => events.push(event) },
+      "../components/ui": { LinkButton: props => { buttons.push(props); return React.createElement("a", { href: props.href }, props.children); } },
+      "./actions": { definitiveEligibilityAction: definitive, precheckEligibilityAction() {} },
+      "./eligibility.module.css": { default: {} },
+    });
+    const html = renderToStaticMarkup(React.createElement(module.EligibilityChecker));
+    if (source === "browser_test") {
+      assert.match(html, /Syntetiske selskapsopplysninger/u);
+      assert.match(html, /Syntetisk testdata/u);
+      assert.match(html, /Fortsett med testselskapet/u);
+      assert.doesNotMatch(html, /data-acquisition|\/signup/u);
+      assert.equal(buttons[0].href, "/onboarding");
+    } else {
+      assert.match(html, /data-acquisition="definitive_eligible"/u);
+      assert.match(html, /Opprett konto og godta/u);
+      assert.equal(buttons[0].href, "/signup?next=%2Fonboarding");
+    }
+    buttons[0].onClick();
+    assert.deepEqual(events, source === "browser_test" ? [] : ["signup_start"]);
+  }
+});
+
+test("the actual acceptance form preserves a clear synthetic warning and fresh-MFA route", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const agreement = { version: "2026-08-30", contentSha256: "a".repeat(64) };
+  const module = compile("(owner)/onboarding/CompanyYearAdmissionForm.tsx", {
+    "next/link": { __esModule: true, default: props => React.createElement("a", { href: props.href }, props.children) },
+    "../../lib/customer-agreements": { currentCustomerAgreements: { businessTerms: agreement, dpa: agreement }, currentPrivacyNotice: agreement },
+    "../../components/ui": {
+      Banner: props => React.createElement("aside", {}, props.title, props.children),
+      SubmitButton: props => React.createElement("button", {}, props.children),
+    },
+    "./actions": { admitCompanyYear() {} },
+  });
+  for (const source of ["browser_test", "brreg", undefined]) {
+    const html = renderToStaticMarkup(React.createElement(module.CompanyYearAdmissionForm, {
+      continuation: { ...continuation(2025), registrySource: source },
+    }));
+    assert.match(html, /name="companyYearPromiseAccepted"/u);
+    if (source === "browser_test") {
+      assert.match(html, /Privat test av selskapsåret/u);
+      assert.match(html, /ikke kontrollert i Enhetsregisteret/u);
+      assert.match(html, /\/mfa\?fresh=1&amp;next=%2Fonboarding/u);
+    } else assert.doesNotMatch(html, /syntetisk testdata|\/mfa\?fresh=1/u);
   }
 });

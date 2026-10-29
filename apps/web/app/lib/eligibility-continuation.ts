@@ -12,6 +12,7 @@ export type EligibilityContinuation = {
   companyName: string;
   accountingYear: number;
   publicFactsSha256: string;
+  registrySource?: "brreg" | "browser_test";
   capabilityManifestVersion: string;
   capabilityManifestSha256: string;
   answers: Record<string, EligibilityAnswer>;
@@ -42,13 +43,14 @@ function parseEligibilityContinuation(value: string): EligibilityContinuation | 
   if (typeof parsed !== "object" || parsed === null) return null;
   const candidate = parsed as Record<string, unknown>;
   if (
-    Object.keys(candidate).sort().join(",")
+    Object.keys(candidate).filter((key) => key !== "registrySource").sort().join(",")
       !== "accountingYear,answers,answersSha256,capabilityManifestSha256,capabilityManifestVersion,companyName,customerClaims,onlyAccountingAndFilingProduct,orgNumber,publicFactsSha256,reconstructFrom"
     || typeof candidate.orgNumber !== "string"
     || !/^\d{9}$/u.test(candidate.orgNumber)
     || typeof candidate.companyName !== "string"
     || !candidate.companyName
     || (candidate.accountingYear !== 2025 && candidate.accountingYear !== 2026)
+    || (candidate.registrySource !== undefined && candidate.registrySource !== "brreg" && candidate.registrySource !== "browser_test")
     || !isSha256(candidate.publicFactsSha256)
     || candidate.capabilityManifestVersion !== `${candidate.accountingYear}.1`
     || !isSha256(candidate.capabilityManifestSha256)
@@ -71,7 +73,8 @@ export function eligibilityContinuationFromResult(
   result: EligibilityDecisionResponse,
 ): EligibilityContinuation | null {
   if (
-    result.provisional
+    !["brreg", "browser_test"].includes(result.publicFacts.source)
+    || result.provisional
     || result.decision !== "supported"
     || result.answersSha256 === null
     || result.companyYearPromise === null
@@ -83,6 +86,7 @@ export function eligibilityContinuationFromResult(
     companyName: result.publicFacts.name,
     accountingYear: result.accountingYear,
     publicFactsSha256: result.publicFactsSha256,
+    registrySource: result.publicFacts.source === "browser_test" ? "browser_test" : "brreg",
     capabilityManifestVersion: result.capabilityManifestVersion,
     capabilityManifestSha256: result.capabilityManifestSha256,
     answers: result.answers,
