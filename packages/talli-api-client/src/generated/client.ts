@@ -3668,7 +3668,7 @@ export interface CompanyTaxDeliveryWorkspaceWire {
   preparationAvailable: boolean;
   rows: CompanyTaxDeliveryWorkspaceRowWire[];
   sourceSha256: string;
-  technicalMode: "finite_loopback" | "unavailable";
+  technicalMode: "finite_loopback" | "unavailable" | "private_preview_preparation";
   version: "company-tax-delivery-workspace-v1";
 }
 
@@ -10180,7 +10180,7 @@ function isCompanyTaxDeliveryWorkspaceWire(value: unknown): value is CompanyTaxD
     typeof value.preparationAvailable === "boolean" &&
     Array.isArray(value.rows) && value.rows.every((item) => isCompanyTaxDeliveryWorkspaceRowWire(item)) &&
     (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceSha256)) &&
-    (value.technicalMode === "finite_loopback" || value.technicalMode === "unavailable") &&
+    (value.technicalMode === "finite_loopback" || value.technicalMode === "unavailable" || value.technicalMode === "private_preview_preparation") &&
     value.version === "company-tax-delivery-workspace-v1"
   );
 }
@@ -14296,12 +14296,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
-    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
+    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions & {includePreparationContext?: boolean} = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
       const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      if (request.includePreparationContext) query.set("includePreparationContext","true");
       const result=await executeJson(`${baseUrl}/api/v1/company-tax/delivery-workspace?${query}`,"GET",request,undefined,isCompanyTaxDeliveryWorkspaceWire);
       if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
           || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(original=>original.key)).size!==row.originals.length)
-          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))) throw new TalliApiError(502,undefined);
+          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))
+          || result.technicalMode==="private_preview_preparation" && result.rows.some(row=>row.actions.length)) throw new TalliApiError(502,undefined);
       return result;
     },
 

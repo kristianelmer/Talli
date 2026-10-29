@@ -152,3 +152,34 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
     assert.ok(check(source, duplicateWriter).length >= operations.length);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test("#232 admits only the explicit attachment answer while freezing annual writes and audit", async () => {
+  const {execFileSync}=await import("node:child_process");
+  const {validateCompatibilityRegistry}=await import("../scripts/check-architecture.mjs");
+  const baseline=JSON.parse(readFileSync(join(root,"architecture/compatibility-baseline.json"),"utf8"));
+  const original=readFileSync(join(root,"apps/web/app/actions.ts"),"utf8");
+  const cache=new Map();
+  const sourceAtRevision=path=>{
+    if(!cache.has(path)){
+      try{cache.set(path,execFileSync("git",["show",`${baseline.sourceRevision}:${path}`],{cwd:root,encoding:"utf8",stdio:["ignore","pipe","ignore"]}));}
+      catch{cache.set(path,undefined);}
+    }
+    return cache.get(path);
+  };
+  const start=original.indexOf("export async function saveYearEndInterview(");
+  const end=original.indexOf("\nexport async function ",start+1),body=original.slice(start,end);
+  const check=candidate=>validateCompatibilityRegistry(join(root,"architecture/compatibility.json"),{
+    baselinePath:join(root,"architecture/compatibility-baseline.json"),sourceAtRevision,
+    currentSource:path=>path==="apps/web/app/actions.ts"?candidate:readFileSync(join(root,path),"utf8"),
+  }).filter(error=>error.includes("operation:saveYearEndInterview"));
+  assert.deepEqual(check(original),[]);
+  for(const mutation of [
+    body.replace('taxAttachmentAnswer(formData.get("companyTaxAdditionalAttachments"))','"none"'),
+    body.replace('await supabase.from("annual_data").upsert(', 'await supabase.from("other_data").upsert('),
+    body.replace('await supabase.from("audit_events").insert(', 'await supabase.from("other_audit").insert('),
+    body.replace('  revalidatePath("/");','  await unexpectedBusinessOperation(); revalidatePath("/");'),
+  ]){
+    assert.notEqual(mutation,body);
+    assert.ok(check(original.slice(0,start)+mutation+original.slice(end)).length>0);
+  }
+});

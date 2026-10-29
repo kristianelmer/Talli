@@ -93,7 +93,8 @@ export async function TaxDeliveryPanel({companyId,incomeYear}: {companyId: strin
   return <div className={styles.panel} data-tax-delivery="workspace">
     <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av skattemeldingen</h2></div>
       <div className="filingStepBody">
-        {workspace.technicalMode==="finite_loopback" ? <Banner variant="info">Prøveløp. Leveringen behandles i et avgrenset testmiljø.</Banner> :
+        {workspace.technicalMode==="private_preview_preparation" ? <Banner variant="info">Privat testutkast for det syntetiske selskapet. Referansen er syntetisk, og er ikke hentet fra Skatteetaten. Dokumentene lagres for kontroll; ingenting sendes inn.</Banner> :
+          workspace.technicalMode==="finite_loopback" ? <Banner variant="info">Prøveløp. Leveringen behandles i et avgrenset testmiljø.</Banner> :
           <p className="cardNote">Videre levering er ikke tilgjengelig nå. Lagrede dokumenter kan fortsatt leses.</p>}
         {workspace.preparationAvailable ? <form action={taxDeliveryOwnerAction}>
           <HiddenScope workspace={workspace} action="prepare"/><input type="hidden" name="candidateId" value={randomUUID()}/>
@@ -128,7 +129,8 @@ export async function TaxDeliveryPanel({companyId,incomeYear}: {companyId: strin
         </form>)}</div>
         <details><summary>Originale dokumenter og svar ({row.originals.length})</summary><ul className={styles.originals}>
           {row.originals.map(original=><li key={original.key}><a href={originalHref(workspace,row,original.key)}>
-            {originals[original.purpose] ?? original.purpose} · {original.sha256.slice(0,8)}</a></li>)}
+            {workspace.technicalMode==="private_preview_preparation" && original.purpose==="current"
+              ? "Syntetisk referanse for testutkastet" : originals[original.purpose] ?? original.purpose} · {original.sha256.slice(0,8)}</a></li>)}
         </ul></details>
       </div>
     </section>)}

@@ -18,12 +18,21 @@ from talli_backend.modules.company_tax_filing.public import (
 
 
 class CompanyTaxDeliveryPreparation:
+    preparation_only = False
+
     def __init__(self, current: CompanyTaxCurrentDocumentReader | None, schemas: TaxDeliverySchemaValidator,
             *,intake: CompanyTaxCurrentDocumentIntake | None=None,parent_reader: CompanyTaxTerminalParentReader | None=None,now=None):
         if (current is None)==(intake is None):raise ValueError('Tax preparation needs exactly one current-document reader.')
         self._current, self._schemas = current, schemas
         self._intake=intake;self._parent_reader=parent_reader
         self._now=now or (lambda:Timestamp(datetime.now(UTC)))
+
+    async def authorize(self, session, query):
+        """Additional composition admission; owning SQL still checks owner/MFA."""
+
+    async def _lock(self, session, transaction, query):
+        await transaction.lock_delivery_draft_archive(query)
+        await self.authorize(session, query)
 
     def workspace_admission(self,session,source,parent=None) -> bool:
         target=getattr(session,'delivery_rehearsal_target',None)
@@ -38,6 +47,7 @@ class CompanyTaxDeliveryPreparation:
         if command.actor_id != session.actor_id:
             raise CompanyTaxError.forbidden()
         query = CompanyTaxSourceQuery(command.company_id,command.income_year,command.actor_id)
+        await self.authorize(session, query)
         # Read committed, authorized replay precedes any authority GET or source
         # regeneration. A lost response returns the exact original artifact.
         async with session.transaction() as transaction:
@@ -45,7 +55,7 @@ class CompanyTaxDeliveryPreparation:
             if stored is None:
                 # The canonical original-read guard also protects current Tax
                 # intake. It grants no Billing entitlement or filing permission.
-                await transaction.lock_delivery_draft_archive(query)
+                await self._lock(session, transaction, query)
         if stored is not None:
             return _replayed(stored,command)
         async with session.transaction(snapshot=True) as transaction:
@@ -54,7 +64,7 @@ class CompanyTaxDeliveryPreparation:
         # after it closes, immediately before the external read, with no SQL
         # transaction carried into provider I/O.
         async with session.transaction() as transaction:
-            await transaction.lock_delivery_draft_archive(query)
+            await self._lock(session, transaction, query)
             stored = await transaction.delivery_draft_by_key(query,command.command_key)
         if stored is not None:
             return _replayed(stored,command)
@@ -85,7 +95,7 @@ class CompanyTaxDeliveryPreparation:
         except (ValueError,TypeError,OverflowError):
             raise CompanyTaxError.invalid_input() from None
         async with session.transaction() as transaction:
-            await transaction.lock_delivery_draft_archive(query)
+            await self._lock(session, transaction, query)
             # A concurrent command may have won while both requests performed
             # GET. Its exact receipt wins over a new observation timestamp.
             stored = await transaction.delivery_draft_by_key(query,command.command_key)
@@ -106,7 +116,7 @@ class CompanyTaxDeliveryPreparation:
             if correction is not None:
                 try:correction.assert_current(self._now())
                 except ValueError:raise CompanyTaxError.unavailable() from None
-            await transaction.lock_delivery_draft_archive(query)
+            await self._lock(session, transaction, query)
             stored = await transaction.store_delivery_draft(draft)
             if stored.draft != draft:
                 raise CompanyTaxError.unavailable()

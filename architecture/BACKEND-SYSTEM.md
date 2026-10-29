@@ -1515,3 +1515,13 @@ and opens no payment, release or live-provider gate. See #228.
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.adapters.preview_synthetic_company_registry"],"adapterBindings":["CompanyRegistryGateway=>talli_backend.adapters.preview_synthetic_company_registry.PreviewSyntheticCompanyRegistryAdapter"],"adapterBindingOwners":["CompanyRegistryGateway=>backend-system"],"adapterBindingModes":["CompanyRegistryGateway=>opt-in designated private Preview synthetic fixture; ordinary orgs retain Brreg"]}
 -->
+
+### Finite synthetic Tax preparation (#232)
+
+`talli_backend.adapters.preview_synthetic_tax.SyntheticPreviewCurrentDocument` supplies explicitly synthetic current-reference bytes only in the designated protected Preview, for the existing fixture owner and 2025 admission. Its finite configuration expires within 24 hours; the application rechecks CompanyAccess eligibility and the owning SQL owner/MFA guard before storing exact drafts. No submission ports are attached. The opt-in workspace context and stored reference preserve synthetic provenance; old clients retain their original response mode.
+
+The year-end form collects the explicit extra-attachments answer, defaulting to unknown. The frozen annual-data writer remains unchanged except for this exact answer enrichment, checked by normalization in the architecture validator.
+
+<!-- architecture-inventory
+{"transportDependencies": ["talli_backend.adapters.preview_synthetic_tax"], "adapterBindings": ["CompanyTaxCurrentDocumentReader=>talli_backend.adapters.preview_synthetic_tax.SyntheticPreviewCurrentDocument"], "adapterBindingOwners": ["CompanyTaxCurrentDocumentReader=>backend-system"], "adapterBindingModes": ["CompanyTaxCurrentDocumentReader=>Finite designated private Preview only. Explicit synthetic reference bytes for owner-source draft preparation; no authority observations, submission, provider activation or release permission."]}
+-->

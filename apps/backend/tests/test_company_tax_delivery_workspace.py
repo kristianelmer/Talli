@@ -148,6 +148,40 @@ def test_later_known_clean_receipt_updates_workspace_without_replacing_submissio
     asyncio.run(exercise())
 
 
+def test_private_preparation_opt_in_preserves_old_wire_and_expired_original_reads(workspace_workflow,monkeypatch):
+    from fastapi.testclient import TestClient
+    from talli_backend.main import create_app
+    from talli_backend.application import company_tax_delivery_source
+    session=workspace_workflow[0]
+    admitted=[True]
+    class Preparation:
+        preparation_only=True
+        async def authorize(self,*_):
+            if not admitted[0]:raise CompanyTaxError.forbidden()
+        def workspace_admission(self,*_,**__):return admitted[0]
+    async def source(*args,**kwargs):return session.source
+    monkeypatch.setattr(company_tax_delivery_source,'read_company_tax_delivery_source',source)
+    class Factory:
+        async def session(self,token):return session
+    client=TestClient(create_app(company_tax_session_factory=Factory(),company_tax_delivery_preparation=Preparation()))
+    params={'companyId':str(session.source.company_id),'incomeYear':2025}
+    headers={'Authorization':'Bearer synthetic-unit-bearer'}
+    path='/api/v1/company-tax/delivery-workspace'
+    old=client.get(path,params=params,headers=headers)
+    assert old.status_code==200,old.text
+    assert old.json()['technicalMode']=='unavailable' and not old.json()['preparationAvailable']
+    new=client.get(path,params=params|{'includePreparationContext':'true'},headers=headers).json()
+    assert new['technicalMode']=='private_preview_preparation' and new['preparationAvailable']
+    assert all(not row['actions'] for row in new['rows'])
+    admitted[0]=False
+    expired=client.get(path,params=params|{'includePreparationContext':'true'},headers=headers).json()
+    assert not expired['preparationAvailable'] and expired['rows']==new['rows']
+    row=expired['rows'][0];original=row['originals'][0]
+    result=client.get('/api/v1/company-tax/delivery-original',params=params|{
+        'filingId':row['filingId'],'key':original['key']},headers=headers)
+    assert result.status_code==200 and result.json()['sha256']==original['sha256']
+
+
 @pytest.mark.parametrize('with_documents',[False,True,'partial'])
 def test_blocked_validation_preserves_all_review_findings_without_opening_confirmation(workspace_workflow,with_documents):
     from test_company_tax_delivery_validation_workflow import uploaded

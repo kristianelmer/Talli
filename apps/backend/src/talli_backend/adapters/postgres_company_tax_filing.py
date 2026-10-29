@@ -636,6 +636,7 @@ class PostgresCompanyTaxTransaction:
 
 def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None,
                                    *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                                   preparation_factory=None,
                                    submission: CompanyTaxDeliverySubmission | None = None) -> CompanyTaxApplication:
     return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService,
-                                 preparation=preparation,submission=submission)
+                                 preparation=preparation,preparation_factory=preparation_factory,submission=submission)

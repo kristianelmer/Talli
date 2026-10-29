@@ -23,11 +23,24 @@ const row={filingId,parentFilingId:null,recordedAt:'2026-10-26T12:00:00Z',draftS
 const workspace={version:'company-tax-delivery-workspace-v1',companyId,incomeYear:2025,sourceSha256:'c'.repeat(64),observedAt:row.recordedAt,
   technicalMode:'unavailable',preparationAvailable:false,rows:[row]};
 
+test('private preparation context is explicit and new clients also accept an older backend',async()=>{
+  const urls=[];
+  for(const value of [workspace,{...workspace,technicalMode:'private_preview_preparation',preparationAvailable:true}]){
+    const client=createTalliApiClient({baseUrl:'https://backend.example',fetch:async url=>{urls.push(String(url));return Response.json(value);}});
+    assert.deepEqual(await client.companyTaxGetDeliveryWorkspace(companyId,2025,{includePreparationContext:true}),value);
+    assert.equal(new URL(urls.at(-1)).searchParams.get('includePreparationContext'),'true');
+  }
+  const client=createTalliApiClient({baseUrl:'https://backend.example',fetch:async url=>{urls.push(String(url));return Response.json(workspace);}});
+  await client.companyTaxGetDeliveryWorkspace(companyId,2025);
+  assert.equal(new URL(urls.at(-1)).searchParams.has('includePreparationContext'),false);
+});
+
 test('workspace rejects foreign scope, duplicate identities/actions, unknown state and unavailable authority claims',async()=>{
   assert.deepEqual(await api(workspace).companyTaxGetDeliveryWorkspace(companyId,2025),workspace);
   for(const change of [{companyId:filingId},{incomeYear:2024},{rows:[row,row]},{preparationAvailable:true},
     {rows:[{...row,state:'accepted'}]},{rows:[{...row,actions:['create']}]},
     {technicalMode:'finite_loopback',rows:[{...row,actions:['create','create']}]},
+    {technicalMode:'private_preview_preparation',rows:[{...row,actions:['approve']}]},
     {rows:[{...row,originals:[original,original]}]}]){
     await rejected(api({...workspace,...change}).companyTaxGetDeliveryWorkspace(companyId,2025));
   }

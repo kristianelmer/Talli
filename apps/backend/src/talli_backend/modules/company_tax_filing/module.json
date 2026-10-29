@@ -330,7 +330,8 @@
       "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxCurrentDocumentReader",
       "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
       "adapters": [
-        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
+        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
+        "talli_backend.adapters.preview_synthetic_tax.SyntheticPreviewCurrentDocument"
       ]
     },
     {

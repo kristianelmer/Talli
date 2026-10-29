@@ -39,7 +39,7 @@ import {
 import { validateAuthorityObligation } from "./lib/authority-permission";
 
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
-import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
+import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys, taxAttachmentAnswer } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
   validateSignedCorporateArtifactUpload,
@@ -4523,9 +4523,12 @@ export async function saveYearEndInterview(formData: FormData) {
   if (!Number.isFinite(annualFullTimeEquivalents) || annualFullTimeEquivalents < 0) {
     redirect("/workspace?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
   }
-  const answers = buildYearEndInterviewAnswers(
-    Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
-  );
+  const answers = {
+    ...buildYearEndInterviewAnswers(
+      Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
+    ),
+    company_tax_additional_attachments: taxAttachmentAnswer(formData.get("companyTaxAdditionalAttachments")),
+  };
   const confirmations = annualConfirmations(answers);
   const noActivity = noActivityConfirmed(answers);
 

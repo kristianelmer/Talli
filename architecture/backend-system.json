@@ -1291,6 +1291,12 @@
       "adapter": "talli_backend.adapters.annual_accounts_schemas.DeferredAnnualAccountsSchemas",
       "owner": "backend-system",
       "mode": "Deferred exact pinned Accounts validation; archive composition/listing/download survives unavailable resources while mutation/frame validation remains closed."
+    },
+    {
+      "port": "CompanyTaxCurrentDocumentReader",
+      "adapter": "talli_backend.adapters.preview_synthetic_tax.SyntheticPreviewCurrentDocument",
+      "owner": "backend-system",
+      "mode": "Finite designated private Preview only. Explicit synthetic reference bytes for owner-source draft preparation; no authority observations, submission, provider activation or release permission."
     }
   ],
   "allowedDependencies": {
@@ -1316,7 +1322,7 @@
       "talli_backend.adapters.annual_billing_runtime",
       "talli_backend.adapters.authority_callback_transport",
       "talli_backend.adapters.brreg_company_registry",
-    "talli_backend.adapters.preview_synthetic_company_registry",
+      "talli_backend.adapters.preview_synthetic_company_registry",
       "talli_backend.adapters.postgres_authority_connections",
       "talli_backend.adapters.postgres_company_tax_filing",
       "talli_backend.adapters.postgres_launch_signoffs",
@@ -1387,7 +1393,8 @@
       "talli_backend.adapters.annual_accounts_schemas",
       "talli_backend.application.annual_accounts_delivery_preparation",
       "talli_backend.application.annual_accounts_delivery_workflow",
-      "talli_backend.adapters.restore_quarantine"
+      "talli_backend.adapters.restore_quarantine",
+      "talli_backend.adapters.preview_synthetic_tax"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

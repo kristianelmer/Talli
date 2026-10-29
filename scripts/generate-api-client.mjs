@@ -3192,12 +3192,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
-    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
+    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions & {includePreparationContext?: boolean} = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
       const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      if (request.includePreparationContext) query.set("includePreparationContext","true");
       const result=await executeJson(\`\${baseUrl}/api/v1/company-tax/delivery-workspace?\${query}\`,"GET",request,undefined,isCompanyTaxDeliveryWorkspaceWire);
       if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
           || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(original=>original.key)).size!==row.originals.length)
-          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))) throw new TalliApiError(502,undefined);
+          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))
+          || result.technicalMode==="private_preview_preparation" && result.rows.some(row=>row.actions.length)) throw new TalliApiError(502,undefined);
       return result;
     },
 
