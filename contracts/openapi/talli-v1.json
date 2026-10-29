@@ -12083,17 +12083,23 @@
             "type": "array"
           },
           "sourceHash": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Sourcehash",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcehash"
           }
         },
         "required": [
           "company",
           "shareholders",
           "annualBasis",
-          "reviewedFacts",
-          "sourceHash"
+          "reviewedFacts"
         ],
         "title": "CorporateDecisionFactsWire",
         "type": "object"
@@ -88332,6 +88338,16 @@
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/CorporateDecisionKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeSourceIdentity",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includesourceidentity",
+              "type": "boolean"
             }
           }
         ],

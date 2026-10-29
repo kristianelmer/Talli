@@ -1885,7 +1885,7 @@ export interface CorporateDecisionFactsWire {
   company: CorporateCompanyFactsWire;
   reviewedFacts: CorporateReviewedFactsWire;
   shareholders: CorporateShareholderWire[];
-  sourceHash: string;
+  sourceHash?: string | null;
 }
 
 export interface CorporateDecisionRecordWire {
@@ -7667,7 +7667,7 @@ function isCorporateDecisionFactsWire(value: unknown): value is CorporateDecisio
     isCorporateCompanyFactsWire(value.company) &&
     isCorporateReviewedFactsWire(value.reviewedFacts) &&
     Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateShareholderWire(item)) &&
-    (typeof value.sourceHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceHash))
+    (value.sourceHash === undefined || ((typeof value.sourceHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.sourceHash)) || value.sourceHash === null))
   );
 }
 
@@ -12460,6 +12460,7 @@ export interface CorporateGovernanceDecisionFactsRequest extends TalliRequestOpt
   companyId: string;
   incomeYear: number;
   decisionKind: CorporateDecisionKind;
+  includeSourceIdentity?: boolean;
 }
 
 export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
@@ -13235,6 +13236,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         incomeYear: String(request.incomeYear),
         decisionKind: request.decisionKind,
       });
+      if (request.includeSourceIdentity) query.set("includeSourceIdentity", "true");
       return executeJson(
         `${baseUrl}/api/v1/corporate-governance/decision-facts?${query}`,
         "GET",

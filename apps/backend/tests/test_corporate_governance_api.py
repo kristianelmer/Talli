@@ -395,6 +395,7 @@ def test_decision_facts_are_derived_from_backend_sources() -> None:
     }
     assert response.json()["annualBasis"]["incomeYear"] == 2024
     assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
+    assert set(response.json()) == {"company", "shareholders", "annualBasis", "reviewedFacts"}
     assert [call[0] for call in transaction.calls] == [
         "actor_role",
         "read_company_facts",
@@ -421,7 +422,7 @@ def test_first_annual_close_facts_supply_the_proposed_source_identity() -> None:
     facts = client.get(
         "/api/v1/corporate-governance/decision-facts",
         headers={"Authorization": "Bearer access-token"},
-        params=scope,
+        params={**scope, "includeSourceIdentity": "true"},
     )
     assert facts.status_code == 200, facts.text
     payload = annual_close_payload()
