@@ -12081,6 +12081,18 @@
             },
             "title": "Shareholders",
             "type": "array"
+          },
+          "sourceHash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcehash"
           }
         },
         "required": [
@@ -88326,6 +88338,16 @@
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/CorporateDecisionKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeSourceIdentity",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includesourceidentity",
+              "type": "boolean"
             }
           }
         ],

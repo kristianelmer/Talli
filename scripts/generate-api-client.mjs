@@ -1356,6 +1356,7 @@ export interface CorporateGovernanceDecisionFactsRequest extends TalliRequestOpt
   companyId: string;
   incomeYear: number;
   decisionKind: CorporateDecisionKind;
+  includeSourceIdentity?: boolean;
 }
 
 export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
@@ -2131,6 +2132,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         incomeYear: String(request.incomeYear),
         decisionKind: request.decisionKind,
       });
+      if (request.includeSourceIdentity) query.set("includeSourceIdentity", "true");
       return executeJson(
         \`\${baseUrl}/api/v1/corporate-governance/decision-facts?\${query}\`,
         "GET",

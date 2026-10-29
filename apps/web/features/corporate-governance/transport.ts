@@ -212,6 +212,7 @@ export async function deriveCorporateDecisionFacts(
 ) {
   return client(accessToken).corporateGovernanceDeriveDecisionFacts({
     ...request,
+    includeSourceIdentity: true,
     signal: AbortSignal.timeout(10_000),
   });
 }

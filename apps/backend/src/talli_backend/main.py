@@ -3963,6 +3963,7 @@ class CorporateDecisionFactsWire(StrictTransportModel):
     shareholders: list[CorporateShareholderWire]
     annual_basis: CorporateAnnualBasisWire
     reviewed_facts: CorporateReviewedFactsWire
+    source_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class CorporateBoardMeetingWire(StrictTransportModel):
@@ -7688,8 +7689,11 @@ def create_app(
 
     def corporate_decision_facts_wire(
         value: DerivedCorporateDecisionFacts,
+        *,
+        include_source_identity: bool = False,
     ) -> CorporateDecisionFactsWire:
         return CorporateDecisionFactsWire(
+            source_hash=value.source_hash if include_source_identity else None,
             company=CorporateCompanyFactsWire(
                 organization_number=value.company.organization_number,
                 legal_name=value.company.legal_name,
@@ -8202,6 +8206,7 @@ def create_app(
         "/api/v1/corporate-governance/decision-facts",
         operation_id="corporateGovernanceDeriveDecisionFacts",
         response_model=CorporateDecisionFactsWire,
+        response_model_exclude_none=True,
         responses={
             200: {"description": "Backend-derived current corporate facts."}
             | corporate_governance_success
@@ -8216,6 +8221,7 @@ def create_app(
         decision_kind: Annotated[
             CorporateDecisionKind, Query(alias="decisionKind")
         ],
+        include_source_identity: Annotated[bool, Query(alias="includeSourceIdentity")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CorporateDecisionFactsWire:
         async def execute() -> CorporateDecisionFactsWire:
@@ -8226,7 +8232,8 @@ def create_app(
                     income_year=IncomeYear(income_year),
                     decision_kind=decision_kind,
                     correlation_id=CorrelationId(request.state.request_id),
-                )
+                ),
+                include_source_identity=include_source_identity,
             )
 
         return await corporate_governance_call(execute)

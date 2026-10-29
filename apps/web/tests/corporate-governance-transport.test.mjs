@@ -25,7 +25,8 @@ function lifecycle(state = "finalized") {
   };
 }
 
-test("decision-facts transport sends only identity and accepts the generated response", async () => {
+for (const backendSupportsSourceIdentity of [true, false]) {
+test(`decision-facts opt-in supports ${backendSupportsSourceIdentity ? "current" : "older"} backend`, async () => {
   const captured = [];
   const sha = "b".repeat(64);
   const client = createTalliApiClient({
@@ -33,6 +34,7 @@ test("decision-facts transport sends only identity and accepts the generated res
     fetch: async (url, request) => {
       captured.push({ url: String(url), request });
       return Response.json({
+        ...(backendSupportsSourceIdentity ? { sourceHash: sha } : {}),
         company: { organizationNumber: "310279617", legalName: "Talli AS" },
         shareholders: [{ shareholderId: "owner-1", name: "Owner", shareCount: 100, order: 0 }],
         annualBasis: {
@@ -63,15 +65,18 @@ test("decision-facts transport sends only identity and accepts the generated res
     companyId,
     incomeYear: 2025,
     decisionKind: "owner_dividend",
+    includeSourceIdentity: true,
   });
 
   assert.equal(result.annualBasis.incomeYear, 2024);
+  assert.equal(result.sourceHash, backendSupportsSourceIdentity ? sha : undefined);
   assert.equal(
     captured[0].url,
-    `https://backend.example/api/v1/corporate-governance/decision-facts?companyId=${companyId}&incomeYear=2025&decisionKind=owner_dividend`,
+    `https://backend.example/api/v1/corporate-governance/decision-facts?companyId=${companyId}&incomeYear=2025&decisionKind=owner_dividend&includeSourceIdentity=true`,
   );
   assert.equal(captured[0].request.method, "GET");
 });
+}
 
 test("owner-dividend lifecycle transport preserves path and idempotency evidence", async () => {
   const captured = [];

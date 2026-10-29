@@ -395,12 +395,46 @@ def test_decision_facts_are_derived_from_backend_sources() -> None:
     }
     assert response.json()["annualBasis"]["incomeYear"] == 2024
     assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
+    assert set(response.json()) == {"company", "shareholders", "annualBasis", "reviewedFacts"}
     assert [call[0] for call in transaction.calls] == [
         "actor_role",
         "read_company_facts",
         "list_opening_snapshots",
         "list_annual_data_compatibility",
     ]
+
+
+def test_first_annual_close_facts_supply_the_proposed_source_identity() -> None:
+    client, _ = client_and_transaction(annual_documents=True)
+    scope = {
+        "companyId": annual_close_payload()["companyId"],
+        "incomeYear": 2025,
+        "decisionKind": "annual_close",
+    }
+    readiness = client.get(
+        "/api/v1/corporate-governance/readiness",
+        headers={"Authorization": "Bearer access-token"},
+        params=scope,
+    )
+    assert readiness.status_code == 200, readiness.text
+    assert readiness.json()["currentSourceHash"] is None
+
+    facts = client.get(
+        "/api/v1/corporate-governance/decision-facts",
+        headers={"Authorization": "Bearer access-token"},
+        params={**scope, "includeSourceIdentity": "true"},
+    )
+    assert facts.status_code == 200, facts.text
+    payload = annual_close_payload()
+    for key in ("company", "shareholders", "annualBasis", "reviewedFacts"):
+        payload[key] = facts.json()[key]
+    proposed = client.post(
+        "/api/v1/corporate-governance/annual-closes/proposals",
+        headers=headers("first-annual-close-source-0001"),
+        json=payload,
+    )
+    assert proposed.status_code == 201, proposed.text
+    assert facts.json()["sourceHash"] == proposed.json()["decision"]["sourceHash"]
 
 
 def test_corporate_governance_retries_one_serialization_failure() -> None:
