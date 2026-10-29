@@ -36,7 +36,7 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
   try {workspace=await loadAccountsDeliveryWorkspace(token,companyId,incomeYear);}
   catch (error) {return <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av årsregnskapet</h2></div>
     <div className="filingStepBody"><Banner variant="warning">Leveringsstatus er ikke tilgjengelig. {annualAccountsActionErrorMessage(error)}</Banner>
-      {accountsDeliveryMfaRequired(error) ? <LinkButton href="/mfa?next=%2Ffiling%2Faarsregnskap" variant="secondary">Bekreft identiteten</LinkButton> :
+      {accountsDeliveryMfaRequired(error) ? <LinkButton href="/mfa?fresh=1&next=%2Ffiling%2Faarsregnskap" variant="secondary">Bekreft identiteten</LinkButton> :
         <LinkButton href="/filing/aarsregnskap" variant="secondary">Oppdater status</LinkButton>}</div></section>;}
   return <div className={styles.panel} data-accounts-delivery="workspace">
     <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av årsregnskapet</h2></div>
