@@ -10,6 +10,7 @@ export function CompanyYearAdmissionForm({
 }: {
   continuation: EligibilityContinuation;
 }) {
+  const synthetic = continuation.registrySource === "browser_test";
   return (
     <form action={admitCompanyYear} className="wizardForm">
       <input type="hidden" name="businessTermsVersion" value={currentCustomerAgreements.businessTerms.version} />
@@ -20,9 +21,15 @@ export function CompanyYearAdmissionForm({
       <input type="hidden" name="privacyNoticeSha256" value={currentPrivacyNotice.contentSha256} />
       <input type="hidden" name="capabilityManifestVersion" value={continuation.capabilityManifestVersion} />
       <input type="hidden" name="capabilityManifestSha256" value={continuation.capabilityManifestSha256} />
-      <Banner variant="success" title="Selskapet passer for Talli">
+      <Banner variant={synthetic ? "info" : "success"} title={synthetic ? "Privat test av selskapsåret" : "Selskapet passer for Talli"}>
         {continuation.companyName} · {continuation.orgNumber}
       </Banner>
+      {synthetic ? (
+        <p>
+          Dette er syntetisk testdata i en privat forhåndsvisning. Opplysningene er
+          ikke kontrollert i Enhetsregisteret. <Link href="/mfa?fresh=1&next=%2Fonboarding">Bekreft innloggingen</Link> før du godtar testselskapsåret.
+        </p>
+      ) : null}
       <p>
         Du tar inn hele selskapsåret {continuation.accountingYear}. Alt bygges opp fra
         1. januar. Tidligere år er ikke med.

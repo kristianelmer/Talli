@@ -526,6 +526,7 @@ class SupabaseCompanyAccessAdapter:
                 as capability_manifest_sha256,
               x.customer_org_number as org_number,
               e.public_facts_sha256,
+              e.public_facts ->> 'source' as registry_source,
               e.answers,
               x.business_terms_version, x.business_terms_sha256,
               x.dpa_version, x.dpa_sha256,

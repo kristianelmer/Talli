@@ -805,7 +805,7 @@ class CompanyRegistryIdentity(CompanyAccessCommandModel):
     postal_code: str
     city: str
     status_text: str
-    source: Literal["brreg"]
+    source: Literal["brreg", "browser_test"]
 
 
 class CompanyYearAdmissionGatewayCommand(CompanyAccessCommandModel):
@@ -2034,6 +2034,8 @@ class CompanyAccessService:
             access_token, str(command.operation_id)
         )
         if replay is not None:
+            if replay.get("registry_source") == "browser_test":
+                _require_fresh_mfa(access_token)
             replay_answers = replay.get("answers")
             if (
                 replay.get("org_number") != command.org_number
@@ -2097,6 +2099,8 @@ class CompanyAccessService:
             raise _company_access_unavailable()
         raw_company = await self._company_registry.lookup_company(command.org_number)
         company = _registry_identity(raw_company, expected_org_number=command.org_number)
+        if company.source == "browser_test":
+            _require_fresh_mfa(access_token)
         eligibility = self._evaluate_definitive(company, definitive_command)
         if eligibility.decision != "supported" or eligibility.company_year_promise is None:
             raise CompanyAccessError(
@@ -2296,6 +2300,8 @@ class CompanyAccessService:
             capability_manifest_sha256=manifest_sha256,
             answers=cast(dict[str, EligibilityAnswer], effective_answers),
         )
+        if company.source == "browser_test":
+            _require_fresh_mfa(access_token)
         eligibility = self._evaluate_definitive(company, definitive_command)
         outcomes = _manifest_mapping("outcomes", accounting_year=accounting_year)
         if eligibility.decision == "supported":

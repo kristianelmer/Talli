@@ -54,6 +54,7 @@ from talli_backend.application.annual_notifications import AnnualNotificationInt
 from talli_backend.modules.billing.public import AnnualNotificationRejected, AnnualNotificationUnavailable
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
+from talli_backend.adapters.preview_synthetic_company_registry import PreviewSyntheticCompanyRegistryAdapter
 from talli_backend.adapters.annual_billing_runtime import compose_annual_billing_runtime
 from talli_backend.adapters.company_test_retention_runtime import compose_company_test_retention_runtime
 from talli_backend.adapters.supabase_banking import compose_banking_application
@@ -5948,7 +5949,9 @@ def create_app(
     )
     company_access_service = CompanyAccessService(
         gateway,
-        company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
+        company_registry_gateway or PreviewSyntheticCompanyRegistryAdapter.from_environment(
+            BrregCompanyRegistryAdapter.from_environment()
+        ),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
     company_tax_application = compose_company_tax_application(company_tax_session_factory,

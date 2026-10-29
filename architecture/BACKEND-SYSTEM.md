@@ -1497,3 +1497,21 @@ ADR-0011 review: this is operational filesystem/crypto state outside customer da
 <!-- architecture-inventory
 {"infrastructure":["localBackupGenerations=>Local synthetic encrypted native generations with a separate SQLite completion catalog, public-key-only writer, external recovery key and admitted-journal/export custody. Capture and verified AEAD readback precede atomic completion; source capture time determines usable age. Seven-day rotation removes only catalog-owned generations and protects a verified survivor. Local sampled readiness records failed, incomplete, corrupt or stale generations. No scheduler, remote service, new backup principal, hosted operation, alert delivery or operating RPO/RTO acceptance."],"adapterDependencies":["base64","fcntl","io","shutil","stat","tarfile","cryptography.hazmat.primitives","cryptography.hazmat.primitives.asymmetric","cryptography.hazmat.primitives.ciphers.aead","talli_backend.adapters.local_backup_generations"]}
 -->
+
+
+## Owned synthetic registry in designated Preview
+
+`PreviewSyntheticCompanyRegistryAdapter` is an opt-in implementation of the existing
+`CompanyRegistryGateway` port. It serves only the already-provisioned synthetic
+fixture in the designated backend Preview and Supabase project; ordinary company
+lookups retain `BrregCompanyRegistryAdapter`. A configured Production, custom,
+missing or mismatched platform context, or enabled payment/provider/observation
+modes fails closed. Facts retain `browser_test`
+provenance, visibly labelled before acceptance. SQL admission still requires the
+same existing confirmed/locked identity, its original accepted owner and fresh
+MFA. It creates no arbitrary test company, claims no genuine registry validation,
+and opens no payment, release or live-provider gate. See #228.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.preview_synthetic_company_registry"],"adapterBindings":["CompanyRegistryGateway=>talli_backend.adapters.preview_synthetic_company_registry.PreviewSyntheticCompanyRegistryAdapter"],"adapterBindingOwners":["CompanyRegistryGateway=>backend-system"],"adapterBindingModes":["CompanyRegistryGateway=>opt-in designated private Preview synthetic fixture; ordinary orgs retain Brreg"]}
+-->

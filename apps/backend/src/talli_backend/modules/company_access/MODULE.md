@@ -423,3 +423,12 @@ The policy grants no cross-owner SQL or generic administrative deletion.
 
 `AuthorizedCompanyDisposition`, `DispositionAuthorizationFacts`, `DispositionExport`,
 `DispositionRecord` and `DispositionSession` are the immutable offline policy facts.
+
+
+`CompanyRegistryIdentity` carries the verified adapter's explicit provenance.
+The default registry remains Brreg. The opt-in designated private Preview adapter
+can return `browser_test` for the one approved synthetic fixture (#228). This is
+not genuine registry evidence. Its admission requires an already-existing exact
+synthetic identity, its original accepted owner and fresh MFA; no synthetic
+company is created by the admission command. Accepted year promises and legal
+versions remain unchanged.

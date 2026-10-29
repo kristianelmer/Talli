@@ -17,8 +17,9 @@ import styles from "./eligibility.module.css";
 const initialState: EligibilityActionState = {};
 
 function PublicFacts({ result }: { result: EligibilityDecisionResponse }) {
+  const synthetic = result.publicFacts.source === "browser_test";
   return (
-    <dl aria-label="Offentlige selskapsopplysninger">
+    <dl aria-label={synthetic ? "Syntetiske selskapsopplysninger" : "Offentlige selskapsopplysninger"}>
       <div>
         <dt>Selskap</dt>
         <dd>{result.publicFacts.name} · {result.publicFacts.orgNumber}</dd>
@@ -29,13 +30,14 @@ function PublicFacts({ result }: { result: EligibilityDecisionResponse }) {
       </div>
       <div>
         <dt>Kilde</dt>
-        <dd>{result.publicFacts.source}</dd>
+        <dd>{synthetic ? "Syntetisk testdata · privat forhåndsvisning" : result.publicFacts.source}</dd>
       </div>
     </dl>
   );
 }
 
 function Result({ result }: { result: EligibilityDecisionResponse }) {
+  const synthetic = result.publicFacts.source === "browser_test";
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
@@ -44,9 +46,9 @@ function Result({ result }: { result: EligibilityDecisionResponse }) {
   if (result.decision === "supported" && result.companyYearPromise) {
     return (
       <>
-        <MarketingEvent event="definitive_eligible" surface="eligibility" />
+        {!synthetic ? <MarketingEvent event="definitive_eligible" surface="eligibility" /> : null}
         <section className={styles.result} aria-labelledby="eligibility-result-title">
-          <p className={styles.eyebrow}>Passer for Talli</p>
+          <p className={styles.eyebrow}>{synthetic ? "Privat selskapstest" : "Passer for Talli"}</p>
           <h2 id="eligibility-result-title" ref={headingRef} tabIndex={-1}>
             {result.publicFacts.name} kan bruke Talli
           </h2>
@@ -57,15 +59,15 @@ function Result({ result }: { result: EligibilityDecisionResponse }) {
           </p>
           <div className={styles.primaryAction}>
             <LinkButton
-              href="/signup?next=%2Fonboarding"
+              href={synthetic ? "/onboarding" : "/signup?next=%2Fonboarding"}
               block
-              onClick={() => queueMarketingMeasurementEvent("signup_start", "signup")}
+              onClick={() => { if (!synthetic) queueMarketingMeasurementEvent("signup_start", "signup"); }}
             >
-              Opprett konto og godta
+              {synthetic ? "Fortsett med testselskapet" : "Opprett konto og godta"}
             </LinkButton>
           </div>
           <p className={styles.secondaryLink}>
-            Har du konto? <Link href="/login?next=%2Fonboarding">Logg inn</Link>
+            {synthetic ? "Bruk den eksisterende testkontoen. " : "Har du konto? "}<Link href="/login?next=%2Fonboarding">Logg inn</Link>
           </p>
         </section>
       </>
@@ -74,11 +76,11 @@ function Result({ result }: { result: EligibilityDecisionResponse }) {
   const title = result.decision === "blocked" ? "Talli passer ikke for dette året" : "Dette må avklares først";
   return (
     <>
-      <MarketingEvent
+      {!synthetic ? <MarketingEvent
         event={result.provisional ? "provisional_blocked" : "definitive_blocked"}
         surface="eligibility"
         reason={result.decision === "clarify" ? "unknown_material_facts" : "unsupported_company"}
-      />
+      /> : null}
       <section className={styles.result} aria-labelledby="eligibility-result-title">
         <p className={styles.eyebrow}>
           {result.provisional
@@ -202,17 +204,20 @@ export function EligibilityChecker() {
   if (definitiveState.result) return <Result result={definitiveState.result} />;
   if (precheckState.result?.decision === "blocked") return <Result result={precheckState.result} />;
   if (precheckState.result) {
+    const synthetic = precheckState.result.publicFacts.source === "browser_test";
     return (
       <>
-        <MarketingEvent
+        {!synthetic ? <MarketingEvent
           event={precheckState.result.decision === "supported"
             ? "provisional_supported"
             : "provisional_clarify"}
           surface="eligibility"
           reason={precheckState.result.decision === "clarify" ? "missing_required_facts" : null}
-        />
-        <Banner variant="info" title="Foreløpig svar">
-          Offentlige opplysninger ser riktige ut. Svaret er ikke endelig før spørsmålene er ferdige.
+        /> : null}
+        <Banner variant="info" title={synthetic ? "Foreløpig testsvar" : "Foreløpig svar"}>
+          {synthetic
+            ? "Testopplysningene er syntetiske. Fullfør spørsmålene for å teste selskapsåret."
+            : "Offentlige opplysninger ser riktige ut. Svaret er ikke endelig før spørsmålene er ferdige."}
         </Banner>
         <PublicFacts result={precheckState.result} />
         {definitiveState.error ? <Banner variant="danger">{definitiveState.error}</Banner> : null}
