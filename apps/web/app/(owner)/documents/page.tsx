@@ -33,7 +33,19 @@ function classifyStatus(status: string): DocStatus {
   if (status === "not_required") {
     return { variant: "info", label: t.list.statusNotRequired, downloadable: false };
   }
-  return { variant: "success", label: t.list.statusAttached, icon: "check", downloadable: true };
+  if (["attached", "stored", "generated_unsigned", "signed_owner_attested"].includes(status)) {
+    return { variant: "success", label: t.list.statusAttached, icon: "check", downloadable: true };
+  }
+  if (status === "staged") {
+    return { variant: "warning", label: t.list.statusStaged, downloadable: false };
+  }
+  if (status === "quarantined") {
+    return { variant: "warning", label: t.list.statusQuarantined, icon: "alert", downloadable: false };
+  }
+  if (status === "removed") {
+    return { variant: "info", label: t.list.statusRemoved, downloadable: false };
+  }
+  return { variant: "warning", label: t.list.statusUnavailable, downloadable: false };
 }
 
 type DocumentsPageProps = {
