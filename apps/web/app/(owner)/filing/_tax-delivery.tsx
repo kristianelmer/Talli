@@ -85,7 +85,7 @@ export async function TaxDeliveryPanel({companyId,incomeYear}: {companyId: strin
   try {workspace=await loadTaxDeliveryWorkspace(token,companyId,incomeYear);}
   catch (error) {return <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av skattemeldingen</h2></div>
     <div className="filingStepBody"><Banner variant="warning">Leveringsstatus er ikke tilgjengelig. {companyTaxActionErrorMessage(error)}</Banner>
-      {taxDeliveryMfaRequired(error) ? <LinkButton href="/mfa?next=%2Ffiling%2Fskattemelding" variant="secondary">Bekreft identiteten</LinkButton> : <LinkButton href="/filing/skattemelding" variant="secondary">Oppdater status</LinkButton>}</div></section>;}
+      {taxDeliveryMfaRequired(error) ? <LinkButton href="/mfa?fresh=1&next=%2Ffiling%2Fskattemelding" variant="secondary">Bekreft identiteten</LinkButton> : <LinkButton href="/filing/skattemelding" variant="secondary">Oppdater status</LinkButton>}</div></section>;}
   const reviews=new Map<string,CompanyTaxOwnerReviewArtifactWire>();
   await Promise.all(workspace.rows.filter(row=>row.state==="owner_review" && row.approvalSha256).map(async row=>{
     try {reviews.set(row.filingId,await loadTaxDeliveryOwnerReview(token,companyId,incomeYear,row.filingId,row.approvalSha256!));} catch { /* The absent artifact disables its confirmation form. */ }
