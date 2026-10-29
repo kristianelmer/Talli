@@ -42,8 +42,9 @@ export async function admitCompanyYear(formData: FormData) {
   ) {
     fail("Vilkårene eller Talli-grensen er oppdatert. Start sjekken på nytt.");
   }
+  let destination: string;
   try {
-    await admitCompanyYearThroughApi(accessToken, {
+    const admission = await admitCompanyYearThroughApi(accessToken, {
       operationId: randomUUID(),
       orgNumber: continuation.orgNumber,
       accountingYear: continuation.accountingYear,
@@ -61,6 +62,7 @@ export async function admitCompanyYear(formData: FormData) {
       privacyNoticeVersion: currentPrivacyNotice.version,
       privacyNoticeSha256: currentPrivacyNotice.contentSha256,
     }, randomUUID());
+    destination = `/onboarding?companyId=${admission.companyId}&accountingYear=${admission.accountingYear}`;
   } catch (error) {
     if (eligibilityAdmissionRestartRequired(error)) {
       await clearEligibilityContinuation();
@@ -69,5 +71,5 @@ export async function admitCompanyYear(formData: FormData) {
   }
   await clearEligibilityContinuation();
   revalidatePath("/");
-  redirect("/mfa?next=%2Fonboarding");
+  redirect(`/mfa?next=${encodeURIComponent(destination)}`);
 }

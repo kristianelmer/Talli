@@ -2202,6 +2202,8 @@ class CompanyAccessService:
         if raw_context.get("replay_assessment_id") is not None:
             try:
                 replay_assessment_id = UUID(str(raw_context["replay_assessment_id"]))
+                replay_admission_id = UUID(str(raw_context["replay_company_year_admission_id"]))
+                replay_year = int(str(raw_context["replay_accounting_year"]))
                 replay_trigger = str(raw_context["replay_trigger"])
                 replay_decision = str(raw_context["replay_decision"])
                 replay_manifest_version = str(
@@ -2226,7 +2228,9 @@ class CompanyAccessService:
             except (KeyError, TypeError, ValueError):
                 raise _company_access_unavailable() from None
             if (
-                replay_trigger != command.trigger
+                replay_admission_id != company_year_admission_id
+                or replay_year != accounting_year
+                or replay_trigger != command.trigger
                 or not isinstance(replay_answers, Mapping)
                 or (
                     command.answers is not None

@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { Banner, WizardShell } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
@@ -14,6 +14,8 @@ import { OpeningBalanceForm } from "./OpeningBalanceForm";
 
 type OnboardingProps = {
   searchParams?: Promise<{
+    companyId?: string;
+    accountingYear?: string;
     error?: string;
     bankImportOperationId?: string;
     bankImportAccountId?: string;
@@ -28,14 +30,21 @@ type OnboardingProps = {
 
 export default async function OnboardingPage({ searchParams }: OnboardingProps) {
   const params = await searchParams;
-  const data = await loadWorkspaceData();
+  const requestedYear = params?.accountingYear ? Number(params.accountingYear) : undefined;
+  if (requestedYear !== undefined && ![2025, 2026].includes(requestedYear)) notFound();
+  const data = await loadWorkspaceData({ companyId: params?.companyId, accountingYear: requestedYear });
   const { companies, primaryCompanyId, primaryIncomeYear, setups, transactions } =
     data;
 
   const primaryCompany =
-    companies.find((company) => company.id === primaryCompanyId) ?? companies[0];
+    companies.find((company) => company.id === (params?.companyId ?? primaryCompanyId));
+  if (params?.companyId && !primaryCompany) notFound();
+  if (primaryCompany && requestedYear !== undefined && primaryCompany.admittedAccountingYear !== requestedYear) {
+    redirect("/sjekk-selskapet");
+  }
+  const year = requestedYear ?? primaryIncomeYear ?? new Date().getFullYear() - 1;
   const hasSetup = primaryCompany
-    ? setups.some((setup) => setup.company_id === primaryCompany.id)
+    ? setups.some((setup) => setup.company_id === primaryCompany.id && setup.income_year === year)
     : false;
   const eligibilityContinuation = await readEligibilityContinuation();
   const continuationAlreadyAdmitted = eligibilityContinuation
@@ -64,7 +73,6 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
 
   const ob = ownerCopy.onboarding;
   const steps = [ob.steps.company, ob.steps.balances, ob.steps.bank];
-  const year = primaryIncomeYear ?? new Date().getFullYear() - 1;
 
   const phase = selectOnboardingPhase(presentation);
   const current = phase === "lookup" ? 0 : phase === "balances" ? 1 : 2;
@@ -94,7 +102,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
         <BankImportForm
           companyId={primaryCompany.id}
           incomeYear={year}
-          importedCount={transactions.length}
+          importedCount={transactions.filter((transaction) => transaction.company_id === primaryCompany.id && transaction.income_year === year).length}
           retryOperationId={params?.bankImportOperationId}
           retryAccountId={params?.bankImportAccountId}
           persistedPreview={params?.bankPreviewSourceFileId && params.bankPreviewDocumentSha256 ? {

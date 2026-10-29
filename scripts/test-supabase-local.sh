@@ -108,7 +108,7 @@ local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
 local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
 
 # Both company years use the current guarded admission RPCs before historical topology rehearsals.
-DATABASE_URL="$DB_URL" "$TALLI_PYTHON_BIN" -m pytest -c apps/backend/pyproject.toml \
+DATABASE_URL="$DB_URL" uv run --project apps/backend pytest -c apps/backend/pyproject.toml \
   apps/backend/tests/test_company_year_2025_database.py -m authority_database -q
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
 if [[ "$rf10_fast_diagnostic" == "1" ]]; then

@@ -10,10 +10,10 @@ function compile(path, dependencies) {
   const exports = {};
   const source = readFileSync(new URL(`../app/${path}`, import.meta.url), "utf8");
   vm.runInNewContext(ts.transpileModule(source, {compilerOptions: {
-    target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
   }}).outputText, {exports, URLSearchParams, process:{env:{NODE_ENV:"production"}}, require(name) {
     if (name in dependencies) return dependencies[name];
-    if (name === "node:crypto") return require(name);
+    if (name === "node:crypto" || name === "react/jsx-runtime") return require(name);
     throw new Error(`Unexpected dependency: ${name}`);
   }});
   return exports;
@@ -138,5 +138,141 @@ test("owner material-answer updates select the submitted year and cannot update 
       assert.equal(calls.filter(([kind]) => kind === "recheck").length, year === returnedYear ? 1 : 0);
       if (year === returnedYear) assert.equal(calls[1][1], `admission-${year}`);
     }
+  }
+});
+
+
+test("default owner navigation keeps a 2025-only admission instead of redirecting to the free check", async () => {
+  for (const requestedYear of [undefined, "2025", "2026"]) {
+    const calls = [];
+    const { default: Page } = compile("(owner)/selskapsgrense/page.tsx", {
+      "next/link": { default() {} },
+      "next/navigation": {
+        redirect(url) { throw new Error(`REDIRECT:${url}`); },
+        notFound() { throw new Error("NOT_FOUND"); },
+      },
+      "../../../features/company-access/index.ts": {
+        eligibilityActionErrorMessage: () => "Unavailable",
+        precheckCompanyEligibility: async input => {
+          calls.push(["precheck", input]);
+          return { questions: [], reasonExplanations: [], nextStep: "Check" };
+        },
+      },
+      "../../components/ui": { Banner() {} },
+      "../../lib/company-access-context": {
+        listCompanyAccessContexts: async options => {
+          calls.push(["context", options]);
+          const admitted = options.accountingYear === undefined || options.accountingYear === 2025;
+          return { error: null, companies: [{
+            id: "10000000-0000-4000-8000-000000000001", name: "Synthetic private fixture",
+            org_number: "992803750", companyYearAdmissionId: admitted ? "admission-2025" : null,
+            admittedAccountingYear: admitted ? 2025 : null,
+          }] };
+        },
+      },
+      "../../actions": { refreshCompanyYearEligibilityGate() {} },
+      "../../sjekk-selskapet/EligibilityChecker": { EligibilityInterview() {} },
+      "../../sjekk-selskapet/eligibility.module.css": { default: {} },
+      "./actions": { recheckMaterialCompanyYearAnswers() {} },
+    });
+    const props = { searchParams: Promise.resolve(requestedYear ? { accountingYear: requestedYear } : {}) };
+    if (requestedYear === "2026") {
+      await assert.rejects(Page(props), /REDIRECT:\/sjekk-selskapet/u);
+      assert.equal(calls.length, 1);
+    } else {
+      const page = await Page(props);
+      assert.ok(page);
+      assert.equal(calls[1][1].accountingYear, 2025);
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[0][1])), requestedYear ? { accountingYear: Number(requestedYear) } : {});
+  }
+});
+
+test("adding 2025 opens its balances even when the same company already has a 2026 setup", async () => {
+  const companyId = "10000000-0000-4000-8000-000000000001";
+  for (const year of [2025, 2026]) {
+    const calls = [];
+    function OpeningBalanceForm() {}
+    const { default: Page } = compile("(owner)/onboarding/page.tsx", {
+      "next/navigation": {
+        redirect(url) { throw new Error(`REDIRECT:${url}`); },
+        notFound() { throw new Error("NOT_FOUND"); },
+      },
+      "../../components/ui": { Banner() {}, WizardShell() {} },
+      "../../lib/copy": { ownerCopy: { onboarding: {
+        steps: { company: "Company", balances: "Balances", bank: "Bank" },
+        lookup: {}, balances: {}, bank: {},
+      } } },
+      "../../lib/eligibility-continuation": { readEligibilityContinuation: async () => null },
+      "../../lib/onboarding-presentation": compile("lib/onboarding-presentation.ts", {}),
+      "../../lib/workspace-data": {
+        loadWorkspaceData: async options => {
+          calls.push(options);
+          return { companies: [{ id: companyId, admittedAccountingYear: year }],
+            primaryCompanyId: companyId, primaryIncomeYear: year,
+            setups: [{ company_id: companyId, income_year: 2026 }], transactions: [] };
+        },
+      },
+      "./BankImportForm": { BankImportForm() {} },
+      "./CompanyYearAdmissionForm": { CompanyYearAdmissionForm() {} },
+      "./OpeningBalanceForm": { OpeningBalanceForm },
+    });
+    const invocation = Page({ searchParams: Promise.resolve({ companyId, accountingYear: String(year) }) });
+    if (year === 2026) await assert.rejects(invocation, /REDIRECT:\/dashboard/u);
+    else {
+      const page = await invocation;
+      const balance = page.props.children.find(child => child?.type === OpeningBalanceForm);
+      assert.ok(balance);
+      assert.equal(balance.props.companyId, companyId);
+      assert.equal(balance.props.incomeYear, 2025);
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ companyId, accountingYear: year }]);
+  }
+});
+
+test("successful company-year admission carries the admitted company and year through MFA", async () => {
+  const companyId = "10000000-0000-4000-8000-000000000001";
+  for (const year of [2025, 2026]) {
+    const events = [];
+    const continuationValue = continuation(year);
+    const agreement = { version: "2026-08-30", contentSha256: "d".repeat(64) };
+    const actions = compile("(owner)/onboarding/actions.ts", {
+      "next/cache": { revalidatePath() {} },
+      "next/navigation": { redirect(url) { throw new Error(`REDIRECT:${url}`); } },
+      "../../../features/company-access": {
+        admitCompanyYearThroughApi: async (_token, command) => {
+          events.push(command.accountingYear);
+          return { companyId, accountingYear: year };
+        },
+        eligibilityActionErrorMessage: () => "Unavailable",
+        eligibilityAdmissionRestartRequired: () => false,
+      },
+      "../../lib/eligibility-continuation": {
+        readEligibilityContinuation: async () => continuationValue,
+        clearEligibilityContinuation: async () => events.push("cleared"),
+      },
+      "../../lib/customer-agreements": {
+        currentCustomerAgreements: { businessTerms: agreement, dpa: agreement },
+        currentPrivacyNotice: agreement,
+      },
+      "../../lib/supabase/auth-session": { getCurrentSessionAccessToken: async () => "session-token" },
+    });
+    const form = new FormData();
+    form.set("companyYearPromiseAccepted", "accepted");
+    for (const key of ["businessTerms", "dpa", "privacyNotice"]) {
+      form.set(`${key}Version`, agreement.version); form.set(`${key}Sha256`, agreement.contentSha256);
+    }
+    form.set("capabilityManifestVersion", continuationValue.capabilityManifestVersion);
+    form.set("capabilityManifestSha256", continuationValue.capabilityManifestSha256);
+    await assert.rejects(actions.admitCompanyYear(form), error => {
+      assert.ok(error.message.startsWith("REDIRECT:/mfa?"), error.message);
+      const next = new URL(error.message.slice("REDIRECT:".length), "https://test.invalid").searchParams.get("next");
+      const target = new URL(next, "https://test.invalid");
+      assert.equal(target.pathname, "/onboarding");
+      assert.equal(target.searchParams.get("companyId"), companyId);
+      assert.equal(target.searchParams.get("accountingYear"), String(year));
+      return true;
+    });
+    assert.deepEqual(events, [year, "cleared"]);
   }
 });

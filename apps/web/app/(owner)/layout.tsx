@@ -143,6 +143,7 @@ export default async function OwnerLayout({
                   <div className="buttonRow">
                     <form action={refreshCompanyYearEligibilityGate}>
                       <input type="hidden" name="companyId" value={stoppedCompany.id} />
+                      <input type="hidden" name="accountingYear" value={stoppedCompany.admittedAccountingYear ?? ""} />
                       <input
                         type="hidden"
                         name="trigger"

@@ -40,6 +40,7 @@ export function OpeningBalanceForm({
   operationId: initialOperationId,
 }: OpeningBalanceFormProps) {
   const c = ownerCopy.onboarding.balances;
+  const [selectedYear, setSelectedYear] = useState(incomeYear);
   const [bankBalance, setBankBalance] = useState("");
   const [shareCapital, setShareCapital] = useState("");
   const [shareCount, setShareCount] = useState("");
@@ -57,7 +58,7 @@ export function OpeningBalanceForm({
 
   return (
     <form action={createOpeningBalanceSetup} className="wizardForm">
-      <input type="hidden" name="returnTo" value="/onboarding?step=bank" />
+      <input type="hidden" name="returnTo" value={`/onboarding?step=bank&companyId=${companyId}&accountingYear=${selectedYear}`} />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="operationId" value={operationId} />
 
@@ -67,7 +68,8 @@ export function OpeningBalanceForm({
           name="incomeYear"
           type="number"
           inputMode="numeric"
-          defaultValue={incomeYear}
+          value={selectedYear}
+          onChange={(event) => setSelectedYear(Number(event.target.value))}
           required
         />
       </label>

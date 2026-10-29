@@ -1,4 +1,5 @@
 """Real admission RPCs on an owned loopback DB; all fixture facts roll back."""
+import asyncio
 import hashlib
 import json
 import os
@@ -13,6 +14,7 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 import pytest
 
+from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter, SupabaseConfiguration
 from talli_backend.modules.company_access.public import (
     CompanyRegistryIdentity,
     CompanyYearAdmissionGatewayCommand,
@@ -134,9 +136,11 @@ def test_real_sql_preserves_both_years_and_rejects_cross_year_evidence_and_chang
                 with db.transaction():
                     admit(db, second | {"p_operation_id": uuid4(), "p_company_year_promise_json": canonical(changed),
                         "p_company_year_promise_sha256": digest(changed)})
+            recorded_commands = []
             for admission, parameters in ((before, first), (after, second)):
                 command = recheck_parameters(db, actor, admission, parameters)
                 recorded = rpc(db, "company_access_recheck_company_year_eligibility", command)
+                recorded_commands.append(command)
                 assert recorded["replayed"] is False
                 assert rpc(db, "company_access_recheck_company_year_eligibility", command)["replayed"] is True
                 other = first if parameters is second else second
@@ -152,6 +156,29 @@ def test_real_sql_preserves_both_years_and_rejects_cross_year_evidence_and_chang
                         rpc(db, "company_access_recheck_company_year_eligibility", command | {
                             "p_operation_id": uuid4(), "p_verified_subject": uuid4(),
                         })
+            adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
+                url="http://127.0.0.1:1", anon_key="synthetic-loopback-only",
+            ))
+
+            async def local_rows(_token, query, parameters):
+                return db.execute(query, parameters).fetchall()
+
+            adapter._database_rows = local_rows
+            same = asyncio.run(adapter.company_year_admission_context(
+                "synthetic", str(before["company_year_admission_id"]), str(recorded_commands[0]["p_operation_id"]),
+            ))
+            assert same["replay_accounting_year"] == 2026
+            assert same["replay_company_year_admission_id"] == before["company_year_admission_id"]
+            cross = asyncio.run(adapter.company_year_admission_context(
+                "synthetic", str(after["company_year_admission_id"]), str(recorded_commands[0]["p_operation_id"]),
+            ))
+            assert cross["accounting_year"] == 2025
+            assert cross["replay_assessment_id"] is None
+            with pytest.raises(psycopg.Error, match="company_access_conflict"):
+                with db.transaction():
+                    rpc(db, "company_access_recheck_company_year_eligibility", recorded_commands[1] | {
+                        "p_operation_id": recorded_commands[0]["p_operation_id"],
+                    })
             with pytest.raises(psycopg.Error, match="rollback_requires_retaining_existing_promises"):
                 with db.transaction():
                     db.execute("reset role")

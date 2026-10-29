@@ -560,6 +560,8 @@ class SupabaseCompanyAccessAdapter:
               latest.id as latest_assessment_id,
               latest.answers as latest_answers,
               replay.id as replay_assessment_id,
+              replay.accounting_year as replay_accounting_year,
+              replay.company_year_admission_id as replay_company_year_admission_id,
               replay.trigger as replay_trigger,
               replay.decision as replay_decision,
               replay.capability_manifest_version as replay_capability_manifest_version,
@@ -583,7 +585,9 @@ class SupabaseCompanyAccessAdapter:
               limit 1
             ) latest on true
             left join lateral (
-              select e.id, e.trigger, e.decision,
+              select e.id, e.accounting_year,
+                (r.result ->> 'company_year_admission_id')::uuid as company_year_admission_id,
+                e.trigger, e.decision,
                 e.capability_manifest_version, e.capability_manifest_sha256,
                 e.answers, e.reason_codes, e.reason_explanations,
                 e.next_step_code, e.next_step,
@@ -595,6 +599,9 @@ class SupabaseCompanyAccessAdapter:
                 and r.operation_id = %s::uuid
                 and r.command_name = 'recheck_company_year_eligibility'
                 and r.company_id = a.company_id
+                and e.company_id = a.company_id
+                and e.accounting_year = a.accounting_year
+                and (r.result ->> 'company_year_admission_id')::uuid = a.id
               limit 1
             ) replay on true
             where a.id = %s::uuid

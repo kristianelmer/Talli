@@ -812,7 +812,14 @@ def test_post_admission_recheck_appends_a_safe_current_gate_without_narrowing_th
     assert command.consequential_operations_allowed is allowed
 
 
-def test_recheck_exact_retry_replays_after_an_intervening_material_assessment() -> None:
+@pytest.mark.parametrize("replay_patch, expected_status", [
+    ({}, 201),
+    ({"replay_accounting_year": 2025}, 409),
+    ({"replay_company_year_admission_id": "20000000-0000-4000-8000-000000000099"}, 409),
+])
+def test_recheck_exact_retry_replays_only_the_same_admission_and_year(
+    replay_patch: dict[str, object], expected_status: int,
+) -> None:
     client, gateway, registry = public_client()
     answers = definitive_request(precheck(client))["answers"]
     registry.calls.clear()
@@ -822,6 +829,8 @@ def test_recheck_exact_retry_replays_after_an_intervening_material_assessment() 
     }
     gateway.recheck_replay = {
         "replay_assessment_id": "31000000-0000-0000-0000-000000000003",
+        "replay_company_year_admission_id": "20000000-0000-0000-0000-000000000002",
+        "replay_accounting_year": 2026,
         "replay_trigger": "before_filing",
         "replay_decision": "supported",
         "replay_capability_manifest_version": "2026.1",
@@ -835,7 +844,7 @@ def test_recheck_exact_retry_replays_after_an_intervening_material_assessment() 
         "replay_next_step": "Fortsett selskapsåret i Talli.",
         "replay_consequential_operations_allowed": True,
         "replay_archive_export_available": True,
-    }
+    } | replay_patch
 
     response = client.post(
         (
@@ -849,8 +858,11 @@ def test_recheck_exact_retry_replays_after_an_intervening_material_assessment() 
         },
     )
 
-    assert response.status_code == 201, response.text
-    assert response.json()["replayed"] is True
+    assert response.status_code == expected_status, response.text
+    if expected_status == 201:
+        assert response.json()["replayed"] is True
+    else:
+        assert response.json()["code"] == "COMPANY_ACCESS_CONFLICT"
     assert registry.calls == []
     assert gateway.calls == []
 

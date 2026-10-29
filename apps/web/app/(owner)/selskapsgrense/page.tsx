@@ -22,8 +22,10 @@ export default async function CompanyYearBoundaryPage({
 }: CompanyYearBoundaryProps) {
   const params = await searchParams;
   if (params?.accountingYear && !["2025", "2026"].includes(params.accountingYear)) notFound();
-  const accountingYear = params?.accountingYear === "2025" ? 2025 : 2026;
-  const { companies, error: contextError } = await listCompanyAccessContexts({ accountingYear });
+  const requestedYear = params?.accountingYear ? Number(params.accountingYear) : undefined;
+  const { companies, error: contextError } = await listCompanyAccessContexts(
+    requestedYear === undefined ? {} : { accountingYear: requestedYear },
+  );
   const admittedCompanies = companies.filter((company) => (
     company.companyYearAdmissionId !== null
     && company.admittedAccountingYear !== null
@@ -42,6 +44,7 @@ export default async function CompanyYearBoundaryPage({
     );
   }
 
+  const accountingYear = selectedCompany.admittedAccountingYear;
   let precheck;
   let providerError: string | null = null;
   try {
