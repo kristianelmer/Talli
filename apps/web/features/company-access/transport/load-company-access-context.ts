@@ -15,7 +15,7 @@ export {
 export async function loadCompanyAccessContext(
   accessToken: string,
   requestId?: string,
-  options: { companyId?: string } = {},
+  options: { companyId?: string; accountingYear?: number } = {},
 ) {
   const client = createTalliApiClient({
     ...backendClientOptions(),

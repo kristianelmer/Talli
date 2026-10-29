@@ -134,6 +134,7 @@ export function EligibilityInterview({
     <form action={definitiveAction} className={styles.interview}>
       {companyId ? <input type="hidden" name="companyId" value={companyId} /> : null}
       <input type="hidden" name="orgNumber" value={precheck.publicFacts.orgNumber} />
+      <input type="hidden" name="accountingYear" value={precheck.accountingYear} />
       <input type="hidden" name="publicFactsSha256" value={precheck.publicFactsSha256} />
       <input type="hidden" name="capabilityManifestVersion" value={precheck.capabilityManifestVersion} />
       <input type="hidden" name="capabilityManifestSha256" value={precheck.capabilityManifestSha256} />
@@ -239,6 +240,11 @@ export function EligibilityChecker() {
         aria-describedby="eligibility-org-help"
       />
       <p id="eligibility-org-help">Vi henter bare offentlige opplysninger først.</p>
+      <label htmlFor="eligibility-accounting-year">Selskapsår</label>
+      <select id="eligibility-accounting-year" name="accountingYear" defaultValue="2026">
+        <option value="2026">2026</option>
+        <option value="2025">2025</option>
+      </select>
       <SubmitButton block pendingLabel="Henter…" disabled={precheckPending}>
         Sjekk selskapet gratis
       </SubmitButton>

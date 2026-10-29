@@ -864,20 +864,25 @@ export async function signOut() {
 
 export async function refreshCompanyYearEligibilityGate(formData: FormData) {
   const companyId = requiredFormUuid(formData, "companyId");
+  const accountingYear = Number(formString(formData, "accountingYear") || "2026");
+  if (![2025, 2026].includes(accountingYear)) {
+    redirect("/selskapsgrense?error=Ugyldig%20selskapsår");
+  }
+  const yearQuery = `&accountingYear=${accountingYear}`;
   const trigger = formString(formData, "trigger") === "manifest_changed"
     ? "manifest_changed"
     : "public_fact_changed";
   try {
-    await requireCompanyYearEligibilityGate(companyId, trigger);
+    await requireCompanyYearEligibilityGate(companyId, trigger, undefined, accountingYear);
   } catch (error) {
     if (error instanceof CompanyYearEligibilityGateError) {
       revalidatePath("/");
-      redirect(`/selskapsgrense?companyId=${companyId}&result=${error.state?.decision ?? "stopped"}`);
+      redirect(`/selskapsgrense?companyId=${companyId}${yearQuery}&result=${error.state?.decision ?? "stopped"}`);
     }
-    redirect(`/selskapsgrense?companyId=${companyId}&error=${encodeURIComponent(companyYearEligibilityGateMessage(error))}`);
+    redirect(`/selskapsgrense?companyId=${companyId}${yearQuery}&error=${encodeURIComponent(companyYearEligibilityGateMessage(error))}`);
   }
   revalidatePath("/");
-  redirect(`/selskapsgrense?companyId=${companyId}&result=supported`);
+  redirect(`/selskapsgrense?companyId=${companyId}${yearQuery}&result=supported`);
 }
 
 export async function reacceptCompanyAgreement(formData: FormData) {

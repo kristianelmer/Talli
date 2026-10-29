@@ -1439,6 +1439,7 @@ export interface BillingEntitlementRequest extends TalliRequestOptions {
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
+  accountingYear?: number;
 }
 
 export interface MarketingMeasurementReportRequest extends TalliRequestOptions {
@@ -1597,6 +1598,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<CompanyContextResponse> {
       const query = new URLSearchParams();
       if (request.companyId !== undefined) query.set("company_id", request.companyId);
+      if (request.accountingYear !== undefined) query.set("accountingYear", String(request.accountingYear));
       const suffix = query.size ? \`?\${query}\` : "";
       const response = await fetchImplementation(\`\${baseUrl}${companyAccessPath}\${suffix}\`, {
         cache: "no-store",

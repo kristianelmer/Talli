@@ -131,3 +131,11 @@ _Avoid_: Holdingklar
 **Single-company UX**:
 A user experience optimized for an owner working on one company at a time, even though the underlying account can own or access multiple companies.
 _Avoid_: Accountant practice UI
+
+**Company-year admission**:
+The owner’s acceptance that one supported company can use Talli for one complete accounting year, including reconstruction from 1 January and the annual holding compliance loop.
+_Avoid_: Company-wide approval, partial-year access
+
+**Accepted company-year promise**:
+The scope the owner accepted for a specific company-year. Later eligibility checks can stop consequential operations without rewriting that accepted scope.
+_Avoid_: Current eligibility, latest product scope

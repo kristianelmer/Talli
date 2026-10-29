@@ -102,3 +102,18 @@ test("missing admission and provider failure both fail closed", async () => {
     /Ingen opplysninger eller status ble endret/u,
   );
 });
+
+test("a requested 2025 recheck uses its own admission and refuses a 2026 context", async () => {
+  const own = dependencies({
+    contextValue: context({ admittedAccountingYear: 2025 }),
+    stateValue: state({ accountingYear: 2025 }),
+  });
+  assert.equal((await requireCompanyYearEligibilityGate(companyId, "before_filing", own.value, 2025)).accountingYear, 2025);
+  assert.deepEqual(own.calls[0], ["context", { companyId, accountingYear: 2025 }]);
+  const wrong = dependencies();
+  await assert.rejects(
+    requireCompanyYearEligibilityGate(companyId, "before_filing", wrong.value, 2025),
+    CompanyYearEligibilityGateError,
+  );
+  assert.equal(wrong.calls.some(([kind]) => kind === "recheck"), false);
+});

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import {
   eligibilityActionErrorMessage,
@@ -14,14 +14,18 @@ import styles from "../../sjekk-selskapet/eligibility.module.css";
 import { recheckMaterialCompanyYearAnswers } from "./actions";
 
 type CompanyYearBoundaryProps = {
-  searchParams?: Promise<{ companyId?: string; error?: string; result?: string }>;
+  searchParams?: Promise<{ companyId?: string; accountingYear?: string; error?: string; result?: string }>;
 };
 
 export default async function CompanyYearBoundaryPage({
   searchParams,
 }: CompanyYearBoundaryProps) {
   const params = await searchParams;
-  const { companies, error: contextError } = await listCompanyAccessContexts();
+  if (params?.accountingYear && !["2025", "2026"].includes(params.accountingYear)) notFound();
+  const requestedYear = params?.accountingYear ? Number(params.accountingYear) : undefined;
+  const { companies, error: contextError } = await listCompanyAccessContexts(
+    requestedYear === undefined ? {} : { accountingYear: requestedYear },
+  );
   const admittedCompanies = companies.filter((company) => (
     company.companyYearAdmissionId !== null
     && company.admittedAccountingYear !== null
@@ -40,6 +44,7 @@ export default async function CompanyYearBoundaryPage({
     );
   }
 
+  const accountingYear = selectedCompany.admittedAccountingYear;
   let precheck;
   let providerError: string | null = null;
   try {
@@ -53,6 +58,14 @@ export default async function CompanyYearBoundaryPage({
 
   return (
     <section className={styles.shell} aria-labelledby="company-year-boundary-title">
+      <nav aria-label="Velg selskapsår">
+        {[2026, 2025].map((year) => (
+          <Link key={year} href={`/selskapsgrense?companyId=${selectedCompany.id}&accountingYear=${year}`}
+            aria-current={year === accountingYear ? "page" : undefined}>
+            {year}
+          </Link>
+        ))}
+      </nav>
       <p className={styles.eyebrow}>Selskapsgrense · {selectedCompany.admittedAccountingYear}</p>
       <h1 id="company-year-boundary-title">Har opplysningene for {selectedCompany.name} endret seg?</h1>
       <p>
@@ -62,7 +75,7 @@ export default async function CompanyYearBoundaryPage({
       {admittedCompanies.length > 1 ? (
         <nav aria-label="Velg selskap">
           {admittedCompanies.map((company) => (
-            <Link key={company.id} href={`/selskapsgrense?companyId=${company.id}`}>
+            <Link key={company.id} href={`/selskapsgrense?companyId=${company.id}&accountingYear=${accountingYear}`}>
               {company.name}
             </Link>
           ))}
@@ -100,6 +113,7 @@ export default async function CompanyYearBoundaryPage({
           </Banner>
           <form action={refreshCompanyYearEligibilityGate}>
             <input type="hidden" name="companyId" value={selectedCompany.id} />
+            <input type="hidden" name="accountingYear" value={accountingYear} />
             <input type="hidden" name="trigger" value="public_fact_changed" />
             <button className="btn btn--primary" type="submit">Kontroller offentlige opplysninger</button>
           </form>

@@ -288,12 +288,12 @@ test("the functional public journey owns no policy, direct fetch, or business pe
   assert.doesNotMatch(eligibilityGate, /createSupabaseServiceRoleClient|\.rpc\(|\.from\(/u);
   assert.equal(globalActions.match(/requireCompanyYearEligibilityGate\(/gu)?.length, 1);
   assert.doesNotMatch(globalActions, /requireCompanyYearEligibilityGate\([^\n]+"before_(?:payment|filing)"/u);
-  assert.match(globalActions, /selskapsgrense\?companyId=\$\{companyId\}&error=/u);
+  assert.match(globalActions, /selskapsgrense\?companyId=\$\{companyId\}\$\{yearQuery\}&error=/u);
   assert.match(materialRecheckPage, /EligibilityInterview/u);
   assert.match(materialRecheckPage, /companyId=\{selectedCompany\.id\}/u);
   assert.match(materialRecheckActions, /trigger:\s*"material_answer_changed"/u);
   assert.match(materialRecheckActions, /recheckCompanyYearEligibilityThroughApi/u);
-  assert.match(materialRecheckActions, /listCompanyAccessContexts\(\{ companyId \}\)/u);
+  assert.match(materialRecheckActions, /listCompanyAccessContexts\(\{ companyId, accountingYear \}\)/u);
   assert.doesNotMatch(materialRecheckActions, /createSupabaseServiceRoleClient|\.rpc\(|\.from\(/u);
   assert.match(appNav, /href:\s*"\/selskapsgrense"/u);
   assert.match(admissionActions, /clearEligibilityContinuation/u);

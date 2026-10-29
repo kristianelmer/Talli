@@ -248,7 +248,7 @@ test("owner transition is reachable after company-year admission and exposes an 
     readFile(new URL("../app/mfa/OwnerMfa.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(admissionActions, /export async function admitCompanyYear/u);
-  assert.match(admissionActions, /redirect\("\/mfa\?next=%2Fonboarding"\)/u);
+  assert.match(admissionActions, /redirect\(`\/mfa\?next=\$\{encodeURIComponent\(destination\)\}`\)/u);
   assert.match(ownerLayout, /requiresAal2/u);
   assert.match(ownerLayout, /href="\/mfa\?next=%2Fonboarding"/u);
   assert.match(page, /sanitizeInternalRedirect\(params\?\.next, "\/onboarding"\)/u);

@@ -27,19 +27,26 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function accountingYear(formData: FormData): 2025 | 2026 | null {
+  const year = Number(formString(formData, "accountingYear") || "2026");
+  return year === 2025 || year === 2026 ? year : null;
+}
+
 export async function precheckEligibilityAction(
   _state: EligibilityActionState,
   formData: FormData,
 ): Promise<EligibilityActionState> {
   await clearEligibilityContinuation();
   const orgNumber = formString(formData, "orgNumber");
+  const year = accountingYear(formData);
+  if (year === null) return { error: "Velg selskapsåret 2025 eller 2026." };
   if (!/^\d{9}$/u.test(orgNumber)) {
     return { error: "Organisasjonsnummeret må ha ni sifre." };
   }
   try {
     return {
       result: await precheckCompanyEligibility(
-        { orgNumber, accountingYear: 2026 },
+        { orgNumber, accountingYear: year },
         randomUUID(),
       ),
     };
@@ -53,6 +60,8 @@ export async function definitiveEligibilityAction(
   formData: FormData,
 ): Promise<EligibilityActionState> {
   await clearEligibilityContinuation();
+  const year = accountingYear(formData);
+  if (year === null) return { error: "Velg selskapsåret 2025 eller 2026." };
   const questionCodes = formData.getAll("questionCode").filter(
     (value): value is string => typeof value === "string" && /^[a-z0-9_]{1,100}$/u.test(value),
   );
@@ -69,7 +78,7 @@ export async function definitiveEligibilityAction(
   try {
     const result = await assessCompanyEligibility({
       orgNumber: formString(formData, "orgNumber"),
-      accountingYear: 2026,
+      accountingYear: year,
       expectedPublicFactsSha256: formString(formData, "publicFactsSha256"),
       capabilityManifestVersion: formString(formData, "capabilityManifestVersion"),
       capabilityManifestSha256: formString(formData, "capabilityManifestSha256"),

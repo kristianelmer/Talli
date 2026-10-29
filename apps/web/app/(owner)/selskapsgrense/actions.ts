@@ -17,15 +17,19 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function recheckTarget(companyId: string, parameter: "error" | "result", value: string) {
-  const search = new URLSearchParams({ companyId, [parameter]: value });
+function recheckTarget(companyId: string, accountingYear: number, parameter: "error" | "result", value: string) {
+  const search = new URLSearchParams({ companyId, accountingYear: String(accountingYear), [parameter]: value });
   return `/selskapsgrense?${search.toString()}`;
 }
 
 export async function recheckMaterialCompanyYearAnswers(formData: FormData) {
   const companyId = formString(formData, "companyId");
+  const accountingYear = Number(formString(formData, "accountingYear") || "2026");
+  if (![2025, 2026].includes(accountingYear)) {
+    redirect("/selskapsgrense?error=Ugyldig%20selskapsår");
+  }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(companyId)) {
-    redirect(recheckTarget("", "error", "Selskapet kunne ikke kontrolleres."));
+    redirect(recheckTarget("", accountingYear, "error", "Selskapet kunne ikke kontrolleres."));
   }
   const questionCodes = formData.getAll("questionCode").filter(
     (value): value is string => (
@@ -37,25 +41,25 @@ export async function recheckMaterialCompanyYearAnswers(formData: FormData) {
     || questionCodes.length > 64
     || questionCodes.length !== new Set(questionCodes).size
   ) {
-    redirect(recheckTarget(companyId, "error", "Spørsmålene er endret. Last siden på nytt."));
+    redirect(recheckTarget(companyId, accountingYear, "error", "Spørsmålene er endret. Last siden på nytt."));
   }
   const rawAnswers = Object.fromEntries(
     questionCodes.map((code) => [code, formString(formData, `answer:${code}`)]),
   );
   if (Object.values(rawAnswers).some((answer) => !["yes", "no", "unknown"].includes(answer))) {
-    redirect(recheckTarget(companyId, "error", "Svar på alle spørsmålene før du fortsetter."));
+    redirect(recheckTarget(companyId, accountingYear, "error", "Svar på alle spørsmålene før du fortsetter."));
   }
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) redirect("/login?next=%2Fselskapsgrense");
-  const { companies, error } = await listCompanyAccessContexts({ companyId });
+  const { companies, error } = await listCompanyAccessContexts({ companyId, accountingYear });
   const company = companies.find((candidate) => candidate.id === companyId);
   if (
     error
     || !company
     || company.companyYearAdmissionId === null
-    || company.admittedAccountingYear === null
+    || company.admittedAccountingYear !== accountingYear
   ) {
-    redirect(recheckTarget(companyId, "error", "Selskapsåret kunne ikke kontrolleres nå."));
+    redirect(recheckTarget(companyId, accountingYear, "error", "Selskapsåret kunne ikke kontrolleres nå."));
   }
 
   let decision: "supported" | "clarify" | "blocked";
@@ -72,8 +76,8 @@ export async function recheckMaterialCompanyYearAnswers(formData: FormData) {
     );
     decision = state.decision;
   } catch (caught) {
-    redirect(recheckTarget(companyId, "error", eligibilityActionErrorMessage(caught)));
+    redirect(recheckTarget(companyId, accountingYear, "error", eligibilityActionErrorMessage(caught)));
   }
   revalidatePath("/");
-  redirect(recheckTarget(companyId, "result", decision));
+  redirect(recheckTarget(companyId, accountingYear, "result", decision));
 }

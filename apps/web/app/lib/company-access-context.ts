@@ -11,6 +11,7 @@ import {
 
 type CompanyAccessOptions = {
   companyId?: string;
+  accountingYear?: number;
 };
 
 type CompanyAccessContextDependencies = {

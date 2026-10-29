@@ -387,6 +387,28 @@ def test_company_context_fails_closed_without_a_bearer_session() -> None:
     assert response.json()["code"] == "AUTHENTICATION_REQUIRED"
 
 
+@pytest.mark.parametrize("year", [2025, 2026])
+def test_company_context_selects_the_requested_year_without_borrowing_another_year_gate(year: int) -> None:
+    class BothYearsGateway(CompanyAccessGatewayStub):
+        async def company_year_access_states(self, token, company_ids):
+            rows = await super().company_year_access_states(token, company_ids)
+            earlier = [dict(row, admitted_accounting_year=2025,
+                company_year_admission_id="25000000-0000-0000-0000-000000000002",
+                latest_capability_manifest_version="2025.1",
+                latest_capability_manifest_sha256="2ac7047f632078b0438770d172d4c2289fd947b28e93c3a7eebc6995eb519fbe",
+                current_eligibility_decision="blocked",consequential_operations_allowed=False,
+                eligibility_reason_explanations=["Synthetic2025 blocker"]) for row in rows]
+            return earlier + rows
+    response = TestClient(create_app(BothYearsGateway())).get(
+        f"/api/v1/company-access/context?accountingYear={year}",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"})
+    assert response.status_code == 200, response.text
+    selected = response.json()["selectedCompany"]
+    assert selected["admittedAccountingYear"] == year
+    assert selected["consequentialOperationsAllowed"] is (year == 2026)
+    assert selected["currentEligibilityDecision"] == ("supported" if year == 2026 else "blocked")
+
+
 def test_company_context_returns_full_context_only_after_aal2() -> None:
     app = create_app(CompanyAccessGatewayStub())
 

@@ -56,10 +56,10 @@ import {
  * here; calculations stay with their owning capabilities and arrive through
  * their public contracts.
  */
-export async function loadWorkspaceData() {
+export async function loadWorkspaceData(options: { companyId?: string; accountingYear?: number } = {}) {
   const user = await getCurrentUser();
   const accessToken = user ? await getCurrentSessionAccessToken() : null;
-  const { companies, error } = user ? await listCompanyAccessContexts() : { companies: [], error: null };
+  const { companies, error } = user ? await listCompanyAccessContexts(options) : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData, error: annualDataError } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [], error: null };
   const { error: corporateLifecycleError, ...corporateLifecycle } = user
@@ -95,7 +95,8 @@ export async function loadWorkspaceData() {
   const comments = newestFirst(composeFilingSources(composeFilingSources(accountsSource.comments, rfSource.comments), taxSource.comments), (row) => row.created_at);
   const authorityPermissions = newestFirst(composeFilingSources(composeFilingSources(accountsSource.authorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at);
   const authorityTestRuns = newestFirst(composeFilingSources(composeFilingSources(accountsSource.authorityTestRuns, rfSource.authorityTestRuns), taxSource.authorityTestRuns), (row) => row.recorded_at);
-  const primaryCompanyId = companies[0]?.id;
+  const primaryCompanyId = companies.find((company) => company.id === options.companyId)?.id
+    ?? companies[0]?.id;
   const { invitations, memberships, error: companyAccessAdministrationError } = user
     ? await listCompanyAccessAdministration(primaryCompanyId)
     : { invitations: [], memberships: [], error: null };
@@ -199,7 +200,7 @@ export async function loadWorkspaceData() {
       ...locks.map((lock) => lock.income_year),
     ]),
   ).sort((a, b) => b - a);
-  const primaryIncomeYear = companies.find((company) => company.id === primaryCompanyId)
+  const primaryIncomeYear = options.accountingYear ?? companies.find((company) => company.id === primaryCompanyId)
     ?.admittedAccountingYear ?? incomeYears[0] ?? 2025;
   const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
   const primaryBillingEvents = billingPaymentEvents.filter((event) => event.company_id === primaryCompanyId);
