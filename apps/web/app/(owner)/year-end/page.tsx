@@ -87,7 +87,8 @@ export default async function YearEndPage() {
   const annualShareholders = primaryCorporateDecisionFacts?.shareholders ?? [];
   const annualBasis = primaryCorporateDecisionFacts?.annualBasis ?? null;
   const reviewedFacts = primaryCorporateDecisionFacts?.reviewedFacts ?? null;
-  const sourceHash = primaryCorporateDecisionFacts?.sourceHash ?? null;
+  const sourceHash = primaryCorporateDecisionFacts?.sourceHash
+    ?? primaryCorporateDecisionReadiness?.currentSourceHash ?? null;
   let annualDecisionBlocker: string | null = null;
   if (!primaryAnnualData) {
     annualDecisionBlocker = "Fullfør årsavslutningen før årsprotokollene opprettes.";
