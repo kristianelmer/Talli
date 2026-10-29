@@ -430,5 +430,6 @@ The default registry remains Brreg. The opt-in designated private Preview adapte
 can return `browser_test` for the one approved synthetic fixture (#228). This is
 not genuine registry evidence. Its admission requires an already-existing exact
 synthetic identity, its original accepted owner and fresh MFA; no synthetic
-company is created by the admission command. Accepted year promises and legal
+company is created by the admission command. Recheck context, including receipt
+replay, also requires the current original owner and fresh MFA. Accepted year promises and legal
 versions remain unchanged.

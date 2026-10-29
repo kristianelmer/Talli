@@ -115,6 +115,7 @@ def test_synthetic_admission_requires_the_exact_existing_fixture_original_owner_
                     db.execute("update public.company_memberships set role='read_only' where company_id=%s and user_id=%s", (company, owner))
                     actor(db, owner, owner_email)
                     assert asyncio.run(adapter.company_year_admission_replay("synthetic", str(command["p_operation_id"]))) is not None
+                    assert asyncio.run(adapter.company_year_admission_context("synthetic", str(result["company_year_admission_id"]), str(command["p_operation_id"]))) is None
                     with pytest.raises(psycopg.Error, match="company_access_invalid_request"):
                         with db.transaction():
                             admit(db, command)
@@ -127,6 +128,10 @@ def test_synthetic_admission_requires_the_exact_existing_fixture_original_owner_
                         admit(db, command)
                 checked = rpc(db, "company_access_recheck_company_year_eligibility", recheck_parameters(db, owner, result, command))
                 assert checked["replayed"] is False
+                retry_operation = db.execute("select operation_id from public.company_access_command_receipts where result->>'company_year_eligibility_assessment_id'=%s", (str(checked["company_year_eligibility_assessment_id"]),)).fetchone()["operation_id"]
+                recheck_context = asyncio.run(adapter.company_year_admission_context("synthetic", str(result["company_year_admission_id"]), str(retry_operation)))
+                assert recheck_context["registry_source"] == "browser_test"
+                assert recheck_context["replay_assessment_id"] == checked["company_year_eligibility_assessment_id"]
             facts = db.execute("select accounting_year,public_facts->>'source' source from public.company_eligibility_assessments where company_id=%s order by accounting_year", (company,)).fetchall()
             assert {row["accounting_year"] for row in facts} == {2025, 2026}
             assert all(row["source"] == "browser_test" for row in facts)

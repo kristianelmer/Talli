@@ -2168,6 +2168,8 @@ class CompanyAccessService:
         )
         if raw_context is None:
             raise _company_access_not_found()
+        if raw_context.get("registry_source") == "browser_test":
+            _require_fresh_mfa(access_token)
         try:
             context_admission_id = UUID(str(raw_context["company_year_admission_id"]))
             company_id = UUID(str(raw_context["company_id"]))

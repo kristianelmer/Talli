@@ -154,3 +154,50 @@ def test_real_http_eligibility_and_admission_keep_source_and_require_fresh_mfa(m
     # The valid retry must re-enter SQL's current-owner guard, not project a
     # member-readable receipt directly. Weak/stale retries never call it.
     assert len(gateway.calls) == 1
+
+
+@pytest.mark.parametrize("aal,age,expected", [("aal2", 0, 201), ("aal1", 0, 403), ("aal2", 901, 403)])
+@pytest.mark.parametrize("replayed", [False, True])
+def test_synthetic_recheck_and_replay_require_fresh_mfa(monkeypatch, aal, age, expected, replayed):
+    from fastapi.testclient import TestClient
+    from talli_backend.main import create_app
+    from test_company_eligibility import AdmissionGatewayStub, definitive_request
+
+    configured(monkeypatch)
+    gateway = AdmissionGatewayStub()
+    registry = PreviewSyntheticCompanyRegistryAdapter.from_environment(Fallback())
+    client = TestClient(create_app(gateway, registry))
+    checked = client.post("/api/v1/company-access/eligibility/precheck", json={
+        "orgNumber": IDENTITY["org_number"], "accountingYear": 2026,
+    })
+    assert checked.status_code == 200
+    answers = definitive_request(checked.json())["answers"]
+    gateway.latest_answers = answers
+    gateway.recheck_replay = {"registry_source": "browser_test", "org_number": IDENTITY["org_number"]}
+    if replayed:
+        gateway.recheck_replay.update({
+            "replay_assessment_id": "31000000-0000-0000-0000-000000000003",
+            "replay_company_year_admission_id": "20000000-0000-0000-0000-000000000002",
+            "replay_accounting_year": 2026, "replay_trigger": "before_filing", "replay_decision": "supported",
+            "replay_capability_manifest_version": "2026.1",
+            "replay_capability_manifest_sha256": "9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de",
+            "replay_answers": answers, "replay_reason_codes": [], "replay_reason_explanations": [],
+            "replay_next_step_code": "CONTINUE_COMPANY_YEAR", "replay_next_step": "Fortsett selskapsåret i Talli.",
+            "replay_consequential_operations_allowed": True, "replay_archive_export_available": True,
+        })
+    claims = {"aal": aal, "amr": [{"method": "totp", "timestamp": int(time.time()) - age}]}
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    response = client.post(
+        "/api/v1/company-access/company-year-admissions/20000000-0000-0000-0000-000000000002/eligibility-rechecks",
+        headers={"Authorization": f"Bearer header.{payload}.signature"},
+        json={"operationId": "41000000-0000-4000-8000-000000000004", "trigger": "before_filing"},
+    )
+    assert response.status_code == expected, response.text
+    if expected == 201:
+        assert response.json()["replayed"] is replayed
+        assert len(gateway.calls) == (0 if replayed else 1)
+        if not replayed:
+            assert json.loads(gateway.calls[0][1].public_facts_json)["source"] == "browser_test"
+    else:
+        assert response.json()["code"] == "FRESH_MFA_REQUIRED"
+        assert gateway.calls == []
