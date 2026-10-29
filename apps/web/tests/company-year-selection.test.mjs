@@ -11,9 +11,10 @@ function compile(path, dependencies) {
   const source = readFileSync(new URL(`../app/${path}`, import.meta.url), "utf8");
   vm.runInNewContext(ts.transpileModule(source, {compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
-  }}).outputText, {exports, URLSearchParams, process:{env:{NODE_ENV:"production"}}, require(name) {
+  }}).outputText, {exports, URL, URLSearchParams, process:{env:{NODE_ENV:"production"}}, require(name) {
     if (name in dependencies) return dependencies[name];
     if (name === "node:crypto" || name === "react/jsx-runtime") return require(name);
+    if (dependencies["*"]) return dependencies["*"];
     throw new Error(`Unexpected dependency: ${name}`);
   }});
   return exports;
@@ -274,5 +275,66 @@ test("successful company-year admission carries the admitted company and year th
       return true;
     });
     assert.deepEqual(events, [year, "cleared"]);
+  }
+});
+
+
+test("real setup and bank actions retain company/year on success, preview and unknown-outcome recovery", async () => {
+  const companyId = "10000000-0000-4000-8000-000000000001";
+  const operationId = "40000000-0000-4000-8000-000000000004";
+  for (const year of [2025, 2026]) for (const action of ["createOpeningBalanceSetup", "importBankCsv", "acceptBankCsvPreview"]) {
+    for (const fail of [false, true]) {
+      const calls = [];
+      const effect = command => {
+        calls.push(command);
+        if (fail) throw new Error("Unknown synthetic operation outcome");
+      };
+      const audit = {
+        select() { return this; }, eq() { return this; }, order() { return this; },
+        async limit() { return { data: [] }; }, async insert() { return { error: null }; },
+      };
+      const dependencies = {
+        hasSupabaseEnv: () => true,
+        getCurrentSessionAccessToken: async () => "session-token",
+        createSupabaseServerClient: async () => ({
+          auth: { getUser: async () => ({ data: { user: { id: "synthetic-owner" } } }) },
+          from: () => audit,
+        }),
+        revalidatePath() {}, redirect(url) { throw new Error(`REDIRECT:${url}`); },
+        startNewYear: async (_token, command) => effect(command),
+        previewBankSourceFile: async (_token, command) => {
+          effect(command);
+          return { sourceFileId: operationId, documentSha256: "a".repeat(64), transactionCount: 1 };
+        },
+        acceptBankSourceFile: async (_token, _source, command) => effect(command),
+        ledgerOutcomeMayBeUnknown: () => true, bankingOutcomeMayBeUnknown: () => true,
+        ledgerActionErrorMessage: () => "Retry same request", bankingActionErrorMessage: () => "Retry same request",
+        createInvitationSideEffectStore: () => ({ findAudit() {} }), persistLedgerAudit: async () => {},
+      };
+      const actions = compile("actions.ts", {
+        "./lib/action-return": compile("lib/action-return.ts", {}), "*": dependencies,
+      });
+      const form = new FormData();
+      for (const [key, value] of Object.entries({
+        returnTo: `/onboarding?step=bank&companyId=${companyId}&accountingYear=${year}`,
+        companyId, incomeYear: String(year), operationId, accountId: operationId,
+        sourceFileId: operationId, documentSha256: "a".repeat(64), transactionCount: "1",
+        csvText: "date,text,amount\n2025-01-02,Synthetic,10",
+      })) form.set(key, value);
+      await assert.rejects(actions[action](form), error => {
+        assert.ok(error.message.startsWith("REDIRECT:"), error.message);
+        const target = new URL(error.message.slice("REDIRECT:".length), "https://test.invalid");
+        assert.equal(target.pathname, "/onboarding");
+        assert.equal(target.searchParams.get("step"), "bank");
+        assert.equal(target.searchParams.get("companyId"), companyId);
+        assert.equal(target.searchParams.get("accountingYear"), String(year));
+        assert.equal(target.searchParams.has("error"), fail);
+        if (action === "importBankCsv" && !fail) assert.equal(target.searchParams.get("bankPreviewSourceFileId"), operationId);
+        return true;
+      });
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].companyId, companyId);
+      assert.equal(calls[0].incomeYear, year);
+    }
   }
 });

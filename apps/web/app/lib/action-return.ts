@@ -5,7 +5,17 @@ export function actionReturnPath(value: FormDataEntryValue | string | null | und
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return "/";
   try {
     const url = new URL(value, localOrigin);
-    if (url.origin !== localOrigin || !annualPath.test(url.pathname)) return "/";
+    if (url.origin !== localOrigin) return "/";
+    if (url.pathname === "/onboarding") {
+      const allowed = new Set(["companyId", "accountingYear", "step"]);
+      const keys = [...url.searchParams.keys()];
+      if (url.hash || keys.some((key) => !allowed.has(key)) || keys.length !== new Set(keys).size) return "/";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(url.searchParams.get("companyId") ?? "")) return "/";
+      if (!["2025", "2026"].includes(url.searchParams.get("accountingYear") ?? "")) return "/";
+      if (url.searchParams.has("step") && url.searchParams.get("step") !== "bank") return "/";
+      return `${url.pathname}${url.search}`;
+    }
+    if (!annualPath.test(url.pathname)) return "/";
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return "/";
