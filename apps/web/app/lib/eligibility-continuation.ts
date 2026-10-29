@@ -48,13 +48,13 @@ function parseEligibilityContinuation(value: string): EligibilityContinuation | 
     || !/^\d{9}$/u.test(candidate.orgNumber)
     || typeof candidate.companyName !== "string"
     || !candidate.companyName
-    || candidate.accountingYear !== 2026
+    || (candidate.accountingYear !== 2025 && candidate.accountingYear !== 2026)
     || !isSha256(candidate.publicFactsSha256)
-    || candidate.capabilityManifestVersion !== "2026.1"
+    || candidate.capabilityManifestVersion !== `${candidate.accountingYear}.1`
     || !isSha256(candidate.capabilityManifestSha256)
     || !isAnswerMap(candidate.answers)
     || !isSha256(candidate.answersSha256)
-    || candidate.reconstructFrom !== "2026-01-01"
+    || candidate.reconstructFrom !== `${candidate.accountingYear}-01-01`
     || candidate.onlyAccountingAndFilingProduct !== true
     || !Array.isArray(candidate.customerClaims)
     || candidate.customerClaims.length !== 12

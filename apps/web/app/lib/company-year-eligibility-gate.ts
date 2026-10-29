@@ -54,6 +54,7 @@ export async function requireCompanyYearEligibilityGate(
   companyId: string,
   trigger: EligibilityGateTrigger,
   dependencies: GateDependencies = gateDependencies,
+  accountingYear?: number,
 ) {
   const accessToken = await dependencies.getAccessToken();
   if (!accessToken) {
@@ -61,12 +62,14 @@ export async function requireCompanyYearEligibilityGate(
   }
   const context = await dependencies.loadContext(accessToken, dependencies.operationId(), {
     companyId,
+    ...(accountingYear === undefined ? {} : { accountingYear }),
   });
   const company = context.selectedCompany;
   if (
     company.id !== companyId
     || company.companyYearAdmissionId === null
     || company.admittedAccountingYear === null
+    || (accountingYear !== undefined && company.admittedAccountingYear !== accountingYear)
   ) {
     throw new CompanyYearEligibilityGateError(
       "Selskapsåret har ingen gyldig Talli-godkjenning.",

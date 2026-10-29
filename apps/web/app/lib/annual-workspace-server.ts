@@ -35,7 +35,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) redirect("/?error=Innlogging%20kreves");
 
-  const { companies, error: companyError } = await listCompanyAccessContexts({ companyId: context.companyId });
+  const { companies, error: companyError } = await listCompanyAccessContexts({ companyId: context.companyId, accountingYear: context.incomeYear });
   if (companyError) throw new Error("Kunne ikke laste selskapsarbeidsflaten.");
   const company = companies.find((item) => item.id === context.companyId);
   if (!company) notFound();

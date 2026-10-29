@@ -63215,6 +63215,24 @@
             }
           },
           {
+            "in": "query",
+            "name": "accountingYear",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2026,
+                  "minimum": 2025,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accountingyear"
+            }
+          },
+          {
             "description": "Optional caller-provided correlation identifier.",
             "in": "header",
             "name": "X-Request-ID",

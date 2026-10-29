@@ -6946,11 +6946,13 @@ def create_app(
     async def get_selected_company_context(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
         company_id: str | None = None,
+        accounting_year: Annotated[int | None, Query(alias="accountingYear", ge=2025, le=2026)] = None,
     ) -> CompanyContextResponse:
         return await company_access_call(
             company_access_service.selected_context(
                 bearer_token(credentials),
                 company_id=company_id,
+                accounting_year=accounting_year,
             )
         )
 

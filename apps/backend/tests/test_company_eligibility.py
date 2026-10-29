@@ -22,6 +22,78 @@ from talli_backend.modules.validation_observation.public import (
 BUSINESS_TERMS_SHA256 = "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
 DPA_SHA256 = "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
 PRIVACY_SHA256 = "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de"
+
+
+@pytest.mark.parametrize("year", [2025, 2026])
+def test_each_supported_company_year_has_its_own_immutable_admission_promise(year: int) -> None:
+    client, gateway, _registry = public_client()
+    checked = client.post("/api/v1/company-access/eligibility/precheck",
+        json={"orgNumber": "314159265", "accountingYear": year})
+    assert checked.status_code == 200
+    result = checked.json()
+    assert result["decision"] == "clarify"
+    assert result["capabilityManifestVersion"] == f"{year}.1"
+    if year == 2026:
+        assert result["capabilityManifestSha256"] == "9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de"
+    command = definitive_request(result) | {"accountingYear": year}
+    response = client.post("/api/v1/company-access/eligibility/definitive", json=command)
+    assert response.status_code == 200, response.text
+    supported = response.json()
+    assert supported["decision"] == "supported"
+    assert supported["companyYearPromise"]["startsOn"] == f"{year}-01-01"
+    assert supported["companyYearPromise"]["endsOn"] == f"{year}-12-31"
+    assert supported["companyYearPromise"]["reconstructionRequiredFrom"] == f"{year}-01-01"
+    admitted = client.post("/api/v1/company-access/company-year-admissions",
+        headers={"Authorization": f"Bearer {access_token()}"},
+        json=admission_request(supported) | {"accountingYear": year})
+    assert admitted.status_code == 201, admitted.text
+    assert admitted.json()["accountingYear"] == year
+    assert admitted.json()["reconstructFrom"] == f"{year}-01-01"
+    stored = gateway.calls[-1][1]
+    assert stored.capability_manifest_version == f"{year}.1"
+    assert json.loads(stored.capability_manifest_json)["accountingYear"] == year
+    assert json.loads(stored.company_year_promise_json)["accountingYear"] == year
+
+
+def test_manifest_from_another_year_is_rejected_before_registry_or_admission_io() -> None:
+    client, gateway, registry = public_client()
+    checked = precheck(client)
+    registry.calls.clear()
+    command = definitive_request(checked) | {"accountingYear": 2025}
+    response = client.post("/api/v1/company-access/eligibility/definitive", json=command)
+    assert response.status_code == 409
+    assert response.json()["code"] == "ELIGIBILITY_MANIFEST_CHANGED"
+    assert registry.calls == []
+    assert gateway.calls == []
+
+
+def test_2025_recheck_keeps_the_accepted_2025_promise_and_uses_the_2025_manifest() -> None:
+    class YearGateway(AdmissionGatewayStub):
+        async def company_year_admission_context(self, *args):
+            context = dict(await super().company_year_admission_context(*args))
+            context.update(accounting_year=2025, accepted_capability_manifest_version="2025.1",
+                accepted_capability_manifest_sha256="2ac7047f632078b0438770d172d4c2289fd947b28e93c3a7eebc6995eb519fbe")
+            context["accepted_company_year_promise"] = dict(context["accepted_company_year_promise"],
+                accountingYear=2025, startsOn="2025-01-01", endsOn="2025-12-31", reconstructionRequiredFrom="2025-01-01")
+            return context
+    gateway=YearGateway()
+    client=TestClient(create_app(gateway,CompanyRegistryStub()))
+    checked=client.post("/api/v1/company-access/eligibility/precheck",
+        json={"orgNumber":"314159265","accountingYear":2025})
+    assert checked.status_code==200
+    gateway.latest_answers=supported_answers(checked.json()["questionCodes"])
+    response=client.post("/api/v1/company-access/company-year-admissions/20000000-0000-0000-0000-000000000002/eligibility-rechecks",
+        headers={"Authorization":f"Bearer {access_token()}"},
+        json={"operationId":"41000000-0000-4000-8000-000000000004","trigger":"before_filing"})
+    assert response.status_code==201,response.text
+    result=response.json()
+    assert result["accountingYear"]==2025
+    assert result["acceptedCapabilityManifestVersion"]==result["currentCapabilityManifestVersion"]=="2025.1"
+    assert result["acceptedCompanyYearPromise"]["reconstructionRequiredFrom"]=="2025-01-01"
+    assert result["consequentialOperationsAllowed"] is True
+    stored=gateway.calls[-1][1]
+    assert stored.capability_manifest_version=="2025.1"
+    assert json.loads(stored.capability_manifest_json)["accountingYear"]==2025
 CUSTOMER_CLAIMS = [
     "Komplett gjenoppbygging av selskapsåret fra 1. januar",
     "Bokføring gjennom hele selskapsåret",
