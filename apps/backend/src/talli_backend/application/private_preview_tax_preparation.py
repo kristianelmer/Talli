@@ -49,3 +49,8 @@ class PrivatePreviewTaxPreparation(CompanyTaxDeliveryPreparation):
     def workspace_admission(self, session, source, parent=None):
         return (parent is None and self._scope(session, source.company_id, source.income_year)
                 and source.organization_number == ORGANIZATION)
+
+    async def authorize_transaction(self, session, transaction, query):
+        if not self._scope(session, query.company_id, query.income_year):
+            raise CompanyTaxError.forbidden()
+        await transaction.assert_preparation_company_year(query)

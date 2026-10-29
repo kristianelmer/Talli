@@ -205,6 +205,10 @@ def project_tax_delivery_workspace(query,snapshot,source,*,preparation_available
     facts=project_company_tax_source(query,snapshot)
     if snapshot.contract_version!='company-tax-source-v9' or facts.history_coverage.status!='complete':raise CompanyTaxError.unavailable()
     journals=tuple(tax_delivery_snapshot_journal(snapshot,row.draft) for row in snapshot.delivery_drafts)
+    # Reserved synthetic reference namespace is persisted in the exact draft.
+    # Provenance therefore survives expiry or removal of runtime composition.
+    preparation_only = preparation_only or any(journal.draft.current_document is not None and
+        journal.draft.current_document.document_reference.startswith('synthetic-private-preview-') for journal in journals)
     tip=tax_delivery_lineage(journals);dispatch_admissions=dispatch_admissions or {};correction_admissions=correction_admissions or {};validation=validation or {}
     terminals={j.draft.correction_parent.filing_id:j.draft.correction_parent.terminal for j in journals if j.draft.correction_parent is not None}
     rows=[];field_bytes=0;field_count=0

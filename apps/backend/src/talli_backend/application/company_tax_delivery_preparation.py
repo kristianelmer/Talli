@@ -30,9 +30,12 @@ class CompanyTaxDeliveryPreparation:
     async def authorize(self, session, query):
         """Additional composition admission; owning SQL still checks owner/MFA."""
 
+    async def authorize_transaction(self, session, transaction, query):
+        """Transaction-bound owning contracts only; no external I/O."""
+
     async def _lock(self, session, transaction, query):
         await transaction.lock_delivery_draft_archive(query)
-        await self.authorize(session, query)
+        await self.authorize_transaction(session, transaction, query)
 
     def workspace_admission(self,session,source,parent=None) -> bool:
         target=getattr(session,'delivery_rehearsal_target',None)

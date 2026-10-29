@@ -152,12 +152,17 @@ class AuthenticatedCompanyTax:
     async def delivery_workspace(self,query: CompanyTaxSourceQuery) -> TaxDeliveryWorkspace:
         from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        preparation_admitted = True
+        if self._preparation is not None:
+            try:
+                await self._preparation.authorize(self._session, query)
+            except CompanyTaxError:
+                preparation_admitted = False
         async with self._session.transaction() as guard:
             await guard.lock_delivery_draft_archive(query)
-            preparation_admitted = True
-            if self._preparation is not None:
+            if preparation_admitted and self._preparation is not None:
                 try:
-                    await self._preparation.authorize(self._session, query)
+                    await self._preparation.authorize_transaction(self._session, guard, query)
                 except CompanyTaxError:
                     preparation_admitted = False
             async with self._session.transaction(snapshot=True) as snapshot:
@@ -172,10 +177,7 @@ class AuthenticatedCompanyTax:
             validation={filing:self._submission.workspace_validation(journal) for filing,journal in journals.items()} if self._submission is not None else {}
             result=project_tax_delivery_workspace(query,history,source,preparation_available=preparation,
                 dispatch_admissions=dispatch,correction_admissions=correction,validation=validation,
-                preparation_only=(self._preparation is not None and self._preparation.preparation_only)
-                    or any(journal.draft.current_document is not None and
-                        journal.draft.current_document.document_reference.startswith('synthetic-private-preview-')
-                        for journal in journals.values()))
+                preparation_only=self._preparation is not None and self._preparation.preparation_only)
             await guard.lock_delivery_draft_archive(query)
         return result
 

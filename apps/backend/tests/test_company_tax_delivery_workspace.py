@@ -158,6 +158,8 @@ def test_private_preparation_opt_in_preserves_old_wire_and_expired_original_read
         preparation_only=True
         async def authorize(self,*_):
             if not admitted[0]:raise CompanyTaxError.forbidden()
+        async def authorize_transaction(self,*_):
+            if not admitted[0]:raise CompanyTaxError.forbidden()
         def workspace_admission(self,*_,**__):return admitted[0]
     async def source(*args,**kwargs):return session.source
     monkeypatch.setattr(company_tax_delivery_source,'read_company_tax_delivery_source',source)

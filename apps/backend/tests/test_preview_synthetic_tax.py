@@ -50,6 +50,7 @@ def context():
 class Access:
     def __init__(self): self.context=context(); self.calls=[]
     async def selected_context(self, token, **scope):
+        assert self.session.active==0, 'Auth HTTP must stay outside SQL transactions'
         assert token == 'synthetic-owner-token'
         assert scope == {'company_id': COMPANY, 'accounting_year': 2025}
         self.calls.append(scope)
@@ -76,10 +77,15 @@ class Session:
         assert self.active
         self.stored=StoredTaxDeliveryDraft(draft, Timestamp(NOW))
         return self.stored
+    async def assert_preparation_company_year(self, query):
+        assert self.active and query==QUERY
+        if not self.eligible():raise CompanyTaxError.forbidden()
 
 
 def setup(monkeypatch):
     access=Access(); session=Session(); clock=[NOW]
+    access.session=session
+    session.eligible=lambda:access.context.consequential_operations_allowed
     factory=compose_preview_tax_preparation(access, environment=environment(), now=lambda: clock[0])
     app=CompanyTaxApplication(session, lambda tx: None, preparation_factory=factory)
     values=raw_source('no-activity-zero')
@@ -165,7 +171,7 @@ def test_preparation_retains_exact_synthetic_bytes_and_replays_without_regenerat
         clock[0]+=timedelta(hours=2)
         with pytest.raises(CompanyTaxError): await actor.prepare_delivery_draft(command)
     asyncio.run(exercise())
-    assert session.guard_calls==4 and len(access.calls)==6
+    assert session.guard_calls==4 and len(access.calls)==2
 
 
 @pytest.mark.parametrize('change', ['eligibility', 'expiry', 'mfa'])
@@ -199,3 +205,19 @@ def test_scope_refuses_other_actor_company_or_year(monkeypatch, change):
         with pytest.raises(CompanyTaxError): await (await app.session('synthetic-owner-token')).prepare_delivery_draft(command)
     asyncio.run(exercise())
     assert not access.calls and not session.guard_calls and session.stored is None
+
+
+@pytest.mark.parametrize('allowed', [True,False,None,'true'])
+def test_transaction_recheck_uses_existing_company_access_contract_and_exact_boolean(allowed):
+    from talli_backend.adapters.postgres_company_tax_filing import PostgresCompanyTaxTransaction
+    tx=PostgresCompanyTaxTransaction(SimpleNamespace(actor_id=ACTOR),None)
+    calls=[]
+    async def row(sql,params):
+        calls.append((sql,params));return {'allowed':allowed}
+    tx._delivery_row=row
+    async def exercise():
+        if allowed is True:await tx.assert_preparation_company_year(QUERY)
+        else:
+            with pytest.raises(CompanyTaxError):await tx.assert_preparation_company_year(QUERY)
+    asyncio.run(exercise())
+    assert calls==[('select public.company_access_company_year_allows_consequential_v1(%s::uuid,%s::integer) as allowed',(COMPANY,2025))]
