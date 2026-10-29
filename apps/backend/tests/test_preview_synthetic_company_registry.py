@@ -135,6 +135,12 @@ def test_real_http_eligibility_and_admission_keep_source_and_require_fresh_mfa(m
         "privacy_notice_version": request["privacyNoticeVersion"], "privacy_notice_sha256": request["privacyNoticeSha256"],
     }
     gateway.calls.clear()
+    guarded_admit = gateway.admit_company_year
+
+    async def guarded_retry(token, command):
+        return {**await guarded_admit(token, command), "replayed": True}
+
+    gateway.admit_company_year = guarded_retry
     for retry_aal, retry_age, status in [("aal2", 0, 201), ("aal1", 0, 403), ("aal2", 901, 403)]:
         retry_claims = {"aal": retry_aal, "amr": [{"method": "totp", "timestamp": int(time.time()) - retry_age}]}
         retry_payload = base64.urlsafe_b64encode(json.dumps(retry_claims).encode()).decode().rstrip("=")
@@ -145,4 +151,6 @@ def test_real_http_eligibility_and_admission_keep_source_and_require_fresh_mfa(m
             assert retried.json()["replayed"] is True
         else:
             assert retried.json()["code"] == "FRESH_MFA_REQUIRED"
-    assert gateway.calls == []
+    # The valid retry must re-enter SQL's current-owner guard, not project a
+    # member-readable receipt directly. Weak/stale retries never call it.
+    assert len(gateway.calls) == 1

@@ -2033,9 +2033,12 @@ class CompanyAccessService:
         replay = await self._gateway.company_year_admission_replay(
             access_token, str(command.operation_id)
         )
+        if replay is not None and replay.get("registry_source") == "browser_test":
+            # Re-enter the guarded writer so current fixture identity and ownership
+            # are checked before SQL returns an existing synthetic receipt.
+            _require_fresh_mfa(access_token)
+            replay = None
         if replay is not None:
-            if replay.get("registry_source") == "browser_test":
-                _require_fresh_mfa(access_token)
             replay_answers = replay.get("answers")
             if (
                 replay.get("org_number") != command.org_number

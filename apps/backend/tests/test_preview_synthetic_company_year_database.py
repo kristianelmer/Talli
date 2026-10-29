@@ -108,6 +108,19 @@ def test_synthetic_admission_requires_the_exact_existing_fixture_original_owner_
                 assert admit(db, command)["company_year_admission_id"] == result["company_year_admission_id"]
                 replay = asyncio.run(adapter.company_year_admission_replay("synthetic", str(command["p_operation_id"])))
                 assert replay["registry_source"] == "browser_test" and replay["accounting_year"] == year
+                # A former owner may still read the receipt as a member. The
+                # synthetic HTTP retry must therefore re-enter this SQL guard.
+                with db.transaction():
+                    db.execute("reset role")
+                    db.execute("update public.company_memberships set role='read_only' where company_id=%s and user_id=%s", (company, owner))
+                    actor(db, owner, owner_email)
+                    assert asyncio.run(adapter.company_year_admission_replay("synthetic", str(command["p_operation_id"]))) is not None
+                    with pytest.raises(psycopg.Error, match="company_access_invalid_request"):
+                        with db.transaction():
+                            admit(db, command)
+                    db.execute("reset role")
+                    db.execute("update public.company_memberships set role='owner' where company_id=%s and user_id=%s", (company, owner))
+                    actor(db, owner, owner_email)
                 with pytest.raises(psycopg.Error, match="company_access_invalid_request"):
                     with db.transaction():
                         actor(db, owner, owner_email, aal="aal1")
