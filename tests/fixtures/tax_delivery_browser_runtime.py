@@ -94,6 +94,10 @@ class _ParentReader:
 class _Preparation:
     def __init__(self,runtime,actual):self.runtime=runtime;self.actual=actual
     def workspace_admission(self,*args):return self.actual.workspace_admission(*args)
+    @property
+    def preparation_only(self):return self.actual.preparation_only
+    async def authorize(self,*args):return await self.actual.authorize(*args)
+    async def authorize_transaction(self,*args):return await self.actual.authorize_transaction(*args)
     async def prepare(self,session,command):
         stored=await self.actual.prepare(session,command)
         self.runtime.register(stored.draft,session)
