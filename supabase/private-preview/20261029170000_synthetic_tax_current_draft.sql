@@ -8,7 +8,7 @@ set local lock_timeout='5s';
 set local statement_timeout='30s';
 do $preflight$
 begin
- if pg_catalog.clock_timestamp()>='2026-10-30T05:00:00Z'::timestamptz then
+ if pg_catalog.clock_timestamp()>='2026-10-30T18:00:00Z'::timestamptz then
   raise exception 'synthetic_tax_activation_expired';
  end if;
  if not exists(select 1 from public.companies c
@@ -45,7 +45,7 @@ set local role company_tax_filing_store_owner;
 create or replace function company_tax_filing.current_draft_writes_enabled_v2() returns boolean
 language plpgsql volatile security invoker set search_path='' as $function$
 begin
- return pg_catalog.clock_timestamp()<'2026-10-30T05:00:00Z'::timestamptz
+ return pg_catalog.clock_timestamp()<'2026-10-30T18:00:00Z'::timestamptz
   and public.company_access_auth_uid_v1()='8ca24df3-12af-4be0-a534-4a26092c97bc'::uuid;
 end; $function$;
 create or replace function company_tax_filing.store_delivery_draft_v2(p_raw text,p_hash text,p_subject text)

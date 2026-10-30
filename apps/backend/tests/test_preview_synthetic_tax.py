@@ -133,7 +133,7 @@ def test_cold_start_after_finite_expiry_disables_preparation_without_disabling_a
 
 
 @pytest.mark.parametrize('field,value', [
-    ('id', str(uuid4())), ('org_number', '123456789'), ('source', 'brreg'), ('created_by', str(uuid4())),
+    ('id', '00000000-0000-4000-8000-000000000001'), ('org_number', '123456789'), ('source', 'brreg'), ('created_by', '00000000-0000-4000-8000-000000000002'),
     ('name', 'Another company'), ('entity_type', 'ASA'), ('status_text', 'slettet'),
     ('address', 'Other'), ('postal_code', '9999'), ('city', 'Other'),
     ('identity_confirmed_at', None), ('identity_locked_at', None), ('role', 'accountant'), ('aal', 'aal1'),
