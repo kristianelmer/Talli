@@ -1,3 +1,4 @@
+import { AnnualWorkspaceRecovery } from "../../../../components/annual-workspace/AnnualWorkspaceRecovery";
 import { AnnualOverview } from "../../../../components/annual-workspace/AnnualOverview";
 import { loadAnnualWorkspace } from "../../../../lib/annual-workspace-server";
 
@@ -8,5 +9,6 @@ export default async function AnnualReportingPage({
 }) {
   const { companyId, incomeYear } = await params;
   const loaded = await loadAnnualWorkspace({ companyId, incomeYear: Number(incomeYear) });
+  if (loaded.status === "unavailable") return <AnnualWorkspaceRecovery context={loaded.context} />;
   return <AnnualOverview model={loaded.model} />;
 }

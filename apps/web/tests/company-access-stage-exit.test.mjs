@@ -130,6 +130,7 @@ test("a verified user without an owner company reaches onboarding but other cont
   for (const [status, code] of [
     [401, "AUTHENTICATION_REQUIRED"],
     [403, "AAL2_REQUIRED"],
+    [403, "COMPANY_ACCESS_FORBIDDEN"],
     [503, "COMPANY_ACCESS_UNAVAILABLE"],
     [503, "COMPANY_CONTEXT_NOT_FOUND"],
   ]) {
@@ -144,6 +145,7 @@ test("a verified user without an owner company reaches onboarding but other cont
           requiresAal2: true,
         }
       : status === 401 ? { companies: [], error: "Authentication required.", requiresSignIn: true }
+      : status === 403 ? { companies: [], error: "Company access denied.", accessDenied: true }
       : { companies: [], error: "Company access is temporarily unavailable." });
   }
 });
