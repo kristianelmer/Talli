@@ -19,6 +19,12 @@ begin
    and c.identity_confirmed_at is not null and c.identity_locked_at is not null) then
   raise exception 'synthetic_tax_fixture_changed';
  end if;
+ if not pg_catalog.has_function_privilege('company_tax_filing_workflow_executor',
+   'public.company_access_company_year_allows_consequential_v1(uuid,integer)','EXECUTE')
+  or not pg_catalog.has_function_privilege('company_tax_filing_store_owner',
+   'public.company_access_company_year_allows_consequential_v1(uuid,integer)','EXECUTE') then
+  raise exception 'synthetic_tax_existing_eligibility_authority_missing';
+ end if;
  if not exists(select 1 from pg_catalog.pg_proc p
   where p.oid='company_tax_filing.current_draft_writes_enabled_v2()'::regprocedure
    and p.proowner='company_tax_filing_store_owner'::regrole
@@ -50,12 +56,12 @@ begin
 end; $function$;
 create or replace function company_tax_filing.store_delivery_draft_v2(p_raw text,p_hash text,p_subject text)
 returns jsonb language plpgsql volatile security definer set search_path='' as $function$
-declare value jsonb:=p_raw::jsonb;
+declare value jsonb:=(p_raw::jsonb)->'draft';
 begin
  if p_subject is distinct from '8ca24df3-12af-4be0-a534-4a26092c97bc'
-  or value#>>'{prepared_by,subject}' is distinct from p_subject
-  or value#>>'{envelope,source,company_id}' is distinct from '53454096-3fb6-45a6-a9c8-35fa83824614'
-  or value#>'{envelope,source,income_year}' is distinct from '2025'::jsonb
+  or value#>>'{prepared_by,subject,value}' is distinct from p_subject
+  or value#>>'{envelope,source,company_id,value}' is distinct from '53454096-3fb6-45a6-a9c8-35fa83824614'
+  or value#>'{envelope,source,income_year,value}' is distinct from '2025'::jsonb
   or value#>>'{envelope,source,organization_number}' is distinct from '992803750'
   or value#>>'{current_document,document_reference}' is distinct from 'synthetic-private-preview-992803750-2025-v1'
   or company_tax_filing.current_draft_writes_enabled_v2() is distinct from true then
