@@ -24,12 +24,12 @@ function compile(path, dependencies, globals = {}) {
   } });
   return exports;
 }
-function harness({ billing = async () => ({}), access = async () => ({ companies: [{ id: context.companyId, name: "Fixture", role: "owner", currentAgreementAccepted: true }], error: null }), token = "fixture-token", source = async () => empty, globals = {} } = {}) {
+function harness({ billing = async () => ({}), access = async () => ({ companies: [{ id: context.companyId, name: "Fixture", role: "owner", currentAgreementAccepted: true }], error: null }), token = "fixture-token", source = async () => empty, cache = fn => fn, globals = {} } = {}) {
   let billingCalls = 0;
   const dependencies = {
     "@talli/talli-api-client": { TalliApiError },
     "../../lib/protected-backend-fetch.ts": { BackendFetchError, BackendTransportError },
-    "react": { cache: fn => fn },
+    "react": { cache },
     "next/navigation.js": { notFound() { throw new Error("NOT_FOUND"); }, redirect(href) { throw new Error(`REDIRECT:${href}`); } },
     "./supabase/server.ts": Object.fromEntries(["listAnnualData", "listBankTransactions", "listDocumentsForCompanies", "listFilingReadinessSnapshots", "listLedgerEntries", "listOpeningSetups", "listPeriodLocks"].map(name => [name, async () => empty]).concat([["getCurrentUser", async () => ({ id: "owner" })]])),
     "./company-access-context.ts": { listCompanyAccessContexts: access },
@@ -49,6 +49,55 @@ function harness({ billing = async () => ({}), access = async () => ({ companies
   const module = compile("../app/lib/annual-workspace-server.ts", dependencies, globals);
   return { load: module.loadAnnualWorkspace, billingCalls: () => billingCalls };
 }
+
+test("layout and page share one scoped read and deadline despite constructing separate context objects", async () => {
+  // Model React's argument-identity cache and its lifetime of one server render.
+  // Both real route consumers construct their own company/year context object.
+  const renderCaches = [];
+  const cache = fn => {
+    const root = new Map(), result = Symbol("result");
+    renderCaches.push(root);
+    return (...args) => {
+      let node = root;
+      for (const arg of args) {
+        if (!node.has(arg)) node.set(arg, new Map());
+        node = node.get(arg);
+      }
+      if (!node.has(result)) node.set(result, fn(...args));
+      return node.get(result);
+    };
+  };
+  const nextRender = () => renderCaches.forEach(root => root.clear());
+  let unavailable = false, signedIn = true;
+  const h = harness({ cache,
+    billing: async () => {
+      if (unavailable) throw apiError(503, "BILLING_DEPENDENCY_UNAVAILABLE");
+      return { allowed: true };
+    },
+    access: async () => signedIn
+      ? { companies: [{ id: context.companyId, role: "owner", currentAgreementAccepted: true }], error: null }
+      : { companies: [], error: "Sign in required", requiresSignIn: true },
+  });
+  const [layout, page] = await Promise.all([h.load({ ...context }), h.load({ ...context })]);
+  assert.equal(h.billingCalls(), 1);
+  assert.strictEqual(layout, page);
+  assert.equal(layout.status, "ready");
+  assert.equal((await h.load({ ...context, incomeYear: 2026 })).model.context.incomeYear, 2026);
+  assert.equal(h.billingCalls(), 2);
+
+  nextRender();
+  unavailable = true;
+  assert.equal((await h.load({ ...context })).status, "unavailable");
+  assert.equal(h.billingCalls(), 3);
+  nextRender();
+  unavailable = false;
+  assert.equal((await h.load({ ...context })).status, "ready");
+  assert.equal(h.billingCalls(), 4);
+  nextRender();
+  signedIn = false;
+  await assert.rejects(h.load({ ...context }), /REDIRECT:\/login\?reauth=1/u);
+  assert.equal(h.billingCalls(), 4);
+});
 
 test("the observed billing dependency 503 returns a scoped unavailable workspace instead of crashing the overview", async () => {
   const h = harness({ billing: async () => { throw apiError(503, "BILLING_DEPENDENCY_UNAVAILABLE"); } });

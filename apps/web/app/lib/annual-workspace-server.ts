@@ -45,7 +45,14 @@ function recoverAccess(error: unknown, context: AnnualWorkspaceContext) {
   if (error.status === 403 || error.status === 404) notFound();
 }
 
-export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
+export function loadAnnualWorkspace(context: AnnualWorkspaceContext) {
+  return loadCachedAnnualWorkspace(context.companyId, context.incomeYear);
+}
+
+// React compares cache arguments by identity. Layouts and pages construct
+// separate context objects; primitive keys share one read within this render.
+const loadCachedAnnualWorkspace = cache(async (companyId: string, incomeYear: number) => {
+  const context = { companyId, incomeYear };
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(context.companyId)
       || !Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
   let timer: ReturnType<typeof setTimeout> | undefined;
