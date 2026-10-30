@@ -554,7 +554,7 @@ export default async function FilingObligationPage({
                   <SubmitButton variant="ghost" pendingLabel={f.preview.generatePending}>
                     {f.preview.regenerateCta}
                   </SubmitButton>
-                </form> : <p className="filingLockNote">{f.preview.lockedNote}</p>}
+                </form> : <p className="filingLockNote">Fullfør sjekken over før du lager en ny forhåndsvisning.</p>}
               </>
             )}
           </div>
