@@ -63,14 +63,17 @@ def _replayed(payload: Mapping[str, object], command: RecordTaxSettlementCommand
 class CompanyTaxApplication:
     def __init__(self, sessions: CompanyTaxSessionFactory, ledger: Callable[[LedgerPersistence], LedgerCommands],
                  *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                 preparation_factory: Callable[[str], CompanyTaxDeliveryPreparation] | None = None,
                  submission: CompanyTaxDeliverySubmission | None = None):
         self._sessions, self._ledger = sessions, ledger
         self._preparation = preparation
+        self._preparation_factory = preparation_factory
         self._submission = submission
 
     async def session(self, access_token: str) -> AuthenticatedCompanyTax:
         return AuthenticatedCompanyTax(await self._sessions.session(access_token), self._ledger,
-            preparation=self._preparation,submission=self._submission)
+            preparation=self._preparation_factory(access_token) if self._preparation_factory else self._preparation,
+            submission=self._submission)
 
 
 class AuthenticatedCompanyTax:
@@ -149,20 +152,32 @@ class AuthenticatedCompanyTax:
     async def delivery_workspace(self,query: CompanyTaxSourceQuery) -> TaxDeliveryWorkspace:
         from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
         if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        preparation_admitted = True
+        if self._preparation is not None:
+            try:
+                await self._preparation.authorize(self._session, query)
+            except CompanyTaxError:
+                preparation_admitted = False
         async with self._session.transaction() as guard:
             await guard.lock_delivery_draft_archive(query)
+            if preparation_admitted and self._preparation is not None:
+                try:
+                    await self._preparation.authorize_transaction(self._session, guard, query)
+                except CompanyTaxError:
+                    preparation_admitted = False
             async with self._session.transaction(snapshot=True) as snapshot:
                 source=await read_company_tax_delivery_source(snapshot,query,correlation_id=CorrelationId('tax-workspace-source'))
                 history=await snapshot.journal_history_snapshot(query)
             journals={row.draft.filing_id:tax_delivery_snapshot_journal(history,row.draft) for row in history.delivery_drafts}
-            preparation=self._preparation is not None and self._preparation.workspace_admission(self._session,source)
+            preparation=preparation_admitted and self._preparation is not None and self._preparation.workspace_admission(self._session,source)
             dispatch={filing:self._submission is not None and self._submission.workspace_admission(self._session,journal.draft)
                 for filing,journal in journals.items()}
             correction={filing:self._preparation is not None and self._preparation.workspace_admission(self._session,source,journal)
                 for filing,journal in journals.items()}
             validation={filing:self._submission.workspace_validation(journal) for filing,journal in journals.items()} if self._submission is not None else {}
             result=project_tax_delivery_workspace(query,history,source,preparation_available=preparation,
-                dispatch_admissions=dispatch,correction_admissions=correction,validation=validation)
+                dispatch_admissions=dispatch,correction_admissions=correction,validation=validation,
+                preparation_only=self._preparation is not None and self._preparation.preparation_only)
             await guard.lock_delivery_draft_archive(query)
         return result
 

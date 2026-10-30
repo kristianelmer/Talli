@@ -2263,6 +2263,27 @@ export function validateCompatibilityRegistry(path, {
     currentOperationAnalyses.set(operationKey, analysis);
     return analysis;
   };
+  // #232 admits only the explicit attachment answer enrichment. Normalizing
+  // that exact expression must recover the frozen operation, including every
+  // owner check, annual-data write and audit chain. No new legacy writer.
+  const annualInterviewAttachmentComposition = (scope) => {
+    if (scope.path !== "apps/web/app/actions.ts" || scope.operation !== "saveYearEndInterview") return false;
+    const original = legacyOperationAnalysis(sourceAtRevision?.(scope.path), scope.path, scope.operation);
+    const candidate = currentSource?.(scope.path);
+    const enriched = `const answers = {
+    ...buildYearEndInterviewAnswers(
+      Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
+    ),
+    company_tax_additional_attachments: taxAttachmentAnswer(formData.get("companyTaxAdditionalAttachments")),
+  };`;
+    const frozen = `const answers = buildYearEndInterviewAnswers(
+    Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
+  );`;
+    if (!candidate?.includes(enriched)) return false;
+    const normalized = legacyOperationAnalysis(candidate.replace(enriched, frozen), scope.path, scope.operation);
+    return original?.state === "found" && normalized?.state === "found"
+      && normalized.sourceDigest === original.sourceDigest;
+  };
   const taxOwnedSourceRetirement = (scope) => {
     const key = compatibilityOperationKey(scope.path, scope.operation);
     const analysis = currentOperationAnalysis(scope);
@@ -2662,7 +2683,8 @@ export function validateCompatibilityRegistry(path, {
           } else if (proof.occurrences !== frozenScope.occurrences
             || (proof.sourceDigest !== frozenScope.sourceDigest
               && !deletionAuthorizedOperations.has(compatibilityOperationKey(scope.path, scope.operation))
-              && !rfCompositionOperations.has(compatibilityOperationKey(scope.path, scope.operation)))) {
+              && !rfCompositionOperations.has(compatibilityOperationKey(scope.path, scope.operation))
+              && !annualInterviewAttachmentComposition(scope))) {
             errors.push(`${prefix} legacy operation changed: ${scope.path} operation:${scope.operation}`);
           }
         }

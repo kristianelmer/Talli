@@ -519,6 +519,15 @@ class PostgresCompanyTaxTransaction:
             'select company_tax_filing.lock_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text)',
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)))
 
+    async def assert_preparation_company_year(self, query: CompanyTaxSourceQuery) -> None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._delivery_row(
+            'select public.company_access_company_year_allows_consequential_v1(%s::uuid,%s::integer) as allowed',
+            (str(query.company_id), int(query.income_year)))
+        if row['allowed'] is not True:
+            raise CompanyTaxError.forbidden()
+
     async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False, journal: bool = False) -> CompanyTaxSourceSnapshot:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
@@ -636,6 +645,7 @@ class PostgresCompanyTaxTransaction:
 
 def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None,
                                    *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                                   preparation_factory=None,
                                    submission: CompanyTaxDeliverySubmission | None = None) -> CompanyTaxApplication:
     return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService,
-                                 preparation=preparation,submission=submission)
+                                 preparation=preparation,preparation_factory=preparation_factory,submission=submission)

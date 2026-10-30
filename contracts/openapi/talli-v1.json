@@ -8706,7 +8706,8 @@
           "technicalMode": {
             "enum": [
               "finite_loopback",
-              "unavailable"
+              "unavailable",
+              "private_preview_preparation"
             ],
             "title": "Technicalmode",
             "type": "string"
@@ -79846,6 +79847,16 @@
               "minimum": 2025,
               "title": "Incomeyear",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includePreparationContext",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includepreparationcontext",
+              "type": "boolean"
             }
           },
           {

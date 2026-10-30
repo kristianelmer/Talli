@@ -11,6 +11,12 @@ export type YearEndInterviewAnswers = {
   authority_to_submit_confirmed: boolean;
 };
 
+export type TaxAttachmentAnswer = "none" | "required" | "unknown";
+
+export function taxAttachmentAnswer(value: unknown): TaxAttachmentAnswer {
+  return value === "none" || value === "required" ? value : "unknown";
+}
+
 export const yearEndAnswerKeys: (keyof YearEndInterviewAnswers)[] = [
   "shares_owned_at_year_end",
   "bought_or_sold_shares",

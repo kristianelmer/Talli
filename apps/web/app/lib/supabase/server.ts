@@ -16,7 +16,7 @@ import {
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
-import type { YearEndInterviewAnswers } from "../annual-data";
+import type { YearEndInterviewAnswers, TaxAttachmentAnswer } from "../annual-data";
 import type {
   AnnualReadinessIssue,
   AnnualReadinessStatus,
@@ -146,7 +146,7 @@ export type AnnualDataRow = {
   id: string;
   company_id: string;
   income_year: number;
-  answers: YearEndInterviewAnswers;
+  answers: YearEndInterviewAnswers & { company_tax_additional_attachments?: TaxAttachmentAnswer };
   confirmations: string[];
   no_activity_confirmed: boolean;
   annual_full_time_equivalents: number | null;

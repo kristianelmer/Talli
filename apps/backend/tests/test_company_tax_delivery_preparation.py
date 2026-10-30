@@ -265,3 +265,24 @@ def test_source_change_while_waiting_for_final_guard_cannot_persist_stale_draft(
             await (await app.session('synthetic')).prepare_delivery_draft(command)
         assert error.value.code=='COMPANY_TAX_DRAFT_CONFLICT'
     asyncio.run(exercise());assert current.calls==1 and session.stored is None
+
+
+def test_connected_loopback_fixture_preserves_preparation_admission_interface():
+    import importlib.util
+    from pathlib import Path
+    path=Path(__file__).resolve().parents[3]/'tests/fixtures/tax_delivery_browser_runtime.py'
+    spec=importlib.util.spec_from_file_location('tax_browser_preparation_contract',path)
+    fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)
+    session,current,app,command=setup()
+    registered=[]
+    class Runtime:
+        def register(self,draft,actor):registered.append((draft,actor))
+    preparation=fixture._Preparation(Runtime(),app._preparation)
+    assert preparation.preparation_only is False
+    async def exercise():
+        await preparation.authorize(session,QUERY)
+        await preparation.authorize_transaction(session,session,QUERY)
+        stored=await preparation.prepare(session,command)
+        assert registered==[(stored.draft,session)]
+    asyncio.run(exercise())
+    assert current.calls==1

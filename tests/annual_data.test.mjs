@@ -6,7 +6,14 @@ import {
   buildYearEndInterviewAnswers,
   buildYearEndInterviewInitialAnswers,
   noActivityConfirmed,
+  taxAttachmentAnswer,
 } from "../apps/web/app/lib/annual-data.ts";
+
+test("Tax attachments require an explicit answer; missing or malformed never implies none", () => {
+  for (const value of [undefined, null, "", false, true, "no", {}, "unknown"]) assert.equal(taxAttachmentAnswer(value), "unknown");
+  assert.equal(taxAttachmentAnswer("none"), "none");
+  assert.equal(taxAttachmentAnswer("required"), "required");
+});
 
 test("builds structured year-end answers without free text", () => {
   const answers = buildYearEndInterviewAnswers({

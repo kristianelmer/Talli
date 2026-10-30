@@ -152,6 +152,7 @@ class TaxDeliveryWorkspace:
     observed_at: Timestamp
     preparation_available: bool
     rows: tuple[TaxDeliveryWorkspaceRow,...]
+    preparation_only: bool = False
 
 
 def _retained_receipt(journal):
@@ -197,13 +198,17 @@ def _stage(journal,calculated,receipted):
 
 
 def project_tax_delivery_workspace(query,snapshot,source,*,preparation_available=False,dispatch_admissions=None,
-        correction_admissions=None,validation=None):
+        correction_admissions=None,validation=None,preparation_only=False):
     from .public import CompanyTaxError,project_company_tax_source,CompanyTaxReturnSource,_calculation_source
     from .calculation import build
-    if type(preparation_available) is not bool:raise CompanyTaxError.unavailable()
+    if type(preparation_available) is not bool or type(preparation_only) is not bool:raise CompanyTaxError.unavailable()
     facts=project_company_tax_source(query,snapshot)
     if snapshot.contract_version!='company-tax-source-v9' or facts.history_coverage.status!='complete':raise CompanyTaxError.unavailable()
     journals=tuple(tax_delivery_snapshot_journal(snapshot,row.draft) for row in snapshot.delivery_drafts)
+    # Reserved synthetic reference namespace is persisted in the exact draft.
+    # Provenance therefore survives expiry or removal of runtime composition.
+    preparation_only = preparation_only or any(journal.draft.current_document is not None and
+        journal.draft.current_document.document_reference.startswith('synthetic-private-preview-') for journal in journals)
     tip=tax_delivery_lineage(journals);dispatch_admissions=dispatch_admissions or {};correction_admissions=correction_admissions or {};validation=validation or {}
     terminals={j.draft.correction_parent.filing_id:j.draft.correction_parent.terminal for j in journals if j.draft.correction_parent is not None}
     rows=[];field_bytes=0;field_count=0
@@ -247,4 +252,4 @@ def project_tax_delivery_workspace(query,snapshot,source,*,preparation_available
             stored.recorded_at,draft.sha256,draft.envelope.review_sha256,None if journal.approval is None else journal.approval.sha256,
             TaxDeliveryWorkspaceState(state),current,tuple(actions),fields,originals,review))
     return TaxDeliveryWorkspace(query.company_id,query.income_year,facts.evidence.digest,snapshot.as_of,
-        preparation_available and tip is None,tuple(rows))
+        preparation_available and tip is None,tuple(rows),preparation_only)

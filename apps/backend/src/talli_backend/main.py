@@ -105,6 +105,7 @@ from talli_backend.application.annual_accounts_delivery_workflow import AnnualAc
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.adapters.preview_synthetic_tax import compose_preview_tax_preparation
 from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
 from talli_backend.modules.company_tax_filing.public import (
     AnnualTaxEstimateSource, CompanyTaxReturnSource, assess_company_tax_readiness, estimate_annual_tax,
@@ -2010,7 +2011,7 @@ class CompanyTaxDeliveryWorkspaceWire(TransportModel):
     income_year: Literal[2025]
     source_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
     observed_at: datetime
-    technical_mode: Literal['finite_loopback','unavailable']
+    technical_mode: Literal['finite_loopback','unavailable','private_preview_preparation']
     preparation_available: bool
     rows: list[CompanyTaxDeliveryWorkspaceRowWire]
 
@@ -5956,7 +5957,9 @@ def create_app(
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
     company_tax_application = compose_company_tax_application(company_tax_session_factory,
-        preparation=company_tax_delivery_preparation,submission=company_tax_delivery_submission)
+        preparation=company_tax_delivery_preparation,submission=company_tax_delivery_submission,
+        preparation_factory=compose_preview_tax_preparation(company_access_service)
+            if company_tax_delivery_preparation is None and company_tax_delivery_submission is None else None)
     investments_application = compose_investments_application(
         investments_session_factory
     )
@@ -12416,14 +12419,17 @@ def create_app(
         openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
     async def company_tax_delivery_workspace(company_id: Annotated[UUID,Query(alias='companyId')],
         income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        include_preparation_context: Annotated[bool,Query(alias='includePreparationContext')] = False,
         credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxDeliveryWorkspaceWire:
         async def execute():
             session=await company_tax_application.session(bearer_token(credentials))
             workspace=await session.delivery_workspace(CompanyTaxSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id))
             return CompanyTaxDeliveryWorkspaceWire(version='company-tax-delivery-workspace-v1',company_id=company_id,income_year=income_year,
                 source_sha256=workspace.source_sha256,observed_at=workspace.observed_at.value,
-                technical_mode='finite_loopback' if workspace.preparation_available or any(row.actions for row in workspace.rows) else 'unavailable',
-                preparation_available=workspace.preparation_available,
+                technical_mode=('private_preview_preparation' if include_preparation_context else 'unavailable')
+                    if workspace.preparation_only else 'finite_loopback'
+                    if workspace.preparation_available or any(row.actions for row in workspace.rows) else 'unavailable',
+                preparation_available=workspace.preparation_available and (include_preparation_context or not workspace.preparation_only),
                 rows=[CompanyTaxDeliveryWorkspaceRowWire(filing_id=UUID(row.filing_id),parent_filing_id=None if row.parent_filing_id is None else UUID(row.parent_filing_id),
                     recorded_at=row.recorded_at.value,draft_sha256=row.draft_sha256,review_sha256=row.review_sha256,approval_sha256=row.approval_sha256,
                     state=row.state,source_current=row.source_current,actions=list(row.actions),

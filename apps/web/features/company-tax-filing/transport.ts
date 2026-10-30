@@ -165,7 +165,7 @@ export function previewAnnualTaxEstimate(accessToken: string, facts: CompanyTaxA
 }
 
 export function loadTaxDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
-  return client(accessToken).companyTaxGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+  return client(accessToken).companyTaxGetDeliveryWorkspace(companyId,incomeYear,{includePreparationContext:true,signal:AbortSignal.timeout(10_000)});
 }
 
 export function loadTaxDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {

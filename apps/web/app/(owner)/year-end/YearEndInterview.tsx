@@ -8,6 +8,8 @@ import { ownerCopy } from "../../lib/copy";
 import {
   buildYearEndInterviewInitialAnswers,
   noActivityConfirmed,
+  taxAttachmentAnswer,
+  type TaxAttachmentAnswer,
   type RegisteredYearEndActivity,
   type YearEndInterviewAnswers,
 } from "../../lib/annual-data";
@@ -18,7 +20,7 @@ type RegisteredKey = keyof RegisteredYearEndActivity;
 type Props = {
   companyId: string;
   incomeYear: number;
-  initialAnswers: Partial<YearEndInterviewAnswers> | null;
+  initialAnswers: (Partial<YearEndInterviewAnswers> & { company_tax_additional_attachments?: TaxAttachmentAnswer }) | null;
   initialFte: number | null;
   registered: RegisteredYearEndActivity;
 };
@@ -55,6 +57,7 @@ export function YearEndInterview({
     buildYearEndInterviewInitialAnswers(initialAnswers, registered),
   );
   const [fte, setFte] = useState(initialFte != null ? String(initialFte) : "0");
+  const [attachments, setAttachments] = useState(() => taxAttachmentAnswer(initialAnswers?.company_tax_additional_attachments));
   const [step, setStep] = useState(0);
 
   const set = (key: AnswerKey, value: boolean) =>
@@ -101,6 +104,7 @@ export function YearEndInterview({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
       <input type="hidden" name="returnTo" value="/dashboard" />
+      <input type="hidden" name="companyTaxAdditionalAttachments" value={attachments} />
       <input
         type="hidden"
         name="annualFullTimeEquivalents"
@@ -163,6 +167,15 @@ export function YearEndInterview({
 
       {step === 2 ? (
         <div className="qList">
+          <label className="field">
+            <span className="fieldLabel">Krever skattemeldingen ekstra vedlegg?</span>
+            <select value={attachments} onChange={(event) => setAttachments(taxAttachmentAnswer(event.target.value))}>
+              <option value="unknown">Ikke avklart</option>
+              <option value="none">Ingen ekstra vedlegg</option>
+              <option value="required">Ekstra vedlegg kreves</option>
+            </select>
+            <span className="fieldHelp">Avklar dette før skatteutkastet forberedes. Påkrevde ekstra vedlegg støttes ikke i dette løpet.</span>
+          </label>
           <Question
             answerKey="general_meeting_approved"
             value={answers.general_meeting_approved}
@@ -195,6 +208,7 @@ export function YearEndInterview({
 
       {step === 3 ? (
         <div className="summaryBlock">
+          <p>Ekstra vedlegg til skattemeldingen: {attachments === "none" ? "Ingen" : attachments === "required" ? "Kreves" : "Ikke avklart"}.</p>
           <h2 className="summaryHeading">{c.summary.activityTitle}</h2>
           {noActivity ? (
             <Banner variant="info">{c.summary.noActivity}</Banner>
