@@ -36,12 +36,16 @@ test("retained delivery drafts are visible without claiming readiness or submiss
 });
 
 test("an unavailable delivery read never becomes an empty history or a receipt", async () => {
-  assert.deepEqual(await readAnnualDeliverySummary(async()=>{throw new Error("MFA required");}),
+  assert.deepEqual(await readAnnualDeliverySummary(2025, async()=>{throw new Error("MFA required");}),
     {state:"unavailable",count:0,synthetic:false});
-  assert.deepEqual(await readAnnualDeliverySummary(async()=>({rows:[]})),
+  assert.deepEqual(await readAnnualDeliverySummary(2025, async()=>({rows:[]})),
     {state:"empty",count:0,synthetic:false});
-  assert.deepEqual(await readAnnualDeliverySummary(async()=>({rows:[{filingId:"retained",syntheticSignoff:true}]})),
+  assert.deepEqual(await readAnnualDeliverySummary(2025, async()=>({rows:[{filingId:"retained",syntheticSignoff:true}]})),
     {state:"stored",count:1,synthetic:true});
+});
+
+test("other admitted years do not call a 2025-only delivery contract", async () => {
+  assert.equal(await readAnnualDeliverySummary(2026, async()=>{assert.fail("2025-only contract");}),undefined);
 });
 
 test("builds the fixed launch order and points to the first actionable issue", () => {

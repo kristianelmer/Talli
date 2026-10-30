@@ -85,8 +85,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     loadPresentedRf1086Source(accessToken, companyIds, context.incomeYear),
     loadPresentedCompanyTaxSource(accessToken, companyIds, context.incomeYear),
     loadPresentedAnnualAccountsSource(accessToken, companyIds, context.incomeYear),
-    readAnnualDeliverySummary(() => loadTaxDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
-    readAnnualDeliverySummary(() => loadAccountsDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
+    readAnnualDeliverySummary(context.incomeYear, () => loadTaxDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
+    readAnnualDeliverySummary(context.incomeYear, () => loadAccountsDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
   ]);
 
   const failedSources = [
