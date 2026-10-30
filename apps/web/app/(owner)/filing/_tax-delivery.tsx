@@ -100,7 +100,8 @@ export async function TaxDeliveryPanel({companyId,incomeYear}: {companyId: strin
           <HiddenScope workspace={workspace} action="prepare"/><input type="hidden" name="candidateId" value={randomUUID()}/>
           <SubmitButton pendingLabel="Henter og forbereder…">Forbered skattemeldingen</SubmitButton>
         </form> : null}
-        {!workspace.rows.length ? <p className="cardNote">Ingen utkast er lagret i dette leveringsløpet.</p> : null}
+        {!workspace.rows.length ? <p className="cardNote">Ingen utkast er lagret i dette leveringsløpet.</p> :
+          <LinkButton href={`/archive/${workspace.companyId}/${workspace.incomeYear}/download`} variant="secondary">Eksporter selskapsarkiv</LinkButton>}
       </div>
     </section>
     {workspace.rows.toReversed().map(row=><section className="filingStep" key={row.filingId} data-tax-filing={row.filingId}>
