@@ -68,6 +68,9 @@ export async function listCompanyAccessContexts(
         requiresAal2: true,
       };
     }
+    if (error instanceof TalliApiError && error.status === 403) {
+      return { companies: [] as CompanyAccessPresentation[], error: "Company access denied.", accessDenied: true };
+    }
     return { companies: [] as CompanyAccessPresentation[], error: "Company access is temporarily unavailable." };
   }
 }

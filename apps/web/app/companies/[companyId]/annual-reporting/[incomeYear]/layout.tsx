@@ -1,3 +1,4 @@
+import { AnnualWorkspaceRecovery } from "../../../../components/annual-workspace/AnnualWorkspaceRecovery";
 import type { ReactNode } from "react";
 
 import { AnnualWorkspaceShell } from "../../../../components/annual-workspace/AnnualWorkspaceShell";
@@ -12,5 +13,6 @@ export default async function AnnualReportingLayout({
 }) {
   const { companyId, incomeYear } = await params;
   const loaded = await loadAnnualWorkspace({ companyId, incomeYear: Number(incomeYear) });
+  if (loaded.status === "unavailable") return <AnnualWorkspaceRecovery context={loaded.context} />;
   return <AnnualWorkspaceShell model={loaded.model}>{children}</AnnualWorkspaceShell>;
 }
