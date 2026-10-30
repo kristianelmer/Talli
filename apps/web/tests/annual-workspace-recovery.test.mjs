@@ -157,6 +157,26 @@ test("the actual recovery view offers scoped full reload/readback links and no f
   assert.doesNotMatch(html, /<form|<button|Klar til innsending|Ingen åpne punkter/u);
 });
 
+test("recovery has one main landmark both standalone and inside a retained annual layout", async () => {
+  const React = require("react"), { renderToStaticMarkup } = require("react-dom/server");
+  const { AnnualWorkspaceRecovery } = compile("../app/components/annual-workspace/AnnualWorkspaceRecovery.tsx", {
+    "./annual-workspace.module.css": { default: {} },
+  });
+  const { AnnualWorkspaceShell } = compile("../app/components/annual-workspace/AnnualWorkspaceShell.tsx", {
+    "next/link": props => React.createElement("a", props, props.children), "./annual-workspace.module.css": { default: {} },
+  });
+  const model = { context, company: { name: "Fixture" }, role: "owner", obligations: [{ href: `/companies/${context.companyId}/annual-reporting/2025/aarsregnskap` }] };
+  for (const status of ["ready", "unavailable"]) {
+    const layout = compile("../app/companies/[companyId]/annual-reporting/[incomeYear]/layout.tsx", {
+      "../../../../components/annual-workspace/AnnualWorkspaceRecovery": { AnnualWorkspaceRecovery },
+      "../../../../components/annual-workspace/AnnualWorkspaceShell": { AnnualWorkspaceShell },
+      "../../../../lib/annual-workspace-server": { loadAnnualWorkspace: async () => ({ status, context, model }) },
+    }).default;
+    const html = renderToStaticMarkup(await layout({ params: Promise.resolve({ companyId: context.companyId, incomeYear: "2025" }), children: React.createElement(AnnualWorkspaceRecovery, { context }) }));
+    assert.equal([...html.matchAll(/<main\b/gu)].length, 1, status);
+  }
+});
+
 test("actual billing transport and generated client preserve timeout, 503, 401 and 403 distinctions without retries", async () => {
   for (const failure of ["timeout", 503, 401, 403]) {
     let calls = 0;

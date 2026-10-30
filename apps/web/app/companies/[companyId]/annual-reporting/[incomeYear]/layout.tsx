@@ -13,6 +13,6 @@ export default async function AnnualReportingLayout({
 }) {
   const { companyId, incomeYear } = await params;
   const loaded = await loadAnnualWorkspace({ companyId, incomeYear: Number(incomeYear) });
-  if (loaded.status === "unavailable") return <AnnualWorkspaceRecovery context={loaded.context} />;
+  if (loaded.status === "unavailable") return <main><AnnualWorkspaceRecovery context={loaded.context} /></main>;
   return <AnnualWorkspaceShell model={loaded.model}>{children}</AnnualWorkspaceShell>;
 }

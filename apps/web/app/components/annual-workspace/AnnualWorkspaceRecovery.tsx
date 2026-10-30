@@ -5,7 +5,7 @@ export function AnnualWorkspaceRecovery({ context }: { context: AnnualWorkspaceC
   const overview = `/companies/${context.companyId}/annual-reporting/${context.incomeYear}`;
   const scope = new URLSearchParams({ companyId: context.companyId, incomeYear: String(context.incomeYear) });
   return (
-    <main className={`${styles.workspace} ${styles.main}`}>
+    <div className={`${styles.workspace} ${styles.main}`}>
       <section className={styles.section} aria-labelledby="annual-recovery-title">
         <header className={styles.pageHeader}>
           <div>
@@ -24,6 +24,6 @@ export function AnnualWorkspaceRecovery({ context }: { context: AnnualWorkspaceC
         </ul>
         <p><a href="/dashboard">Til selskapsoversikten</a></p>
       </section>
-    </main>
+    </div>
   );
 }
