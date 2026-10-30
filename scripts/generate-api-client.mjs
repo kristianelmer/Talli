@@ -2828,9 +2828,11 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsDeliveryWorkspaceWire> {
+    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions & {includeSyntheticContext?: boolean} = {}): Promise<AccountsDeliveryWorkspaceWire> {
       const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      if (request.includeSyntheticContext) query.set("includeSyntheticContext","true");
       const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-workspace?\${query}\`,"GET",request,undefined,isAccountsDeliveryWorkspaceWire);
+      if (!request.includeSyntheticContext && (result.syntheticSignoff!==undefined || result.rows.some(row=>row.syntheticSignoff!==undefined))) throw new TalliApiError(502, undefined);
       if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
           || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))

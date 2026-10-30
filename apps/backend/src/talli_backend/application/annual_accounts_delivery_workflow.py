@@ -6,6 +6,7 @@ import base64
 from uuid import uuid4
 
 from talli_backend.application.annual_accounts_delivery_source import read_annual_accounts_delivery_source
+from talli_backend.modules.annual_accounts_filing.delivery import annual_accounts_source_is_synthetic
 from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError,AnnualAccountsSourceQuery,project_annual_accounts_source,
     AnnualAccountsDeliveryBinding as Binding,AnnualAccountsDeliveryStage as Stage,
@@ -39,8 +40,9 @@ class AccountsDeliveryState:
 
 
 class AnnualAccountsDeliveryWorkflow:
-    def __init__(self,*,corporate,schemas,ports=None,now=None):
+    def __init__(self,*,corporate,schemas,ports=None,now=None,synthetic_signoff=None):
         self._corporate,self._schemas,self._ports=corporate,schemas,ports
+        self._synthetic_signoff=synthetic_signoff
         self._now=now or (lambda:Timestamp(datetime.now(UTC)))
 
     def _inspect(self,stored,events,commitment,*,history_drafts=(),history_events=()):
@@ -78,6 +80,7 @@ class AnnualAccountsDeliveryWorkflow:
         async with session.transaction() as guard:
             await guard.lock_delivery_archive(query)
             async with session.transaction(snapshot=True) as snapshot:state=await self._state(snapshot,query,filing_id)
+            if annual_accounts_source_is_synthetic(state.stored.draft.source):raise AnnualAccountsError.forbidden()
             await guard.lock_delivery_archive(query)
             yield guard,state
 
@@ -85,7 +88,8 @@ class AnnualAccountsDeliveryWorkflow:
         # Called while the outer published company guard is held. The RR
         # snapshot starts afterwards; no owning write can race this comparison.
         async with session.transaction(snapshot=True) as snapshot:
-            current=await read_annual_accounts_delivery_source(snapshot,query,corporate=self._corporate,correlation_id=correlation_id)
+            current=await read_annual_accounts_delivery_source(snapshot,query,corporate=self._corporate,
+                correlation_id=correlation_id,synthetic_signoff=self._synthetic_signoff)
         if current!=state.stored.draft.source:raise AnnualAccountsError.draft_conflict()
 
     def _validate_draft(self,draft):
@@ -164,6 +168,7 @@ class AnnualAccountsDeliveryWorkflow:
         return self._ports
 
     def mutation_available(self,session,state,stage):
+        if annual_accounts_source_is_synthetic(state.stored.draft.source):return False
         if self._ports is None or not self._ports.stage_available(session,state.stored.draft,stage):return False
         if state.inspection.next_action is Action.CREATE_INSTANCE and not self.correction_proof_fresh(state):return False
         if state.inspection.next_action is not Action.CREATE_INSTANCE:
@@ -193,6 +198,7 @@ class AnnualAccountsDeliveryWorkflow:
         return 0<=(self._now().value-began).total_seconds()<=60
 
     def correction_refresh_available(self,session,state):
+        if annual_accounts_source_is_synthetic(state.stored.draft.source):return False
         retained=state.slot('correction:admission')
         if self._ports is None or retained is None or type(retained.record) is not ParentAdmission:return False
         if state.slot('intent:create_instance') is not None or sum(type(row.record) is ParentAttempt for row in state.events)>=3:return False
@@ -203,6 +209,7 @@ class AnnualAccountsDeliveryWorkflow:
         except AnnualAccountsError:return False
 
     def reconciliation_available(self,session,state):
+        if annual_accounts_source_is_synthetic(state.stored.draft.source):return False
         if self._ports is None or not self._ports.available(session,state.stored.draft.source.company_id,state.stored.draft.source.income_year):return False
         request=next((row for row in reversed(state.events) if type(row.record) is Intent),None)
         if request is None or state.inspection.known_instance is None:return False
@@ -298,6 +305,7 @@ class AnnualAccountsDeliveryWorkflow:
 
     async def reconcile(self,session,binding):
         query=self._query(session,binding);state=await self.read(session,query,binding.filing_id)
+        if annual_accounts_source_is_synthetic(state.stored.draft.source):raise AnnualAccountsError.forbidden()
         self._assert_binding(binding,state)
         if state.inspection.known_instance is None:return state
         request=next((row for row in reversed(state.events) if type(row.record) is Intent),None)

@@ -1204,7 +1204,8 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   assert.deepEqual(accountsFiles, ["apps/backend/tests/test_annual_accounts_filing_lifecycle.py",
     "apps/backend/tests/test_postgres_accounts_source_snapshot.py", "apps/backend/tests/test_annual_accounts_delivery_store_database.py",
     "apps/backend/tests/test_annual_accounts_delivery_events_database.py", "apps/backend/tests/test_annual_accounts_delivery_corrections_database.py",
-    "apps/backend/tests/test_annual_accounts_company_archive_guard_database.py"]);
+    "apps/backend/tests/test_annual_accounts_company_archive_guard_database.py",
+    "apps/backend/tests/test_preview_synthetic_accounts_signoff_database.py"]);
   const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m accounts_database`), accounts);
   assert.ok(accounts.size >= 23);

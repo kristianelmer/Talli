@@ -687,6 +687,11 @@
             "title": "State",
             "type": "string"
           },
+          "syntheticSignoff": {
+            "default": false,
+            "title": "Syntheticsignoff",
+            "type": "boolean"
+          },
           "validationIssues": {
             "items": {
               "additionalProperties": true,
@@ -751,6 +756,11 @@
               }
             ],
             "title": "Sourcesha256"
+          },
+          "syntheticSignoff": {
+            "default": false,
+            "title": "Syntheticsignoff",
+            "type": "boolean"
           },
           "version": {
             "const": "annual-accounts-delivery-workspace-v1",
@@ -34854,6 +34864,16 @@
               "minimum": 2025,
               "title": "Incomeyear",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeSyntheticContext",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includesyntheticcontext",
+              "type": "boolean"
             }
           },
           {

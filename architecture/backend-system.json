@@ -1394,7 +1394,8 @@
       "talli_backend.application.annual_accounts_delivery_preparation",
       "talli_backend.application.annual_accounts_delivery_workflow",
       "talli_backend.adapters.restore_quarantine",
-      "talli_backend.adapters.preview_synthetic_tax"
+      "talli_backend.adapters.preview_synthetic_tax",
+      "talli_backend.adapters.preview_synthetic_accounts_signoff"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

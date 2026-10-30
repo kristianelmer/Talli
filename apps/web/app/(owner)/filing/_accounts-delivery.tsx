@@ -41,6 +41,7 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
   return <div className={styles.panel} data-accounts-delivery="workspace">
     <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av årsregnskapet</h2></div>
       <div className="filingStepBody">
+        {workspace.syntheticSignoff ? <Banner variant="warning">Syntetisk testgodkjenning for dette utkastet. Styre- og generalforsamlingsprotokollen er usignert. Ingen eierbekreftelse, sluttføring eller innsending er registrert.</Banner> : null}
         {workspace.preparationAvailable || workspace.rows.some(row=>row.actions.length) ? <Banner variant="info">Prøveløp. Leveringen behandles i et avgrenset testmiljø.</Banner> :
           <p className="cardNote">Videre levering er ikke tilgjengelig nå. Lagrede dokumenter kan fortsatt leses.</p>}
         {workspace.preparationAvailable ? <form action={accountsDeliveryOwnerAction}>
@@ -55,6 +56,7 @@ export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: 
     {workspace.rows.toReversed().map(row=><section className="filingStep" key={row.filingId} data-accounts-filing={row.filingId}>
       <div className="filingStepHead"><h2 className="filingStepTitle">{states[row.state]}</h2></div>
       <div className="filingStepBody">
+        {row.syntheticSignoff ? <Banner variant="warning">Syntetisk testutkast. Protokollene er usignert; dette utkastet kan ikke sendes inn.</Banner> : null}
         <p className={styles.reference}>Levering <code>{row.filingId}</code></p>
         {row.parentFilingId ? <p className={styles.reference}>Retter levering <code>{row.parentFilingId}</code></p> : null}
         {!row.sourceCurrent ? <Banner variant="warning">Tallgrunnlaget har endret seg eller kan ikke leses nå. Nye leveringssteg er stengt.</Banner> : null}

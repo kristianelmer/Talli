@@ -1,5 +1,6 @@
 """Guarded Accounts preparation from current owning facts, with exact replay."""
 from talli_backend.application.annual_accounts_delivery_source import read_annual_accounts_delivery_source
+from talli_backend.modules.annual_accounts_filing.delivery import annual_accounts_source_is_synthetic
 from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsError, AnnualAccountsSourceQuery, PrepareAnnualAccountsDeliveryDraft,
     StoredAnnualAccountsDeliveryDraft, prepare_annual_accounts_delivery, project_annual_accounts_source,
@@ -7,7 +8,8 @@ from talli_backend.modules.annual_accounts_filing.public import (
 
 
 class AnnualAccountsDeliveryPreparation:
-    def __init__(self,corporate,schemas):self._corporate,self._schemas=corporate,schemas
+    def __init__(self,corporate,schemas,synthetic_signoff=None):
+        self._corporate,self._schemas,self._synthetic_signoff=corporate,schemas,synthetic_signoff
 
     async def prepare(self,session,command: PrepareAnnualAccountsDeliveryDraft) -> StoredAnnualAccountsDeliveryDraft:
         if session.actor_id!=command.actor_id:raise AnnualAccountsError.forbidden()
@@ -27,7 +29,9 @@ class AnnualAccountsDeliveryPreparation:
                 if (history.contract_version not in ('annual-accounts-source-v2','annual-accounts-source-v3','annual-accounts-source-v4')
                         or facts.history_coverage.status!='complete'):raise AnnualAccountsError.unavailable()
                 source=await read_annual_accounts_delivery_source(snapshot,query,corporate=self._corporate,
-                    correlation_id=command.correlation_id)
+                    correlation_id=command.correlation_id,synthetic_signoff=self._synthetic_signoff)
+                if annual_accounts_source_is_synthetic(source) and history.delivery_drafts:
+                    raise AnnualAccountsError.draft_conflict()
             draft=prepare_annual_accounts_delivery(source,filing_id=str(command.filing_id),command_key=command.command_key,
                 actor_id=command.actor_id,contact_email=command.contact_email,
                 confirming_representative=command.confirming_representative,schemas=self._schemas)

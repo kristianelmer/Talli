@@ -102,6 +102,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
 from talli_backend.adapters.annual_accounts_schemas import DeferredAnnualAccountsSchemas
 from talli_backend.application.annual_accounts_delivery_preparation import AnnualAccountsDeliveryPreparation
 from talli_backend.application.annual_accounts_delivery_workflow import AnnualAccountsDeliveryWorkflow
+from talli_backend.adapters.preview_synthetic_accounts_signoff import compose_preview_accounts_signoff
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
@@ -686,6 +687,7 @@ class AccountsDeliveryWorkspaceRowWire(TransportModel):
     state: AccountsDeliveryStateWire
     known_instance: str | None
     source_current: bool
+    synthetic_signoff: bool = False
     actions: list[AccountsDeliveryActionWire]
     fields: list[AccountsDeliveryFieldWire]
     validation_issues: list[dict[str,Any]]
@@ -699,6 +701,7 @@ class AccountsDeliveryWorkspaceWire(TransportModel):
     source_sha256: str | None
     observed_at: AwareDatetime
     preparation_available: bool
+    synthetic_signoff: bool = False
     rows: list[AccountsDeliveryWorkspaceRowWire]
 
 
@@ -6006,9 +6009,11 @@ def create_app(
         CorporateRegisterEvidenceVerifier(shareholder_register_filing_session_factory, documents_application),
     )
     accounts_schemas=DeferredAnnualAccountsSchemas()
+    accounts_synthetic_signoff=compose_preview_accounts_signoff()
     annual_accounts_application=compose_annual_accounts_application(annual_accounts_session_factory,
-        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas),
-        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas))
+        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas,accounts_synthetic_signoff),
+        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas,
+            synthetic_signoff=accounts_synthetic_signoff))
     shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
         shareholder_register_filing_session_factory, company_access_service,
         documents_application, corporate_governance_application,
@@ -11986,15 +11991,23 @@ def create_app(
 
     @application.get('/api/v1/annual-accounts/delivery-workspace',operation_id='annualAccountsGetDeliveryWorkspace',
         response_model=AccountsDeliveryWorkspaceWire,responses=ledger_errors,tags=['annual-accounts'],
+        response_model_exclude_unset=True,
         openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
     async def accounts_delivery_workspace(request: Request,company_id: Annotated[UUID,Query(alias='companyId')],
         income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        include_synthetic_context: Annotated[bool,Query(alias='includeSyntheticContext')]=False,
         credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
         async def execute():
             session=await annual_accounts_application.session(bearer_token(credentials))
             result=await session.delivery_workspace(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),
                 correlation_id=ledger_correlation(request))
-            return AccountsDeliveryWorkspaceWire.model_validate(company_tax_json_wire(result))
+            wire=company_tax_json_wire(result)
+            if not include_synthetic_context:
+                if wire['synthetic_signoff'] or any(row['synthetic_signoff'] for row in wire['rows']):
+                    raise AnnualAccountsError.unavailable()
+                wire.pop('synthetic_signoff')
+                for row in wire['rows']:row.pop('synthetic_signoff')
+            return AccountsDeliveryWorkspaceWire.model_validate(wire)
         return await annual_accounts_call(execute)
 
     @application.get('/api/v1/annual-accounts/company-year-archive', operation_id='annualAccountsGetCompanyYearArchive',

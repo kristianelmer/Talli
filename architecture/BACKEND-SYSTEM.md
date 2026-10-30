@@ -1526,4 +1526,11 @@ The year-end form collects the explicit extra-attachments answer, defaulting to 
 {"transportDependencies": ["talli_backend.adapters.preview_synthetic_tax"], "adapterBindings": ["CompanyTaxCurrentDocumentReader=>talli_backend.adapters.preview_synthetic_tax.SyntheticPreviewCurrentDocument"], "adapterBindingOwners": ["CompanyTaxCurrentDocumentReader=>backend-system"], "adapterBindingModes": ["CompanyTaxCurrentDocumentReader=>Finite designated private Preview only. Explicit synthetic reference bytes for owner-source draft preparation; no authority observations, submission, provider activation or release permission."]}
 -->
 
+`talli_backend.adapters.preview_synthetic_accounts_signoff` composes the finite designated Preview scope for one fictional Accounts draft. It binds the current Corporate decision, source and unsigned document hashes to explicit simulation provenance. Corporate retains its real readiness state; synthetic Accounts drafts cannot use provider operations.
+The workspace exposes simulation labels only with `includeSyntheticContext=true`. Ordinary workspaces keep the original response shape. A caller that omits the opt-in receives an unavailable response for synthetic fixture state, so an old client cannot present that state as an ordinary signed decision.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.preview_synthetic_accounts_signoff"]}
+-->
+
 The explicit operational artifact `supabase/private-preview/20261029170000_synthetic_tax_current_draft.sql` separately opens only finite, owner-scoped retention of current-reference drafts, with an exact fixture/year/reference wrapper and the existing Company Access eligibility contract. It expires at 2026-10-30 18:00 UTC. It is excluded from ordinary migration/topology application. Temporary migration SET authority is restored within the transaction; persistent grants and memberships remain unchanged. Its companion containment restores the prior closed marker and V2 delegate without deleting originals. Both artifacts require exact target and function identity checks before execution; they grant no submission authority.
