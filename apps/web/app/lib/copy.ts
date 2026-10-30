@@ -1271,7 +1271,7 @@ export const ownerCopy = {
         short: "Årsregnskap",
         summary: "Resultat og balanse for året.",
         lede:
-          "Talli rydder grunnlaget for årsregnskapet. Selve forhåndsvisningen og innsendingen er under arbeid.",
+          "Kontroller tallgrunnlaget, beslutningsdokumentene og lagrede årsregnskapsutkast før videre levering.",
       },
     } as Record<
       string,

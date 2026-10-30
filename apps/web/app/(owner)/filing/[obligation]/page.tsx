@@ -183,7 +183,7 @@ export default async function FilingObligationPage({
       </Link>
       <h1 className="pageTitle">{meta.label}</h1>
       <p className="pageLede">{meta.lede}</p>
-      <p className="cardNote">{f.yearLabel(input.incomeYear)}</p>
+      <p className="cardNote">{input.company.name} · {f.yearLabel(input.incomeYear)}</p>
       <nav aria-label="Årsrapportering">
         <Link href={`/companies/${encodeURIComponent(input.company.id)}/annual-reporting/${input.incomeYear}`}>Til årsrapporteringen</Link>
         {(["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"] as const).map(item => <span key={item}> · <Link
