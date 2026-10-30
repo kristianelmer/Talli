@@ -189,3 +189,22 @@ def test_extended_boolean_payload_capture_is_bound_to_the_unchanged_input_fixtur
     path = Path(__file__).resolve().parents[3] / BOOLEAN_PAYLOADS['inputFixture']
     assert sha256(path.read_bytes()).hexdigest() == BOOLEAN_PAYLOADS['inputFixtureSha256']
     assert [case['id'] for case in BOOLEAN_PAYLOADS['cases']] == [case['id'] for case in BOOLEAN_BOUNDARIES['cases']]
+
+
+@pytest.mark.parametrize('answer', ['none', 'required', 'unknown'])
+def test_readiness_accepts_the_saved_attachment_choice_without_changing_boolean_gates(preview_client, answer):
+    value=json.loads(json.dumps(CAPTURE['cases'][0]['input']).replace('company-id', COMPANY))
+    body={key:value[key] for key in ('annualData','ledgerEntries','holdingActions')}
+    body.update(companyId=COMPANY,incomeYear=int(value['incomeYear']))
+    expected=preview_client.post('/api/v1/company-tax/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+    body['annualData']['answers']['company_tax_additional_attachments']=answer
+    actual=preview_client.post('/api/v1/company-tax/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+    assert actual.status_code==200,actual.text
+    assert actual.json()==expected.json()
+
+
+@pytest.mark.parametrize('answer', ['forged', [], {}, 0, None])
+def test_readiness_rejects_malformed_attachment_choice(preview_client, answer):
+    body={'companyId':COMPANY,'incomeYear':2025,'ledgerEntries':[],'holdingActions':[],
+        'annualData':{'answers':{'company_tax_additional_attachments':answer},'no_activity_confirmed':True}}
+    assert preview_client.post('/api/v1/company-tax/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'}).status_code==422

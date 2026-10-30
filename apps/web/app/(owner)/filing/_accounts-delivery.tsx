@@ -31,13 +31,14 @@ function href(workspace: AccountsDeliveryWorkspaceWire,row: AccountsDeliveryWork
 
 export async function AccountsDeliveryPanel({companyId,incomeYear}: {companyId: string;incomeYear: number}) {
   if (incomeYear!==2025) return null;
+  const target="/filing/aarsregnskap?"+new URLSearchParams({companyId,incomeYear:String(incomeYear)});
   const token=await getCurrentSessionAccessToken();if (!token) return null;
   let workspace: AccountsDeliveryWorkspaceWire;
   try {workspace=await loadAccountsDeliveryWorkspace(token,companyId,incomeYear);}
   catch (error) {return <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av årsregnskapet</h2></div>
     <div className="filingStepBody"><Banner variant="warning">Leveringsstatus er ikke tilgjengelig. {annualAccountsActionErrorMessage(error)}</Banner>
-      {accountsDeliveryMfaRequired(error) ? <LinkButton href="/mfa?fresh=1&next=%2Ffiling%2Faarsregnskap" variant="secondary">Bekreft identiteten</LinkButton> :
-        <LinkButton href="/filing/aarsregnskap" variant="secondary">Oppdater status</LinkButton>}</div></section>;}
+      {accountsDeliveryMfaRequired(error) ? <LinkButton href={"/mfa?fresh=1&next="+encodeURIComponent(target)} variant="secondary">Bekreft identiteten</LinkButton> :
+        <LinkButton href={target} variant="secondary">Oppdater status</LinkButton>}</div></section>;}
   return <div className={styles.panel} data-accounts-delivery="workspace">
     <section className="filingStep"><div className="filingStepHead"><h2 className="filingStepTitle">Levering av årsregnskapet</h2></div>
       <div className="filingStepBody">

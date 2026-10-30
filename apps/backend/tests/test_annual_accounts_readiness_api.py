@@ -34,6 +34,8 @@ def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
 @pytest.mark.parametrize('mutate',[
     lambda b:b['annualData']['answers'].update(general_meeting_approved='false'),
     lambda b:b['annualData']['answers'].update(general_meeting_approved=1),
+    lambda b:b['annualData']['answers'].update(company_tax_additional_attachments='forged'),
+    lambda b:b['annualData']['answers'].update(company_tax_additional_attachments={}),
     lambda b:b['annualData'].update(annual_full_time_equivalents={}),
     lambda b:b['annualData'].update(annual_full_time_equivalents=True),
     lambda b:b['annualData'].update(confirmations={}),
@@ -50,3 +52,16 @@ def test_readiness_http_rejects_malformed_consumed_facts(mutate):
     client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
     response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
     assert response.status_code==422
+
+
+@pytest.mark.parametrize('answer', ['none', 'required', 'unknown'])
+def test_accounts_readiness_accepts_the_saved_tax_attachment_answer(answer):
+    value=json.loads(json.dumps(CASES[0]['input']).replace('company-id',COMPANY))
+    body=dict(companyId=COMPANY,incomeYear=2025,annualData=value['annualData'],ledgerEntries=value['ledgerEntries'],corporateEnabled=True,
+        corporateBlockers=[{'code':'corporate_documents_missing_signed_artifacts','message':'Signerte dokumenter mangler.'}])
+    client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+    expected=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+    body['annualData']['answers']['company_tax_additional_attachments']=answer
+    actual=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+    assert actual.status_code==200,actual.text
+    assert actual.json()==expected.json()

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readAnnualDeliverySummary } from "../apps/web/app/lib/annual-delivery-summary.ts";
 
 import {
   annualObligationHref,
@@ -18,6 +19,29 @@ const snapshot = (obligation, status, issues = []) => ({
   warnings: status === "warning" ? issues : [],
   accepted_warnings: [],
   evaluated_at: "2026-01-01T00:00:00Z",
+});
+
+test("retained delivery drafts are visible without claiming readiness or submission", () => {
+  const model = buildAnnualWorkspaceViewModel({context, company, role:"owner", snapshots:[],
+    deadlines:[], documents:[], comments:[], submissions:[],
+    deliverySummaries:{aarsregnskap:{state:"stored", count:1, synthetic:true},
+      skattemelding:{state:"unavailable", count:0, synthetic:false}},
+  });
+  const accounts=model.obligations.find(row=>row.obligation==="aarsregnskap");
+  assert.equal(accounts.status,"stored");
+  assert.equal(accounts.statusLabel,"Leveringsgrunnlag lagret");
+  assert.equal(accounts.receiptId,null);
+  assert.equal(accounts.deliverySummary.synthetic,true);
+  assert.equal(model.obligations.find(row=>row.obligation==="skattemelding").status,"unavailable");
+});
+
+test("an unavailable delivery read never becomes an empty history or a receipt", async () => {
+  assert.deepEqual(await readAnnualDeliverySummary(async()=>{throw new Error("MFA required");}),
+    {state:"unavailable",count:0,synthetic:false});
+  assert.deepEqual(await readAnnualDeliverySummary(async()=>({rows:[]})),
+    {state:"empty",count:0,synthetic:false});
+  assert.deepEqual(await readAnnualDeliverySummary(async()=>({rows:[{filingId:"retained",syntheticSignoff:true}]})),
+    {state:"stored",count:1,synthetic:true});
 });
 
 test("builds the fixed launch order and points to the first actionable issue", () => {

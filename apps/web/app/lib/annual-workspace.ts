@@ -12,7 +12,8 @@ import type {
 
 export type AnnualWorkspaceContext = { companyId: string; incomeYear: number };
 export type AnnualWorkspaceRole = "owner" | "reviewer" | "read_only";
-export type AnnualWorkspaceStatus = "not_started" | "ready" | "warning" | "blocked" | "submitted";
+export type AnnualWorkspaceStatus = "not_started" | "ready" | "warning" | "blocked" | "submitted" | "stored" | "unavailable";
+export type AnnualDeliverySummary = { state: "stored" | "empty" | "unavailable"; count: number; synthetic: boolean };
 export type AnnualWorkspaceAction = { label: string; href: string };
 
 export type AnnualObligationViewModel = {
@@ -28,6 +29,7 @@ export type AnnualObligationViewModel = {
   unsupported: boolean;
   receiptId: string | null;
   nextAction: AnnualWorkspaceAction;
+  deliverySummary?: AnnualDeliverySummary;
 };
 
 export type AnnualWorkspaceViewModel = {
@@ -85,6 +87,8 @@ const statusLabel: Record<AnnualWorkspaceStatus, string> = {
   warning: "Må kontrolleres",
   blocked: "Må løses",
   submitted: "Sendt inn",
+  stored: "Leveringsgrunnlag lagret",
+  unavailable: "Leveringsstatus må hentes",
 };
 
 export function annualOverviewHref(context: AnnualWorkspaceContext) {
@@ -108,6 +112,7 @@ export function buildAnnualWorkspaceViewModel(input: {
   documents: DocumentRow[];
   comments: FilingReviewCommentRow[];
   submissions: SubmissionInput[];
+  deliverySummaries?: Partial<Record<AuthorityObligation, AnnualDeliverySummary>>;
 }): AnnualWorkspaceViewModel {
   const obligations = obligationOrder.map((obligation) => buildObligation(input, obligation));
   const next = obligations.find((item) => item.status === "blocked")
@@ -137,9 +142,11 @@ function buildObligation(
   const submission = input.submissions
     .filter((item) => item.income_year === input.context.incomeYear && item.filing === filing && item.receipt_id)
     .sort((left, right) => right.updated_at.localeCompare(left.updated_at))[0];
+  const deliverySummary = input.deliverySummaries?.[obligation];
   const status: AnnualWorkspaceStatus = submission?.receipt_id
     ? "submitted"
-    : snapshot?.status ?? "not_started";
+    : snapshot?.status ?? (deliverySummary?.state === "stored" ? "stored"
+      : deliverySummary?.state === "unavailable" ? "unavailable" : "not_started");
   const firstIssue = snapshot?.hard_blocks[0] ?? snapshot?.warnings[0] ?? null;
   const href = annualObligationHref(input.context, obligation);
   const nextAction = status === "submitted"
@@ -148,7 +155,7 @@ function buildObligation(
       ? { label: actionLabelByIssue[firstIssue.code] ?? "Løs åpent punkt", href: `${href}#issue-${firstIssue.code}` }
       : status === "ready"
         ? { label: "Gå til gjennomgang", href: annualReviewHref(input.context) }
-        : { label: "Start", href };
+        : { label: deliverySummary?.state === "stored" ? "Se lagrede dokumenter" : "Åpne", href };
 
   return {
     obligation,
@@ -163,5 +170,6 @@ function buildObligation(
     unsupported: Boolean(snapshot?.hard_blocks.some((issue) => unsupportedCodes.has(issue.code))),
     receiptId: submission?.receipt_id ?? null,
     nextAction,
+    deliverySummary,
   };
 }
