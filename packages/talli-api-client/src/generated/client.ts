@@ -3175,7 +3175,7 @@ export interface AccountsDeliveryWorkspaceRowWire {
   sourceCurrent: boolean;
   sourceSha256: string;
   state: "draft" | "reviewed" | "creation_unknown" | "created" | "main_upload_unknown" | "main_uploaded" | "accounts_upload_unknown" | "validation_blocked" | "confirmation_review" | "confirmation_unknown" | "person_review" | "signing_unknown" | "technical_archive" | "inspection_unavailable" | "correction_parent_unknown";
-  syntheticSignoff: boolean;
+  syntheticSignoff?: boolean;
   validationIssues: Record<string, unknown>[];
 }
 
@@ -3186,7 +3186,7 @@ export interface AccountsDeliveryWorkspaceWire {
   preparationAvailable: boolean;
   rows: AccountsDeliveryWorkspaceRowWire[];
   sourceSha256: string | null;
-  syntheticSignoff: boolean;
+  syntheticSignoff?: boolean;
   version: "annual-accounts-delivery-workspace-v1";
 }
 
@@ -9505,7 +9505,7 @@ function isAccountsDeliveryWorkspaceRowWire(value: unknown): value is AccountsDe
     typeof value.sourceCurrent === "boolean" &&
     typeof value.sourceSha256 === "string" &&
     (value.state === "draft" || value.state === "reviewed" || value.state === "creation_unknown" || value.state === "created" || value.state === "main_upload_unknown" || value.state === "main_uploaded" || value.state === "accounts_upload_unknown" || value.state === "validation_blocked" || value.state === "confirmation_review" || value.state === "confirmation_unknown" || value.state === "person_review" || value.state === "signing_unknown" || value.state === "technical_archive" || value.state === "inspection_unavailable" || value.state === "correction_parent_unknown") &&
-    typeof value.syntheticSignoff === "boolean" &&
+    (value.syntheticSignoff === undefined || typeof value.syntheticSignoff === "boolean") &&
     Array.isArray(value.validationIssues) && value.validationIssues.every((item) => isRecord(item))
   );
 }
@@ -9520,7 +9520,7 @@ function isAccountsDeliveryWorkspaceWire(value: unknown): value is AccountsDeliv
     typeof value.preparationAvailable === "boolean" &&
     Array.isArray(value.rows) && value.rows.every((item) => isAccountsDeliveryWorkspaceRowWire(item)) &&
     (typeof value.sourceSha256 === "string" || value.sourceSha256 === null) &&
-    typeof value.syntheticSignoff === "boolean" &&
+    (value.syntheticSignoff === undefined || typeof value.syntheticSignoff === "boolean") &&
     value.version === "annual-accounts-delivery-workspace-v1"
   );
 }
@@ -13936,9 +13936,11 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsDeliveryWorkspaceWire> {
+    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions & {includeSyntheticContext?: boolean} = {}): Promise<AccountsDeliveryWorkspaceWire> {
       const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      if (request.includeSyntheticContext) query.set("includeSyntheticContext","true");
       const result=await executeJson(`${baseUrl}/api/v1/annual-accounts/delivery-workspace?${query}`,"GET",request,undefined,isAccountsDeliveryWorkspaceWire);
+      if (!request.includeSyntheticContext && (result.syntheticSignoff!==undefined || result.rows.some(row=>row.syntheticSignoff!==undefined))) throw new TalliApiError(502, undefined);
       if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
           || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
             || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))

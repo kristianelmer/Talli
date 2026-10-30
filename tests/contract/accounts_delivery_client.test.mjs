@@ -15,16 +15,21 @@ test("Accounts workspace keeps all fields/issues and refuses foreign or invented
     validationIssues:[{severity:"warning",code:"SOFT",description:"Retain every issue",additional:{nested:"raw"}}],
     originals:[{key:"original:"+sha,purpose:"pdf",sourceFilingId:filingId,sha256:sha,mediaType:"application/pdf"}]};
   const valid={version:"annual-accounts-delivery-workspace-v1",companyId,incomeYear:2025,sourceSha256:sha,observedAt:row.recordedAt,preparationAvailable:false,syntheticSignoff:false,rows:[row]};
-  let response=valid;t.mock.method(globalThis,"fetch",async (url,request)=>{
-    assert.equal(new URL(url).pathname,"/api/v1/annual-accounts/delivery-workspace");assert.equal(request.cache,"no-store");
+  let response=valid;let context=true;t.mock.method(globalThis,"fetch",async (url,request)=>{
+    assert.equal(new URL(url).pathname,"/api/v1/annual-accounts/delivery-workspace");assert.equal(new URL(url).searchParams.get("includeSyntheticContext"),context?"true":null);assert.equal(request.cache,"no-store");
     assert.equal(new Headers(request.headers).get("Authorization"),"Bearer fixture");return Response.json(response);
   });
   const client=createTalliApiClient({baseUrl:"https://backend.example",headers:{Authorization:"Bearer fixture"}});
-  assert.deepEqual(await client.annualAccountsGetDeliveryWorkspace(companyId,2025),valid);
+  assert.deepEqual(await client.annualAccountsGetDeliveryWorkspace(companyId,2025,{includeSyntheticContext:true}),valid);
+  context=false;
+  await assert.rejects(client.annualAccountsGetDeliveryWorkspace(companyId,2025),failed);
+  const legacy=structuredClone(valid);delete legacy.syntheticSignoff;delete legacy.rows[0].syntheticSignoff;response=legacy;
+  assert.deepEqual(await client.annualAccountsGetDeliveryWorkspace(companyId,2025),legacy);
+  context=true;
   for (const changed of [{companyId:other},{incomeYear:2024},{syntheticSignoff:"yes"},{rows:[row,row]},
     ...[{state:"accepted"},{parentFilingId:other},{parentFilingId:filingId},{actions:["production"]},{actions:["sign","sign"]},{syntheticSignoff:"yes"},{signed:true},
       {originals:[{...row.originals[0],sourceFilingId:other}]},{originals:[...row.originals,...row.originals]}].map(change=>({rows:[{...row,...change}]}))]) {
-    response={...valid,...changed};await assert.rejects(client.annualAccountsGetDeliveryWorkspace(companyId,2025),failed);
+    response={...valid,...changed};await assert.rejects(client.annualAccountsGetDeliveryWorkspace(companyId,2025,{includeSyntheticContext:true}),failed);
   }
 });
 

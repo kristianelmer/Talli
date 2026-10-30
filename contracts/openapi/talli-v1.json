@@ -688,6 +688,7 @@
             "type": "string"
           },
           "syntheticSignoff": {
+            "default": false,
             "title": "Syntheticsignoff",
             "type": "boolean"
           },
@@ -710,7 +711,6 @@
           "state",
           "knownInstance",
           "sourceCurrent",
-          "syntheticSignoff",
           "actions",
           "fields",
           "validationIssues",
@@ -758,6 +758,7 @@
             "title": "Sourcesha256"
           },
           "syntheticSignoff": {
+            "default": false,
             "title": "Syntheticsignoff",
             "type": "boolean"
           },
@@ -774,7 +775,6 @@
           "sourceSha256",
           "observedAt",
           "preparationAvailable",
-          "syntheticSignoff",
           "rows"
         ],
         "title": "AccountsDeliveryWorkspaceWire",
@@ -34864,6 +34864,16 @@
               "minimum": 2025,
               "title": "Incomeyear",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeSyntheticContext",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includesyntheticcontext",
+              "type": "boolean"
             }
           },
           {

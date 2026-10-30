@@ -6,6 +6,7 @@ import hashlib
 import json
 
 import pytest
+from fastapi.testclient import TestClient
 
 from talli_backend.application.annual_accounts_delivery_source import read_annual_accounts_delivery_source
 from talli_backend.application.annual_accounts_delivery_workflow import AnnualAccountsDeliveryWorkflow, AccountsDeliveryState
@@ -27,6 +28,31 @@ from test_annual_accounts_delivery_source import QUERY, NOW, prepare, read, sour
 from test_annual_accounts_delivery_workflow import Harness
 from test_annual_accounts_delivery_draft import delivery_snapshot
 from test_annual_accounts_delivery_records import binding
+
+
+def test_original_workspace_wire_is_preserved_and_synthetic_context_requires_opt_in(monkeypatch):
+    from talli_backend import main
+    row={'filing_id':'81883db6-cf34-4140-be2e-e8c7e7070a65','parent_filing_id':None,'recorded_at':NOW,
+        'draft_sha256':'a'*64,'source_sha256':'b'*64,'review_sha256':'a'*64,'review_stage':'prepare',
+        'state':'draft','known_instance':None,'source_current':True,'synthetic_signoff':False,
+        'actions':[],'fields':[],'validation_issues':[],'originals':[]}
+    result={'version':'annual-accounts-delivery-workspace-v1','company_id':str(QUERY.company_id),'income_year':2025,
+        'source_sha256':'b'*64,'observed_at':NOW,'preparation_available':False,'synthetic_signoff':False,'rows':[row]}
+    class Application:
+        actor_id=QUERY.actor_id
+        async def session(self,token):return self
+        async def delivery_workspace(self,*args,**kwargs):return result
+    monkeypatch.setattr(main,'compose_annual_accounts_application',lambda *args,**kwargs:Application())
+    client=TestClient(main.create_app())
+    path='/api/v1/annual-accounts/delivery-workspace?companyId='+str(QUERY.company_id)+'&incomeYear=2025'
+    response=client.get(path,headers={'Authorization':'Bearer fixture'})
+    assert response.status_code==200 and 'syntheticSignoff' not in response.json()
+    assert 'syntheticSignoff' not in response.json()['rows'][0]
+    result['synthetic_signoff']=row['synthetic_signoff']=True
+    assert client.get(path,headers={'Authorization':'Bearer fixture'}).status_code==503
+    response=client.get(path+'&includeSyntheticContext=true',headers={'Authorization':'Bearer fixture'})
+    assert response.status_code==200 and response.json()['syntheticSignoff'] is True
+    assert response.json()['rows'][0]['syntheticSignoff'] is True
 
 
 def preview_environment():

@@ -76,7 +76,7 @@ export function loadAnnualAccountsSourceFacts(accessToken: string, companyId: st
 }
 
 export function loadAccountsDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
-  return client(accessToken).annualAccountsGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+  return client(accessToken).annualAccountsGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000),includeSyntheticContext:true});
 }
 
 export function loadAccountsDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {

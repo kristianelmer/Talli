@@ -1527,6 +1527,7 @@ The year-end form collects the explicit extra-attachments answer, defaulting to 
 -->
 
 `talli_backend.adapters.preview_synthetic_accounts_signoff` composes the finite designated Preview scope for one fictional Accounts draft. It binds the current Corporate decision, source and unsigned document hashes to explicit simulation provenance. Corporate retains its real readiness state; synthetic Accounts drafts cannot use provider operations.
+The workspace exposes simulation labels only with `includeSyntheticContext=true`. Ordinary workspaces keep the original response shape. A caller that omits the opt-in receives an unavailable response for synthetic fixture state, so an old client cannot present that state as an ordinary signed decision.
 
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.adapters.preview_synthetic_accounts_signoff"]}
