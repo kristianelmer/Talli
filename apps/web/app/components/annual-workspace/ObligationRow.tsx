@@ -16,6 +16,7 @@ export function ObligationRow({ obligation }: { obligation: AnnualObligationView
       <div>
         <h2><Link href={obligation.href}>{obligation.label}</Link></h2>
         <p className={styles.muted}>{description[obligation.obligation]}</p>
+        {obligation.deliverySummary?.synthetic ? <p className={styles.muted}>Syntetisk testutkast · kan ikke sendes inn</p> : null}
         <div className={styles.rowMeta}>
           <span className={styles.status} aria-label={`Status: ${obligation.statusLabel}`}><span className={styles.statusDot} aria-hidden="true" />{obligation.statusLabel}</span>
           {obligation.deadline ? <span>Frist {obligation.deadline.deadline}</span> : null}

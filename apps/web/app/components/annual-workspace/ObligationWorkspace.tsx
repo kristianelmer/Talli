@@ -62,6 +62,16 @@ export function ObligationWorkspace({
 
         {view.unsupported ? <div className={styles.notice}><strong>Denne plikten trenger faglig vurdering.</strong><br />De andre årspliktene er fortsatt tilgjengelige. Ta dette punktet med en regnskapsfører.</div> : null}
 
+        <section className={styles.section} aria-labelledby="delivery-title">
+          <h2 id="delivery-title">Dokumenter og leveringsstatus</h2>
+          {view.storedPreviews ? <p>{view.storedPreviews} lagrede forhåndsvisninger kan leses selv om innsending er stengt.</p> : null}
+          {view.deliverySummary?.state === "stored" ? <p>{view.deliverySummary.count} lagrede leveringsgrunnlag. Åpne dem for å kontrollere alle felt og laste ned originalene.</p> : null}
+          {view.deliverySummary?.synthetic ? <p>Syntetisk testutkast. Protokollene er usignert, og utkastet kan ikke sendes inn.</p> : null}
+          {view.deliverySummary?.state === "unavailable" ? <p>Leveringsstatus kunne ikke hentes. Åpne leveringsløpet for å bekrefte identiteten eller prøve igjen.</p> : null}
+          <Link className={styles.secondaryButton} href={`/filing/${obligation}?${new URLSearchParams({companyId:model.context.companyId,incomeYear:String(model.context.incomeYear)})}`}>Åpne dokumenter og leveringsstatus</Link>
+          <p><Link href={`/archive/${encodeURIComponent(model.context.companyId)}/${model.context.incomeYear}/download`}>Last ned selskapets årsarkiv</Link></p>
+        </section>
+
         <section className={styles.section} aria-labelledby="readiness-title">
           <h2 id="readiness-title">Dette må være klart</h2>
           {issues.length ? (

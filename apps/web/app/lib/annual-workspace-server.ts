@@ -26,6 +26,9 @@ import {
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
 import { loadBillingEntitlement } from "../../features/billing";
+import { loadTaxDeliveryWorkspace } from "../../features/company-tax-filing";
+import { loadAccountsDeliveryWorkspace } from "../../features/annual-accounts-filing";
+import { readAnnualDeliverySummary } from "./annual-delivery-summary.ts";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
@@ -60,6 +63,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     rfSource,
     taxSource,
     accountsSource,
+    taxDelivery,
+    accountsDelivery,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
     listOpeningSetups(companyIds),
@@ -80,6 +85,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     loadPresentedRf1086Source(accessToken, companyIds, context.incomeYear),
     loadPresentedCompanyTaxSource(accessToken, companyIds, context.incomeYear),
     loadPresentedAnnualAccountsSource(accessToken, companyIds, context.incomeYear),
+    readAnnualDeliverySummary(context.incomeYear, () => loadTaxDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
+    readAnnualDeliverySummary(context.incomeYear, () => loadAccountsDeliveryWorkspace(accessToken, company.id, context.incomeYear)),
   ]);
 
   const failedSources = [
@@ -132,6 +139,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     documents: records.documents,
     comments: records.comments,
     submissions: records.submissions,
+    deliverySummaries: { skattemelding: taxDelivery, aarsregnskap: accountsDelivery },
+    previews: records.previews,
   });
 
   return { model, records, deadlines, billingEntitlement };

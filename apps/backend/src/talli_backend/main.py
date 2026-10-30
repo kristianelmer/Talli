@@ -1677,7 +1677,9 @@ class AnnualAccountsReadinessPreviewRequest(TransportModel):
             if (annual.get('company_id') != str(self.company_id)
                     or type(annual.get('income_year')) is not int or annual['income_year'] != self.income_year
                     or not isinstance(answers, dict) or type(answers.get('general_meeting_approved')) is not bool
-                    or any(type(answer) is not bool for answer in answers.values())
+                    or any(type(answer) is not bool and not (
+                        name == 'company_tax_additional_attachments' and type(answer) is str
+                        and answer in ('none', 'required', 'unknown')) for name, answer in answers.items())
                     or not isinstance(confirmations, list) or any(not isinstance(item, str) for item in confirmations)
                     or equivalents is not None and type(equivalents) not in (int, float)):
                 raise ValueError('Accounts annual facts are malformed or outside the requested scope.')
@@ -1879,7 +1881,9 @@ class CompanyTaxAssessmentFactsRequest(TransportModel):
                 raise ValueError("Tax preview holding facts are malformed.")
         if self.annual_data is not None:
             answers = self.annual_data.get("answers")
-            if (not isinstance(answers, dict) or any(type(value) is not bool for value in answers.values())
+            if (not isinstance(answers, dict) or any(type(value) is not bool and not (
+                    name == 'company_tax_additional_attachments' and type(value) is str
+                    and value in ('none', 'required', 'unknown')) for name, value in answers.items())
                     or type(self.annual_data.get("no_activity_confirmed")) is not bool):
                 raise ValueError("Tax preview annual answers are malformed.")
         facts = {"annualData": self.annual_data, "ledgerEntries": self.ledger_entries,

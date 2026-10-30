@@ -47,11 +47,16 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
   if (!token) redirect("/login");
   const company = await loadAcceptedMembershipCompany(companyId);
   const header = <div className="pageHead">
-    <Link className="backLink" href="/filing/aksjonaerregisteroppgaven">← Aksjonærregisteroppgaven</Link>
+    <Link className="backLink" href={`/filing/aksjonaerregisteroppgaven?${new URLSearchParams({companyId,incomeYear:String(incomeYear)})}`}>← Aksjonærregisteroppgaven</Link>
     <h1 className="pageTitle">Årsgrunnlag for aksjonærregisteroppgaven</h1>
     <p className="pageLede">Kontroller aksjonærer, aksjer og årets hendelser før du lager en forhåndsvisning.</p>
     <p className="cardNote">Inntektsåret {incomeYear}</p>
     {company?.name ? <p className="cardNote">{company.name}</p> : null}
+    <nav aria-label="Årsrapportering">
+      <Link href={`/companies/${encodeURIComponent(companyId)}/annual-reporting/${incomeYear}`}>Til årsrapporteringen</Link>
+      <span> · <Link href={`/filing/skattemelding?${new URLSearchParams({companyId,incomeYear:String(incomeYear)})}`}>Skattemelding for AS</Link></span>
+      <span> · <Link href={`/filing/aarsregnskap?${new URLSearchParams({companyId,incomeYear:String(incomeYear)})}`}>Årsregnskap</Link></span>
+    </nav>
     {company?.id === companyId ? <Link href={`/companies/${companyId}/rf1086-test-history`}>Se selskapets testhistorikk på tvers av år</Link> : null}
   </div>;
   if (!company || company.id !== companyId || company.role !== "owner" || company.entity_type !== "AS"

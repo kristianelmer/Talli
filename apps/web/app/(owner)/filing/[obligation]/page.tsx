@@ -107,7 +107,7 @@ function Blockers({ issues }: { issues: AnnualReadinessIssue[] }) {
 
 type FilingFlowProps = {
   params: Promise<{ obligation: string }>;
-  searchParams?: Promise<{ error?: string; posted?: string; productionError?: string }>;
+  searchParams?: Promise<{ error?: string; posted?: string; productionError?: string; companyId?: string; incomeYear?: string }>;
 };
 
 export default async function FilingObligationPage({
@@ -120,8 +120,11 @@ export default async function FilingObligationPage({
   }
   const obligation = raw as AuthorityObligation;
   const query = await searchParams;
-  const data = await loadWorkspaceData();
+  const requestedYear = query?.incomeYear === undefined ? undefined : Number(query.incomeYear);
+  if (requestedYear !== undefined && (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 2100)) notFound();
+  const data = await loadWorkspaceData({ companyId: query?.companyId, accountingYear: requestedYear });
   const input = buildReadinessInput(data);
+  if (query?.companyId && input?.company.id !== query.companyId) notFound();
   const meta = f.obligations[obligation];
 
   if (!input) {
@@ -180,7 +183,14 @@ export default async function FilingObligationPage({
       </Link>
       <h1 className="pageTitle">{meta.label}</h1>
       <p className="pageLede">{meta.lede}</p>
-      <p className="cardNote">{f.yearLabel(input.incomeYear)}</p>
+      <p className="cardNote">{input.company.name} · {f.yearLabel(input.incomeYear)}</p>
+      <nav aria-label="Årsrapportering">
+        <Link href={`/companies/${encodeURIComponent(input.company.id)}/annual-reporting/${input.incomeYear}`}>Til årsrapporteringen</Link>
+        {(["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"] as const).map(item => <span key={item}> · <Link
+          aria-current={item === obligation ? "page" : undefined}
+          href={`/filing/${item}?${new URLSearchParams({companyId:input.company.id,incomeYear:String(input.incomeYear)})}`}>{f.obligations[item].label}</Link></span>)}
+        <span> · <Link href={`/archive/${encodeURIComponent(input.company.id)}/${input.incomeYear}/download`}>Last ned årsarkivet</Link></span>
+      </nav>
     </div>
   );
 
@@ -277,7 +287,7 @@ export default async function FilingObligationPage({
               </p>
             </div>
           </section>
-        ) : obligation === "skattemelding" && input.incomeYear === 2025 ? null : (
+        ) : input.incomeYear === 2025 ? null : (
           <section className="filingStep">
             <div className="filingStepHead">
               <h2 className="filingStepTitle">{f.preview.title}</h2>
@@ -501,13 +511,13 @@ export default async function FilingObligationPage({
           <div className="filingStepHead">
             <h2 className="filingStepTitle">{f.preview.title}</h2>
             {previewReady ? (
-              <StatusBadge variant="success" label={f.status.ready} icon="check" />
+              <StatusBadge variant="info" label="Forhåndsvisning lagret" />
             ) : preview ? (
               <StatusBadge variant="warning" label={f.preview.notReady} icon="alert" />
             ) : null}
           </div>
           <div className="filingStepBody">
-            {!prerequisitesClear ? (
+            {!prerequisitesClear && !preview ? (
               <p className="filingLockNote">{f.preview.lockedNote}</p>
             ) : !preview ? (
               <>
@@ -537,14 +547,14 @@ export default async function FilingObligationPage({
                 {!previewReady ? (
                   <p className="filingLockNote">{f.preview.notReady}</p>
                 ) : null}
-                <form action={generateRf1086Preview}>
+                {prerequisitesClear ? <form action={generateRf1086Preview}>
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="companyId" value={input.company.id} />
                   <input type="hidden" name="setupId" value={setup?.id ?? ""} />
                   <SubmitButton variant="ghost" pendingLabel={f.preview.generatePending}>
                     {f.preview.regenerateCta}
                   </SubmitButton>
-                </form>
+                </form> : <p className="filingLockNote">Fullfør sjekken over før du lager en ny forhåndsvisning.</p>}
               </>
             )}
           </div>
