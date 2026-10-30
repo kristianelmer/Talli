@@ -64,6 +64,7 @@ export function ObligationWorkspace({
 
         <section className={styles.section} aria-labelledby="delivery-title">
           <h2 id="delivery-title">Dokumenter og leveringsstatus</h2>
+          {view.storedPreviews ? <p>{view.storedPreviews} lagrede forhåndsvisninger kan leses selv om innsending er stengt.</p> : null}
           {view.deliverySummary?.state === "stored" ? <p>{view.deliverySummary.count} lagrede leveringsgrunnlag. Åpne dem for å kontrollere alle felt og laste ned originalene.</p> : null}
           {view.deliverySummary?.synthetic ? <p>Syntetisk testutkast. Protokollene er usignert, og utkastet kan ikke sendes inn.</p> : null}
           {view.deliverySummary?.state === "unavailable" ? <p>Leveringsstatus kunne ikke hentes. Åpne leveringsløpet for å bekrefte identiteten eller prøve igjen.</p> : null}

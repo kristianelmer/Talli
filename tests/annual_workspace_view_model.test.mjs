@@ -35,6 +35,18 @@ test("retained delivery drafts are visible without claiming readiness or submiss
   assert.equal(model.obligations.find(row=>row.obligation==="skattemelding").status,"unavailable");
 });
 
+test("the selected company's retained RF preview is visible without a readiness snapshot", () => {
+  const model=buildAnnualWorkspaceViewModel({context,company,role:"owner",snapshots:[],deadlines:[],documents:[],comments:[],submissions:[],
+    previews:[{company_id:company.id,income_year:2025,filing:"aksjonærregisteroppgaven"},
+      {company_id:"foreign",income_year:2025,filing:"aksjonærregisteroppgaven"},
+      {company_id:company.id,income_year:2026,filing:"aksjonærregisteroppgaven"}],
+  });
+  assert.equal(model.obligations[0].status,"stored");
+  assert.equal(model.obligations[0].statusLabel,"Forhåndsvisning lagret");
+  assert.equal(model.obligations[0].storedPreviews,1);
+  assert.equal(model.obligations[0].receiptId,null);
+});
+
 test("an unavailable delivery read never becomes an empty history or a receipt", async () => {
   assert.deepEqual(await readAnnualDeliverySummary(2025, async()=>{throw new Error("MFA required");}),
     {state:"unavailable",count:0,synthetic:false});

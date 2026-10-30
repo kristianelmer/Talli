@@ -140,6 +140,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     comments: records.comments,
     submissions: records.submissions,
     deliverySummaries: { skattemelding: taxDelivery, aarsregnskap: accountsDelivery },
+    previews: records.previews,
   });
 
   return { model, records, deadlines, billingEntitlement };

@@ -8,6 +8,7 @@ import type {
   FilingReadinessSnapshotRow,
   FilingReviewCommentRow,
   FilingSubmissionRow,
+  FilingPreviewRow,
 } from "./supabase/server.ts";
 
 export type AnnualWorkspaceContext = { companyId: string; incomeYear: number };
@@ -30,6 +31,7 @@ export type AnnualObligationViewModel = {
   receiptId: string | null;
   nextAction: AnnualWorkspaceAction;
   deliverySummary?: AnnualDeliverySummary;
+  storedPreviews?: number;
 };
 
 export type AnnualWorkspaceViewModel = {
@@ -113,6 +115,7 @@ export function buildAnnualWorkspaceViewModel(input: {
   comments: FilingReviewCommentRow[];
   submissions: SubmissionInput[];
   deliverySummaries?: Partial<Record<AuthorityObligation, AnnualDeliverySummary>>;
+  previews?: Pick<FilingPreviewRow, "company_id" | "filing" | "income_year">[];
 }): AnnualWorkspaceViewModel {
   const obligations = obligationOrder.map((obligation) => buildObligation(input, obligation));
   const next = obligations.find((item) => item.status === "blocked")
@@ -143,10 +146,12 @@ function buildObligation(
     .filter((item) => item.income_year === input.context.incomeYear && item.filing === filing && item.receipt_id)
     .sort((left, right) => right.updated_at.localeCompare(left.updated_at))[0];
   const deliverySummary = input.deliverySummaries?.[obligation];
+  const storedPreviews = input.previews?.filter(item => item.company_id === input.context.companyId
+    && item.income_year === input.context.incomeYear && item.filing === filing).length ?? 0;
   const status: AnnualWorkspaceStatus = submission?.receipt_id
     ? "submitted"
     : snapshot?.status ?? (deliverySummary?.state === "stored" ? "stored"
-      : deliverySummary?.state === "unavailable" ? "unavailable" : "not_started");
+      : deliverySummary?.state === "unavailable" ? "unavailable" : storedPreviews ? "stored" : "not_started");
   const firstIssue = snapshot?.hard_blocks[0] ?? snapshot?.warnings[0] ?? null;
   const href = annualObligationHref(input.context, obligation);
   const nextAction = status === "submitted"
@@ -155,14 +160,14 @@ function buildObligation(
       ? { label: actionLabelByIssue[firstIssue.code] ?? "Løs åpent punkt", href: `${href}#issue-${firstIssue.code}` }
       : status === "ready"
         ? { label: "Gå til gjennomgang", href: annualReviewHref(input.context) }
-        : { label: deliverySummary?.state === "stored" ? "Se lagrede dokumenter" : "Åpne", href };
+        : { label: deliverySummary?.state === "stored" || storedPreviews ? "Se lagrede dokumenter" : "Åpne", href };
 
   return {
     obligation,
     label: authorityObligationLabel(obligation),
     href,
     status,
-    statusLabel: statusLabel[status],
+    statusLabel: status === "stored" && deliverySummary?.state !== "stored" ? "Forhåndsvisning lagret" : statusLabel[status],
     deadline: input.deadlines.find((item) => item.filing === filing) ?? null,
     hardBlocks: snapshot?.hard_blocks ?? [],
     warnings: snapshot?.warnings ?? [],
@@ -171,5 +176,6 @@ function buildObligation(
     receiptId: submission?.receipt_id ?? null,
     nextAction,
     deliverySummary,
+    storedPreviews,
   };
 }
