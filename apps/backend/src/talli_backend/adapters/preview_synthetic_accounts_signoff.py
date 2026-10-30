@@ -60,8 +60,11 @@ def compose_preview_accounts_signoff(*, environment=None, now=None):
                 or str(UUID(value['companyId'])) != value['companyId']):
             raise ValueError()
         expires = datetime.fromisoformat(value['expiresAt'])
-        if (expires.utcoffset() is None or expires <= clock() or expires > clock() + timedelta(hours=24)):
+        if (expires.utcoffset() is None or expires > clock() + timedelta(hours=24)):
             raise ValueError()
     except (ValueError, TypeError, KeyError, AttributeError, ProgrammingError):
         raise ValueError('Accounts sign-off simulation requires the designated finite synthetic Preview scope') from None
+    # Expired configuration closes preparation while durable originals remain readable.
+    if expires <= clock():
+        return None
     return PrivatePreviewAccountsSignoff(COMPANY, DECISION, DECISION_SHA256, SOURCE_SHA256, UNSIGNED, expires, clock)

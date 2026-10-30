@@ -55,6 +55,9 @@ def test_composition_requires_exact_finite_designated_preview(defect):
         elif defect == 'long-window':value['expiresAt'] = (NOW + timedelta(days=2)).isoformat()
         else:value['expiresAt'] = (NOW - timedelta(seconds=1)).isoformat()
         env[FLAG] = json.dumps(value)
+    if defect == 'expired':
+        assert compose_preview_accounts_signoff(environment=env, now=lambda: NOW) is None
+        return
     with pytest.raises(ValueError, match='finite synthetic Preview scope'):
         compose_preview_accounts_signoff(environment=env, now=lambda: NOW)
 
