@@ -221,3 +221,24 @@ def test_transaction_recheck_uses_existing_company_access_contract_and_exact_boo
             with pytest.raises(CompanyTaxError):await tx.assert_preparation_company_year(QUERY)
     asyncio.run(exercise())
     assert calls==[('select public.company_access_company_year_allows_consequential_v1(%s::uuid,%s::integer) as allowed',(COMPANY,2025))]
+
+
+def test_finite_sql_scope_selectors_resolve_against_actual_preparation_codec(monkeypatch):
+    """The operational SQL and durable typed codec must agree before hosted activation."""
+    from pathlib import Path
+    import re
+    _,_,app,command,_=setup(monkeypatch)
+    async def exercise():return await(await app.session('synthetic-owner-token')).prepare_delivery_draft(command)
+    stored=asyncio.run(exercise())
+    sql=(Path(__file__).resolve().parents[3]/'supabase/private-preview/20261029170000_synthetic_tax_current_draft.sql').read_text()
+    wrapper=sql[sql.index('declare value jsonb:'):]
+    assert "value jsonb:=(p_raw::jsonb)->'draft'" in wrapper
+    paths=re.findall(r"value#>>?'\{([^}]+)\}'",wrapper)
+    assert len(paths)==5
+    root=json.loads(stored.draft.canonical_json)['draft']
+    for path in paths:
+        value=root
+        for key in path.split(','):
+            assert key in value, f'SQL scope path {path} is absent from the actual draft codec'
+            value=value[key]
+        assert value is not None
