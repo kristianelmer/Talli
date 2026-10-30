@@ -1,5 +1,6 @@
 """Evidence-only Accounts workspace and access-controlled exact originals."""
 from xml.etree import ElementTree
+from talli_backend.modules.annual_accounts_filing.delivery import annual_accounts_source_is_synthetic
 
 from talli_backend.application.annual_accounts_delivery_source import read_annual_accounts_delivery_source
 from talli_backend.modules.annual_accounts_filing.public import (
@@ -55,9 +56,11 @@ class AnnualAccountsDeliveryWorkspace:
         async with session.transaction(snapshot=True) as transaction:
             snapshot=await transaction.filing_source_snapshot(query);facts=project_annual_accounts_source(query,snapshot)
             if snapshot.contract_version not in ('annual-accounts-source-v3','annual-accounts-source-v4') or facts.history_coverage.status!='complete':raise AnnualAccountsError.unavailable()
-            try:current=await read_annual_accounts_delivery_source(transaction,query,corporate=workflow._corporate,correlation_id=correlation_id)
+            try:current=await read_annual_accounts_delivery_source(transaction,query,corporate=workflow._corporate,
+                correlation_id=correlation_id,synthetic_signoff=workflow._synthetic_signoff)
             except AnnualAccountsError:current=None
         ports=workflow._ports;configured=ports is not None and ports.available(session,query.company_id,query.income_year)
+        synthetic=current is not None and annual_accounts_source_is_synthetic(current)
         operations=snapshot.coverage.get('deliveryOperationsEnabled') is True;rows=[]
         for stored in snapshot.delivery_drafts:
             draft=stored.draft;events=tuple(row for row in snapshot.delivery_events if row.record.binding.filing_id==draft.filing_id)
@@ -74,17 +77,17 @@ class AnnualAccountsDeliveryWorkspace:
                 review_sha=frame.review_sha256
             # These actions are current composition/source hints, never durable
             # permission flags. Every command repeats all owning/SQL checks.
-            if state is not None and configured and same and operations and draft.prepared_by==query.actor_id and state.inspection.next_action is not None:
+            if state is not None and configured and not annual_accounts_source_is_synthetic(draft.source) and same and operations and draft.prepared_by==query.actor_id and state.inspection.next_action is not None:
                 action=state.inspection.next_action;stage=Stage.CONFIRM if action.value=='confirm' else Stage.SIGN if action.value=='sign' else Stage.PREPARE
                 approval=state.slot('review:'+stage.value)
                 if approval is None:actions.append('review_'+stage.value)
                 elif approval.record.reviewed_evidence_sha256==review_sha and workflow.mutation_available(session,state,stage):actions.append(action.value)
-            if (state is not None and configured and same and operations and draft.prepared_by==query.actor_id
+            if (state is not None and configured and not annual_accounts_source_is_synthetic(draft.source) and same and operations and draft.prepared_by==query.actor_id
                     and not workflow.correction_proof_fresh(state) and workflow.correction_refresh_available(session,state)):
                 actions.append('refresh_parent')
-            if state is not None and configured and draft.prepared_by==query.actor_id and workflow.reconciliation_available(session,state):actions.append('reconcile')
+            if state is not None and configured and not annual_accounts_source_is_synthetic(draft.source) and draft.prepared_by==query.actor_id and workflow.reconciliation_available(session,state):actions.append('reconcile')
             parent=next((row.record.parent_binding.filing_id for row in events if type(row.record) is ParentAdmission),None)
-            if (state is not None and state.inspection.state=='technical_archive' and configured and operations
+            if (state is not None and not annual_accounts_source_is_synthetic(draft.source) and state.inspection.state=='technical_archive' and configured and operations
                     and snapshot.contract_version=='annual-accounts-source-v4' and snapshot.coverage.get('deliveryCorrectionsEnabled') is True
                     and ports.correction_available(session,draft) and draft.prepared_by==query.actor_id and current is not None
                     and not any(type(row.record) is ParentAdmission and row.record.parent_binding.filing_id==draft.filing_id for row in snapshot.delivery_events)):
@@ -98,6 +101,7 @@ class AnnualAccountsDeliveryWorkspace:
             rows.append({'filing_id':draft.filing_id,'recorded_at':stored.recorded_at.value,'draft_sha256':draft.sha256,
                 'source_sha256':draft.source.sha256,'parent_filing_id':parent,'review_sha256':review_sha,'review_stage':review_stage.value,
                 'state':state.inspection.state if state is not None else 'inspection_unavailable',
+                'synthetic_signoff':annual_accounts_source_is_synthetic(draft.source),
                 'known_instance':state.inspection.known_instance if state is not None else None,'source_current':same,
                 'actions':actions,'fields':document_fields(draft),'validation_issues':issues,
                 'originals':[{name:getattr(item,name) for name in ('key','purpose','source_filing_id','sha256','media_type')}
@@ -105,6 +109,8 @@ class AnnualAccountsDeliveryWorkspace:
         attempted=any(type(row.record) is Intent for row in snapshot.delivery_events)
         return {'version':'annual-accounts-delivery-workspace-v1','company_id':str(query.company_id),'income_year':int(query.income_year),
             'source_sha256':current.sha256 if current is not None else None,'observed_at':snapshot.as_of.value,
-            'preparation_available':bool(configured and current is not None and not attempted and all(row['state']!='inspection_unavailable' for row in rows)
+            'synthetic_signoff':synthetic,
+            'preparation_available':bool((configured or synthetic) and current is not None and not attempted
+                and (not synthetic or not rows) and all(row['state']!='inspection_unavailable' for row in rows)
                 and snapshot.coverage.get('deliveryDraftWritesEnabled') is True),
             'rows':rows}

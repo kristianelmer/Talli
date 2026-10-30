@@ -102,6 +102,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
 from talli_backend.adapters.annual_accounts_schemas import DeferredAnnualAccountsSchemas
 from talli_backend.application.annual_accounts_delivery_preparation import AnnualAccountsDeliveryPreparation
 from talli_backend.application.annual_accounts_delivery_workflow import AnnualAccountsDeliveryWorkflow
+from talli_backend.adapters.preview_synthetic_accounts_signoff import compose_preview_accounts_signoff
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
@@ -686,6 +687,7 @@ class AccountsDeliveryWorkspaceRowWire(TransportModel):
     state: AccountsDeliveryStateWire
     known_instance: str | None
     source_current: bool
+    synthetic_signoff: bool
     actions: list[AccountsDeliveryActionWire]
     fields: list[AccountsDeliveryFieldWire]
     validation_issues: list[dict[str,Any]]
@@ -699,6 +701,7 @@ class AccountsDeliveryWorkspaceWire(TransportModel):
     source_sha256: str | None
     observed_at: AwareDatetime
     preparation_available: bool
+    synthetic_signoff: bool
     rows: list[AccountsDeliveryWorkspaceRowWire]
 
 
@@ -6006,9 +6009,11 @@ def create_app(
         CorporateRegisterEvidenceVerifier(shareholder_register_filing_session_factory, documents_application),
     )
     accounts_schemas=DeferredAnnualAccountsSchemas()
+    accounts_synthetic_signoff=compose_preview_accounts_signoff()
     annual_accounts_application=compose_annual_accounts_application(annual_accounts_session_factory,
-        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas),
-        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas))
+        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas,accounts_synthetic_signoff),
+        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas,
+            synthetic_signoff=accounts_synthetic_signoff))
     shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
         shareholder_register_filing_session_factory, company_access_service,
         documents_application, corporate_governance_application,

@@ -3175,6 +3175,7 @@ export interface AccountsDeliveryWorkspaceRowWire {
   sourceCurrent: boolean;
   sourceSha256: string;
   state: "draft" | "reviewed" | "creation_unknown" | "created" | "main_upload_unknown" | "main_uploaded" | "accounts_upload_unknown" | "validation_blocked" | "confirmation_review" | "confirmation_unknown" | "person_review" | "signing_unknown" | "technical_archive" | "inspection_unavailable" | "correction_parent_unknown";
+  syntheticSignoff: boolean;
   validationIssues: Record<string, unknown>[];
 }
 
@@ -3185,6 +3186,7 @@ export interface AccountsDeliveryWorkspaceWire {
   preparationAvailable: boolean;
   rows: AccountsDeliveryWorkspaceRowWire[];
   sourceSha256: string | null;
+  syntheticSignoff: boolean;
   version: "annual-accounts-delivery-workspace-v1";
 }
 
@@ -9489,7 +9491,7 @@ function isAccountsDeliveryFieldWire(value: unknown): value is AccountsDeliveryF
 function isAccountsDeliveryWorkspaceRowWire(value: unknown): value is AccountsDeliveryWorkspaceRowWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["actions","draftSha256","fields","filingId","knownInstance","originals","parentFilingId","recordedAt","reviewSha256","reviewStage","sourceCurrent","sourceSha256","state","validationIssues"]) &&
+    hasOnlyProperties(value, ["actions","draftSha256","fields","filingId","knownInstance","originals","parentFilingId","recordedAt","reviewSha256","reviewStage","sourceCurrent","sourceSha256","state","syntheticSignoff","validationIssues"]) &&
     Array.isArray(value.actions) && value.actions.every((item) => (item === "review_prepare" || item === "review_confirm" || item === "review_sign" || item === "create_instance" || item === "upload_main_form" || item === "upload_company_accounts" || item === "confirm" || item === "sign" || item === "reconcile" || item === "prepare_correction" || item === "refresh_parent")) &&
     typeof value.draftSha256 === "string" &&
     Array.isArray(value.fields) && value.fields.every((item) => isAccountsDeliveryFieldWire(item)) &&
@@ -9503,6 +9505,7 @@ function isAccountsDeliveryWorkspaceRowWire(value: unknown): value is AccountsDe
     typeof value.sourceCurrent === "boolean" &&
     typeof value.sourceSha256 === "string" &&
     (value.state === "draft" || value.state === "reviewed" || value.state === "creation_unknown" || value.state === "created" || value.state === "main_upload_unknown" || value.state === "main_uploaded" || value.state === "accounts_upload_unknown" || value.state === "validation_blocked" || value.state === "confirmation_review" || value.state === "confirmation_unknown" || value.state === "person_review" || value.state === "signing_unknown" || value.state === "technical_archive" || value.state === "inspection_unavailable" || value.state === "correction_parent_unknown") &&
+    typeof value.syntheticSignoff === "boolean" &&
     Array.isArray(value.validationIssues) && value.validationIssues.every((item) => isRecord(item))
   );
 }
@@ -9510,13 +9513,14 @@ function isAccountsDeliveryWorkspaceRowWire(value: unknown): value is AccountsDe
 function isAccountsDeliveryWorkspaceWire(value: unknown): value is AccountsDeliveryWorkspaceWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["companyId","incomeYear","observedAt","preparationAvailable","rows","sourceSha256","version"]) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observedAt","preparationAvailable","rows","sourceSha256","syntheticSignoff","version"]) &&
     isUuid(value.companyId) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
     isDateTime(value.observedAt) &&
     typeof value.preparationAvailable === "boolean" &&
     Array.isArray(value.rows) && value.rows.every((item) => isAccountsDeliveryWorkspaceRowWire(item)) &&
     (typeof value.sourceSha256 === "string" || value.sourceSha256 === null) &&
+    typeof value.syntheticSignoff === "boolean" &&
     value.version === "annual-accounts-delivery-workspace-v1"
   );
 }

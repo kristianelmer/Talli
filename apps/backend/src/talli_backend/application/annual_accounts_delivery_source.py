@@ -24,7 +24,7 @@ class AnnualAccountsDeliverySourceInputs(Protocol):
 
 async def read_annual_accounts_delivery_source(inputs: AnnualAccountsDeliverySourceInputs,
         query: AnnualAccountsSourceQuery, *, corporate: CorporateGovernanceApplication,
-        correlation_id: CorrelationId) -> AnnualAccountsDeliverySource:
+        correlation_id: CorrelationId, synthetic_signoff=None) -> AnnualAccountsDeliverySource:
     if inputs.actor_id!=query.actor_id:raise AnnualAccountsError.forbidden()
     try:
         corporate_queries=inputs.delivery_corporate_queries
@@ -53,7 +53,11 @@ async def read_annual_accounts_delivery_source(inputs: AnnualAccountsDeliverySou
             'risk_flags':tuple(flag.code.value for flag in row.risk_flags),
             'warning_accepted_at':row.warning_accepted_at.value.isoformat() if row.warning_accepted_at else None}
             for row in ledger.effective_entries)
-        snapshots={'annual':history,'ledger':ledger,'corporate':{'readiness':readiness,'snapshot':lifecycle}}
+        corporate_evidence={'readiness':readiness,'snapshot':lifecycle}
+        if synthetic_signoff is not None:
+            simulation=synthetic_signoff.evidence(readiness,lifecycle,company_id=query.company_id,income_year=query.income_year)
+            if simulation is not None:corporate_evidence['synthetic_signoff']=simulation
+        snapshots={'annual':history,'ledger':ledger,'corporate':corporate_evidence}
         return AnnualAccountsDeliverySource(query.company_id,query.income_year,company.organization_number,company.legal_name,
             annual_data,entries,snapshots,{name:annual_accounts_delivery_digest(value) for name,value in snapshots.items()})
     except (ValueError,TypeError,KeyError,AttributeError,OverflowError,RecursionError,LedgerError,CorporateGovernanceError):

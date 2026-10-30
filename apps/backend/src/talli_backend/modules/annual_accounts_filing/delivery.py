@@ -11,6 +11,10 @@ from uuid import UUID
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IdempotencyKey, IncomeYear, Timestamp, UserId
 from .delivery_documents import AnnualAccountsDocumentsInspection
 
+SYNTHETIC_BOARD = 'annual_board_minutes'
+SYNTHETIC_MEETING = 'annual_general_meeting_minutes'
+SYNTHETIC_SIGNOFF_KIND = 'synthetic_accounts_signoff_v1'
+
 
 def _json(value):
     if is_dataclass(value):return {field.name:_json(getattr(value,field.name)) for field in fields(value)}
@@ -120,10 +124,33 @@ def _approval(source):
         return value[keys[0]]
     evidence=source.owning_snapshots['corporate'];ready=evidence['readiness']
     if (ready['company_id']!={'value':str(source.company_id)} or ready['income_year']!={'value':int(source.income_year)}
-            or ready['decision_kind']!='annual_close' or ready['current_source_matches'] is not True
-            or ready['finalized'] is not True or ready['annual_submission_ready'] is not True
-            or ready['blockers'] or not ready['signed_artifact_hashes'] or ready['finalization_id'] is None):
-        raise ValueError('Current finalized Corporate annual-close evidence is required.')
+            or ready['decision_kind']!='annual_close' or ready['current_source_matches'] is not True):
+        raise ValueError('Current Corporate annual-close evidence is required.')
+    simulation=evidence.get('synthetic_signoff')
+    if simulation is None:
+        if (ready['finalized'] is not True or ready['annual_submission_ready'] is not True
+                or ready['blockers'] or not ready['signed_artifact_hashes'] or ready['finalization_id'] is None):
+            raise ValueError('Current finalized Corporate annual-close evidence is required.')
+    else:
+        if (set(evidence)!={'readiness','snapshot','synthetic_signoff'} or not isinstance(simulation,Mapping)
+                or set(simulation)!={'kind','companyId','incomeYear','decisionId','decisionSha256','sourceSha256',
+                    'unsignedDocumentSha256','expiresAt','statement'}
+                or simulation['kind']!=SYNTHETIC_SIGNOFF_KIND or simulation['companyId']!=str(source.company_id)
+                or type(simulation['incomeYear']) is not int or simulation['incomeYear']!=int(source.income_year)
+                or simulation['decisionId']!=ready['decision_id']['value']
+                or simulation['decisionSha256']!=ready['decision_hash']
+                or simulation['sourceSha256']!=ready['source_hash']
+                or simulation['unsignedDocumentSha256']!=ready['generated_artifact_hashes']
+                or set(simulation['unsignedDocumentSha256'])!={SYNTHETIC_BOARD,SYNTHETIC_MEETING}
+                or simulation['statement']!='Synthetic test sign-off only; originals are unsigned; no owner signed-copy attestation or finalization.'
+                or type(simulation['expiresAt']) is not str
+                or datetime.fromisoformat(simulation['expiresAt']).utcoffset() is None
+                or ready['state']!='facts_approved' or ready['finalized'] is not False
+                or ready['annual_submission_ready'] is not False or ready['finalization_id'] is not None
+                or ready['signed_artifact_hashes'] or ready['source_hash']!=ready['current_source_hash']
+                or {item['code'] for item in ready['blockers']}!={
+                    'corporate_documents_missing_signed_artifacts','corporate_documents_finalization_required'}):
+            raise ValueError('Synthetic Accounts sign-off evidence is invalid.')
     decisions=[item for item in evidence['snapshot']['decisions'] if item['decision_id']==ready['decision_id']]
     if len(decisions)!=1:raise ValueError('Corporate annual-close decision is ambiguous.')
     decision=decisions[0];value=decision['canonical_input']
@@ -132,16 +159,32 @@ def _approval(source):
             or field(value,'companyId','company_id')!=str(source.company_id) or field(value,'incomeYear','income_year')!=int(source.income_year)
             or field(value,'organizationNumber','organization_number')!=source.organization_number or field(value,'legalName','legal_name')!=source.legal_name):
         raise ValueError('Corporate annual-close identity differs from current source.')
-    finals=[item for item in evidence['snapshot']['finalizations'] if item['finalization_id']==ready['finalization_id']]
-    if (len(finals)!=1 or finals[0]['company_id']!=decision['company_id'] or finals[0]['income_year']!=decision['income_year']
-            or finals[0]['decision_id']!=decision['decision_id'] or finals[0]['decision_hash']!=decision['decision_hash']
-            or finals[0]['annual_close_source_id']!=decision['annual_close_source_id']
-            or finals[0]['signed_artifact_hashes']!=ready['signed_artifact_hashes']):
-        raise ValueError('Accounts retained Corporate finalization does not bind the signed decision.')
+    if simulation is None:
+        finals=[item for item in evidence['snapshot']['finalizations'] if item['finalization_id']==ready['finalization_id']]
+        if (len(finals)!=1 or finals[0]['company_id']!=decision['company_id'] or finals[0]['income_year']!=decision['income_year']
+                or finals[0]['decision_id']!=decision['decision_id'] or finals[0]['decision_hash']!=decision['decision_hash']
+                or finals[0]['annual_close_source_id']!=decision['annual_close_source_id']
+                or finals[0]['signed_artifact_hashes']!=ready['signed_artifact_hashes']):
+            raise ValueError('Accounts retained Corporate finalization does not bind the signed decision.')
+    else:
+        if (decision['source_hash']!=simulation['sourceSha256']
+                or any(item['decision_id']==decision['decision_id'] for item in evidence['snapshot']['finalizations'])
+                or not any(item['decision_id']==decision['decision_id'] and item['event_kind']=='facts_approved'
+                    and item['decision_hash']==decision['decision_hash'] for item in evidence['snapshot']['events'])):
+            raise ValueError('Synthetic Accounts approval does not bind current facts.')
+        artifacts=[item for item in evidence['snapshot']['artifacts']
+            if item['document_set_id']==decision['document_set_id']]
+        if (len(artifacts)!=2 or any(item['variant']!='unsigned' for item in artifacts)
+                or {item['artifact_kind']:item['content_sha256'] for item in artifacts}!=simulation['unsignedDocumentSha256']):
+            raise ValueError('Synthetic Accounts originals must remain unsigned.')
     approval=field(field(value,'generalMeeting','general_meeting'),'meetingDate','meeting_date')
     if type(approval) is not str or date.fromisoformat(approval).isoformat()!=approval:
         raise ValueError('Corporate approval date is invalid.')
     return approval
+
+
+def annual_accounts_source_is_synthetic(source):
+    return 'synthetic_signoff' in source.owning_snapshots['corporate']
 
 
 _ACCOUNTS=frozenset(('1300','1310','1350','1800','1810','1815','1920','2000','2050','2255','2500',

@@ -687,6 +687,10 @@
             "title": "State",
             "type": "string"
           },
+          "syntheticSignoff": {
+            "title": "Syntheticsignoff",
+            "type": "boolean"
+          },
           "validationIssues": {
             "items": {
               "additionalProperties": true,
@@ -706,6 +710,7 @@
           "state",
           "knownInstance",
           "sourceCurrent",
+          "syntheticSignoff",
           "actions",
           "fields",
           "validationIssues",
@@ -752,6 +757,10 @@
             ],
             "title": "Sourcesha256"
           },
+          "syntheticSignoff": {
+            "title": "Syntheticsignoff",
+            "type": "boolean"
+          },
           "version": {
             "const": "annual-accounts-delivery-workspace-v1",
             "title": "Version",
@@ -765,6 +774,7 @@
           "sourceSha256",
           "observedAt",
           "preparationAvailable",
+          "syntheticSignoff",
           "rows"
         ],
         "title": "AccountsDeliveryWorkspaceWire",
