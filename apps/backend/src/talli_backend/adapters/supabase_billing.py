@@ -51,7 +51,8 @@ from talli_backend.modules.billing.public import (
     billing_persistence_adapter,
     expected_payment_status,
 )
-from talli_backend.shared.kernel import CompanyId, IdempotencyKey, IncomeYear, UserId
+from talli_backend.modules.ledger.public import LedgerError
+from talli_backend.shared.kernel import CompanyId, ErrorCategory, IdempotencyKey, IncomeYear, UserId
 
 
 def _account(row: Mapping[str, object]) -> BillingAccount:
@@ -237,6 +238,10 @@ class SupabaseBillingAdapter:
             ledger = await self._ledger_authentication.session(access_token)
         except LedgerAuthenticationError:
             raise BillingAuthenticationError from None
+        except LedgerError as error:
+            if error.category != ErrorCategory.DEPENDENCY_UNAVAILABLE:
+                raise
+            raise BillingError.unavailable() from None
         return SupabaseBillingSession(
             self._configuration.database_url, ledger._verified
         )

@@ -1,0 +1,86 @@
+{
+  "schema": "rf-claim-company-wait-fixture-local-v1",
+  "recordedAtUtc": "2026-10-11T01:06:11.451887+00:00",
+  "status": "FIXTURE_ONLY_REVIEWED_SPEC0_STANDARDS0_ACTUAL_SUCCESSOR_REQUIRED",
+  "publishedBaseline": "a40b34d5351c9a929313544cc1d517f99c6d59c1",
+  "localHttpCommit": "bbe4f415b29235e08c21e79e6d5d918404b7c77f",
+  "scope": "Only existing concurrency test function; real preflight finishes before competing writer holds company guard, then an event releases the unchanged actual RF guard operation. No fake Documents verification or cached policy replacement.",
+  "observedCiFailure": "16claimPASS/1waitFAIL/3unexecuted; competing task DocumentsError before target RF guard, all24retention unexecuted.",
+  "repair": [
+    "Start real competing claim/preflight before first writer admission; stop at existing source_claim_recovery_v3 entry using fixture event. All Auth/current roles/Docs/source/header preparation remain actual existing fixture operations.",
+    "Enter real first writer admission and create sole uncommitted claim. Only then replace explicit synthetic fixture AMR timestamp to DBclock-897 for competing RF transaction; release entry event.",
+    "Observe actual target PID advisory wait and DB-clock value in the same query; require taskpending and MFAage>=0/<900 at observation. Hold3.2sec, assert DBclockage>900 before commit, then require exact original recoveredFalse/no additional byte reads/sole3table rows.",
+    "Always release staging event and gather task, including already-completed failures, to avoid unretrieved task exception. Restore synthetic verified snapshot. Existing fixture5000ms and Documents1000ms/product1000ms timeout bodies unchanged."
+  ],
+  "checks": {
+    "otherFunctionsExact": 12,
+    "everyByteOutsideTargetExact": true,
+    "projectedNative": {
+      "passed": 8,
+      "realSql": "Unmodified Documents retain_original_v1 and shared company advisory lock",
+      "ownedClusterStopped": true,
+      "ownedDirectoryRemoved": true,
+      "version": 2,
+      "qualification": "Real shared advisorywait and same-observationDBclock freshness\u2192expiry ordering; minimal schemas/Auth/claimrow projected, no actualRFworkflow/fullgate."
+    },
+    "claimDatabaseCollectionOnly": {
+      "collected": 20,
+      "seconds": 0.71
+    },
+    "whitespace": "PASS"
+  },
+  "sourcePins": [
+    {
+      "path": "apps/backend/tests/test_rf1086_source_claim_v3_database.py",
+      "sha256": "2030db4588dc25d72d1f5cd0729fd49459e71c076d2af5647f481838f855c6ce",
+      "bytes": 18578
+    }
+  ],
+  "privateEvidenceSha256": {
+    "rf-claim-company-wait-fixture-baseline-v2.json": "fd925cafe3f9ae407055f038ecd05e42b413e1258f66914afcf50dbb64bb9493",
+    "rf-claim-company-wait-fixture-protection-v1.json": "9852c741d218745a9dfc71394d154ae2dd2490cfa77debf9c320a8d7779e6c24",
+    "rf-claim-company-wait-native-v1.json": "4f962bf80615ccd1692729f2f5e39386613f1abc4eecb86735e4b481d68bc4a5",
+    "probe-rf-claim-company-wait-native-v1.py": "214a47c6531593af508e4e8ce665ec07f26c2718a42adc8396a888c7adf90f2d",
+    "rf-claim-company-wait-collection-v1.log": "38913b7b70ba221628a7483e00a8b453beab95435a0f891784a06d78db74fc82",
+    "rf-claim-company-wait-fixture-protection-v2.json": "b36d87fe718cb5fdb57441113aaad6b542f7af9d5f96a68ab7cd5c1d0ff6dc1e",
+    "rf-claim-company-wait-native-v2.json": "25819a517f23a14acc683c09535e82ad63f5f2e89f891f69a35529667d8865c2",
+    "probe-rf-claim-company-wait-native-v2.py": "ea38f14422fa57d664474b2879304a2f99db8920b3fb39f999ae6afe895e90d3",
+    "rf-claim-company-wait-native-run-v2.log": "e2a0a050687127843c1cbfe73574b1e199e8a5f423fbc62cc67de52f98522bed",
+    "rf-claim-company-wait-native-run-v2-setup-failure.log": "77466321221d20964a69c7916f8d8c49dab16a77d941e778ea4c1b2d3a9b8536"
+  },
+  "limits": [
+    "Native minimal schema/current owner/receipt/claim row are projections; no actual RF workflow/fullschema/Auth/claim writer/20case proof.",
+    "Collection is not execution. Actual next20 PASSED-only/full1578/all24 mandatory; no new retained-intent code before actual acceptance.",
+    "Product RF/Docs/Auth/SQL/policies/ACL/roles/timeouts/grants remain unchanged from reviewed HTTP baseline.",
+    "No full pipeline/independent identity/RET002/003/004/005 or canonicalA1-A7/all-three/launch clearance.",
+    "NativeV2 first setup attempted the V1 log filename and stopped before initdb. Only its sole newly-created empty owned temp directory was removed, V1 bytes preserved; corrected distinct V2 paths then8checksPASS/stopped/deleted. No existing resource touched."
+  ],
+  "implementationV1Reviews": {
+    "Spec": {
+      "findings": 1,
+      "id": "CF-W1",
+      "priority": "P2",
+      "sha256": "b29a3730020e863048bbac01d7d59ba108d158dc4b009afa15b5e3fd7a339035",
+      "rootVerifiedUniquePins": 32
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "ba513be96b22355009dd481b30a74c0248eaf9a9afde03e07413fafa810657c6",
+      "rootVerifiedPins": 36
+    },
+    "status": "CF-W1 same-observation freshness assertion added; V2 re-review pending. V1 frozen public/requirements/native/reports preserved."
+  },
+  "implementationReviews": {
+    "Spec": {
+      "findings": 0,
+      "sha256": "ed8eddced1a8bef8c52360f6096b25a9d36f2942f9b145bee21ac2d56f6511d7",
+      "rootVerifiedPins": 43
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "0b246024521e88a8b4fbd767b5717e92c5ee43046806f87dd8b272a5bef26eb2",
+      "rootVerifiedPins": 47
+    },
+    "testAndReferenceBytesUnchangedAfterReview": true
+  }
+}

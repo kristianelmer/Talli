@@ -1,0 +1,12 @@
+{
+  "source": "https://github.com/postgres/postgres/blob/7885b94dd81b98bbab9ed878680d156df7bf857f/src/include/parser/kwlist.h",
+  "version": "PostgreSQL 17.6",
+  "commit": "7885b94dd81b98bbab9ed878680d156df7bf857f",
+  "sha256": "8fa117aec8410d483c9fb9e711b1fea7cefc4acc1483c13af40fd24cbd4470bf",
+  "modifications": false,
+  "license": {
+    "file": "pg176_COPYRIGHT",
+    "source": "https://raw.githubusercontent.com/postgres/postgres/7885b94dd81b98bbab9ed878680d156df7bf857f/COPYRIGHT",
+    "sha256": "5ed3ce5c9373dff7f98b1fae7a6c7ccd98df7d734d46d24c1bcebf1240be8307"
+  }
+}

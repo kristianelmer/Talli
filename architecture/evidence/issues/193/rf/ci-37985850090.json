@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T20:40:48.906093+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37985850090,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37985850090",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "eac508175fa0073e7f2cfe28034792ae17996ede",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T20:16:19Z",
+    "updatedAt": "2026-10-09T20:37:10Z",
+    "durationSecondsFromCreatedToUpdated": 1251
+  },
+  "checkout": {
+    "revision": "26fab4044a32b70c2957816ebfade60df4ba7fb4",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114007521200,
+        "revision": "26fab4044a32b70c2957816ebfade60df4ba7fb4",
+        "headParent": "eac508175fa0073e7f2cfe28034792ae17996ede",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; raw log not copied into Git."
+      },
+      {
+        "jobId": 114007521227,
+        "revision": "26fab4044a32b70c2957816ebfade60df4ba7fb4",
+        "headParent": "eac508175fa0073e7f2cfe28034792ae17996ede",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; raw log not copied into Git."
+      }
+    ],
+    "limit": "GitHub run headSha identifies the PR head; the jobs checked out the recorded synthetic merge commit. This artifact preserves both identities."
+  },
+  "jobs": [
+    {
+      "id": 114007521200,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-09T20:16:22Z",
+      "completedAt": "2026-10-09T20:37:03Z",
+      "durationSeconds": 1241,
+      "failedSteps": []
+    },
+    {
+      "id": 114007521227,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T20:16:22Z",
+      "completedAt": "2026-10-09T20:28:41Z",
+      "durationSeconds": 739,
+      "failedSteps": [
+        {
+          "number": 6,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114007522999,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T20:16:20Z",
+      "completedAt": "2026-10-09T20:16:20Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114015309383,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T20:37:05Z",
+      "completedAt": "2026-10-09T20:37:09Z",
+      "durationSeconds": 4,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failure": {
+    "jobId": 114007521227,
+    "stepNumber": 6,
+    "step": "Rehearse migrations, RLS, storage, and owner persistence",
+    "test": "apps/backend/tests/test_rf1086_database_runtime.py::test_production_archive_captures_override_values_and_excludes_other_years",
+    "errorType": "AttributeError",
+    "message": "'Rf1086RecordedResult' object has no attribute 'id'",
+    "suiteResult": {
+      "passed": 83,
+      "failed": 1,
+      "durationSeconds": 24.04
+    },
+    "releaseGateEffect": "Release gate job114015309383 step2 Require every readiness job failed because Database isolation did not succeed. Public acquisition database-job step was skipped."
+  },
+  "sanitizedFailureExcerpt": {
+    "path": "/private/tmp/talli-release-20261009/ci37985850090-database-failure-sanitized.log",
+    "sha256": "1e8f2ee9a41106df15aa210a8901a9fb378da391aeca9d0bb0bc4c23c5f02673",
+    "bytes": 626,
+    "kind": "Filtered six-line diagnostic excerpt, not a full raw job log",
+    "excerpt": "apps/backend/tests/test_rf1086_database_runtime.py::test_production_archive_captures_override_values_and_excludes_other_years FAILED [ 14%]\nE       AttributeError: 'Rf1086RecordedResult' object has no attribute 'id'\n=========================== short test summary info ============================\nFAILED apps/backend/tests/test_rf1086_database_runtime.py::test_production_archive_captures_override_values_and_excludes_other_years - AttributeError: 'Rf1086RecordedResult' object has no attribute 'id'\n======================== 1 failed, 83 passed in 24.04s =========================\n##[error]Process completed with exit code 1."
+  },
+  "limits": [
+    "Historical result for PR head eac508175fa0073e7f2cfe28034792ae17996ede and checkout merge26fab4044a32b70c2957816ebfade60df4ba7fb4 only; makes no claim about later commits or the current uncommitted readiness work.",
+    "Application passed all its steps, including production builds, full launch rehearsal and dependency audits. Overall workflow failed; Database/public acquisition coverage did not complete.",
+    "Immutable evidence was skipped for the pull_request event. This is not an architecture/customer-ready-gate-evidence.schema.json receipt, an 11/11 complete gate, or one of the two linked passing revisions.",
+    "No launch, production enablement, genuine-company acceptance, hosted restore clearance, criterion promotion or human signoff is implied.",
+    "Observation performed no rerun, dispatch, push or source changes. Only this observational artifact is written by this persistence step; indexes remain unchanged."
+  ]
+}

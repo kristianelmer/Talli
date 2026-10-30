@@ -1,8 +1,9 @@
-"""Frozen RF authority test command, relocated under the exact #150 amendment."""
+"""RF test command with durable write intent and exclusive local evidence ownership."""
 
 from __future__ import annotations
 
 import asyncio
+import fcntl
 import hashlib
 import json
 import math
@@ -12,9 +13,10 @@ import shutil
 import sys
 import tempfile
 from collections.abc import Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from talli_backend.adapters.rf1086_authority import Rf1086AuthorityAdapter
 from talli_backend.authority_tools._grant import CliGrantConfiguration, request_token, required
@@ -73,9 +75,130 @@ def _write_json(path: Path, value: dict) -> None:
             # JSON.stringify emits escapes for lone surrogates, preserving them
             # through a valid UTF-8 evidence file instead of changing the receipt.
             output.write(serialized.encode("utf-8", errors="backslashreplace"))
+            output.flush()
+            os.fsync(output.fileno())
         temporary.replace(path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def _exclusive_evidence(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Atomic evidence replacement changes its inode; keep the sidecar forever.
+    lock_path = path.with_name(f".{path.name}.lock")
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Rf1086AuthorityError("RF1086_REHEARSAL_IN_PROGRESS") from None
+        os.fchmod(descriptor, 0o600)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def _checkpoint(path: Path, evidence: dict, **updates) -> None:
+    # Keep the last durable pending marker in memory if saving a response fails.
+    updated = evidence | updates
+    _write_json(path, updated)
+    evidence.update(updates)
+
+
+def _pending_write(path: Path, evidence: dict, name: str, body_hash: str, key: str) -> None:
+    _checkpoint(path, evidence, status="pending_mutation", pendingOperation={
+        "name": name, "bodyHash": body_hash, "idempotencyKey": key})
+
+
+def _validate_saved_intent(prior: dict, shareholders: dict) -> None:
+    try:
+        keys = prior["idempotencyKeys"]
+        values = [keys["hovedskjema"], keys["bekreft"], *keys["underskjema"].values()]
+        valid_keys = (set(keys["underskjema"]) == set(shareholders)
+                      and all(isinstance(key, str) and str(UUID(key)) == key for key in values)
+                      and len(set(values)) == len(values))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        valid_keys = False
+    if not valid_keys:
+        raise Rf1086AuthorityError("RF1086_SAVED_INTENT_INVALID")
+    if prior.get("schemaVersion") not in {1, 2} or (prior.get("schemaVersion") == 2
+                                                    and "pendingOperation" not in prior):
+        raise Rf1086AuthorityError("RF1086_SAVED_INTENT_INVALID")
+    if prior.get("pendingOperation") is not None or prior.get("status") in {
+            "pending_mutation", "unknown"}:
+        raise Rf1086AuthorityError("RF1086_RECONCILIATION_REQUIRED")
+    confirmed = bool(prior.get("confirmation"))
+    # Legacy journals did not checkpoint before POST: any unfinished write may
+    # have reached the authority. Confirmed journals may only recover via GET.
+    if not confirmed and (prior.get("schemaVersion") != 2 or prior.get("status") not in {
+            "prepared", "hovedskjema_accepted", "underskjema_accepted"}):
+        raise Rf1086AuthorityError("RF1086_RECONCILIATION_REQUIRED")
+    if confirmed and (not prior.get("hovedskjema")
+                      or set(prior.get("underskjema", {})) != set(shareholders)):
+        raise Rf1086AuthorityError("RF1086_SAVED_INTENT_INVALID")
+    try:
+        base = f"https://api-test.sits.no/api/aksjonaerregister/v1/{prior['incomeYear']}"
+        main = prior.get("hovedskjema")
+        children = prior.get("underskjema", {})
+        if not isinstance(children, dict) or not set(children) <= set(shareholders):
+            raise ValueError()
+        if children and not main:
+            raise ValueError()
+        if main:
+            if str(UUID(main["hovedskjemaId"])) != main["hovedskjemaId"]:
+                raise ValueError()
+            _validate_saved_call(main["call"], keys["hovedskjema"], prior["payloadHashes"]["hovedskjema"], f"{base}/1086H")
+        for identifier, child in children.items():
+            _validate_saved_call(child["call"], keys["underskjema"][identifier],
+                                 prior["payloadHashes"]["underskjema"][identifier], f"{base}/{main['hovedskjemaId']}/1086U")
+        if confirmed:
+            confirmation = prior["confirmation"]
+            for name in ("dialogId", "forsendelseId"):
+                if str(UUID(confirmation[name])) != confirmation[name]:
+                    raise ValueError()
+            if not isinstance(confirmation["oppgavegiversLeveranseReferanse"], str) or not confirmation["oppgavegiversLeveranseReferanse"]:
+                raise ValueError()
+            _validate_saved_call(confirmation["call"], keys["bekreft"], _sha256(""),
+                                 f"{base}/{main['hovedskjemaId']}/bekreft?antall_underskjema={len(shareholders)}")
+        if prior["status"] in {"hovedskjema_accepted", "underskjema_accepted"} and not main:
+            raise ValueError()
+        if prior["status"] in {"confirmed", "accepted"} and not confirmed:
+            raise ValueError()
+        if prior["status"] == "accepted":
+            _validate_archive(prior)
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise Rf1086AuthorityError("RF1086_SAVED_INTENT_INVALID") from None
+
+
+def _validate_archive(prior: dict) -> None:
+    archive = prior["archive"]
+    hashes = archive["documentHashes"]
+    if (archive["lookupReferenceType"] != "forsendelseId"
+            or archive["lookupReferenceId"] != prior["confirmation"]["forsendelseId"]
+            or not isinstance(hashes, list) or not hashes
+            or type(archive["totalItems"]) is not int or archive["totalItems"] != len(hashes)
+            or archive["totalPages"] != 1 or archive["currentPage"] != 0
+            or any(not isinstance(digest, str) or len(digest) != 64
+                   or any(character not in "0123456789abcdef" for character in digest) for digest in hashes)):
+        raise ValueError()
+    call = archive["call"]
+    expected = (f"https://api-test.sits.no/api/aksjonaerregister/v1/{prior['incomeYear']}/forsendelser/"
+                f"{prior['confirmation']['forsendelseId']}/dokumenter?page=0&size=50")
+    if (call["method"] != "GET" or call["endpoint"] != expected or call["bodyHash"] != _sha256("")
+            or call["idempotencyKey"] is not None or call["status"] != "accepted"):
+        raise ValueError()
+
+
+def _validate_saved_call(call: dict, key: str, body_hash: str, endpoint: str) -> None:
+    if (call["method"] != "POST" or call["endpoint"] != endpoint or call["idempotencyKey"] != key
+            or call["bodyHash"] != body_hash or call["status"] != "accepted"):
+        raise ValueError()
 
 
 def _generate_xml(raw_case: object, output: Path) -> None:
@@ -180,8 +303,48 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
     scope = required(values, "TALLI_MASKINPORTEN_SCOPE")
     if scope != RF1086_SCOPE:
         raise ValueError("The RF-1086 authority test requires its exact RF-1086 scope.")
-    case_path = Path(required(values, "TALLI_RF1086_CASE_PATH")).resolve()
     evidence_path = Path(required(values, "TALLI_RF1086_EVIDENCE_PATH")).resolve()
+    with _exclusive_evidence(evidence_path):
+        return await _run_owned(values, scope, evidence_path, token_transport=token_transport,
+                                authority_transport=authority_transport, sleep=sleep)
+
+
+def _prepare_xml(case: dict, evidence_path: Path, values: Mapping[str, str]):
+    # Never read or overwrite another journal's retained payload while preparing.
+    with tempfile.TemporaryDirectory(prefix=f".{evidence_path.name}.prepare-", dir=evidence_path.parent) as temporary:
+        output_directory = Path(temporary)
+        _generate_xml(case, output_directory)
+        main_path = output_directory / "1086H.xml"
+        under_paths = sorted((path for path in output_directory.iterdir()
+                             if path.name.startswith("1086U-") and path.name.endswith(".xml")),
+                             key=lambda path: _utf16(path.name))
+        if not under_paths:
+            raise ValueError("Generated RF-1086 payload has no underskjema.")
+        _validate_xml(main_path, under_paths, values)
+        # read_bytes avoids Python newline translation of the exact statutory XML.
+        main_xml = main_path.read_bytes().decode("utf-8")
+        under_xml = {path.name[len("1086U-"):-len(".xml")]: path.read_bytes().decode("utf-8") for path in under_paths}
+    return main_xml, dict(_object_items(under_xml))
+
+
+def _retain_xml(evidence_path: Path, main_xml: str, under_xml: dict) -> None:
+    directory = evidence_path.with_name(f".{evidence_path.name}.xml")
+    if directory.is_symlink():
+        raise ValueError("RF-1086 XML output must not be a symlink.")
+    directory.mkdir(mode=0o700, exist_ok=True)
+    documents = {"1086H.xml": main_xml, **{f"1086U-{key}.xml": value for key, value in under_xml.items()}}
+    for name, xml in documents.items():
+        descriptor = os.open(directory / name, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, "wb") as output:
+            os.fchmod(output.fileno(), 0o600)
+            output.write(xml.encode("utf-8"))
+    for old in directory.glob("1086*.xml"):
+        if old.name not in documents:
+            old.unlink()
+
+
+async def _run_owned(values, scope, evidence_path, *, token_transport, authority_transport, sleep):
+    case_path = Path(required(values, "TALLI_RF1086_CASE_PATH")).resolve()
     case = json.loads(case_path.read_text(encoding="utf-8"), parse_constant=_reject_json_constant)
     company = case.get("company") or {}
     company_org_number = str(company.get("org_number", ""))
@@ -196,22 +359,11 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
     if company_org_number != required(values, "TALLI_MASKINPORTEN_SYSTEM_USER_ORG"):
         raise ValueError("RF-1086 case organization must equal the Maskinporten system-user organization.")
     events = case.get("events") if isinstance(case.get("events"), list) else []
-    if any(not isinstance(event, dict) or event.get("type") != "formation" for event in events):
-        raise ValueError("RF-1086 authority rehearsal is limited to no-activity or formation cases.")
-    output_directory = evidence_path.parent / "xml"
-    output_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    _generate_xml(case, output_directory)
-    main_path = output_directory / "1086H.xml"
-    under_paths = sorted((path for path in output_directory.iterdir()
-                         if path.name.startswith("1086U-") and path.name.endswith(".xml")),
-                         key=lambda path: _utf16(path.name))
-    if not under_paths:
-        raise ValueError("Generated RF-1086 payload has no underskjema.")
-    _validate_xml(main_path, under_paths, values)
-    # read_bytes avoids Python newline translation of the exact statutory XML.
-    main_xml = main_path.read_bytes().decode("utf-8")
-    under_xml = {path.name[len("1086U-"):-len(".xml")]: path.read_bytes().decode("utf-8") for path in under_paths}
-    under_xml = dict(_object_items(under_xml))
+    supported_events = {"formation", "share_sale", "dividend", "cash_issue",
+                        "cash_nominal_increase", "loss_covering_reduction"}
+    if any(not isinstance(event, dict) or event.get("type") not in supported_events for event in events):
+        raise ValueError("RF-1086 authority rehearsal is limited to officially mapped supported events.")
+    main_xml, under_xml = _prepare_xml(case, evidence_path, values)
     payload_hashes = {"hovedskjema": _sha256(main_xml),
                       "underskjema": {key: _sha256(xml) for key, xml in under_xml.items()}}
     try:
@@ -223,47 +375,52 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
             or prior.get("payloadHashes", {}).get("hovedskjema") != payload_hashes["hovedskjema"]
             or _object_items(prior.get("payloadHashes", {}).get("underskjema", {})) != _object_items(payload_hashes["underskjema"])):
         raise ValueError("Existing RF-1086 evidence belongs to a different payload; choose a new evidence path.")
+    if prior is not None:
+        _validate_saved_intent(prior, under_xml)
     if prior is not None and prior.get("status") == "accepted":
         return _summary(prior)
+    _retain_xml(evidence_path, main_xml, under_xml)
     prior = prior or {}
     keys = prior.get("idempotencyKeys")
     if keys is None:
         keys = {"hovedskjema": str(uuid4()),
             "underskjema": {key: str(uuid4()) for key in sorted(under_xml, key=_utf16)}, "bekreft": str(uuid4())}
-    evidence = {"schemaVersion": 1, "status": "prepared", "environment": "test",
+    evidence = {"schemaVersion": 2, "status": "prepared", "environment": "test",
         "authority": "Skatteetaten RF-1086 API", "companyOrgNumber": company_org_number,
         "companyName": str(company.get("name", "")), "incomeYear": income_year, "scope": scope,
         "evidencePath": str(evidence_path), "preparedAt": _now() if prior.get("preparedAt") is None else prior["preparedAt"],
         "payloadHashes": payload_hashes, "idempotencyKeys": keys,
         "hovedskjema": prior.get("hovedskjema"), "underskjema": prior.get("underskjema") or {},
-        "confirmation": prior.get("confirmation"), "archive": prior.get("archive"), "error": None}
+        "confirmation": prior.get("confirmation"), "archive": prior.get("archive"),
+        "pendingOperation": None, "error": None}
     _write_json(evidence_path, evidence)
     token = await request_token(CliGrantConfiguration.from_environment(values), transport=token_transport)
     try:
         client = Rf1086AuthorityAdapter(token, environment="test", transport=authority_transport)
         if not evidence["hovedskjema"]:
+            _pending_write(evidence_path, evidence, "hovedskjema", payload_hashes["hovedskjema"], keys["hovedskjema"])
             result = await client.post_hovedskjema(income_year=income_year, xml=main_xml, idempotency_key=keys["hovedskjema"])
-            evidence["hovedskjema"] = {"hovedskjemaId": result.hovedskjema_id, "call": _call(result.call)}
-            evidence["status"] = "hovedskjema_accepted"
-            _write_json(evidence_path, evidence)
+            _checkpoint(evidence_path, evidence, pendingOperation=None, status="hovedskjema_accepted",
+                        hovedskjema={"hovedskjemaId": result.hovedskjema_id, "call": _call(result.call)})
         for shareholder_id in _shareholder_write_order(list(under_xml), values):
             xml = under_xml[shareholder_id]
             if evidence["underskjema"].get(shareholder_id):
                 continue
+            _pending_write(evidence_path, evidence, f"underskjema:{shareholder_id}",
+                           payload_hashes["underskjema"][shareholder_id], keys["underskjema"][shareholder_id])
             result = await client.post_underskjema(income_year=income_year,
                 hovedskjema_id=evidence["hovedskjema"]["hovedskjemaId"], xml=xml,
                 idempotency_key=keys["underskjema"][shareholder_id])
-            evidence["underskjema"][shareholder_id] = {"call": _call(result.call)}
-            evidence["status"] = "underskjema_accepted"
-            _write_json(evidence_path, evidence)
+            _checkpoint(evidence_path, evidence, pendingOperation=None, status="underskjema_accepted",
+                        underskjema=evidence["underskjema"] | {shareholder_id: {"call": _call(result.call)}})
         if not evidence["confirmation"]:
+            _pending_write(evidence_path, evidence, "bekreft", _sha256(""), keys["bekreft"])
             result = await client.confirm(income_year=income_year,
                 hovedskjema_id=evidence["hovedskjema"]["hovedskjemaId"], underskjema_count=len(under_xml),
                 idempotency_key=keys["bekreft"])
-            evidence["confirmation"] = {"oppgavegiversLeveranseReferanse": result.oppgavegivers_leveranse_referanse,
-                "dialogId": result.dialog_id, "forsendelseId": result.forsendelse_id, "call": _call(result.call)}
-            evidence["status"] = "confirmed"
-            _write_json(evidence_path, evidence)
+            _checkpoint(evidence_path, evidence, pendingOperation=None, status="confirmed", confirmation={
+                "oppgavegiversLeveranseReferanse": result.oppgavegivers_leveranse_referanse,
+                "dialogId": result.dialog_id, "forsendelseId": result.forsendelse_id, "call": _call(result.call)})
         archive = None
         for attempt in range(1, 6):
             try:
@@ -288,11 +445,15 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
                 await sleep(2)
         if archive is None:
             raise ValueError("RF-1086 archive returned no documents after confirmation.")
-        evidence.update(archive=archive, status="accepted", acceptedAt=_now())
-        _write_json(evidence_path, evidence)
+        try:
+            _validate_archive(evidence | {"archive": archive})
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_INCOMPLETE") from None
+        _checkpoint(evidence_path, evidence, archive=archive, status="accepted", acceptedAt=_now())
         return _summary(evidence)
     except Exception as error:
-        evidence["status"] = "failed_retryable" if isinstance(error, Rf1086AuthorityError) and error.retryable else "failed_blocked"
+        evidence["status"] = ("unknown" if evidence["pendingOperation"] else
+                              "failed_retryable" if isinstance(error, Rf1086AuthorityError) and error.retryable else "failed_blocked")
         evidence["error"] = _error(error)
         _write_json(evidence_path, evidence)
         raise

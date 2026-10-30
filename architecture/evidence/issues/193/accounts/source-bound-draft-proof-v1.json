@@ -1,0 +1,108 @@
+{
+  "version": "annual-accounts-source-bound-draft-proof-v1",
+  "fixedPoint": "b2006b6d32597991cb7d62f332a773ef2eaa273e",
+  "scope": "Local source-bound preparation and immutable reader-first retention only. Full Accounts delivery journey remains incomplete.",
+  "owningSources": {
+    "annual": "Complete bounded public history, exact-year original facts; missing workforce retained as missing.",
+    "ledger": "Bounded complete public pages and amendments; exact reversal/account/currency cancellation and acyclic nonforking lineage; retained originals and current effective projection.",
+    "corporate": "Existing owner-authorized current-source policy on the same verified repeatable SQL snapshot; full retained lifecycle, exact signed/finalization consistency."
+  },
+  "draft": {
+    "codec": "annual-accounts-delivery-draft-v1",
+    "schemaSha256": "04653f5ef226df749e5d9cd7a66dd5c061de85c2c1a7f44ce7c12cea3e1faa49",
+    "originals": "Exact UTF8 main and company XML, unchanged frozen renderer; three retained upstream read commitments, scope/projection checks and pinned inspection.",
+    "profile": "2025 AS, small standalone unaudited NOK/whole kroner; unsupported accounts/attachments/regimes, fractional account nets, contra expense and excessive precision block.",
+    "claims": "prepared_only; no common readiness, authority permission, person signature, submission or acceptance"
+  },
+  "storage": {
+    "migration": "supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql",
+    "rollback": "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql",
+    "filenameCreatedBySupabaseCLI": true,
+    "sourceContract": "annual-accounts-source-v2",
+    "declaredTables": 8,
+    "defaultDraftWritesEnabled": false,
+    "journal": "Reserved delivery_events table; no append policy/RPC. Nonempty events require a successor codec and make V2 coverage incomplete.",
+    "protection": "Current owner/fresh MFA, published company guard, same-guard current RR owning reads; exact command replay; immutable RLS records, exact keys, retained counts/hashes and tracking proof.",
+    "rollbackBehavior": "Close writes and retain original bytes, readers and guards.",
+    "migrationSha256": "b3fcf3dde73dbc0415155250154022776611f031e1a724a15f79af1789817de6",
+    "rollbackSha256": "953256f36e5524b8775e047796cb0d973eec0447dd94910a80f3e16672cbc2a4"
+  },
+  "verification": {
+    "targetedFrozenRegression": {
+      "passed": 400,
+      "log": "delivery-preparation-regression-v1.log"
+    },
+    "otherAccountsCompatibility": {
+      "passed": 124,
+      "log": "delivery-preparation-compatibility-v2.log"
+    },
+    "corporateCompatibility": {
+      "passed": 65,
+      "log": "owning-source-corporate-compatibility-v1.log"
+    },
+    "nativeStore": {
+      "passed": 9,
+      "log": "delivery-store-native-v4.log",
+      "covers": [
+        "default closure",
+        "exact concurrent replay",
+        "RPC-only access",
+        "MFA",
+        "rollback reads",
+        "tracking/immutable/key drift",
+        "owner revocation after guard wait",
+        "shutdown after guard wait"
+      ]
+    },
+    "nativeSnapshot": {
+      "passed": 13,
+      "log": "owning-source-native-v2.log",
+      "covers": [
+        "RLS role isolation",
+        "one MVCC snapshot across concurrent changes",
+        "success/failure/cancellation restoration"
+      ]
+    },
+    "architecture": {
+      "status": "pass",
+      "log": "delivery-preparation-architecture-v2.log",
+      "dependencyEvidenceChanged": false
+    },
+    "ciPartition": {
+      "status": "pass",
+      "log": "delivery-preparation-ci-partition-v1.log",
+      "newNativeTests": "Both new files in accounts_database mandatory Accounts lane"
+    },
+    "packagedWheel": {
+      "isolatedPackageImport": true,
+      "exactDraftRoundtrip": true,
+      "localPinnedPairValidation": true,
+      "sourceSha256": "02f78fe765ee449982372b221495d30b437c0cfe2f7ce744712f482e23f5f2f3",
+      "draftSha256": "1aa78638fcd17315e57fda9dc439fd0c659708ba0d284b08e3482bfc2b5565f8",
+      "wheelSha256": "d21d39bd1d89854b192b83925a3515b51582c37fc347d3727b33a3e1a0cd0b40",
+      "schemaSha256": "04653f5ef226df749e5d9cd7a66dd5c061de85c2c1a7f44ce7c12cea3e1faa49",
+      "scope": "isolated packaged synthetic exact Accounts preparation only; no runtime, provider, person signature or full delivery claim"
+    }
+  },
+  "review": {
+    "standards": 0,
+    "spec": 0,
+    "allAgentsClosed": true,
+    "initialFindingsFixed": [
+      "Omitted retained snapshots now fail upstream read commitment and internal link checks.",
+      "Unknown inspection schema generation rejected."
+    ],
+    "rejectedFollowup": "The native SQL-error test correctly expects the existing shared LedgerError fallback; actual native execution and mapper implementation confirm it."
+  },
+  "gates": {
+    "hostedChanges": false,
+    "pushed": false,
+    "deployed": false,
+    "providerActivated": false,
+    "personSigning": false,
+    "liveFilings": false,
+    "billingActivated": false,
+    "fullOwnerUI": false
+  },
+  "next": "Continue finite system/person operation journal, per-operation unknown/known-read recovery, exact originals, correction lineage, archive and actual signed-JWT desktop/touch owner Accounts flow."
+}

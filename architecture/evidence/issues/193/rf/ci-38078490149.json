@@ -1,0 +1,178 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T20:04:55.051433+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38078490149,
+    "runAttempt": 1,
+    "headSha": "a264805783c5a5705e4ef1c1054852f049a60b4c",
+    "status": "completed",
+    "conclusion": "failure",
+    "runStartedAt": "2026-10-10T19:06:41Z",
+    "updatedAt": "2026-10-10T19:39:23Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38078490149"
+  },
+  "checkout": {
+    "revision": "c124b3a94ec2fd30b977c7f8d8e305d671cddb2f",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "a264805783c5a5705e4ef1c1054852f049a60b4c"
+    ],
+    "bothJobCheckoutLogsVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114290341791,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T19:06:44Z",
+      "completed_at": "2026-10-10T19:31:00Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38078490149/job/114290341791"
+    },
+    {
+      "id": 114290341904,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T19:06:44Z",
+      "completed_at": "2026-10-10T19:39:18Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38078490149/job/114290341904"
+    },
+    {
+      "id": 114290342382,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T19:06:42Z",
+      "completed_at": "2026-10-10T19:06:41Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38078490149/job/114290342382"
+    },
+    {
+      "id": 114296698036,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T19:39:20Z",
+      "completed_at": "2026-10-10T19:39:23Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38078490149/job/114296698036"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "passed": 10949,
+      "skipped": 2,
+      "deselected": 2322,
+      "seconds": 985.32,
+      "allStepsSucceeded": true,
+      "productionRootWebVulnerabilities": 0,
+      "anonymousPrefetch": "PASS; no observed network deadline retry claimed"
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.2
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 264.09
+      },
+      "authority": {
+        "collected": 1534,
+        "passed": 1467,
+        "failed": 1,
+        "notExecuted": 66,
+        "seconds": 679.36
+      },
+      "protectedClosedSources": {
+        "test_rf1086_year_source_v2_database.py": 109,
+        "test_rf1086_guarded_source_capture_v2_database.py": 19,
+        "test_rf1086_source_admission_v2_database.py": 12,
+        "test_rf1086_source_preview_v2_database.py": 18
+      },
+      "repairedLegacyReplayCasesPassed": [
+        "test_migration_replay_rollback_recutover_preserve_history_and_roles",
+        "test_api_rollback_recutover_preserves_preview_and_exact_role_options",
+        "test_safe_rollback_retains_review_and_production_barriers_then_exact_recutover"
+      ],
+      "newClosedApprovalV3": {
+        "selected": 36,
+        "passed": 0,
+        "failedAtAnnualReadinessAssertion": 1,
+        "notExecuted": 35,
+        "fixtureSeedSucceeded": true,
+        "freshOwnerMfaValidationPassed": true,
+        "approvalContextReturned": true,
+        "approvalWritesReached": false
+      },
+      "rfBrowserExecuted": false
+    }
+  },
+  "failure": {
+    "case": "test_actual_v3_approval_and_replay_bind_current_owners_and_exact_capture[0-cash_issue]",
+    "boundary": "test_rf1086_source_approval_v3_database.py:268 first cash review annual_readiness.readiness_status assertion",
+    "exception": "AssertionError: blocked != ready",
+    "diagnosis": "Integer MFA fixture repair passes previous fresh-owner rejection; initial approval context now returns but annual readiness is blocked. CI assertion omitted issue codes. Normal Governance workflow claims cash Banking transaction at restricted_payment; shared pointwise fixture posts Ledger and completes Governance without that Banking claim. A real Banking year reader on projected imported unmatched cash plus unchanged RF annual policy reproduces unmatched_bank_transactions. Exact actual full-context blocker list was not captured; additional blockers remain unproved.",
+    "repairScope": "New approval-fixture-only helper selects unique retained restricted-payment Gov event and its composite-FK Ledger entry bound to original actor/reference/company/year/bank, then invokes real Banking claim with exact retained bank facts before source capture. No raw matched flags, warning acceptance, production code or runtime grants. Fourteen projected native checks and128selectors pass; paired reviews pending at receipt creation, full36 still required."
+  },
+  "notReached": [
+    "Remaining66Authority cases:35newapproval and31protected cases",
+    "LaterSQL/ownerclone/advisors/browserlanes",
+    "Actual ownedrestorecodec/browserfourfailure retries",
+    "Canonical immutableA/B and RF\u2192Tax\u2192Accounts handoff"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-app-raw-v1.log",
+      "sha256": "caa526476060d95226c9954371b9995bd8288f8890b3d083d5eb14c005b39f11",
+      "bytes": 468325
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-db-raw-v1.log",
+      "sha256": "4058aeaa464e44d03dd198a1b7c16a3250b35d48b2e91cde1369b0bb0f61a581",
+      "bytes": 585536
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-terminal-api.json",
+      "sha256": "2df3a960b0a3a3c7b10b33ff816aa00de752973d4bf30f7692d1c5ec1c555260",
+      "bytes": 12731
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-terminal-jobs.json",
+      "sha256": "acfbcd32642f9f26184d7ee1679286578852b0e9ee400172488efba554bd1548",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-merge-parents-v1.json",
+      "sha256": "868d20cd0dc23cc45aa98b5f13f630bac71545cc459d132d1db1e5f4281d2801",
+      "bytes": 2640
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38078490149-approval-actual-prerequisite-v1.json",
+      "sha256": "b48995df001981a2b365fa4f01d87dd1866ecb39086c5799d0dc30a14f2a8c1e",
+      "bytes": 9697
+    }
+  ],
+  "limits": [
+    "Whole run failed; Application success and repaired replay passes do not clear fullapproval/DB/restore/browser/canonical acceptance.",
+    "New approval1 failed positive cash annual-readiness assertion;35 unexecuted; all36 actualPASS prerequisite uncleared.",
+    "Projected native Banking claim/query and RF annual policy are separate from full actual Auth/owner/RLS/import/Gov/Ledger/source/original producer proof.",
+    "No ordinary activation/fees/filings/genuine data/outreach. AllA1-A7 pending; original WIP and paused safeguards preserved.",
+    "Earlier intermittent Billing migration deadlock remains unexplained despite700case passes."
+  ]
+}

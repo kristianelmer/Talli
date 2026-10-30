@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "dacb9bd3df3ca51ecb4a73dbfabe1103bba22cb3",
+  "scope": "Authenticated full-year correction with a lost main-form response, blocked replay and durable unknown-outcome archive",
+  "validation": {
+    "browser": {
+      "status": "passed",
+      "tests": 16,
+      "journeyDurationMs": 113733.091875,
+      "topology": "Disposable Supabase Auth/Storage/Postgres after final capability contracts, actual Next/FastAPI and loopback-only authority mock"
+    },
+    "fixtureSafety": {
+      "passed": 15
+    },
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "currentRevisionCi": "pending",
+    "cleanup": "Passed: owned stack removed, 42 dormant containers restored, Colima stopped and generated Next files restored",
+    "initialFailure": "Test counted a slice of concatenated service-specific mock histories as chronological. Filter by service before slicing; corrected rerun passed."
+  },
+  "applicationCreated": [
+    "Third immutable source version and distinct original correcting share-transfer consideration to NOK 19000",
+    "New preview and explicit replacement approval bound to the second accepted submission",
+    "One guarded claim and committed main-form intent",
+    "Unknown outcome after the mock records the mutation and disconnects before its response",
+    "Browser-downloaded archive verified offline with strict source history and feedback originals"
+  ],
+  "assertions": [
+    "No send, continue or feedback action after status reread and reload",
+    "Two identical send commands return 409 rf1086_unknown_production_outcome",
+    "Retries and status reads cause no provider call or token acquisition",
+    "Exactly one main-form mutation with the approved XML hash and original idempotency key",
+    "Exactly prepared and unknown journal events, both attempt 1, without an authority reference",
+    "One new claim and exact replacement ancestry/head; no fabricated receipt or feedback",
+    "Production submissions, events, claims, head and feedback remain unchanged across repeated commands",
+    "Archive retains three source versions, approvals, claims, submissions and source originals, plus the four feedback originals from the two accepted filings",
+    "Offline verifier correctly reports databaseRestorePerformed false",
+    "Unknown-state UI fits 320px and 1440px viewports"
+  ],
+  "changes": "Browser coverage and shared correction/approval helper only; no application behavior changed",
+  "limitations": [
+    "Lost main-form response is covered; lost child/confirmation responses, crashes, rejected-predecessor and remaining adversarial full-year browser cases remain",
+    "Mock behavior is not external provider conformance or a real AS pilot",
+    "Actual database/object restore, legacy feedback backfill, retention generations, HTTP/concurrency memory sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria remain pending",
+    "No production enablement, hosted database change, genuine provider operation or merge"
+  ],
+  "sha256": {
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "2aa3fd4188b3cbea4f652c388370f016f7b42560b98003d53cab94875852fb0d",
+    "tests/browser_shareholder_register_filing.mjs": "027beda94f4b3e2623700b28bd8b050323099f9146c8959269364f03ba8119aa",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "3a9500d1b149b02e6c9a9a8251a761a62b224d7c4144bfc92b2ce4c263e04a34"
+  }
+}

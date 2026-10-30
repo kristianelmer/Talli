@@ -1,0 +1,73 @@
+{
+  "version": "tax-current-intake-proof-v1",
+  "baselineRevision": "386c322e5967a61fcdef12d12444da6480fb8958",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Separate read-only finite current-document intake before a draft exists; no placeholder filing ID or draft SHA.",
+    "Admission binds verified actor, company/year, actual owning organization and restricted database identity; fixed loopback GET only, maximum 300 seconds and 1..4 requests.",
+    "Preparation preserves exact V2 draft bytes and replay; current owner/MFA and full owning source are checked before I/O and again before storage.",
+    "Actual initial HTTP response is retained before a separate dispatch grant is issued against its real draft SHA. Both successful and lost final acknowledgements reach exact receipt retention and SDK/web archive checks.",
+    "No SQL, public API or generated-client changes; prior default composition remains closed."
+  ],
+  "validation": {
+    "focusedBackend": {
+      "passed": 84,
+      "privateLog": "current-intake-unit-v1.log"
+    },
+    "actualSignedMfaFullOwningTopology": {
+      "passed": 4,
+      "privateLog": "current-intake-signed-topology-v1.log"
+    },
+    "mandatoryPartition": {
+      "status": "PASS",
+      "markerParity": true,
+      "minimumTaxCases": 194,
+      "privateLog": "current-intake-partition-v1.log"
+    },
+    "architecture": "PASS; dependency evidence unchanged",
+    "generatedArtifacts": "PASS; unchanged",
+    "whitespace": "PASS",
+    "exportBytes": "unchanged",
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    },
+    "secretEnvironmentRemoved": true
+  },
+  "review": {
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "allReviewAgentsClosed": true,
+    "limitation": "Reviewers inspected tests; independent reviewer pytest lacked lxml. Pinned-runtime 84+4 tests passed."
+  },
+  "closedGates": [
+    "Real provider activation",
+    "Live filing",
+    "Production release",
+    "Paid operations",
+    "Original Model3/P-H compatibility"
+  ],
+  "remaining": [
+    "Terminal-parent correction lineage",
+    "Actual signed-JWT desktop and touch Tax then Accounts flow"
+  ],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_intake.py": "138f221aac0c727a6d9d56ad04047d06c39d02746a82e508a382717d6158b370",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_preparation.py": "285532bb3dac393d8d79041b4f01faaad1d356f8149f13b9914b580292f8f7dd",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_rehearsal.py": "ee7d26c9ae75fe7f46cbc121ee09a0b870c21b2544f58d6b3bdba4c05c0f80e2",
+    "apps/backend/src/talli_backend/application/company_tax_intake_rehearsal.py": "de167bb2bc7a6b0d30a07fbb715ba2a97300ee0a5c683c20df9d6897a22e5c24",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "78298edb5cbfd09e67f8ade3edc09980fe254e6471d8931bef46544da6817fab",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/current_document_intake.py": "796a663cb26c03aaab562b3871b2ff8ee55fb4c87992501ffb326384c0dd477f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "c37c1536849f1f0bfc6fb1ff2a8900ab383d1c3ced1582851a28813788b0820e",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "46236c4e7442edc2f0e1635f044b33ee6ea3628a02a7a0bf3dcf6d2e1319b145",
+    "apps/backend/tests/test_company_tax_current_intake.py": "600adfd2fb1d004e4ace649b01410c3e48f509ffab283f15a0f6c1dc6fb1c97e",
+    "apps/backend/tests/test_company_tax_current_intake_database.py": "d3eaee2efce49df7668cab707a426b8784ca82f4ea903ff7b1890d4db2a4213b",
+    "apps/backend/tests/test_company_tax_delivery_observations_database.py": "8cd3b2dcad56e2d0965e07be738d4aef8383cd93fdadfd45d8af2f9fe394c167",
+    "architecture/BACKEND-SYSTEM.md": "3fc8907e767bf50c364821d86b149f6f65921b162bb2c3094b805b43d884d269",
+    "architecture/backend-system.json": "fdfd68cc79638187738a228fc976d82c005aa59444ec124ff447ee4a865f2bb6",
+    "package.json": "ab5813c237f2d16e67216b8e39dcc3383c4a20c5db5fcf56973865606594dd48",
+    "tests/ci_release_gate.test.mjs": "394bf4d4f992ecdafc49e9e21e81cabaab93cc2aa671340287f238815c2cf313"
+  }
+}

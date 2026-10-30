@@ -1,3 +1,8 @@
+import type {AccountsCompanyArchiveWire,AccountsArchiveVerificationWire} from "@talli/talli-api-client";
+import { createHash } from "node:crypto";
+import { inspectAccountsCompanyArchive } from "@talli/talli-api-client";
+import { rf1086SourceRestoreFailures } from "./rf1086-restore-integrity.ts";
+
 export const launchCriticalTables = [
   "companies",
   "company_memberships",
@@ -16,11 +21,20 @@ export const launchCriticalTables = [
   "investments.share_sale_allocations",
   "investments.received_dividends",
   "documents",
+  "documents.retained_originals",
   "annual_accounts_filing.filing_previews",
   "shareholder_register_filing.filing_previews",
   "billing.production_pilot_entitlements",
+  "shareholder_register_filing.register_observations",
+  "shareholder_register_filing.year_source_versions",
+  "shareholder_register_filing.year_source_heads",
+  "shareholder_register_filing.source_previews",
+  "shareholder_register_filing.source_review_bridges",
   "shareholder_register_filing.filing_approval_snapshots",
+  "shareholder_register_filing.source_approval_bindings",
   "shareholder_register_filing.production_filing_submissions",
+  "shareholder_register_filing.source_submission_bindings",
+  "shareholder_register_filing.submission_heads",
   "shareholder_register_filing.production_filing_events",
   "shareholder_register_filing.production_feedback_artifacts",
   "annual_accounts_filing.authority_test_runs",
@@ -48,6 +62,10 @@ export const launchCriticalTables = [
   "corporate_governance.annual_close_artifacts",
   "corporate_governance.annual_close_events",
   "corporate_governance.annual_close_finalizations",
+  "company_tax_filing.delivery_drafts",
+  "company_tax_filing.delivery_events",
+  "annual_accounts_filing.delivery_drafts",
+  "annual_accounts_filing.delivery_events",
 ] as const;
 
 export type RestoreGateRecord = {
@@ -92,6 +110,9 @@ export function buildBackupManifest(archive: Record<string, any>) {
         .filter(Boolean),
     )].sort(),
     objectReferences,
+    rf1086ProductionEvidenceAvailability: archive.rf1086Production ? "included" : "unavailable",
+    annualAccountsEvidenceAvailability: archive.annualAccountsCompanyArchive ? "included" : archive.annualAccountsLegacyEmpty ? "legacy_empty_delivery" : "unavailable",
+    annualAccountsArchiveSha256: archive.annualAccountsCompanyArchive?.sha256 ?? null,
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
       holdingActions: archive.taxSettlements?.length ?? 0,
@@ -103,7 +124,19 @@ export function buildBackupManifest(archive: Record<string, any>) {
       filingApprovalSnapshots: archive.filingApprovalSnapshots?.length ?? 0,
       productionFilingSubmissions: archive.productionFilingSubmissions?.length ?? 0,
       productionFilingEvents: archive.productionFilingEvents?.length ?? 0,
+      rf1086ProductionSubmissions: archive.rf1086Production?.productionSubmissions?.length ?? null,
+      rf1086ProductionReceipts: archive.rf1086Production?.feedbackArtifacts?.length ?? null,
+      rf1086SourceOriginals: archive.rf1086Production?.sourceOriginals?.length ?? null,
+      rf1086FeedbackOriginals: archive.rf1086Production?.feedbackOriginals?.length ?? null,
+      rf1086SourceApprovalLineage: archive.rf1086Production?.sourceApprovalLineage?.length ?? null,
+      rf1086SourceSubmissionClaims: archive.rf1086Production?.sourceSubmissionClaims?.length ?? null,
+      rf1086SubmissionHeads: archive.rf1086Production == null ? null : archive.rf1086Production.submissionHead == null ? 0 : 1,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
+      companyTaxDeliveryDraftOriginals: archive.companyTaxDeliveryDrafts?.originals?.recordCount ?? null,
+      companyTaxDeliveryJournalEvents: archive.companyTaxDeliveryJournal?.eventCount ?? null,
+      annualAccountsDeliveryDrafts: archive.annualAccountsCompanyArchive?.draftCount ?? null,
+      annualAccountsDeliveryEvents: archive.annualAccountsCompanyArchive?.eventCount ?? null,
+      annualAccountsDeliveryOriginals: archive.annualAccountsCompanyArchive?.originalCount ?? null,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
       auditEvents: archive.auditEvents?.length ?? 0,
@@ -133,6 +166,7 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
 
   return {
     restoreType: "talli_company_year_restore_fixture",
+    accountsVerification: null as AccountsArchiveVerificationWire | null,
     sourceCompanyId: archive.company?.id,
     targetCompanyId: options.targetCompanyId,
     incomeYear: archive.incomeYear,
@@ -146,11 +180,17 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       authorityTestRuns: archive.authorityTestRuns ?? [],
       rf1086Submissions: submissionCollections.rf1086Submissions,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
+      companyTaxDeliveryDrafts: archive.companyTaxDeliveryDrafts ?? null,
+      companyTaxDeliveryJournal: archive.companyTaxDeliveryJournal ?? null,
+      // Copy original identities and bytes; targetCompanyId is only fixture metadata.
+      annualAccountsCompanyArchive: archive.annualAccountsCompanyArchive == null ? null : structuredClone(archive.annualAccountsCompanyArchive),
+      annualAccountsLegacyEmpty: archive.annualAccountsLegacyEmpty == null ? null : structuredClone(archive.annualAccountsLegacyEmpty),
       filingSubmissions: submissionCollections.filingSubmissions,
       productionPilotEntitlements: archive.productionPilotEntitlements ?? [],
       filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
       productionFilingSubmissions: archive.productionFilingSubmissions ?? [],
       productionFilingEvents: archive.productionFilingEvents ?? [],
+      rf1086Production: archive.rf1086Production ?? null,
       reviewComments: archive.reviewComments ?? [],
       billingAccounts: archive.billingAccounts ?? [],
       auditEvents: archive.auditEvents ?? [],
@@ -168,6 +208,33 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
   };
 }
 
+/** Copy one receipt-bound export; never remap identities inside retained facts. */
+export async function copyCompanyYearArchive(raw: string, options: {targetCompanyId: string; expectedArchiveSha256: string;
+  verifyAccounts: (archive: AccountsCompanyArchiveWire) => Promise<AccountsArchiveVerificationWire>}) {
+  if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 512*1024*1024
+      || !/^[a-f0-9]{64}$/u.test(options.expectedArchiveSha256)
+      || createHash("sha256").update(raw, "utf8").digest("hex") !== options.expectedArchiveSha256) {
+    throw new Error("Company archive differs from its export receipt.");
+  }
+  const archive = JSON.parse(raw);
+  if (archive?.archiveType !== "talli_company_year_archive" || typeof archive.company?.id !== "string"
+      || !Number.isInteger(archive.incomeYear) || archive.incomeYear < 2000 || archive.incomeYear > 2100
+      || !archive.annualAccountsCompanyArchive) throw new Error("Complete Accounts archive source is required.");
+  inspectAccountsCompanyArchive(archive.annualAccountsCompanyArchive, archive.company.id, archive.incomeYear,
+    text => createHash("sha256").update(text).digest("hex"));
+  const proof = await options.verifyAccounts(archive.annualAccountsCompanyArchive);
+  if (proof.version !== "accounts-company-archive-verification-v1" || proof.status !== "verified"
+      || proof.companyId !== archive.company.id || proof.incomeYear !== archive.incomeYear
+      || proof.archiveSha256 !== archive.annualAccountsCompanyArchive.sha256
+      || proof.sourceSha256 !== archive.annualAccountsCompanyArchive.sourceSha256
+      || proof.draftCount !== archive.annualAccountsCompanyArchive.draftCount
+      || proof.eventCount !== archive.annualAccountsCompanyArchive.eventCount
+      || proof.originalCount !== archive.annualAccountsCompanyArchive.originalCount || !Array.isArray(proof.originals) || proof.originals.length !== proof.originalCount) {
+    throw new Error("Owning Accounts archive verification differs.");
+  }
+  return {...restoreCompanyYearArchive(archive, options), accountsVerification: proof, sourceArchiveSha256: options.expectedArchiveSha256};
+}
+
 export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompanyYearArchive>) {
   const failures: string[] = [];
   const fail = (code: string) => {
@@ -176,7 +243,86 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.ledgerEntries.length) failures.push("ledger_entries_missing");
   if (!restored.restored.documents.length) failures.push("documents_metadata_missing");
   if (!restored.restored.filingPreviews.length) failures.push("filing_previews_missing");
-  if (!restored.restored.filingSubmissions.length) failures.push("filing_submissions_missing");
+  if (!restored.restored.filingSubmissions.length
+      && !restored.restored.rf1086Production?.productionSubmissions?.length) failures.push("filing_submissions_missing");
+  const rf = restored.restored.rf1086Production;
+  if (rf) {
+    const arrays = [rf.approvals, rf.productionSubmissions, rf.productionEvents, rf.feedbackArtifacts];
+    if (rf.companyId !== restored.sourceCompanyId || rf.incomeYear !== restored.incomeYear
+        || arrays.some(rows => !Array.isArray(rows)
+          || rows.some(row => row === null || typeof row !== "object" || typeof row.id !== "string"))) {
+      fail("rf1086_production_archive_scope_invalid");
+    } else {
+      for (const code of rf1086SourceRestoreFailures(rf, restored.manifest.objectReferences)) fail(code);
+      const approvals = new Map(rf.approvals.map((row: any) => [row.id, row]));
+      const submissions = new Map(rf.productionSubmissions.map((row: any) => [row.id, row]));
+      if (arrays.some(rows => new Set(rows.map((row: any) => row.id)).size !== rows.length
+          || rows.some((row: any) => row.companyId !== rf.companyId))
+          || [rf.approvals, rf.productionSubmissions, rf.productionEvents]
+            .some(rows => rows.some((row: any) => row.incomeYear !== rf.incomeYear))) {
+        fail("rf1086_production_archive_scope_invalid");
+      }
+      for (const submission of rf.productionSubmissions) {
+        const approval: any = approvals.get(submission.approvalId);
+        if (!approval || approval.payloadHash !== submission.payloadHash
+            || approval.entitlementId !== submission.entitlementId
+            || (submission.supersedesSubmissionId && !submissions.has(submission.supersedesSubmissionId))) {
+          fail("rf1086_production_relationship_missing");
+        }
+        const seen = new Set([submission.id]);
+        let predecessor = submission.supersedesSubmissionId;
+        while (predecessor != null) {
+          if (seen.has(predecessor) || !submissions.has(predecessor)) {
+            fail("rf1086_production_correction_cycle");
+            break;
+          }
+          seen.add(predecessor);
+          predecessor = (submissions.get(predecessor) as { supersedesSubmissionId: string | null }).supersedesSubmissionId;
+        }
+        const receipts = rf.feedbackArtifacts.filter((row: any) => row.submissionId === submission.id);
+        if (receipts.length !== submission.feedbackArtifactCount) {
+          fail("rf1086_production_receipt_count_mismatch");
+        }
+        const hashes = new Set(receipts.map((row: any) => row.sha256));
+        if (hashes.size !== receipts.length || receipts.some((row: any) => !/^[a-f0-9]{64}$/.test(row.sha256))) {
+          fail("rf1086_production_receipt_hash_invalid");
+        }
+        const terminal = ["accepted", "rejected"].includes(submission.feedbackState);
+        if ((terminal || ["accepted", "rejected"].includes(submission.status))
+            && submission.status !== submission.feedbackState) {
+          fail("rf1086_production_terminal_evidence_missing");
+        }
+        const events = rf.productionEvents.filter((row: any) => row.submissionId === submission.id);
+        if (events.some((row: any) => !Array.isArray(row.artifactHashes)
+            || new Set(row.artifactHashes).size !== row.artifactHashes.length
+            || row.artifactHashes.some((hash: string) => !hashes.has(hash)))) {
+          fail("rf1086_production_event_artifact_mismatch");
+        }
+        if (terminal && (receipts.length === 0 || receipts.some((row: any) => row.classification !== submission.feedbackState)
+            || !events.some((row: any) => row.resultingStatus === submission.feedbackState
+              && typeof row.operationName === "string" && row.operationName.startsWith("reconciliation:")
+              && row.operationState === "succeeded"
+              && Array.isArray(row.artifactHashes) && row.artifactHashes.length === hashes.size
+              && row.artifactHashes.every((hash: string) => hashes.has(hash))))) {
+          fail("rf1086_production_terminal_evidence_missing");
+        }
+      }
+      if ([...rf.productionEvents, ...rf.feedbackArtifacts].some(row => !submissions.has(row.submissionId))) {
+        fail("rf1086_production_relationship_missing");
+      }
+      const objects = new Map(restored.manifest.objectReferences.map((row: any) => [row.documentId, row]));
+      for (const receipt of rf.feedbackArtifacts) {
+        // rf1086SourceRestoreFailures verifies bound historical originals.
+        if (receipt.originalId != null) continue;
+        const object: any = objects.get(receipt.documentId);
+        if (!object || object.contentSha256 !== receipt.sha256 || object.byteLength !== receipt.byteLength
+            || object.contentType !== receipt.contentType || !object.storageKey
+            || object.status !== "stored" || object.removedAt != null) {
+          fail("rf1086_production_receipt_object_mismatch");
+        }
+      }
+    }
+  }
   const productionSubmissions = restored.restored.productionFilingSubmissions;
   if (productionSubmissions.length) {
     const entitlementIds = new Set(restored.restored.productionPilotEntitlements.map((row: any) => row.id));
@@ -193,6 +339,66 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.auditEvents.length) failures.push("audit_events_missing");
   const authorityTestRuns = restored.restored.authorityTestRuns;
   const companyTaxSubmissions = restored.restored.companyTaxSubmissions;
+  const taxDrafts = restored.restored.companyTaxDeliveryDrafts;
+  const taxJournal = restored.restored.companyTaxDeliveryJournal;
+  const taxSource = taxDrafts?.sourceFacts;
+  const taxSourceVersion = taxSource?.evidence?.version;
+  const taxSourceGeneration = typeof taxSourceVersion === "string"
+    ? Number(/^company-tax-source-v(\d+):[0-9a-f]{64}$/u.exec(taxSourceVersion)?.[1])
+    : NaN;
+  if (taxDrafts && (!Number.isInteger(taxSourceGeneration) || taxSourceGeneration < 1)) {
+    fail("company_tax_delivery_source_unknown");
+  }
+  const taxOriginals = taxDrafts?.originals;
+  if (taxSourceGeneration >= 2 && (!taxOriginals
+    || taxOriginals.codec !== "company-tax-delivery-draft-archive-v1"
+    || taxOriginals.coverage !== "complete"
+    || taxOriginals.companyId !== restored.sourceCompanyId
+    || taxOriginals.incomeYear !== restored.incomeYear
+    || taxOriginals.sourceSha256 !== taxSource?.evidence?.digest
+    || taxOriginals.recordCount !== taxOriginals.records?.length
+    || restored.manifest.counts.companyTaxDeliveryDraftOriginals !== taxOriginals.recordCount)) {
+    fail("company_tax_delivery_draft_originals_mismatch");
+  }
+  if (taxSourceGeneration >= 3 && !taxJournal) {
+    fail("company_tax_delivery_journal_missing");
+  }
+  if (taxJournal) {
+    if (!taxDrafts || !taxSource || taxSourceGeneration < 3
+      || taxJournal.codec !== "company-tax-delivery-journal-archive-v1"
+      || taxJournal.coverage !== "complete"
+      || taxJournal.companyId !== restored.sourceCompanyId
+      || taxJournal.incomeYear !== restored.incomeYear
+      || taxJournal.draftCount !== taxJournal.drafts?.length
+      || taxJournal.eventCount !== taxJournal.events?.length
+      || taxJournal.sourceSha256 !== taxSource.evidence?.digest
+      || JSON.stringify(taxJournal.sourceFacts) !== JSON.stringify(taxSource)
+      || taxDrafts.originals?.sourceSha256 !== taxJournal.sourceSha256
+      || taxDrafts.originals?.recordCount !== taxJournal.draftCount
+      || JSON.stringify(taxDrafts.originals?.records) !== JSON.stringify(taxJournal.drafts)
+      || restored.manifest.counts.companyTaxDeliveryDraftOriginals !== taxJournal.draftCount
+      || restored.manifest.counts.companyTaxDeliveryJournalEvents !== taxJournal.eventCount) {
+      fail("company_tax_delivery_journal_mismatch");
+    }
+  }
+  const accounts = restored.restored.annualAccountsCompanyArchive;
+  if (!accounts) fail(restored.restored.annualAccountsLegacyEmpty ? "annual_accounts_legacy_archive_only" : "annual_accounts_archive_missing");
+  if (accounts) {
+    const proof = restored.accountsVerification;
+    if (!proof || proof.version !== "accounts-company-archive-verification-v1" || proof.status !== "verified"
+        || proof.companyId !== restored.sourceCompanyId || proof.incomeYear !== restored.incomeYear
+        || proof.archiveSha256 !== accounts.sha256 || proof.sourceSha256 !== accounts.sourceSha256
+        || proof.draftCount !== accounts.draftCount || proof.eventCount !== accounts.eventCount
+        || proof.originalCount !== accounts.originalCount || !Array.isArray(proof.originals) || proof.originals.length !== proof.originalCount) fail("annual_accounts_archive_unverified");
+    try {
+      inspectAccountsCompanyArchive(accounts, restored.sourceCompanyId, restored.incomeYear,
+        raw => createHash("sha256").update(raw).digest("hex"));
+      if (restored.manifest.counts.annualAccountsDeliveryDrafts !== accounts.draftCount
+          || restored.manifest.counts.annualAccountsDeliveryEvents !== accounts.eventCount
+          || restored.manifest.counts.annualAccountsDeliveryOriginals !== accounts.originalCount
+          || restored.manifest.annualAccountsArchiveSha256 !== accounts.sha256) throw new Error("Accounts manifest differs.");
+    } catch { fail("annual_accounts_archive_mismatch"); }
+  }
   const authorityRunsById = new Map(authorityTestRuns.map((run: any) => [run.id, run]));
   const linkedAuthorityRunIds = new Set<string>();
   for (const submission of companyTaxSubmissions) {

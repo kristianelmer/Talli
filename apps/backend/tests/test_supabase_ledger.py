@@ -2338,3 +2338,304 @@ def test_opening_year_query_rejects_forged_actor_before_database():
             actor_id=ActorId(kind=ActorKind.USER,subject=UserId("20000000-0000-0000-0000-000000000099")),
             company_id=CompanyId("10000000-0000-0000-0000-000000000001"), income_year=IncomeYear(2026),
             correlation_id=CorrelationId("opening-year-test")))
+
+
+@pytest.fixture
+def canonical_current_user(monkeypatch):
+    """Real adapter, only its HTTP transport and application clock are doubles."""
+    import talli_backend.adapters.supabase_ledger as ledger_adapter
+    now = datetime(2026, 10, 15, 12, 0, 0, 123456, tzinfo=UTC)
+    clock_calls = []
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            clock_calls.append(tz)
+            assert tz is UTC
+            if state["clock_failure"] is not None:
+                raise state["clock_failure"]
+            return state["now"]
+
+        def __new__(cls, *args, **kwargs):
+            if state["parse_failure"] is not None:
+                raise state["parse_failure"]
+            return super().__new__(cls, *args, **kwargs)
+
+    monkeypatch.setattr(ledger_adapter, "datetime", Clock)
+    requests, reads, closes, database_calls = [], [], [], []
+    state = {"body": json.dumps({
+        "id": str(ACTOR_ID.subject), "email": " Owner@Example.Test ",
+        "banned_until": "2026-10-15T12:00:00.123456001Z",
+    }).encode(), "status": 200, "failure": None, "now": now,
+        "clock_failure": None, "parse_failure": None}
+
+    class Response:
+        @property
+        def status(self):
+            return state["status"]
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            closes.append(True)
+        def read(self, size):
+            reads.append(size)
+            assert size == 65_537
+            return state["body"]
+
+    class Opener:
+        def open(self, request, *, timeout):
+            requests.append((request, timeout))
+            assert request.full_url == "https://project.supabase.co/auth/v1/user"
+            assert request.method == "GET" and timeout == 5
+            assert request.get_header("Apikey") == "anon-test-key"
+            if state["failure"] is not None:
+                raise state["failure"]
+            return Response()
+
+    def no_database(*_args, **_kwargs):
+        database_calls.append(True)
+        pytest.fail("authentication must not open a database connection")
+
+    monkeypatch.setattr(ledger_adapter.psycopg, "connect", no_database)
+    adapter = SupabaseLedgerAdapter(LedgerSupabaseConfiguration(
+        url="https://project.supabase.co", anon_key="anon-test-key",
+        database_url="postgresql://unused",
+    ))
+    monkeypatch.setattr(adapter, "_opener", Opener())
+    return adapter, state, requests, reads, closes, database_calls, clock_calls
+
+
+def test_current_user_future_ban_denies_real_session_before_database(canonical_current_user):
+    adapter, _, requests, reads, closes, database_calls, clock_calls = canonical_current_user
+    bearer = token(str(ACTOR_ID.subject))
+    with pytest.raises(LedgerAuthenticationError):
+        asyncio.run(adapter.session(bearer))
+    assert len(requests) == 1
+    assert requests[0][0].get_header("Authorization") == "Bearer " + bearer
+    assert reads == [65_537] and closes == [True]
+    assert database_calls == [] and clock_calls == [UTC]
+
+
+def _current_user_body(ban=None, *, include=True, **extra):
+    value = {"id": str(ACTOR_ID.subject), "email": " Owner@Example.Test ", **extra}
+    if include:
+        value["banned_until"] = ban
+    return json.dumps(value).encode()
+
+
+def _assert_current_auth_io(fixture, *, count=1, clock_count=1):
+    _, _, requests, reads, closes, database_calls, clock_calls = fixture
+    assert len(requests) == count
+    assert reads == [65_537] * count and closes == [True] * count
+    assert database_calls == [] and clock_calls == [UTC] * clock_count
+
+
+@pytest.mark.parametrize("value,denied", [
+    (None, False),
+    ("2026-10-15T12:00:00Z", False),
+    ("2026-10-15T12:00:00.1Z", False),
+    ("2026-10-15T12:00:00.12Z", False),
+    ("2026-10-15T12:00:00.123Z", False),
+    ("2026-10-15T12:00:00.1234Z", False),
+    ("2026-10-15T12:00:00.12345Z", False),
+    ("2026-10-15T12:00:00.123456Z", False),
+    ("2026-10-15T12:00:00.1234560Z", False),
+    ("2026-10-15T12:00:00.12345600Z", False),
+    ("2026-10-15T12:00:00.123456000Z", False),
+    ("2026-10-15T12:00:00.123456001Z", True),
+    ("2026-10-15T12:00:00.123455999Z", False),
+    ("2026-10-15T12:00:00.1234561Z", True),
+    ("2026-10-15T12:00:00.12345601Z", True),
+    ("2026-10-15T12:00:01Z", True),
+    ("2026-10-15T14:30:00.123456000+02:30", False),
+    ("2026-10-15T06:30:00.123456000-05:30", False),
+    ("2026-10-15T14:30:00.123456001+02:30", True),
+    ("2026-10-15T06:30:00.123455999-05:30", False),
+    ("2026-10-16T11:59:00.123456+23:59", False),
+    ("2026-10-14T12:01:00.123456-23:59", False),
+    ("2026-10-15T12:00:00.123456+00:00", False),
+    ("2024-02-29T12:00:00Z", False),
+])
+def test_current_user_ban_exact_precision_and_offsets(canonical_current_user, value, denied):
+    adapter, state, *_ = canonical_current_user
+    state["body"] = _current_user_body(value)
+    if denied:
+        with pytest.raises(LedgerAuthenticationError):
+            asyncio.run(adapter.session(token(str(ACTOR_ID.subject))))
+    else:
+        session = asyncio.run(adapter.session(token(str(ACTOR_ID.subject))))
+        assert session.actor_id == ACTOR_ID
+        assert json.loads(session._verified.claims_json) == {
+            "sub": str(ACTOR_ID.subject), "email": "owner@example.test",
+            "role": "authenticated", "aal": "aal2",
+        }
+    _assert_current_auth_io(canonical_current_user)
+
+
+@pytest.mark.parametrize("sample,value,denied", [
+    (datetime(1, 1, 1, tzinfo=UTC), "0001-01-01T00:00:00Z", False),
+    (datetime(1, 1, 1, tzinfo=UTC), "0001-01-01T00:00:00.000000001Z", True),
+    (datetime(1, 1, 1, tzinfo=UTC), "0001-01-01T01:00:00+01:00", False),
+    (datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC), "9999-12-31T23:59:59.999999000Z", False),
+    (datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC), "9999-12-31T23:59:59.999999999Z", True),
+    (datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC), "9999-12-31T22:59:59.999999000-01:00", False),
+    (datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC), "9999-12-31T23:59:59.999999Z", False),
+])
+def test_current_user_ban_supported_calendar_endpoints(canonical_current_user, sample, value, denied):
+    adapter, state, *_ = canonical_current_user
+    state.update(now=sample, body=_current_user_body(value))
+    if denied:
+        with pytest.raises(LedgerAuthenticationError):
+            asyncio.run(adapter.session(token(str(ACTOR_ID.subject))))
+    else:
+        assert asyncio.run(adapter.session(token(str(ACTOR_ID.subject)))).actor_id == ACTOR_ID
+    _assert_current_auth_io(canonical_current_user)
+
+
+@pytest.mark.parametrize("value", [
+    "", "2026-10-15", "2026-10-15T12:00:00", "2026-10-15 12:00:00Z",
+    "2026-10-15t12:00:00z", "2026-10-15T12:00:00z", "2026-10-15T12:00:00.Z",
+    "2026-10-15T12:00:00.1234560000Z", "2026-10-15T12:00:00,1Z",
+    "2026-10-15T12:00:60Z", "2026-10-15T24:00:00Z", "2026-10-15T12:60:00Z",
+    "2026-10-15T12:00:00-00:00", "2026-10-15T12:00:00+24:00",
+    "2026-10-15T12:00:00+00:60", "2026-10-15T12:00:00+0200",
+    "2026-10-15T12:00:00+2:00", "2026-10-15T12:00:00+00:00:00",
+    "0000-01-01T00:00:00Z", "10000-01-01T00:00:00Z",
+    "0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59.999999999-00:01",
+    "2026-02-29T12:00:00Z", "2026-04-31T12:00:00Z", "2026-13-01T12:00:00Z",
+    "2026-00-01T12:00:00Z", "2026-01-00T12:00:00Z",
+    " 2026-10-15T12:00:00Z", "2026-10-15T12:00:00Z ", "2026-10-15T12:00:00Z\n",
+    "２０２６-10-15T12:00:00Z", "infinity", "-infinity", "x" * 1000,
+    False, True, 0, 1.25, float("nan"), float("inf"), float("-inf"),
+    [], {}, ["2026-10-15T12:00:00Z"],
+])
+def test_current_user_ban_malformed_is_sanitized_denial(canonical_current_user, value):
+    adapter, state, *_ = canonical_current_user
+    state["body"] = _current_user_body(value)
+    bearer = token(str(ACTOR_ID.subject))
+    with pytest.raises(LedgerAuthenticationError) as failure:
+        asyncio.run(adapter.session(bearer))
+    assert str(failure.value) == "" and failure.value.args == ()
+    assert failure.value.__cause__ is None
+    assert bearer not in str(failure.value)
+    _assert_current_auth_io(canonical_current_user)
+
+
+@pytest.mark.parametrize("fragment", [
+    '"banned_until":"2099-01-01T00:00:00Z","banned_until":null',
+    '"banned_until":null,"banned_until":"2099-01-01T00:00:00Z"',
+    '"banned_until":null,"banned_until":null',
+    '"banned_until":"2020-01-01T00:00:00Z","banned_until":"2020-01-01T00:00:00Z"',
+    '"banned_until":null,"banned_\\u0075ntil":null',
+    '"banned_until":"2099-01-01T00:00:00Z","banned_until":null,"_duplicate_ban":false',
+])
+def test_current_user_duplicate_root_ban_cannot_be_overridden(canonical_current_user, fragment):
+    adapter, state, *_ = canonical_current_user
+    state["body"] = (_current_user_body(include=False).decode()[:-1] + "," + fragment + "}").encode()
+    with pytest.raises(LedgerAuthenticationError):
+        asyncio.run(adapter.session(token(str(ACTOR_ID.subject))))
+    _assert_current_auth_io(canonical_current_user)
+
+
+@pytest.mark.parametrize("fragment", [
+    '"user_metadata":{"banned_until":null,"banned_until":"2099-01-01T00:00:00Z"}',
+    '"app_metadata":{"banned_until":"2099-01-01T00:00:00Z","banned_until":null}',
+    '"metadata":[{"banned_until":null,"banned_until":null}]',
+    '"ignored":1,"ignored":2,"_duplicate_ban":true',
+    '"deleted_at":"2099-01-01T00:00:00Z"',
+    '"deleted_at":{"unchanged":"policy"}',
+])
+def test_current_user_nested_or_unrelated_fields_do_not_create_ban_policy(canonical_current_user, fragment):
+    adapter, state, *_ = canonical_current_user
+    state["body"] = (_current_user_body(include=False).decode()[:-1] + "," + fragment + "}").encode()
+    assert asyncio.run(adapter.session(token(str(ACTOR_ID.subject)))).actor_id == ACTOR_ID
+    _assert_current_auth_io(canonical_current_user)
+
+
+def test_current_user_ban_then_unban_rechecks_one_canonical_response_each(canonical_current_user):
+    adapter, state, *_ = canonical_current_user
+    bearer = token(str(ACTOR_ID.subject))
+    with pytest.raises(LedgerAuthenticationError):
+        asyncio.run(adapter.session(bearer))
+    state["body"] = _current_user_body(None)
+    assert asyncio.run(adapter.session(bearer)).actor_id == ACTOR_ID
+    state["body"] = _current_user_body(include=False)
+    assert asyncio.run(adapter.session(bearer)).actor_id == ACTOR_ID
+    _assert_current_auth_io(canonical_current_user, count=3, clock_count=3)
+
+
+@pytest.mark.parametrize("server_banned", [False, True])
+def test_current_user_status_authority_is_not_jwt_or_metadata(canonical_current_user, server_banned):
+    adapter, state, *_ = canonical_current_user
+    value = "2099-01-01T00:00:00Z" if server_banned else None
+    other = None if server_banned else "2099-01-01T00:00:00Z"
+    state["body"] = _current_user_body(value, user_metadata={"banned_until": other}, app_metadata={"banned_until": other})
+    claims = {"sub": str(ACTOR_ID.subject), "aal": "aal2", "amr": [{"method": "password"}],
+              "banned_until": other, "user_metadata": {"banned_until": other}, "app_metadata": {"banned_until": other}}
+    bearer = "header." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + ".signature"
+    if server_banned:
+        with pytest.raises(LedgerAuthenticationError):
+            asyncio.run(adapter.session(bearer))
+    else:
+        result = asyncio.run(adapter.session(bearer))
+        assert json.loads(result._verified.claims_json) == {
+            "sub": str(ACTOR_ID.subject), "email": "owner@example.test", "role": "authenticated",
+            "aal": "aal2", "amr": [{"method": "password"}],
+        }
+    _assert_current_auth_io(canonical_current_user)
+
+
+@pytest.mark.parametrize("failure_source", ["failure", "clock_failure", "parse_failure"])
+@pytest.mark.parametrize("failure_type", [RuntimeError, asyncio.CancelledError, KeyboardInterrupt, SystemExit])
+def test_current_user_preserves_unexpected_and_cancellation_identity(canonical_current_user, failure_source, failure_type):
+    adapter, state, requests, _, _, database_calls, clock_calls = canonical_current_user
+    failure = failure_type("generated-private-canary")
+    state[failure_source] = failure
+    async def exercise():
+        try:
+            await adapter.session(token(str(ACTOR_ID.subject)))
+        except BaseException as caught:
+            assert caught is failure
+        else:
+            pytest.fail("expected original failure")
+    asyncio.run(exercise())
+    assert len(requests) == 1 and database_calls == []
+    assert clock_calls == ([] if failure_source == "failure" else [UTC])
+
+
+def test_current_user_subject_binding_precedes_ban_clock(canonical_current_user):
+    adapter, _, _, _, _, _, clock_calls = canonical_current_user
+    with pytest.raises(LedgerAuthenticationError):
+        asyncio.run(adapter.session(token(str(OTHER_ACTOR.subject))))
+    _assert_current_auth_io(canonical_current_user, clock_count=0)
+    assert clock_calls == []
+
+
+@pytest.mark.parametrize("case", ["http401", "http403", "http500", "url", "timeout", "json", "oversized", "notmapping", "status403"])
+def test_current_user_existing_transport_error_translation_is_unchanged(canonical_current_user, case):
+    from urllib.error import HTTPError, URLError
+    adapter, state, requests, _, _, database_calls, clock_calls = canonical_current_user
+    expected = LedgerError
+    if case.startswith("http"):
+        code = int(case[4:])
+        state["failure"] = HTTPError("https://project.supabase.co/auth/v1/user", code, "private-canary", {}, None)
+        if code in (401, 403):
+            expected = LedgerAuthenticationError
+    elif case == "url":
+        state["failure"] = URLError("private-canary")
+    elif case == "timeout":
+        state["failure"] = TimeoutError("private-canary")
+    elif case == "json":
+        state["body"] = b'{"private-canary":'
+    elif case == "oversized":
+        state["body"] = b"x" * 65_537
+    elif case == "notmapping":
+        state["body"] = b"[]"
+        expected = LedgerAuthenticationError
+    else:
+        state["status"] = 403
+        expected = LedgerAuthenticationError
+    with pytest.raises(expected) as failure:
+        asyncio.run(adapter.session(token(str(ACTOR_ID.subject))))
+    assert "private-canary" not in str(failure.value)
+    assert len(requests) == 1 and database_calls == [] and clock_calls == []

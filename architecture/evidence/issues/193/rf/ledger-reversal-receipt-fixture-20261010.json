@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_LEDGER_HOSTED_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T06:16:27.278978+00:00",
+  "status": "LOCAL_SOURCE_AND_CONSTRAINT_SEMANTICS_PASS_FULL_LANE_PENDING",
+  "baseRevision": "b0e0c10d85d5673ff2e5dc200b0ebc9c656140a1",
+  "problem": "CI38027757820 rejected reverse_supported_entry receipts after a hosted rehearsal replayed two older five-operation CHECK definitions. The observed failure occurred before the second concurrency participant; it does not prove a lock-order defect.",
+  "historicalFailure": "ci-38027757820.json",
+  "change": [
+    "Test-only adapter accepts only the exact named corrections and company-year-close sources and exact published reversal successor. Full source/output hashes, unique blocks and inverse replacement preserve every other SQL byte.",
+    "Hosted caller precomputes both adapted outputs before connecting. Before its first mutation it requires exact PG17 relation, owner, column, validated local six-operation CHECK and reversal object catalog shape; rejects missing, older, wider or otherwise unknown state.",
+    "After each affected replay and final contract, the caller rechecks the installed successor. Existing authority snapshots, grant/role behavior, transactions and cleanup stay unchanged. No production SQL, runtime code or failing Ledger assertion test changes.",
+    "Two pure test files are registered beside the reversal schema test in the mandatory Ledger lifecycle suite. The exact CI command oracle is updated in tandem."
+  ],
+  "sources": [
+    {
+      "path": "tests/support/ledger_receipt_replay.mjs",
+      "sha256": "cc2daf13f57bdd70b4460c64540629aac105afd51c4ffd597c4b94ac2fc055b4",
+      "bytes": 7019
+    },
+    {
+      "path": "tests/ledger_hosted_migration_authority.test.mjs",
+      "sha256": "be9044c5eb83d5f1cea74586d9528c5beca7e2e64697322ba518e653805c9c05",
+      "bytes": 13773
+    },
+    {
+      "path": "tests/ledger_receipt_replay.test.mjs",
+      "sha256": "2a4a94adc167b07841dd42e8200c0f8e9c4bf2e82e82a0270e94e6428680a402",
+      "bytes": 7530
+    },
+    {
+      "path": "tests/ledger_receipt_replay_adversarial.test.mjs",
+      "sha256": "eaf49e81da05e244c5163638a5760ea89bb39b8a619d22f2488d2d883a8f4789",
+      "bytes": 12900
+    },
+    {
+      "path": "package.json",
+      "sha256": "c4accc5a8eabbf7b9e720bf8acc08e42af1bc08902c3c60d9e7754a31efef1a3",
+      "bytes": 34453
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "6cfe14bb4abce262c04421d6bb4762c17e3c655a65f8b5e446a35e09d44c9963",
+      "bytes": 54822
+    }
+  ],
+  "validation": {
+    "focusedNodeTests": {
+      "passed": 127,
+      "failed": 0,
+      "skipped": 0,
+      "components": {
+        "author": 26,
+        "independent": 100,
+        "existingReversalSchema": 1
+      }
+    },
+    "ciRegistrationTests": {
+      "passed": 123,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativePostgreSQL": {
+      "version": "17.11",
+      "checks": 15,
+      "committedReceiptTypes": 6,
+      "replayCycles": 2,
+      "result": "Original five-operation block fails with populated reversal receipt. Both actual adapted blocks preserve six committed rows and all payloads through two cycles. Unknown/null operations fail with 23514/23502. Six malformed catalog states reject using only the actual preflight SELECT. Injected DROP-before-ADD and temporary-role/schema failures restore exact rows, constraints, unrelated catalogs, role edges and schema ACLs after explicit ROLLBACK.",
+      "authorityLimit": "Setup and constraint DDL use an isolated superuser. Actual catalog helper also passes under a non-superuser with no private-schema USAGE. Reversal routine and table are catalog-presence stubs; full migration/RPC/business authority and locking are not exercised.",
+      "cleanup": "Owned cluster stopped and owned directory removed; pre-existing containers untouched."
+    },
+    "compatibility": "Entire previous hosted file is recovered by removing only reviewed additions and dispatch adjustment. Nine protected files remain exact; no production SQL/backend or original race-test changes.",
+    "reviews": {
+      "spec": "PASS, zero open findings",
+      "standards": "PASS, zero actionable findings"
+    },
+    "resolvedNativeFinding": "Actual PG17 jsonb_build_object serialized conparentid OID as string 0, unlike numeric 0 in the strict expected snapshot. Explicit bigint cast and independent regression cases repair the preflight. Genuine failing native output is preserved separately from an earlier private extractor newline mistake before DB connection."
+  },
+  "acceptance": {
+    "L1": "Local source/input/output/inverse/hash drift and actual hosted preflight via fake pg passed.",
+    "L2": "Strict malformed catalog tests pass; parent native confirms actual PG17 helper query under non-superuser without private-schema USAGE.",
+    "L3": "Root-owned native15 groups PASS includes populated exact six-operation blocks twice; constraint-only, full-DDL/RPC not executed.",
+    "L4": "Pure actual-caller early denial/cleanup plus root native explicit transaction rollback after DROP and temporary authority failure PASS. No whole internally committed rehearsal atomicity claim.",
+    "L5": "PENDING: populated full hosted contract/rollback/recutover twice plus actual posting/reversal/replay; not claimed from constraint-only native probe.",
+    "L6": "Exact source/wrapper compatibility and root native unrelated catalog preservation PASS within their separate scopes; full replay intentionally recreates historical functions.",
+    "L7": "PENDING: original unchanged full CI Ledger reversal and both lock orders."
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-reversal-receipt-fixture-root-decision-v1.json",
+      "sha256": "758b68776e883686dccf6b39bf3c76a8b1671a033d04db721f00e49fce8b9d77",
+      "bytes": 4142
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-root-registration-amendment.json",
+      "sha256": "f815dae3e5751976bf00fb3f868563024efb4695f815d99a8871feb066e6cb1c",
+      "bytes": 1436
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-reversal-receipt-fixture-diagnosis-v1.json",
+      "sha256": "192ff9cf9b95c5d4d4385c0c405d3168ad55d8108ba42d800cab4030fbb8ca1e",
+      "bytes": 5788
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-reversal-receipt-fixture-provenance.json",
+      "sha256": "faa7af61f7a0be2752ae9f0cc0d460e0e73087b6e8ba6e09b849176299d1b956",
+      "bytes": 15451
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-root-source-freeze.json",
+      "sha256": "954904406882e5c98c0aad3ba93643906a1c56189fef796179e4ac0a18efb8c5",
+      "bytes": 1244
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-author-freeze-v2.json",
+      "sha256": "ca4a339dacc0dd88a91cfc2182c03e12039f58eae7aeb2adb4dadcf3e45a73c6",
+      "bytes": 2011
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-author-checks-v2.json",
+      "sha256": "1501ddfc2c7e1ac9c602a0c3e7f6073b6d41a4da7f6104ad1d6cee5fd12b992c",
+      "bytes": 10613
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-compatibility.json",
+      "sha256": "91b46b2688a9d42ab4895e77e3489aa329f7c78f2d6928f8eb199d4253226ddc",
+      "bytes": 2649
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-spec-static-v2.json",
+      "sha256": "a475dbf6f48ae8f51d1395792eb3b4a66454a955a716c71e12d6c0b2b9d1b52c",
+      "bytes": 5198
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-final-spec-review.json",
+      "sha256": "3ed79ff35e36c0e6059403ca5485500758ef0b8dba7fdb5940ed316e35e939f7",
+      "bytes": 10551
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-final-standards-review.json",
+      "sha256": "bc9c47ba0a5a03e018f012efdacc47842a1713062053fd7ed8725361a21311b1",
+      "bytes": 19776
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-author-final-v2.log",
+      "sha256": "ffa9b327bb4cd2eb5f4161ae8abf723e88b3bc9ecda888dc17ac5097b71bb455",
+      "bytes": 10197
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-ci-registration.log",
+      "sha256": "5803f3f65ed661655ed7e9170b4c52a6c60687e9703a1f5890b27f028a660fc9",
+      "bytes": 13102
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-native-red.json",
+      "sha256": "97c1f0ee5210bb44d86f2a41cc1c018fcdd264cff00a27b401c9743650f6d5f6",
+      "bytes": 1743
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-native.json",
+      "sha256": "d2057822989d476470b3d06c1dbe9558afc61f19b0a3b93ce432e98aadbb670b",
+      "bytes": 3909
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-native-run.log",
+      "sha256": "2d84c289332ae8e97f9ad0349d0e4a22132e1b817e7f22d6554efb93692eaa0c",
+      "bytes": 1041
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-native-cleanup.json",
+      "sha256": "ea19b716e02395e9587ff3c9b3fd439926ea8ac918dde21ae9ae82beedf56ff5",
+      "bytes": 156
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-ledger-receipt-replay-native.mjs",
+      "sha256": "a38d5ab0d62984ca940f137e6c7fc798dc573c0a36d965fe85b08a42614fd0a7",
+      "bytes": 12236
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/run-ledger-receipt-replay-native.py",
+      "sha256": "a41793b63b9ac6209a113098a0a82ea4281326221abb6388476378982ffcae9d",
+      "bytes": 1726
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ledger-receipt-replay-root-review.json",
+      "sha256": "1f88e226cee1ec58271f903d54eca2b8848df1a2913c0587175064f7373f8c85",
+      "bytes": 2326
+    }
+  ],
+  "limits": [
+    "No passing full hosted replay or original lock-order CI result is inferred from the local probe. L5 and L7 remain pending.",
+    "Historical SQL contains internal COMMIT statements; individual probe rollback does not establish atomicity of the whole rehearsal.",
+    "New retained stream/export and this repair have not yet run in whole CI. The prior terminal receipt applies only to 02a and its merge.",
+    "All A1–A7 and both immutable complete gates remain pending. No hosted activation, provider call, genuine-company admission or launch claim."
+  ]
+}

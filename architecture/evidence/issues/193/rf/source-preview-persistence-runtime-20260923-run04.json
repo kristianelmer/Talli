@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_SOURCE_PREVIEW_PERSISTENCE",
+  "baseCommit": "efbea434d07b5530618dabbeb8645d0208b554dd",
+  "testedAt": "2026-09-23",
+  "databaseTests": 11,
+  "topologyAndMandatoryLaneTests": 18,
+  "runtime": {
+    "status": "PASS",
+    "exitCode": 0,
+    "target": "rf193_source_preview_14d7_f8906b3c",
+    "host": "127.0.0.1",
+    "port": 52966,
+    "source": "owned disposable accounts153_setup_fix_d060",
+    "createdCloneDropped": true,
+    "hostedChanges": false,
+    "providerCalls": 0,
+    "objectTransfers": "httpx.MockTransport",
+    "databasePersistence": "actual restricted-role PostgreSQL RF/Document operations"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "2bb2f6fa177a49f540a5f2df3452b16a9f9820076d70d6e24fa19583e09bc730",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "aed2e9a969e1e7a8f94b270e3b14363efc8f199ac61faa489ee8a1d5cafa9ac7",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "531dd01dd9870ce2fbbf963834dbfd30dffd5db9e2dbf8c89b4b233d90adefcb",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_preview.py": "1a5ef0edbabb92abf2a0e78f705776e805c6c430c4086386e7c893c164348168",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "30a5aab22eb59d0a45f611eed9f92e2748cb50b63665e771bf0f27bc09810b0e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/rendering.py": "2ab0460fdad080b59f532782ead4f75684a8c9b2e62da5105651aab2e6440798",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source.py": "e071b1310816be189664ca4f8abae4b86833527ffdc3fdcce1e418e4557c2078",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py": "7a06955183241b99b0b0afea9f2e4e420db4e663c2964f8be20d15f3ade25985",
+    "apps/backend/tests/test_rf1086_source_preview_database.py": "cf6273d4e9ee8f21f95cf33afb26aeb450ee9739d069c8057f9832abcd177bc7",
+    "supabase/migrations/20260923105912_rf1086_source_backed_preview.sql": "b601980eeb634cf469d924187c890c4909e8bcde694f93718aa6770bb7d5bea7",
+    "supabase/rollback/20260923105912_rf1086_source_backed_preview.sql": "2c277f06b3fca4adcd8bd6a24c7fa04e088b1637ee1f12f2f2e0b88541306f45",
+    "scripts/rehearse-authority-topology.mjs": "642dd41d1e1b8e1b882fdc3012ffafdff6e3058adf0e82cb1ce9321795870b23",
+    "tests/ci_release_gate.test.mjs": "e77f9b2953050d34252728270a593128114f2af8e7a1a98a811e849f2e4d923f",
+    "package.json": "a3df78b4c6437f9a45cee6e15c812cdc2fdccc9ddb1f7e75961a8c88aa839061",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "67e4ec183cb7de8694c00aef7ecc18ee5fa0681e762cc68c50f7c47674a7e939",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d2f7e1d9443fc9ea13aae0a400f75bc1e117272c652430517c66c8f4c6e360f2",
+    "apps/backend/tests/test_annual_purchase_basis_runtime.py": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977",
+    "apps/backend/src/talli_backend/adapters/postgres_document_evidence.py": "028e005fac122501b1f77542c2c11c8e6bd536ddd1be46caa8d6ea42562448e9",
+    "supabase/migrations/20260923091509_rf1086_immutable_year_source.sql": "f0d79e1af3c918810afcae072a9fa653e998938ac00f3439625c6001fd05a52e",
+    "supabase/migrations/20260923102314_rf1086_register_observation_store.sql": "0c3087a8c1d38bbf9c67c7a25071413cd2226856e5da716ef5d543fad139de68",
+    "supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql": "fff296d5af5c24932c415465399ec632e0a81152fcaf509eceda871bce1f984d"
+  },
+  "testedSourceUnchangedBeforeAfter": true,
+  "beforeAfterComparedFiles": 14,
+  "privateEvidenceSha256": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/local-runtime.log": "b6467407b5b21adeaa2ca10c4e9d91590a19d8eed3f93ae092d291b8647e94c6",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/source-before.json": "cf51aa9d182c90f65adff93217fbebe72ddf16d44d4ded75eeb26d4ae4f43a76",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/topology.log": "18acaf48dafc9760e85f12b99fb96c8037f22626be212aa96c822a6478b81e50",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/local-runtime-result.json": "facb51ab5fee62391214eca255040ae68125fc01106dc8de260d7d16c8d999b1",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/run-local-runtime.py": "01c8ae8315918f8bfa36758450d0f4dbb0210d276d71fd5aa87cba7d89cb443a"
+  },
+  "verified": [
+    "exact source and rendered output binding with deterministic source-aware preview identity",
+    "same source concurrent replay returns one immutable original",
+    "corrected source with same XML receives a distinct preview; old preview remains readable",
+    "legacy preview and production path not mutated",
+    "tenant concealment; member history read; currently accepted owner generation",
+    "owner revocation after source-lock wait fails closed",
+    "queued preview observes correction committed under the same company/year lock",
+    "direct SQL replay refuses superseded source",
+    "separate current owner may preview without overwriting original source actor",
+    "restricted executor cannot delete preview; browser/service roles cannot read; FORCE RLS",
+    "migration replay restores exact role options and API rollback/recutover retains exact preview"
+  ],
+  "limits": [
+    "Internal persistence slice only; no customer HTTP preview flow or production admission supplied by this proof",
+    "Synthetic admitted company and local disposable clone only; no active AS required",
+    "Canonical render/codec owned and separately reviewed by root; final application/readiness verification belongs to parent integration",
+    "No hosted changes, provider requests, authority mutations, or git commits"
+  ],
+  "priorRunsPreserved": [
+    "../run01 (initial codec failure)",
+    "../run02 (10 database tests passed)",
+    "../run03 (11 database tests passed)"
+  ]
+}

@@ -1,0 +1,639 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "date": "2026-10-09",
+  "status": "REMAINING_TECHNICAL_GAPS_REVALIDATED_NOT_ACCEPTED",
+  "recordedAtUtc": "2026-10-09T20:12:32.459610+00:00",
+  "baseRevision": "3f6a82c888ec3b457be12e45639e58fb12d8e9c0",
+  "workingTree": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting",
+  "provenance": {
+    "method": "Independent read-only source and evidence inspection; one bounded read-only official-source checker. This artifact and one requirements index entry are the only writes for persistence.",
+    "sourceSnapshot": "Current uncommitted working-tree bytes; SHA256s identify the inspected files, not a new immutable candidate or successful integration.",
+    "requirementsIndexOnly": {
+      "key": "remainingTechnicalGaps20261009",
+      "value": "remaining-technical-gaps-20261009.json",
+      "allPreexistingValuesPreserved": true,
+      "allCriteriaRemain": "PENDING"
+    },
+    "sequencing": "Verified direct human instruction authorizes serial all-three technical readiness before later pilot outreach. Full #193/A3 and production/validation/launch proof remain open; no repeat sequencing approval is requested."
+  },
+  "officialSourceVerification": {
+    "status": "PASS_BOUNDED_CURRENT_PUBLISHED_BYTES",
+    "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-rf1086-official-sources.mjs --current",
+    "date": "2026-10-09",
+    "completedBeforeUtc": "2026-10-09T20:07:56Z",
+    "exitCode": 0,
+    "observation": "Tool-observed stdout returned status PASS and 10 currentChecked=true entries; exec session 72929 was polled to terminal exit 0.",
+    "evidenceKind": "manual_bounded_tool_observation",
+    "savedLog": null,
+    "savedLogLimit": "No transcript/log file was saved. This record transcribes the observed result; it is not a canonical CI receipt or a claim of a saved log.",
+    "scriptAndManifestUnmodifiedFromBase": true,
+    "checkedEntries": [
+      {
+        "path": "static/download/aksjonaerregisteroppgaveHovedskjema.xsd",
+        "sha256": "194670070a54772ad7e026e37be1d87e7840dab7621c966a881e909d00d119df",
+        "currentChecked": true
+      },
+      {
+        "path": "static/download/aksjonaerregisteroppgaveUnderskjema.xsd",
+        "sha256": "a0f6b2a8d249f3f40290036314d3b1f5c1b3aed3ba90f58e5ce7b264c9ec33b7",
+        "currentChecked": true
+      },
+      {
+        "path": "static/download/aksjeklasse_kodeliste.xml",
+        "sha256": "a50b180de6b6538853eff7087df609e4f54132405e6057fdf8914b1a9f162ffd",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/kjopogsalg_underskjema_en.txt",
+        "sha256": "41a150eba0eec7e11aa57d1e2c48ce9b8bf868229b5a1a5294461423b5f3b65d",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/kjopogsalg_underskjema_to.txt",
+        "sha256": "795311baa395715a5c413a5da818f5204c1cac4b67bbea6a3a2fdc87334e6054",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/nyemisjon_hovedskjema.txt",
+        "sha256": "97834a7470cc998380084b5d8c9ad12ce51b4636d75a324f587f2b220cec6d20",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/stiftelseavselskap_hovedskjema.txt",
+        "sha256": "e17122a053a5afbbbc22fc973b14237a4333e8eaac2242d99729770210ff6c20",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/stiftelseavselskap_underskjema.txt",
+        "sha256": "78178e1b040adcf13a0f813217788ad9f4757f96b1075a61a8e56ca00ac8b43e",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/utbytte_hovedskjema.txt",
+        "sha256": "1d94f08caa2182e70c73b92c08324b15d29a3c6acf956d4796bfef71c9ce039a",
+        "currentChecked": true
+      },
+      {
+        "url": "https://www.skatteetaten.no/contentassets/d70d335c2a024f7ea7eb421fc53f4ec7/rf-1086_detaljert_design_2024.xlsx",
+        "sha256": "7db3fed16350832056c3b363eb16ee03df49031358372026af73b6c899bc5c7d",
+        "currentChecked": true
+      }
+    ],
+    "citations": [
+      "currentByteComparison",
+      "checkerOwnedByRehearsal"
+    ],
+    "limits": [
+      "Published/bundled bytes matched the pin, including immutable provenance and current main for schema/code-list sources. This does not prove complete event semantics, service conformance, genuine-company production acceptance or legal signoff."
+    ]
+  },
+  "findings": [
+    {
+      "id": "RF-TECH-CAPITAL",
+      "criteria": [
+        "A1",
+        "A2"
+      ],
+      "classification": "PRESENT_IMPLEMENTATION_RESTRICTION_AND_MISSING_SOURCE_CONTRACT",
+      "finding": "Cash nominal increases are explicitly rejected by source capture. Governance requires newly issued shares. Loss-cover inputs constrain fund-issued capital to zero; current-year post-loss dividends are always blocked and the source contract has no earlier-year restriction/distribution-clearance facts.",
+      "citations": [
+        "nominalCaptureRejected",
+        "newSharesRequired",
+        "fundIssuedZeroType",
+        "fundIssuedZeroRule",
+        "noDistributionClearance",
+        "yearSourceFields"
+      ],
+      "historicalEvidence": [
+        "capitalGapRecord"
+      ],
+      "acceptedScopeSource": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+      "scopeLimit": "#172 accepts normal capital increases/reductions and ordinary dividends. This finding preserves the documented unresolved source work; it does not independently decide the legal treatment or silently broaden specialist cases.",
+      "nextOwnersSerially": [
+        "corporate_governance with ledger public contract as required",
+        "shareholder_register_filing"
+      ],
+      "nextAction": "Define and verify nominal-increase evidence/posting/receipt and historical registered versus tax-paid-in capital/distribution-clearance facts in their canonical owners, then consume them in RF with chronological golden/database/browser proof. Do not merely relax the count or readiness guards."
+    },
+    {
+      "id": "RF-TECH-UNKNOWN-OUTCOME",
+      "criteria": [
+        "A4"
+      ],
+      "classification": "SAFE_BLOCK_PRESENT_FINAL_OUTCOME_RESOLUTION_MISSING",
+      "finding": "Prepared/unknown mutations correctly become recovery_required and cannot authorize another POST. Existing source feedback recovery requires a confirmed journal; the inspected authority interface does not supply ambiguous-mutation discovery. Safe blocking is implemented, but a path to a known final outcome for every ambiguous main/child/confirmation request is not established.",
+      "citations": [
+        "unknownStopsDispatch",
+        "unknownDisposition",
+        "recoveryRequiresConfirmed",
+        "readOnlyProviderList",
+        "providerMethods"
+      ],
+      "nextOwnersSerially": [
+        "shareholder_register_filing"
+      ],
+      "nextAction": "Establish provider-backed evidence and an owned reconciliation contract for each ambiguous mutation; test exact identity, journal transition, stale/concurrent attempts and no duplicate logical submission. Keep unresolved outcomes blocked where sufficient evidence/guarantees are unavailable.",
+      "limits": [
+        "No duplicate-submission bug is asserted. No provider POST, token acquisition, blind retry or inferred success was performed or authorized by this audit."
+      ]
+    },
+    {
+      "id": "RF-TECH-OBSERVATION-WITHDRAWAL",
+      "criteria": [
+        "A2"
+      ],
+      "classification": "ABSENT_OWNER_OPERATION",
+      "finding": "The current public observation protocol supports record/list/read/current and replacement correction; it lacks withdrawal without replacement. No owned withdrawal command/state was found in RF domain, application, adapter or migration search.",
+      "citations": [
+        "observationCommands",
+        "correctionFields"
+      ],
+      "nextOwnersSerially": [
+        "shareholder_register_filing"
+      ],
+      "nextAction": "Implement attributable idempotent withdrawal, invalidate new downstream source/Governance admission under existing guards, preserve historical filing/archive evidence, and prove races/replay with actual database and browser tests.",
+      "limits": [
+        "Absence conclusion comes from the bounded inspected RF sources and public operation inventory; ordinary correction invalidation already exists and should not be reimplemented."
+      ]
+    },
+    {
+      "id": "RF-TECH-LEGACY-EXPORT",
+      "criteria": [
+        "A2",
+        "A6"
+      ],
+      "classification": "PRESENT_EXPORT_OMISSIONS",
+      "finding": "RF-RET-002 remains: authority-test history is exported only when linked by selected-year simulations. Existing feedback rows without retained-original bindings are returned unchanged; portable composition skips them or rejects strict completeness.",
+      "citations": [
+        "linkedTestEvidenceOnly",
+        "legacyFeedbackRetained",
+        "legacyFeedbackIncomplete"
+      ],
+      "nextOwnersSerially": [
+        "shareholder_register_filing using documents public contracts"
+      ],
+      "nextAction": "Add correctly scoped unlinked customer-owned authority evidence and provenance-preserving historical feedback-original recovery with isolation and completeness tests. Do not reconstruct historical metadata from a mutable current document."
+    },
+    {
+      "id": "RF-TECH-RETENTION-OWNERS",
+      "criteria": [
+        "A6"
+      ],
+      "classification": "OPEN_CROSS_OWNER_IMPLEMENTATION",
+      "finding": "September RF-RET-003 quarantine/unreferenced-copy disposition and RF-RET-004 lifecycle purge remain unclosed. Inspected Company Access finalization marks deleted and retains records; this is not physical erasure.",
+      "citations": [
+        "deletionMarkerOnly"
+      ],
+      "historicalEvidence": [
+        "retentionInventory"
+      ],
+      "nextOwnersSerially": [
+        "company_access lifecycle contract",
+        "documents retained-copy disposition",
+        "RF and other source owners through their public retention contracts",
+        "operations backup expiry"
+      ],
+      "nextAction": "Establish company-attributed inventories, documented choice/deadlines/hold expiry and actual owner-coordinated disposition before claiming real-customer deletion clearance.",
+      "limits": [
+        "This audit confirms the marker implementation; it does not claim a complete new Talli-wide retention inventory or approve destructive cleanup. RF-RET-005 independent identity recovery is being worked separately and is not accepted here."
+      ]
+    },
+    {
+      "id": "RF-TECH-DEPENDENCY-READINESS",
+      "criteria": [
+        "A5",
+        "A6"
+      ],
+      "classification": "PRESENT_MISLEADING_READINESS_CONTROL",
+      "finding": "Backend readiness returns ready unconditionally; web readiness validates backend URL configuration without contacting dependencies.",
+      "citations": [
+        "backendUnconditionalReady",
+        "webConfigOnlyReady"
+      ],
+      "nextOwnersSerially": [
+        "system-boundary/backend-system integration"
+      ],
+      "nextAction": "Preserve liveness and add bounded dependency-aware readiness with unavailable database/DNS, backend timeout and invalid-authentication tests; verify the designated deployed binding separately."
+    },
+    {
+      "id": "RELEASE-14-SIGNOFF-CONTROL",
+      "criteria": [
+        "A5",
+        "A6"
+      ],
+      "classification": "LATER_RELEASE_CONTROL_GAP",
+      "finding": "The inspected web launch-signoff model lists nine historical keys, not the final #179 14 approvals.",
+      "citations": [
+        "nineSignoffKeys"
+      ],
+      "nextOwnersSerially": [
+        "release/control-plane owner at its authorized serial placement"
+      ],
+      "nextAction": "Implement and verify the final immutable 12-lane/14-signoff clearance model before #198; never treat this historical model as unrestricted clearance.",
+      "limits": [
+        "This is not authority to change frozen future business writers during the RF checkpoint."
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "id": "GH-193-RF-A1",
+      "status": "PENDING",
+      "disposition": "Current published-byte checker freshly passed; drift check implementation exists. Complete supported semantics still require RF-TECH-CAPITAL and independent mapping/conformance proof.",
+      "findings": [
+        "RF-TECH-CAPITAL"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A2",
+      "status": "PENDING",
+      "disposition": "Source approval/send/correction, streaming archives and local row/object restore exist; early implementation-plan pending statements are superseded. Capital coverage, withdrawal and historical export gaps remain. Current checkpoint recovery is separately in progress.",
+      "findings": [
+        "RF-TECH-CAPITAL",
+        "RF-TECH-OBSERVATION-WITHDRAWAL",
+        "RF-TECH-LEGACY-EXPORT"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A3",
+      "status": "PENDING",
+      "disposition": "Historical broader synthetic TT02 receipt includes transfer, cash issue, nominal increase, dividend before loss reduction. It excludes formation/full supported-case matrix and does not prove current full-service or genuine-company production acceptance. Genuine production proof follows later lawful validation under the confirmed technical-first instruction.",
+      "citations": [
+        "sourceProfileConformance",
+        "conformanceLimits"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A4",
+      "status": "PENDING",
+      "disposition": "No-repeat fail-closed handling exists. Unknown final outcomes still need evidence-backed resolution; the audit found no duplicate-submission bug.",
+      "findings": [
+        "RF-TECH-UNKNOWN-OUTCOME"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A5",
+      "status": "PENDING",
+      "disposition": "Existing explicit send/recovery/blocked copy is implemented; complete current deployed kill/read/export proof remains unverified. Dependency readiness is a concrete missing operational control; final signoff model remains later release work.",
+      "findings": [
+        "RF-TECH-DEPENDENCY-READINESS",
+        "RELEASE-14-SIGNOFF-CONTROL"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A6",
+      "status": "PENDING",
+      "disposition": "Prior source/backend credential isolation and local runtime/restore evidence is bounded. Current independent identity/hosted restore, full retention disposition, load/incident/browser and two linked immutable complete gates are not accepted by this audit. Ordinary historical PR CI had no immutable receipt.",
+      "findings": [
+        "RF-TECH-LEGACY-EXPORT",
+        "RF-TECH-RETENTION-OWNERS",
+        "RF-TECH-DEPENDENCY-READINESS"
+      ],
+      "citations": [
+        "immutableEvidenceExplicitDispatch"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A7",
+      "status": "PENDING",
+      "disposition": "No new duplicate RF writer was found. legacyRf1086 HTTP names delegate to canonical RF workflows; remaining registered legacy facades belong to later capabilities. Full exact-revision source/catalog/contraction review and gates are still required; naming alone is not a removal defect.",
+      "citations": [
+        "canonicalSendCompatibilityRoute",
+        "canonicalRecoveryCompatibilityRoute",
+        "annualFacade",
+        "auditFacade",
+        "notificationFacade",
+        "archiveFacade"
+      ]
+    }
+  ],
+  "historicalEvidenceCorrections": [
+    {
+      "claim": "Source approval/send remains entirely unimplemented/unexposed",
+      "disposition": "Superseded by actual implementation and September source-send/API/browser evidence; do not rebuild it.",
+      "sources": [
+        "sourceSendEvidence",
+        "dispatchWorkflow",
+        "backendRoutes"
+      ]
+    },
+    {
+      "claim": "No actual database/private-object or multi-generation restore exists",
+      "disposition": "Superseded by bounded September synthetic local restore evidence. Current independent Auth/roles, revoked/deleted actors and hosted recovery remain separate.",
+      "sources": [
+        "originalRecoveryEvidence"
+      ]
+    },
+    {
+      "claim": "Official source pins need verification because their date is September",
+      "disposition": "Fresh manual current-byte check passed today. The old date does not mean missing checker implementation; semantics and provider acceptance remain separate.",
+      "sources": [
+        "officialPins",
+        "officialChecker"
+      ]
+    }
+  ],
+  "limits": [
+    "No A1-A7 criterion, RF-RET finding, migration stage, launch lane or human signoff is closed by this audit.",
+    "Source SHA256s and citations bind a dirty working-tree snapshot; ongoing root edits may make them historical. Recheck before using them to authorize a later handoff.",
+    "Only the official-source checker was executed here; no database/browser/load/security/whole-CI suite was rerun, and no hosted target was certified.",
+    "No real-company data, provider token/filing operation, charge, outreach, activation, issue mutation, ADR edit or product-code change occurred.",
+    "No parallel future-capability writer is proposed. Route fixes through one canonical owner at a time; preserve technical-first sequencing without weakening genuine-production or final 12-lane/14-signoff acceptance."
+  ],
+  "citations": {
+    "nominalCaptureRejected": {
+      "source": "capitalWorkflow",
+      "line": 407,
+      "endLine": 408,
+      "excerpt": "    _require(not any(event.type == 'cash_nominal_increase' for event in command.case.events),\n             'rf1086_source_governance_nominal_increase_unavailable')"
+    },
+    "newSharesRequired": {
+      "source": "governanceService",
+      "line": 1159,
+      "endLine": 1159,
+      "excerpt": "            _require_supported(facts.issued_share_count > 0, \"Issued share count is required.\")"
+    },
+    "fundIssuedZeroType": {
+      "source": "rfPublic",
+      "line": 337,
+      "endLine": 337,
+      "excerpt": "    fund_issued_capital_before: Literal[0]"
+    },
+    "fundIssuedZeroRule": {
+      "source": "rfReadiness",
+      "line": 211,
+      "endLine": 212,
+      "excerpt": "            require(type(event.fund_issued_capital_before) is int and event.fund_issued_capital_before == 0, \"fund-issued capital is outside the supported loss-covering scope\")\n            require(paid_in >= capital, \"loss cover requires evidence of fully paid-in registered capital\")"
+    },
+    "noDistributionClearance": {
+      "source": "rfReadiness",
+      "line": 227,
+      "endLine": 231,
+      "excerpt": "        elif event.type == \"dividend\":\n            # Registration alone does not establish creditor notice or an\n            # exception to the three-year distribution restriction. The source\n            # contract does not yet carry independently verified clearance.\n            require(not loss_coverage_seen, \"dividend after loss coverage requires verified distribution-restriction clearance\")"
+    },
+    "yearSourceFields": {
+      "source": "rfPublic",
+      "line": 1868,
+      "endLine": 1885,
+      "excerpt": "class RecordRf1086YearSource:\n    company_id: CompanyId\n    actor_id: ActorId\n    income_year: IncomeYear\n    case: Rf1086Case\n    paid_in: Rf1086PaidInSourceFacts\n    documents: tuple[Rf1086YearDocumentEvidence, ...]\n    opening_document_ids: tuple[str, ...]\n    closing_document_ids: tuple[str, ...]\n    paid_in_document_ids: tuple[str, ...]\n    event_evidence: tuple[Rf1086YearEventEvidence, ...]\n    identities_reviewed: bool\n    complete_year_confirmed: bool\n    paid_in_reviewed: bool\n    no_activity_confirmed: bool\n    supersedes_source_id: Rf1086YearSourceId | None = None\n    supersedes_source_sha256: str | None = None\n    correction_reason: str | None = None"
+    },
+    "observationCommands": {
+      "source": "rfPublic",
+      "line": 2119,
+      "endLine": 2132,
+      "excerpt": "class Rf1086RegisterObservationPersistence(Protocol):\n    \"\"\"RF-owned immutable observations, with exact current-lineage reads.\"\"\"\n\n    async def record_register_observation(self, command: RecordRf1086RegisterObservation, *,\n            context: Rf1086VerifiedRegisterObservationContext,\n            idempotency_key: IdempotencyKey) -> Rf1086RegisterObservationSnapshot: ...\n\n    async def list_register_observations(self, query: Rf1086SourceQuery) -> tuple[Rf1086RegisterObservationSnapshot, ...]: ...\n\n    async def read_register_observation(self, query: Rf1086SourceQuery,\n            observation_id: Rf1086RegisterObservationId) -> Rf1086RegisterObservationSnapshot | None: ...\n\n    async def read_current_register_observation(self, query: Rf1086SourceQuery,\n            observation_id: Rf1086RegisterObservationId) -> Rf1086RegisterObservationSnapshot | None: ..."
+    },
+    "correctionFields": {
+      "source": "rfPublic",
+      "line": 2050,
+      "endLine": 2052,
+      "excerpt": "    supersedes_observation_id: Rf1086RegisterObservationId | None = None\n    supersedes_observation_sha256: str | None = None\n    correction_reason: str | None = None"
+    },
+    "unknownStopsDispatch": {
+      "source": "dispatchWorkflow",
+      "line": 81,
+      "endLine": 84,
+      "excerpt": "        if assessment.disposition == 'recovery_required':\n            raise rf.Rf1086UnknownProductionOutcomeError(assessment.pending_operation)\n        if assessment.disposition not in ('current_admission_required', 'retry_admission_required'):\n            raise rf.Rf1086BlockedProductionOperationError(assessment.pending_operation)"
+    },
+    "unknownDisposition": {
+      "source": "dispatchPolicy",
+      "line": 98,
+      "endLine": 105,
+      "excerpt": "        elif operation is not None and (operation.operation_state in ('prepared', 'unknown')\n                or operation.failure_class == 'unknown'):\n            disposition = 'recovery_required'\n        elif operation is not None and (operation.failure_class == 'blocked' or operation.attempt >= 20):\n            disposition = 'blocked'\n        elif submission.status == 'unknown':\n            # An unexplained unknown projection is not evidence of an unsent request.\n            disposition = 'recovery_required'"
+    },
+    "recoveryRequiresConfirmed": {
+      "source": "sourceRecovery",
+      "line": 26,
+      "endLine": 27,
+      "excerpt": "        if assessment.disposition != 'confirmed':\n            raise ValueError()"
+    },
+    "readOnlyProviderList": {
+      "source": "authorityAdapter",
+      "line": 188,
+      "endLine": 191,
+      "excerpt": "    async def list_documents(self, *, income_year: int, reference_id: str,\n                             page: int = 0, size: int = 50) -> Rf1086DocumentPage:\n        year, reference = _year(income_year), _uuid(reference_id)\n        if type(page) is not int or page < 0 or type(size) is not int or not 1 <= size <= 50:"
+    },
+    "providerMethods": {
+      "source": "authorityAdapter",
+      "line": 242,
+      "endLine": 256,
+      "excerpt": "class Rf1086AuthorityAdapter(Rf1086ReadOnlyAuthorityAdapter):\n    async def post_hovedskjema(self, *, income_year: int, xml: str, idempotency_key: str) -> Rf1086MainResponse:\n        data, call = await self._json_request(\"POST\", f\"/{_year(income_year)}/1086H\",\n            body=_xml(xml), idempotency_key=_uuid(idempotency_key), xml=True)\n        return Rf1086MainResponse(_uuid(_safe_string(data.get(\"hovedskjemaId\") or data.get(\"hovedskjemaid\"))), call)\n\n    async def post_underskjema(self, *, income_year: int, hovedskjema_id: str,\n                              xml: str, idempotency_key: str) -> Rf1086PostResponse:\n        _, call = await self._json_request(\"POST\", f\"/{_year(income_year)}/{_uuid(hovedskjema_id)}/1086U\",\n            body=_xml(xml), idempotency_key=_uuid(idempotency_key), xml=True)\n        return Rf1086PostResponse(call)\n\n    async def confirm(self, *, income_year: int, hovedskjema_id: str,\n                       underskjema_count: int, idempotency_key: str) -> Rf1086Confirmation:\n        if type(underskjema_count) is not int or underskjema_count < 1:"
+    },
+    "linkedTestEvidenceOnly": {
+      "source": "rfPersistence",
+      "line": 769,
+      "endLine": 780,
+      "excerpt": "        evidence_ids = sorted({row.authority_test_run_id for row in values[\"simulations\"]\n            if row.mode == \"test_authority\" and row.authority_test_run_id is not None})\n        values[\"test_evidence\"] = ()\n        if evidence_ids:\n            rows = await (await connection.execute(\n                \"select t.* from shareholder_register_filing.authority_test_runs t \"\n                \"where t.company_id=%s::uuid and t.obligation='aksjonaerregisteroppgaven' \"\n                \"and t.id=any(%s::uuid[]) order by t.recorded_at desc,t.id desc\",\n                (company_id,evidence_ids),\n            )).fetchall()\n            try:\n                values[\"test_evidence\"] = tuple(self._wire_record(rf.Rf1086TestEvidenceRecord, row) for row in rows)"
+    },
+    "legacyFeedbackRetained": {
+      "source": "feedbackBinding",
+      "line": 65,
+      "endLine": 70,
+      "excerpt": " -- Existing canonical records keep their original attribution. Missing legacy\n -- bindings cannot be reconstructed from today's mutable document projection.\n select * into r from shareholder_register_filing.production_feedback_artifacts\n where submission_id=p_submission_id and sha256=p_sha256;\n if found then return r; end if;\n if p_original_id is null or p_metadata_sha256 is null or p_retained_at is null"
+    },
+    "legacyFeedbackIncomplete": {
+      "source": "archiveComposition",
+      "line": 200,
+      "endLine": 202,
+      "excerpt": "        if artifact.original_id is None:\n            if require_complete: raise DocumentsError.integrity_failed()\n            continue"
+    },
+    "deletionMarkerOnly": {
+      "source": "cancellationLifecycle",
+      "line": 1046,
+      "endLine": 1058,
+      "excerpt": "  update public.companies c\n  set status_text = 'deleted_retention_record'\n  where c.id = p_company_id;\n\n  update public.company_cancellations c\n  set status = 'deleted', deleted_by = v_actor_id, deleted_at = v_now, updated_at = v_now\n  where c.id = p_cancellation_id\n  returning c.* into v_cancellation;\n\n  insert into public.audit_events (company_id, actor_id, category, action, message)\n  values (\n    p_company_id, v_actor_id, 'retention', 'company_deletion_completed',\n    'Company marked deleted while retained business records remain intact.'"
+    },
+    "backendUnconditionalReady": {
+      "source": "backendRoutes",
+      "line": 11973,
+      "endLine": 11977,
+      "excerpt": "    async def readiness() -> JSONResponse:\n        return JSONResponse(\n            {\"status\": \"ready\"},\n            headers={\"Cache-Control\": \"no-store\"},\n        )"
+    },
+    "webConfigOnlyReady": {
+      "source": "webReadiness",
+      "line": 3,
+      "endLine": 10,
+      "excerpt": "export async function GET() {\n  try {\n    backendBaseUrl();\n    return Response.json(\n      { status: \"ready\" },\n      { headers: { \"Cache-Control\": \"no-store\" } },\n    );\n  } catch {"
+    },
+    "nineSignoffKeys": {
+      "source": "launchSignoffs",
+      "line": 1,
+      "endLine": 11,
+      "excerpt": "export const launchSignoffKeys = [\n  \"launch_legal_name_public_copy\",\n  \"legal_policy_pack\",\n  \"security_restore\",\n  \"billing_refund\",\n  \"rf1086_authority\",\n  \"annual_accounts_authority\",\n  \"tax_return_authority\",\n  \"support_rollback\",\n  \"founder_production_go_live\",\n] as const;"
+    },
+    "canonicalSendCompatibilityRoute": {
+      "source": "backendRoutes",
+      "line": 12774,
+      "endLine": 12786,
+      "excerpt": "        operation_id=\"legacyRf1086SendApprovedFiling\", response_model=LegacyRf1086SendResultWire,\n        responses=authority_errors, tags=[\"legacy-rf1086\"],\n        openapi_extra={\"parameters\": [REQUEST_ID_PARAMETER]},\n    )\n    async def send_legacy_rf1086(\n        body: LegacyRf1086SendCommandWire,\n        request: Request,\n        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,\n    ) -> LegacyRf1086SendResultWire:\n        async def execute():\n            workflow = await shareholder_register_filing_workflow(credentials)\n            result = await workflow.send_approved_filing(SendApprovedRf1086Command(\n                ApprovalId(str(body.approval_id)), workflow.actor_id, CorrelationId(request.state.request_id),"
+    },
+    "canonicalRecoveryCompatibilityRoute": {
+      "source": "backendRoutes",
+      "line": 12793,
+      "endLine": 12805,
+      "excerpt": "        operation_id=\"legacyRf1086ReconcileFeedback\", response_model=LegacyRf1086ReconcileResultWire,\n        responses=authority_errors, tags=[\"legacy-rf1086\"],\n        openapi_extra={\"parameters\": [REQUEST_ID_PARAMETER]},\n    )\n    async def reconcile_legacy_rf1086(\n        body: LegacyRf1086ReconcileCommandWire,\n        request: Request,\n        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,\n    ) -> LegacyRf1086ReconcileResultWire:\n        async def execute():\n            workflow = await shareholder_register_filing_workflow(credentials)\n            result = await workflow.reconcile_feedback(ReconcileRf1086FeedbackCommand(\n                SubmissionId(str(body.submission_id)), workflow.actor_id, CorrelationId(request.state.request_id),"
+    },
+    "annualFacade": {
+      "source": "compatibility",
+      "line": 334,
+      "endLine": 334,
+      "excerpt": "      \"canonicalImplementation\": \"web:legacy-runtime:annual_compliance\","
+    },
+    "auditFacade": {
+      "source": "compatibility",
+      "line": 398,
+      "endLine": 398,
+      "excerpt": "      \"canonicalImplementation\": \"web:legacy-runtime:audit\","
+    },
+    "notificationFacade": {
+      "source": "compatibility",
+      "line": 546,
+      "endLine": 546,
+      "excerpt": "      \"canonicalImplementation\": \"web:legacy-runtime:notifications\","
+    },
+    "archiveFacade": {
+      "source": "compatibility",
+      "line": 574,
+      "endLine": 574,
+      "excerpt": "      \"canonicalImplementation\": \"web:legacy-runtime:company_archive\","
+    },
+    "currentByteComparison": {
+      "source": "officialChecker",
+      "line": 57,
+      "endLine": 61,
+      "excerpt": "      for (const revision of [manifest.revision, 'main']) {\n        if (digest(await readRemote(base + revision + '/' + source.path)) !== source.sha256) {\n          throw new Error(`RF1086_OFFICIAL_SOURCE_DRIFT: ${source.path} (${revision})`);\n        }\n      }"
+    },
+    "checkerOwnedByRehearsal": {
+      "source": "package",
+      "line": 131,
+      "endLine": 131,
+      "excerpt": "    \"check:rf1086-sources\": \"node scripts/check-rf1086-official-sources.mjs --current\","
+    },
+    "sourceProfileConformance": {
+      "source": "broaderAcceptance",
+      "line": 11,
+      "endLine": 20,
+      "excerpt": "  \"eventTypes\": [\n    \"share_sale\",\n    \"cash_issue\",\n    \"cash_nominal_increase\",\n    \"dividend\",\n    \"loss_covering_reduction\"\n  ],\n  \"eventOrderNote\": \"Dividend precedes loss-covering reduction. Formation is not part of this case.\",\n  \"requests\": [\n    {"
+    },
+    "conformanceLimits": {
+      "source": "broaderAcceptance",
+      "line": 74,
+      "endLine": 79,
+      "excerpt": "  \"limits\": [\n    \"Synthetic service conformance only; no genuine-company production filing or production authority inferred.\",\n    \"No hosted production-persistence proof, formation test or complete supported-case matrix.\",\n    \"All seven full RF acceptance criteria remain pending; later obligations are not cleared.\",\n    \"Consumed helpers remain immutable and must not be rerun.\"\n  ]"
+    },
+    "immutableEvidenceExplicitDispatch": {
+      "source": "releaseWorkflow",
+      "line": 154,
+      "endLine": 155,
+      "excerpt": "    name: Immutable evidence\n    if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_evidence }}"
+    }
+  },
+  "sourceFiles": {
+    "requirements": {
+      "path": "architecture/evidence/issues/193/rf/requirements.json",
+      "sha256": "79e1a655e6cab41cd613490bd42ec14d001db77252f15e9064976f678eac7a37"
+    },
+    "capitalWorkflow": {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+      "sha256": "e5fb229c874120e5692d9ca3384b939192d0ef69f9b130b0fe269967ceb2e499"
+    },
+    "governanceService": {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+      "sha256": "59d496cff53dd25146f6499489cc38346ee6111313531002d24f4448cc65e981"
+    },
+    "rfReadiness": {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py",
+      "sha256": "7a06955183241b99b0b0afea9f2e4e420db4e663c2964f8be20d15f3ade25985"
+    },
+    "rfPublic": {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "9ff11d2774530bbf3dde26f539b2fbd26dccbfab42bfeb5c59a12be2a13eae66"
+    },
+    "dispatchPolicy": {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_dispatch.py",
+      "sha256": "e9699b230d677b22cee1fa1b73e92932fbb0d2cc5be68513aca7c670c4eb13b3"
+    },
+    "dispatchWorkflow": {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_dispatch.py",
+      "sha256": "08e04059f64c3c895f1451b60e32a7c07493b43f817271162a39ebc4c1f4a164"
+    },
+    "sourceRecovery": {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_recovery.py",
+      "sha256": "f8a927051cfc67d85333d56621a5cce6d5c8c396ee19497757418c98ee53bc16"
+    },
+    "authorityAdapter": {
+      "path": "apps/backend/src/talli_backend/adapters/rf1086_authority.py",
+      "sha256": "a13b6ed3c3ed83979e3c826af5fc97625b535433a720ee5032317269ac7800c6"
+    },
+    "rfPersistence": {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "3ea7cccff5839e19656b5de9f3ab6ea7b4fad0683c7e1928b03412f693a7a96e"
+    },
+    "feedbackBinding": {
+      "path": "supabase/migrations/20260928110000_rf1086_feedback_original_binding.sql",
+      "sha256": "fde2fbdfd0b1c658a29498888631727a2991717a379ce97d08ab622a3c3bea00"
+    },
+    "archiveComposition": {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_archive.py",
+      "sha256": "b13f935e7d30820b11aa17a1222d97e421924872208f9e8922605c411356b925"
+    },
+    "cancellationLifecycle": {
+      "path": "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
+      "sha256": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f"
+    },
+    "backendRoutes": {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "a629ebba5ecbd9656068b2071066ad9e6c64923804ecc04adfa2653273d6083e"
+    },
+    "webReadiness": {
+      "path": "apps/web/app/health/ready/route.ts",
+      "sha256": "4024155277f19a6a1799d8c8d6247ac3cec6ff989fd736095702d41c1b0ccd05"
+    },
+    "launchSignoffs": {
+      "path": "apps/web/app/lib/launch-signoff.ts",
+      "sha256": "ccc2e068ca9007b4619e4ba73587d0a769a67339e8800fd542fd957689fe4a45"
+    },
+    "compatibility": {
+      "path": "architecture/compatibility.json",
+      "sha256": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c"
+    },
+    "officialChecker": {
+      "path": "scripts/check-rf1086-official-sources.mjs",
+      "sha256": "40dbc9d10011df0e18e10077d608c0b8d791587393022455237c565fdb62ee47"
+    },
+    "officialPins": {
+      "path": "docs/filing/rf1086-official-sources.json",
+      "sha256": "37962deeb79b62e03e13a1e5370716575117ecfe9b87fea72d4c583dbf702d1a"
+    },
+    "package": {
+      "path": "package.json",
+      "sha256": "f0d5078bc439fe33d3e43fc61f1a1c369a577b0c391016b3f883a6c4add9ff19"
+    },
+    "capitalGapRecord": {
+      "path": "architecture/evidence/issues/193/rf/capital-source-remaining-scope-20260923.md",
+      "sha256": "355497daea1c4a3c862b12afdc503265b5971efc75fddd9ba5cc4319140758c9"
+    },
+    "retentionInventory": {
+      "path": "architecture/evidence/issues/193/rf/retention-inventory-20260930.json",
+      "sha256": "a2aeac22715afc0d770e131429101af32d8f21a737332d4ece92191a081963de"
+    },
+    "broaderAcceptance": {
+      "path": "architecture/evidence/issues/193/rf/broader-canonical-acceptance-20260923.json",
+      "sha256": "5fef8d2a1ebba8f43b516be2bf547c9502152884987699f9d1f007cbe5537f06"
+    },
+    "sourceSendEvidence": {
+      "path": "architecture/evidence/issues/193/rf/source-send-ui-api-20260930.json",
+      "sha256": "1d9128e15001941f4f7ba1e5d50c9e321397162a97a44ac5d5952d73ab6b43f0"
+    },
+    "originalRecoveryEvidence": {
+      "path": "architecture/evidence/issues/193/rf/original-generations-restore-20260930.json",
+      "sha256": "699f920288bf89df7210b70ee916b3e98ba151777e20b09f190009323dcc0943"
+    },
+    "releaseWorkflow": {
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "c7329f2a0ea921c9906ed20b924024f7d18e31e49bffdc362f41404eefa4a660"
+    }
+  }
+}

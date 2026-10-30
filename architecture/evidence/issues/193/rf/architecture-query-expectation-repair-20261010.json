@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_ARCHITECTURE_EXPECTATION_REPAIR",
+  "recordedAtUtc": "2026-10-10T01:28:59.902714+00:00",
+  "baseRevision": "07b60dd0a769e1f8c9c85a1a1e54d74109255007",
+  "scope": "Add four already-declared Governance public SQL query edges to the strict architecture test oracle; no production manifest, dependency evidence or boundary change.",
+  "sourceFiles": [
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "300ab9e94b1dbe2d5b88fe9efb4c2a658bc6465df055184a34b6171850447376",
+      "scope": "Root-owned test-only repair of four already-committed Governance query dependency expectations; excluded from eight-file pure source freeze"
+    }
+  ],
+  "expectedEdges": [
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "public.company_access_has_fresh_mfa_v1()"
+      ],
+      "kind": "query",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+        "ledger.list_entry_amendments_v1(uuid,text)"
+      ],
+      "kind": "query",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:shareholder_register_filing"
+    }
+  ],
+  "unchangedFiles": [
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "3ee0118410c7f105ed952acc73dc61b4de63bf5f87dd8af7f9297c5af9505247"
+    }
+  ],
+  "checks": {
+    "initialCentral": {
+      "tests": 173,
+      "passed": 171,
+      "failed": 2,
+      "durationSeconds": 678.194,
+      "failures": [
+        "Strict expected dependency list missed four existing Governance query edges.",
+        "Test lane collection raced the addition of the separate root-owned withdrawal fixture test (11064 vs11065)."
+      ]
+    },
+    "stableCiGate": {
+      "passed": 117,
+      "failed": 0
+    },
+    "repairedArchitectureTest": {
+      "passed": 1,
+      "failed": 0,
+      "scope": "Only the exact failed test rerun; no full-suite rerun claimed."
+    }
+  },
+  "commands": [
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/ci_release_gate.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-central-stable.log 2>&1",
+      "result": "117 passed, 0 failed after fixture inputs stabilized"
+    },
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/ci_release_gate.test.mjs tests/architecture_foundation.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-central.log 2>&1",
+      "result": "171 passed, 2 failed in 678.19s: stale architecture expected edges omit four committed Governance query edges; lane collection changed from 11064 to 11065 when root added its separate fixture test during collection. Root owns the stale expectation repair; the stable central rerun is recorded separately."
+    },
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test --test-name-pattern='^architecture manifests, scoped documentation, and dependency evidence agree$' tests/architecture_foundation.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-architecture-targeted.log 2>&1",
+      "result": "1 passed, 0 failed; only the repaired manifest expectation test rerun, not the full architecture suite"
+    }
+  ],
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-checks.json",
+      "sha256": "9aba4be8a78e2c547f7fee536d14b10ef275e2e8c30eb0a60c7dcf0832e2ef51"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-central.log",
+      "sha256": "ef7ac4316d07dd9aeaa05da1834422c4c483c705a2c99e39645abe6d7f66e320"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-central-stable.log",
+      "sha256": "95f663c1818e4d2601f7b330c2fb723a030e3c1bcdc0b5539de80cc98d38c59a"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-architecture-targeted.log",
+      "sha256": "bd57b032a84052c5989827d5feda3eb3ffb8a3552609b2045314be9b16c62924"
+    }
+  ],
+  "independentReviews": {
+    "standards": {
+      "reviewer": "/root/release_plan",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "sourceSha256": "300ab9e94b1dbe2d5b88fe9efb4c2a658bc6465df055184a34b6171850447376"
+    },
+    "spec": {
+      "reviewer": "/root/rf_reader_spec_review",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "sourceSha256": "300ab9e94b1dbe2d5b88fe9efb4c2a658bc6465df055184a34b6171850447376"
+    }
+  },
+  "limits": [
+    "The equality oracle remains literal and exact; no dynamic expected-data generation, filtering, relaxed ordering or assertion removal.",
+    "These local test results are not a complete new-head CI or immutable gate. The separately recorded CI38011213837 is a failed historical run and excludes this repair."
+  ]
+}

@@ -1,6 +1,7 @@
+import { loadAccountsCompanyArchiveSource } from "../../../../../features/annual-accounts-filing";
 import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";
 import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";
-import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";
+import { loadTaxSettlementArchiveSource, loadTaxDeliveryDraftArchiveSource } from "../../../../../features/company-tax-filing";
 import { createHash } from "node:crypto";
 
 import {
@@ -41,6 +42,7 @@ import { loadBillingSnapshot, presentBillingAccount } from "../../../../../featu
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
+  rf1086ArchiveReceiptsMatch,
 } from "../../../../lib/archive";
 import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { requireStepUpForAction } from "../../../../lib/security";
@@ -77,6 +79,19 @@ async function loadArchiveRf1086(accessToken: string, companyId: string, incomeY
       permissions: workspace.permissions.map(presentRf1086Permission),
       comments: workspace.reviewComments.map(presentRf1086ReviewComment),
       testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),
+      production: "productionSubmissions" in workspace ? {
+        companyId: workspace.companyId, incomeYear: workspace.incomeYear,
+        approvals: workspace.approvals, productionSubmissions: workspace.productionSubmissions,
+        ...("overrides" in workspace ? { overrides: workspace.overrides } : {}),
+        productionEvents: workspace.productionEvents, feedbackArtifacts: workspace.feedbackArtifacts,
+        ...(workspace.sourceApprovalLineage === undefined ? {} : { sourceApprovalLineage: workspace.sourceApprovalLineage }),
+        ...(workspace.sourceSubmissionClaims === undefined ? {} : { sourceSubmissionClaims: workspace.sourceSubmissionClaims }),
+        ...(workspace.feedbackOriginals === undefined ? {} : { feedbackOriginals: workspace.feedbackOriginals }),
+        ...(workspace.sourceOriginals === undefined ? {} : { sourceOriginals: workspace.sourceOriginals }),
+        ...(workspace.sourceHistoryDocuments === undefined ? {} : { sourceHistoryDocuments: workspace.sourceHistoryDocuments }),
+        ...(workspace.canonicalArchive === undefined ? {} : { canonicalArchive: workspace.canonicalArchive }),
+        ...(workspace.submissionHead === undefined ? {} : { submissionHead: workspace.submissionHead }),
+      } : null,
     }, error: null };
   } catch {
     return { data: null, error: new Error("RF archive source unavailable.") };
@@ -345,9 +360,15 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   const rf1086 = await loadArchiveRf1086(accessToken, companyId, incomeYear);
   const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
   if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
+  const taxDeliveryDrafts = await loadTaxDeliveryDraftArchiveSource(accessToken, companyId, incomeYear);
+  if (taxDeliveryDrafts.error || !taxDeliveryDrafts.data) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 503 });
+  const accountsCompanyArchive = await loadAccountsCompanyArchiveSource(accessToken, companyId, incomeYear);
+  if (accountsCompanyArchive.error || (!accountsCompanyArchive.data && !accountsCompanyArchive.legacyEmpty)) return new Response("Kunne ikke lese komplett årsregnskapsarkiv", {status: 503});
   const taxEvidenceIds = new Set(taxSource.submissions.filter((row) => row.mode === "test_authority")
     .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
-  if (!submissions?.length && !rf1086.data?.submissions.length && !taxSource.submissions.length) {
+  if (!submissions?.length && !rf1086.data?.submissions.length
+      && !rf1086.data?.production?.productionSubmissions.length && !taxSource.submissions.length
+      && (taxDeliveryDrafts.data.originals?.recordCount ?? 0) === 0 && (accountsCompanyArchive.data?.draftCount ?? 0) === 0) {
     if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
@@ -390,6 +411,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     { data: corporateLifecycle },
   ] = sourceResults;
 
+  if (!rf1086.data || !documentBackupProjection
+      || (rf1086.data.production && !rf1086ArchiveReceiptsMatch(rf1086.data.production, documentBackupProjection))) {
+    return new Response("Kunne ikke bekrefte komplett RF-kvitteringsarkiv", { status: 500 });
+  }
+
   const archive = buildPersistedCompanyArchive({
     company,
     incomeYear,
@@ -398,6 +424,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
     documentBackupProjection: documentBackupProjection ?? undefined,
+    rf1086Production: rf1086.data.production ?? undefined,
     holdingActions: [
       ...(holdingActions ?? []).filter(
         (action) => ![
@@ -421,6 +448,9 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ),
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
+    taxDeliveryDrafts: taxDeliveryDrafts.data,
+    accountsCompanyArchive: accountsCompanyArchive.data ?? undefined,
+    accountsLegacyEmpty: accountsCompanyArchive.legacyEmpty ?? undefined,
     authorityPermissions: mergeArchiveRfRows(mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []), taxSource.authorityPermissions),
     authorityTestRuns: mergeArchiveRfRows(mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []), taxSource.authorityTestRuns.filter((row) => taxEvidenceIds.has(row.id))),
     auditEvents: auditEvents ?? [],

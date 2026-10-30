@@ -1,0 +1,71 @@
+{
+  "schema": "rf-identity-target-database-preparation-local-v2",
+  "recordedAtUtc": "2026-10-11T02:03:49.285763+00:00",
+  "baselineHead": "a2a0282102ec83a2abe02960173bfb5eeaf6ebd9",
+  "status": "REVIEWED_SPEC0_STANDARDS0_LOCAL_PASS_ACTUAL_SUCCESSOR_CI_REQUIRED",
+  "problem": "New owned identity target default postgres database has an active connection; exact pg_restore clean/create fails database_in_use.",
+  "change": "Before unchanged pg_restore: verify created target ID/name/nonce label/pinned image/running state and distinct physical system ID; fixed DROP DATABASE postgres WITH(FORCE) from template1. No caller URL/database choice or source mutation. Existing exact roles/owner/ACL/RLS/Auth/database GUC fingerprints and cleanup retained.",
+  "checks": {
+    "identityRunner": 60,
+    "protectedRestoreForwardingStorage": 122,
+    "projectedNative": 10,
+    "oldRunnerSpansExact": 15,
+    "oldTestSpansExact": 9,
+    "whitespace": "PASS",
+    "newGuardCases": 17,
+    "newGuardPositiveCases": 1,
+    "newGuardNegativeCases": 16
+  },
+  "sourcePins": [
+    {
+      "path": "scripts/rf1086_identity_restore.py",
+      "sha256": "f7d62a74f97d7438f1fe7da6ef1ce59397f87eac2620ac65745896ba8d88f592",
+      "bytes": 35833
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_identity_restore_runner.py",
+      "sha256": "0d298e1a569f07659ccbe950ff2d010032da870230505ca520d07f657aa055a6",
+      "bytes": 20509
+    }
+  ],
+  "rawEvidenceSha256": {
+    "rf-identity-busy-repair-protected-baseline-v1.json": "47e236c7ac8a93152eee0096213231e653f3852c425807ee68822bb772b2ce4e",
+    "rf-identity-busy-repair-protection-v1.json": "c9ad1d1e726595448de005b312880986da619833c788e05749c87f42a55e2392",
+    "rf-identity-busy-repair-unit-v1.log": "1494add30e0182b99f1701d813cb9de67ba0a81e7409e11d5b8fb50771b1101b",
+    "rf-identity-busy-repair-protected-unit-v1.log": "64b5ca518009c424ce69fce4b25259d7c63545232dfe5e884518e03903d7cab6",
+    "probe-rf-identity-database-in-use-native-v1.py": "fb813207c2c1eeb41a5b85405f281616f83993393b8122c35adce72748f2f9b6",
+    "rf-identity-database-in-use-native-v1.json": "f56bfea2023c8824a6d885fd6bea1b8fe7cd8efabb5caf066c43083861e868b2",
+    "rf-identity-database-in-use-native-v1.log": "2472e98f87535a90075a66e4b6675d6db70f15003bf59c5f109e2f9e8d256051",
+    "rf-identity-database-in-use-native-run-v1.log": "1d4159f714b353a45e6a615ab41b230cac79110569285affa83d92053dfdfbb8"
+  },
+  "primarySources": [
+    "https://www.postgresql.org/docs/17/sql-dropdatabase.html",
+    "https://www.postgresql.org/docs/17/sql-alterdatabase.html",
+    "https://www.postgresql.org/docs/17/functions-admin.html"
+  ],
+  "limits": [
+    "Native probe explicitly models a connected default DB in one disposable cluster, not actual Supabase background worker or independent Auth/restore acceptance. Guard/unit tests use explicit container metadata doubles.",
+    "No local container/VM/prune/restart/existing-resource operation. Native probe stopped/deleted; original WIP remains exact20groups.",
+    "Fail closed on mismatched ownership/reused cluster/preparation failure; no retry, restore flag relaxation, ownership/ACL filtering or source kill. Actual free Linux full gate required."
+  ],
+  "review": {
+    "spec": "PENDING",
+    "standards": "PENDING"
+  },
+  "metadataCorrection": {
+    "id": "ST-RESTORE-M1",
+    "change": "17 total cases = 1 positive + 16 negative; exact V1 preserved. No code/test/pass total changed."
+  },
+  "finalReview": {
+    "spec": {
+      "findings": 0,
+      "sha256": "f34bb601de49a1d43efee49e18708624c22a6db36651cacced24e54665c007f2"
+    },
+    "standards": {
+      "findings": 0,
+      "sha256": "6f36c7e856aeb156e9d5132c42c6ad7a1821ce8e4fadb0062ef74631f790b5cd"
+    },
+    "rootPinsIndependentlyVerified": true,
+    "acknowledgementOnlyAfterFreeze": true
+  }
+}

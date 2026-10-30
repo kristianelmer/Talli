@@ -1,0 +1,304 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PURE_RF_SOURCE_V2_PREVIEW_AND_READINESS_CONSUMERS",
+  "recordedAtUtc": "2026-10-10T02:57:48.959025+00:00",
+  "baseRevision": "877e2c090b2741f20b3edb0cdab89e8d3834d626",
+  "scope": "Pure preview/source readiness/annual readiness v2 only. No workflow, SQL, runtime admission, approval, Archive, HTTP or writer activation.",
+  "implementation": [
+    "Pure preview preparation explicitly validates v2 source integrity and command scope, retaining the existing renderer, rendering profile and preview codec. Historical stored preview reads still never rerender.",
+    "New immutable source-readiness-v2 evidence and proof retain original Governance enumeration, full chain enumeration and combined projection commitments. Existing v1 types/functions remain unchanged.",
+    "New annual-readiness-v2 proof reuses the existing annual policy through one private assessment function; validation ordering, issues, accepted/required warnings and exclusions remain unchanged.",
+    "A separate elevenrecord v2 annual codec rejects duplicate keys, unknown records, cross-version substitutions and noncanonical bytes. Fixed declared nested types are checked separately from value-only hashes; malformed RF ID constructor errors normalize to basis_unavailable.",
+    "Module exports, stdlib imports and two automatically discovered unit tests are registered. Existing fresh admission, preview persistence, source approval, claims, dispatch, Archive and SQL remain closed to v2."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "eca3ee4d5e7bf755d042d72db592073890e72dbd1780ac0927a93c7aa561d8b7"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/annual_readiness.py",
+      "sha256": "05de0649da94763ea0abdccc2b7a2dba989969e19cdd4099501bcb066798b15f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/annual_readiness_storage_v2.py",
+      "sha256": "70645c0323976f6dcb8d9755f6a3914eb4ae457768c544ca99bcd6a2ff821dd9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/annual_readiness_v2.py",
+      "sha256": "d94368a63679eb498115921a2d14a1ceeebe44a78a5ff19629c5fe9baa1ed4e6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "7c4fe20e914a8534f82a51eb9d863ac9d66caa9491fa08e6531c9921de5a4e0f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "c8984fb24895762d5a5a8e6fb0c5c7f3e2802e835790a4a4c9024766842ff04c"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness_shape_v2.py",
+      "sha256": "e8da950dcefff4884c39d19840286fe5a3c1e5dd6d49b153d536972215bf9181"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_preview.py",
+      "sha256": "9be956cd4555c5c714ac1c9582a9d9f110d8d3c34b9e2679289e935f594119f1"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_readiness_v2.py",
+      "sha256": "58f6fc008dbcac4ff9a28408dad95c1ee7549c4b6c7df475430eac741e387ba6"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_annual_readiness_v2.py",
+      "sha256": "4c663b9bd7341832f78abe1426ca2fdf71202f20ce42338a9e6fa2febcf89777"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_preview.py",
+      "sha256": "09b44cd8c8213e3b490a615df9985b754cf496ef1623a988699668c89d1b0ae1"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_readiness_v2.py",
+      "sha256": "14647e250f9609909df325dc784f2a8ef6ef8036023eeb068b11601b8e17cab4"
+    }
+  ],
+  "checks": {
+    "finalFocusedPassed": 310,
+    "finalFocusedSeconds": 5.37,
+    "disjointLegacyPassedBeforeParserRepair": 151,
+    "totalSelectedPassed": 461,
+    "countLimit": "310 replaces earlier306; independent319 pre-repair andfocused4 overlap and are not added.151 disjoint files ran before the narrow newcodec-only exception repair.",
+    "preeditDownstreamByteVectorsExact": 7,
+    "preeditAnnualPolicyVectorsExact": 217,
+    "annualCanonicalByteVectors": 147,
+    "annualExpectedRejectionVectors": 70,
+    "independentFinalSpecAdversarialDenials": 196,
+    "rootScalarCases": 19,
+    "rootScalarMalformedDenials": 18,
+    "rootScalarConstructorNormalizationPositives": 1,
+    "architecture": "PASS before twofile parser-only repair; dependency evidence unchanged; no later imports or registration changes.",
+    "fullDatabaseExecuted": 0,
+    "syntax": "PASS",
+    "diffCheck": "PASS"
+  },
+  "resolvedFindings": [
+    {
+      "id": "hash-equal-nested-record-substitution",
+      "repair": "New v2 declared-type validation before unchanged commitment comparison; original twoattack RED/GREEN and33 independent regression cases retained."
+    },
+    {
+      "id": "annual-v2-record-constructor-error",
+      "repair": "Spec found known RF ID constructor error escaping parser contract; root added exact exception normalization andfour RED\u2192GREEN cases."
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "92b2ab41f9cb1f43849520bc8e2ef441ac9c43a89d645b8740bbc4898e97fbf4"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "4cf98fb2a3da6669c052d90e9e3f58a9710b3f6f1979f78dcec1323994032571"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "e19807634924453df1b26e60547ce082b0d652f62d0ab3f9f0374c2398465d57"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-v2-pure-consumer-spec-review.json",
+      "sha256": "92b2ab41f9cb1f43849520bc8e2ef441ac9c43a89d645b8740bbc4898e97fbf4",
+      "bytes": 5147
+    },
+    {
+      "file": "rf-v2-pure-consumer-standards-review.json",
+      "sha256": "4cf98fb2a3da6669c052d90e9e3f58a9710b3f6f1979f78dcec1323994032571",
+      "bytes": 7311
+    },
+    {
+      "file": "rf-v2-pure-consumer-checks.json",
+      "sha256": "6a5978a3acd6519885866d1c010875830043ac8998be5c78c3bfb6f4ea555583",
+      "bytes": 7222
+    },
+    {
+      "file": "rf-v2-pure-consumer-freeze.json",
+      "sha256": "1c0c3c0e6076d9673a40bde36ae6cbac9a4950121e6b2f2efe84c1065e9b245a",
+      "bytes": 2572
+    },
+    {
+      "file": "rf-v2-pure-readiness-test-checks.json",
+      "sha256": "eb6510b4e82a28477b86471da22b1167c21c6af26936c1fbf5843a1a7d62130b",
+      "bytes": 3820
+    },
+    {
+      "file": "check-rf-v2-pure-consumer-compatibility.py",
+      "sha256": "b9d419565fa8ac5eb57a2e3eca1100911c6764a2117c0f897e48197bb64d23a2",
+      "bytes": 3988
+    },
+    {
+      "file": "rf-v2-pure-consumer-compatibility.json",
+      "sha256": "7bac51772001558f4292cc97364280054fa16dac0355b6d7e5c7573df62770f9",
+      "bytes": 1593
+    },
+    {
+      "file": "rf-v2-pure-consumer-compatibility.log",
+      "sha256": "7bac51772001558f4292cc97364280054fa16dac0355b6d7e5c7573df62770f9",
+      "bytes": 1593
+    },
+    {
+      "file": "rf-v2-pure-consumer-runtime-fences.log",
+      "sha256": "a0d5b29f874c64e0f8401d32fe08862b3da415ac098915e8fde399e99d7bbcf1",
+      "bytes": 260
+    },
+    {
+      "file": "rf-v2-pure-consumer-architecture-before-import.log",
+      "sha256": "991471749df57246598e05cfe9e2a7fe6d0bf7cc0e86faecf7415faa993ca563",
+      "bytes": 148
+    },
+    {
+      "file": "rf-v2-pure-consumer-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "check-rf-v2-proof-record-substitution.py",
+      "sha256": "e9dd4abaeed1afd2dd14ca3200714fb510f25a1df4f3ee98e408020e9c350c39",
+      "bytes": 2186
+    },
+    {
+      "file": "check-rf-v2-proof-record-substitution-green.py",
+      "sha256": "95012f4a1c4be9f4950a2110d6602c0e9440932f9b83f7defb463e620474bed3",
+      "bytes": 2453
+    },
+    {
+      "file": "rf-v2-proof-record-substitution-red.json",
+      "sha256": "7ba666da1753282e5fae0d38ad1a87fba7bbc38e196223aa088ab0b8699b9070",
+      "bytes": 722
+    },
+    {
+      "file": "rf-v2-proof-record-substitution-green.json",
+      "sha256": "c9999fae1995cdac9dc77ef951092dd68727749fab4bd303f862bac5ec4d21c8",
+      "bytes": 973
+    },
+    {
+      "file": "rf-v2-pure-readiness-tests-initial.log",
+      "sha256": "1ef0cd40d3b2ded6e22dfefa563141cdb41ae4ee3ef039e5cd8870aa6de95ef4",
+      "bytes": 260
+    },
+    {
+      "file": "rf-v2-pure-proof-substitution-red.log",
+      "sha256": "7e3a7c2c5d9f87e65757524ed7a418fa7ce13cf3cb55b1962c10b5e0aa0013a4",
+      "bytes": 60497
+    },
+    {
+      "file": "rf-v2-pure-readiness-tests-final.log",
+      "sha256": "696bad342700658a5e3b9221e797944dd75ee5a14e1837b2b2985c0b9bb4f423",
+      "bytes": 420
+    },
+    {
+      "file": "check-rf-v2-pure-downstream-legacy.py",
+      "sha256": "d93ed2d120ea99901ad5b480529f8f4aa4d8567921d7457cb621aa31443063f6",
+      "bytes": 4964
+    },
+    {
+      "file": "rf-v2-pure-downstream-legacy-comparison.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-v2-pure-downstream-legacy-comparison.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-v2-pure-consumer-final-checks.json",
+      "sha256": "a31df6dfec4971c4de5dd077bc2d775af3a79795fc6045481e0d8803ba298afb",
+      "bytes": 2642
+    },
+    {
+      "file": "rf-v2-pure-consumer-final-freeze.json",
+      "sha256": "658362a3a2aaab5ea93241e5a88c819bb4f76985a9143be78b2ec17e45db85a9",
+      "bytes": 3391
+    },
+    {
+      "file": "rf-v2-pure-readiness-root-final.log",
+      "sha256": "12adff7b7b804f4f030493fd5b1588e886935e6d86eac008a9eaf91aaeae32af",
+      "bytes": 420
+    },
+    {
+      "file": "rf-v2-annual-constructor-error-red.log",
+      "sha256": "fa878d4c144401a4bf3f4dcee9b1d6609b7ce4b7c21148d1947ab049d9bc1c02",
+      "bytes": 13962
+    },
+    {
+      "file": "rf-v2-readiness-scalar-shape.json",
+      "sha256": "11999ff85b6e22963e5f922932d41358529d870f72377f3ccf4e69c6929338ce",
+      "bytes": 4498
+    },
+    {
+      "file": "check-rf-v2-readiness-scalar-shape.py",
+      "sha256": "c9c578a5e5982088718fa093c959ee2a52d34bc8937857f64e65082f0d1ccb01",
+      "bytes": 3901
+    },
+    {
+      "file": "rf-pure-v2-spec-probes-before-repair.json",
+      "sha256": "3d8f4e32977684482fa6a5c0e3bbbe8be1c3b2810ad47c4a1b9e86edbb249ab8",
+      "bytes": 14569
+    },
+    {
+      "file": "rf-pure-v2-spec-review-before-repair.json",
+      "sha256": "36fc2ee727fb02af22c7244c41b58fdde84274135adff058a4a6dbfd9a37eff4",
+      "bytes": 2133
+    },
+    {
+      "file": "check-rf-pure-v2-spec-final.py",
+      "sha256": "4a8f9b01bee4c53ef73b0588c70d833b42483ca64a70f1d210d07829bdf9e12b",
+      "bytes": 5290
+    },
+    {
+      "file": "rf-pure-v2-spec-probes-final.json",
+      "sha256": "0a628660ec7d8822f4735245c20aca1ecfd415cda99dde6369a4565a9b8fbc71",
+      "bytes": 14299
+    },
+    {
+      "file": "rf-pure-v2-spec-probes-final.log",
+      "sha256": "3beaf9bf9e80ecdce9541263f08d882231a5db321f73e21ee2243d3687c72cf4",
+      "bytes": 402
+    },
+    {
+      "file": "rf-pure-v2-spec-pytest.log",
+      "sha256": "88b88c4356f77c521488a323c5454b217b7e756ec10510a6e8eaccdd3ad4e9f9",
+      "bytes": 420
+    },
+    {
+      "file": "rf-pure-v2-spec-parser-repair.log",
+      "sha256": "aff460f1d4ba79fc302571cdfce80ac799aa862990881ce42fe9251e3ed19935",
+      "bytes": 114
+    },
+    {
+      "file": "rf-v2-pure-consumer-root-review.json",
+      "sha256": "e19807634924453df1b26e60547ce082b0d652f62d0ab3f9f0374c2398465d57",
+      "bytes": 1391
+    }
+  ],
+  "limits": [
+    "Pure fixtures and workflow doubles only; synthetic Governance commitments do not prove owner authority or independently complete evidence.",
+    "Seven downstream and217annual policy outputs are compared to immutable pre-edit artifacts; no goldens regenerated.",
+    "FullSQL/Auth/browser/independent restore andfinal held-connection owner validation remain unproved for this slice.",
+    "CI38017341770 failed on exacthead4844 and excludes retained reader877 plus this pure stage. No hosted result transfers to these bytes.",
+    "Approval/claim/intent, mixed RF-owned Archive history, source intake, final guarded evidence checks andoldbinary drain remain prerequisites before a new v2 writer.",
+    "AllA1-A7 andbothlinkedimmutablecomplete gates remain pending. No provider activation, genuine-company admission, filing, outreach or launch clearance."
+  ],
+  "claim": "Reviewed pure consumer prerequisite; no runtime v2 filing or release approval."
+}

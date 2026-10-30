@@ -1,6 +1,9 @@
 """Production configuration parity at the canonical RF boundary."""
 
 from uuid import uuid4
+import asyncio
+import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -22,6 +25,68 @@ VALID = {
 }
 
 
+@pytest.mark.parametrize("mutation", [False, True])
+def test_rf_and_dialog_tokens_share_exact_delegation_and_are_both_discarded(mutation):
+    from talli_backend.adapters.maskinporten import MaskinportenAccessToken, SYSTEM_USER_DIALOGPORTEN_SCOPE
+    store = session(VALID.copy())
+    calls, tokens = [], []
+    class TokenClient:
+        async def request_token(self, scope, **delegation):
+            calls.append((scope, delegation))
+            token = MaskinportenAccessToken("local-" + str(len(calls)), "Bearer", 120, scope, "production")
+            tokens.append(token)
+            return token
+    store._maskinporten = TokenClient()
+    company, connection = SimpleNamespace(org_number="310279617"), SimpleNamespace(external_ref="A" * 43)
+    method = store.bind_mutation_authority if mutation else store.bind_read_only_authority
+    binding = asyncio.run(method(company, connection))
+    assert [scope for scope, _ in calls] == [SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE]
+    assert all(delegation == {"system_user_org_number": "310279617", "system_user_external_ref": "A" * 43}
+        for _, delegation in calls)
+    assert binding.feedback_discovery is not None
+    binding.discard()
+    assert all(token.access_token == "" for token in tokens)
+
+
+def test_dialog_token_failure_discards_already_acquired_rf_token():
+    from talli_backend.adapters.maskinporten import MaskinportenAccessToken
+    store = session(VALID.copy())
+    token = MaskinportenAccessToken("local-rf", "Bearer", 120, SYSTEM_USER_TAX_SCOPE, "production")
+    class TokenClient:
+        async def request_token(self, scope, **_delegation):
+            if scope == SYSTEM_USER_TAX_SCOPE:
+                return token
+            raise RuntimeError("scope unavailable")
+    store._maskinporten = TokenClient()
+    with pytest.raises(RuntimeError):
+        asyncio.run(store.bind_mutation_authority(SimpleNamespace(org_number="310279617"),
+            SimpleNamespace(external_ref="A" * 43)))
+    assert token.access_token == ""
+
+
+@pytest.mark.parametrize("confirmation,expected", [
+    ({"dialogId": "20000000-0000-4000-8000-000000000002", "forsendelseId": "30000000-0000-4000-8000-000000000003"}, True),
+    ({"dialogId": "invalid", "forsendelseId": "30000000-0000-4000-8000-000000000003"}, False),
+    ({"dialogId": "20000000-0000-4000-8000-000000000002", "forsendelseId": "other"}, False),
+    ({"dialogId": True, "forsendelseId": "30000000-0000-4000-8000-000000000003"}, False),
+    ({}, False), ([], False),
+])
+def test_dialog_identity_comes_from_matching_leased_confirmation(confirmation, expected):
+    store = session({})
+    async def rows(sql, values):
+        assert "feedback_reconciliation_lease_id=%s::uuid" in sql
+        assert "e.operation_name='confirm'" in sql and "e.operation_state='succeeded'" in sql
+        assert values == ("submission", "lease")
+        return [{"authority_reference": json.dumps(confirmation),
+            "feedback_forsendelse_id": "30000000-0000-4000-8000-000000000003"}]
+    store._rows = rows
+    if expected:
+        assert asyncio.run(store.read_claimed_dialog_id("submission", "lease")) == confirmation["dialogId"]
+    else:
+        with pytest.raises(Rf1086ProductionError):
+            asyncio.run(store.read_claimed_dialog_id("submission", "lease"))
+
+
 def session(environment):
     return PostgresShareholderRegisterFilingSession(
         LedgerSupabaseConfiguration("", "", ""),
@@ -29,6 +94,70 @@ def session(environment):
         access_token="", billing=None, documents=None, company_access=None,
         environment=environment,
     )
+
+
+@pytest.mark.parametrize("error_type,message,primary,expected", [
+    ("RaiseException", "company_access_not_found", "company_access_not_found", "NOT_FOUND"),
+    ("UndefinedTable", "company_access_not_found", "company_access_not_found", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "unknown_failure", "unknown_failure", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "prefix_company_access_not_found", "prefix_company_access_not_found", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found_suffix", "company_access_not_found_suffix", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "error: company_access_not_found elsewhere", "error: company_access_not_found elsewhere", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found", "unrelated_primary", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found", None, "DEPENDENCY_UNAVAILABLE"),
+    ("InsufficientPrivilege", "permission denied", "company_access_not_found", "FORBIDDEN"),
+    ("RaiseException", "company_access_forbidden", "company_access_forbidden", "FORBIDDEN"),
+    ("RaiseException", "rf1086_not_found", "rf1086_not_found", "NOT_FOUND"),
+], ids=["hidden-company", "wrong-sqlstate", "unknown-error", "prefix", "suffix",
+    "embedded", "context-only", "missing-primary", "permission-denied", "forbidden", "existing-not-found"])
+def test_transaction_maps_hidden_company_without_hiding_database_failures(
+    monkeypatch, error_type, message, primary, expected,
+):
+    from contextlib import asynccontextmanager
+    import psycopg
+    from psycopg.pq import DiagnosticField
+    from talli_backend.modules.shareholder_register_filing.public import ShareholderRegisterFilingError
+
+    events = []
+    info = {DiagnosticField.MESSAGE_PRIMARY: primary.encode()} if primary is not None else {}
+    failure = getattr(psycopg.errors, error_type)(message, info=info)
+
+    class Connection:
+        async def execute(self, *_args):
+            return None
+
+        @asynccontextmanager
+        async def transaction(self):
+            try:
+                yield
+            except BaseException:
+                events.append("rollback")
+                raise
+            else:
+                events.append("commit")
+
+    @asynccontextmanager
+    async def connection():
+        try:
+            yield Connection()
+        finally:
+            events.append("close")
+
+    async def connect(*_args, **_kwargs):
+        return connection()
+
+    monkeypatch.setattr(psycopg.AsyncConnection, "connect", connect)
+    store = session({})
+    store._configuration = LedgerSupabaseConfiguration("", "", "unused-by-connection-double")
+
+    async def execute():
+        async with store._transaction():
+            raise failure
+
+    with pytest.raises(ShareholderRegisterFilingError) as caught:
+        asyncio.run(execute())
+    assert caught.value.code == "SHAREHOLDER_REGISTER_FILING_" + expected
+    assert events == ["rollback", "close"]
 
 
 def assert_unavailable(environment):
@@ -89,3 +218,28 @@ def test_ambient_test_credentials_never_enable_missing_production_configuration(
     for key, value in VALID.items():
         monkeypatch.setenv(key.replace("TALLI_PROD_", "TALLI_TEST_"), value)
     assert_unavailable({})
+
+
+def test_original_archive_query_never_reads_or_decodes_production_only_tables():
+    from contextlib import asynccontextmanager
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ArchiveQuery
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    store = session({})
+    queries = []
+    class Connection:
+        async def execute(self, sql, values):
+            queries.append(sql)
+            assert not any(table in sql for table in ("filing_approval_snapshots", "production_filing_submissions",
+                "production_filing_events", "production_feedback_artifacts"))
+            return self
+        async def fetchall(self):
+            return []
+    @asynccontextmanager
+    async def transaction(**_):
+        yield Connection()
+    store._transaction = transaction
+    query = Rf1086ArchiveQuery(CompanyId(str(uuid4())), IncomeYear(2025), store.actor_id)
+    result = asyncio.run(store.legacy_archive_source(query))
+    assert result.previews == () and result.production_submissions == ()
+    assert any("assert_member_v1" in sql for sql in queries)
+    assert len(queries) == 5

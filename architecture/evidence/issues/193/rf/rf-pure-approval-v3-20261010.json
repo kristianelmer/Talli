@@ -1,0 +1,327 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PURE_RF_SOURCE_APPROVAL_V3",
+  "recordedAtUtc": "2026-10-10T03:13:46.269886+00:00",
+  "baseRevision": "f169a07a4998ff7ed7f65459625928e95acb5123",
+  "parentRevision": "6193a6f386422638f65307db27a759a5d6d428fd",
+  "scope": "Pure v3 manifest only. No runtime, SQL, claim, dispatch, application, provider, HTTP or Archive activation.",
+  "implementation": [
+    "New immutable BasisV3 requires source v2 and annual v2; separate public build/assert/serialize APIs return the existing immutable manifest result.",
+    "production-source-approval-v3 records source.codec rf1086-year-source-v2 independently of the correction ordinal and separately binds original enumeration, chain enumeration andcombined Governance projection hashes.",
+    "Required annual-readiness-binding-v2 retains exact proof text and hashes. Required versus accepted warnings, actor/entitlement/review and exact submission-predecessor reason remain explicit.",
+    "Share canonical bytes, UTF8 shareholder operation-key/order projection and predecessor formatting in one private helper. Existing v1/v2 buildervalidationorder and source_production._canonical import compatibility remain.",
+    "New basis/preview/actor/predecessor and manifest types are checked; owner source integrity preserves its valid historical economic numeric representations. Source-aware assert rebuilds every field and XML byte.",
+    "Serializer checks v3 markers, source codec, annual binding envelope and byte hash only. It can encode a self-consistent incomplete manifest; source-aware assert rejects it. No caller may treat serialization as approval or authorization."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "183432cdba227f7239c2ba962d018d9f369311c566eea5b4f8816b9d39fb7357",
+      "bytes": 111653
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_production.py",
+      "sha256": "e6fd03e463bb354f1bae602bd38af7356d09dfc32760742a346dd95bb8001ae0",
+      "bytes": 5866
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_approval_encoding.py",
+      "sha256": "5c83bacefc5b2c553a65c6abdc0c1e9d77fbe806ae870990584ae512cfbfa572",
+      "bytes": 2732
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_production_v3.py",
+      "sha256": "b10ca91d506cd836905869997b3fc221dde8608c197f8d3fda29abf68e2cbef1",
+      "bytes": 7793
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "d56976d006d05ae75d3940d06230b786266cf9b8f516a0a62e41f530611ec7db",
+      "bytes": 26656
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "0c6cbb742f3756834b87b8c93cc7d4a1f4fc17b80bd87f424ba97d294090ac9b",
+      "bytes": 92228
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_production_v3.py",
+      "sha256": "ca3caaddfba17544c4b45f3750d93b7958affa3a992d55510f1492027a96ac64",
+      "bytes": 24720
+    }
+  ],
+  "checks": {
+    "affectedRegressionPassed": 646,
+    "newTestsIncluded": 115,
+    "independentSpecFocusedPassed": 115,
+    "independentSpecMalformedBasisDenied": 112,
+    "overlap": "Both 115-test runs overlap 646; do not sum.",
+    "legacyApprovalVectorsExact": 181,
+    "legacySuccessfulOutputs": 113,
+    "legacyExpectedErrors": 68,
+    "downstreamV1VectorsExact": 7,
+    "annualPolicyVectorsExact": 217,
+    "annualProofByteVectors": 147,
+    "annualExpectedErrors": 70,
+    "priorPublicDefinitionsUnchanged": 281,
+    "unchangedOwnerFenceFiles": 10,
+    "architecture": "PASS",
+    "openApi": "UNCHANGED_PASS",
+    "whitespace": "PASS",
+    "fullDatabaseExecuted": 0
+  },
+  "testCommands": [
+    {
+      "name": "focused-independent-v3",
+      "status": "PASS",
+      "passed": 115,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_rf1086_source_production_v3.py",
+      "log": "rf-approval-v3-independent-final.log"
+    },
+    {
+      "name": "approval-readiness-and-existing-runtime-fences",
+      "status": "PASS",
+      "passed": 646,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_rf1086_source_production_v3.py apps/backend/tests/test_rf1086_source_production.py apps/backend/tests/test_rf1086_source_claim.py apps/backend/tests/test_rf1086_source_approval_archive.py apps/backend/tests/test_rf1086_source_approval.py apps/backend/tests/test_rf1086_preparation.py apps/backend/tests/test_rf1086_annual_readiness.py apps/backend/tests/test_rf1086_annual_readiness_v2.py apps/backend/tests/test_rf1086_source_readiness.py apps/backend/tests/test_rf1086_source_readiness_v2.py apps/backend/tests/test_rf1086_source_preview.py",
+      "log": "rf-approval-v3-regression.log"
+    },
+    {
+      "name": "legacy181-actual-original-fixtures",
+      "status": "PASS",
+      "vectors": 181,
+      "outputs": 113,
+      "expectedRejections": 68,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-rf-approval-v3-legacy-fixtures.py",
+      "log": "rf-approval-v3-legacy-fixture-comparison.log",
+      "result": "rf-approval-v3-legacy-comparison.json"
+    },
+    {
+      "name": "legacy7-and217",
+      "status": "PASS",
+      "downstreamVectors": 7,
+      "annualVectors": 217,
+      "proofBytes": 147,
+      "expectedRejections": 70,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-rf-approval-v3-legacy-downstream.py",
+      "log": "rf-approval-v3-legacy-downstream-comparison.log",
+      "result": "rf-approval-v3-legacy-downstream-comparison.json"
+    },
+    {
+      "name": "public-ast-and-unchanged-fences",
+      "status": "PASS",
+      "publicDefinitions": 281,
+      "unchangedFiles": 10,
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-rf-approval-v3-compatibility-shape.py",
+      "log": "rf-approval-v3-compatibility-shape.log",
+      "result": "rf-approval-v3-compatibility-shape.json"
+    },
+    {
+      "name": "architecture",
+      "status": "PASS",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs",
+      "log": "rf-approval-v3-architecture.log"
+    },
+    {
+      "name": "unchanged-openapi",
+      "status": "PASS",
+      "command": "PYTHONPATH=apps/backend/src /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python apps/backend/scripts/generate_openapi.py --check",
+      "log": "rf-approval-v3-openapi.log"
+    },
+    {
+      "name": "whitespace",
+      "status": "PASS",
+      "command": "git diff --check",
+      "evidence": "Owner tool observation; no retained log."
+    }
+  ],
+  "initialComparisonLimitation": "First181 comparator decoded original floats as Decimal through legacy storage, changing source-ordinal preview text. Identical failure on f169 proved reconstruction limitation. Final comparator executes the original deterministic fixture generator and compares all181 fullvectors without rewriting any oracle. Initial script/log remain check-rf-approval-v3-legacy.py and rf-approval-v3-legacy-comparison.log; not a production failure.",
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "bcedaf8ccea889628360ccd17700d534ad39191536ad766c4526bae01dd17886"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "f432487a03f85997968260c8f02e0f880bbf51507673c5c14eacee50e23d8683"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "ae0b003bea0c26a480781af4c4612c51d3f76a86f813661c203f162e246cdb92"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-approval-v3-spec-review.json",
+      "sha256": "bcedaf8ccea889628360ccd17700d534ad39191536ad766c4526bae01dd17886",
+      "bytes": 5202
+    },
+    {
+      "file": "rf-approval-v3-standards-review.json",
+      "sha256": "f432487a03f85997968260c8f02e0f880bbf51507673c5c14eacee50e23d8683",
+      "bytes": 4936
+    },
+    {
+      "file": "rf-approval-v3-freeze.json",
+      "sha256": "6330a172c3a4a01dc6730cb3b46fe23046239ca694dc5efef6ed51aaf141d5b1",
+      "bytes": 1838
+    },
+    {
+      "file": "rf-approval-v3-checks.json",
+      "sha256": "2a99e1c4c12469bbe41a604011dffb9e2d81ca6f97f5b53a8f2ebf30ffac7036",
+      "bytes": 7875
+    },
+    {
+      "file": "check-rf-approval-v3-compatibility-shape.py",
+      "sha256": "a94d6ab1b590eb1e09de35a33ec8abbaa7ae4560d61017e98f8685721ad98ec3",
+      "bytes": 1787
+    },
+    {
+      "file": "check-rf-approval-v3-legacy-downstream.py",
+      "sha256": "53d60f9f7b8e0a9d189c55b46abbab9802d6b199ae29888910d5a03c28dd43de",
+      "bytes": 4968
+    },
+    {
+      "file": "check-rf-approval-v3-legacy-fixtures.py",
+      "sha256": "697fb399220fc8c78b0e518b055b808c41ea3331b4f3a4de81e929ee15ef0a19",
+      "bytes": 12795
+    },
+    {
+      "file": "rf-approval-v3-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-approval-v3-compatibility-shape.json",
+      "sha256": "9db23c8fc3a271b0cdce3fe325a392ed43e88388af034e704ae3ff78f6ebd3d6",
+      "bytes": 2496
+    },
+    {
+      "file": "rf-approval-v3-compatibility-shape.log",
+      "sha256": "9db23c8fc3a271b0cdce3fe325a392ed43e88388af034e704ae3ff78f6ebd3d6",
+      "bytes": 2496
+    },
+    {
+      "file": "rf-approval-v3-independent-final.log",
+      "sha256": "60454f872f1204126793a17790a1b938d6cf521b25d68cc0f0cf06f4ddc307da",
+      "bytes": 180
+    },
+    {
+      "file": "rf-approval-v3-legacy-comparison.json",
+      "sha256": "734ba937e6976d0eca9caa07a313351e491ec3ace08045e5f286f8b9531c593b",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-approval-v3-legacy-downstream-comparison.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-approval-v3-legacy-downstream-comparison.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-approval-v3-legacy-fixture-comparison.log",
+      "sha256": "734ba937e6976d0eca9caa07a313351e491ec3ace08045e5f286f8b9531c593b",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-approval-v3-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "rf-approval-v3-regression.log",
+      "sha256": "4f31e2c150ef0c56e7394567af5a253024a03f292e24219e401b68d6b9c713cd",
+      "bytes": 741
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-approval-v3-independent-test-checks.json",
+      "sha256": "2fac2210014ee14937ed14104301e8cc020a489e4d5e741f418eaf957003db77",
+      "bytes": 5096
+    },
+    {
+      "file": "rf-approval-v3-independent-initial.log",
+      "sha256": "8cb0a2e910d2e79deac41dcd15c5b2fc50124a6d77cdffd36e5877463d763631",
+      "bytes": 179
+    },
+    {
+      "file": "check-rf-approval-v3-legacy.py",
+      "sha256": "e77d715415c65986789288f9245a2b128535ad0afea3c97c0c143adfb1da5ac7",
+      "bytes": 3204
+    },
+    {
+      "file": "rf-approval-v3-legacy-comparison.log",
+      "sha256": "136c78a18b783e946c72c218cbc2a675da692f42902dca64833ea04f96ee378e",
+      "bytes": 1486
+    },
+    {
+      "file": "check-rf-approval-v3-decoded-oracle-limitation.py",
+      "sha256": "4d64223f7044d315b0e3db5cb445aacd6eee25206d6ffdbecdbaaa2b093abae1",
+      "bytes": 2752
+    },
+    {
+      "file": "rf-approval-v3-decoded-oracle-limitation.json",
+      "sha256": "051f9ed4cea3a55479f04e7415ffc31cadca56275b1062953059bb5295cbb37c",
+      "bytes": 1200
+    },
+    {
+      "file": "rf-approval-v3-decoded-oracle-limitation.log",
+      "sha256": "051f9ed4cea3a55479f04e7415ffc31cadca56275b1062953059bb5295cbb37c",
+      "bytes": 1200
+    },
+    {
+      "file": "rf-v2-runtime-dependency-plan.json",
+      "sha256": "635215a86c74b1e8327549b1af52b0504f304a241d66e37e289a661de5f42a34",
+      "bytes": 25255
+    },
+    {
+      "file": "check-rf-approval-v3-spec.py",
+      "sha256": "90a18fe55df30cad6a7bc9ad06ae49d06f08149887175acb11a11b156885814d",
+      "bytes": 2319
+    },
+    {
+      "file": "rf-approval-v3-spec-probes.json",
+      "sha256": "a93763a88261e5847acf2f9c573484394925bb84336ffd699763c9aeb4b2e71c",
+      "bytes": 361
+    },
+    {
+      "file": "rf-approval-v3-spec-probes.log",
+      "sha256": "a93763a88261e5847acf2f9c573484394925bb84336ffd699763c9aeb4b2e71c",
+      "bytes": 361
+    },
+    {
+      "file": "rf-approval-v3-spec-tests.log",
+      "sha256": "60454f872f1204126793a17790a1b938d6cf521b25d68cc0f0cf06f4ddc307da",
+      "bytes": 180
+    },
+    {
+      "file": "rf-approval-v3-root-review.json",
+      "sha256": "ae0b003bea0c26a480781af4c4612c51d3f76a86f813661c203f162e246cdb92",
+      "bytes": 1497
+    }
+  ],
+  "limits": [
+    "Local pure/unit/static evidence only; focused115 is included in646. No live database, provider, authentication, original-byte, complete foreign enumeration, current head, entitlement, SQL admission or immutable CI execution proof. No v3 runtime consumer activation.",
+    "No source_claim, preparation, dispatch, application, adapter, SQL or Archive acceptance widened; existing old serializer rejects approval v3.",
+    "Current CI 38019259358 tests 6193 and excludes these bytes. No hosted result transfer.",
+    "Later v3 consumers must performsource-aware exact manifest rebuild plus final held owner/current evidence checks; byte/hashserialization is not admission.",
+    "All A1\u2013A7, full SQL/Auth/browser/independent restore and two linked immutable complete gates remain pending. No provider activation, genuine-company admission, filing, paid action, outreach or launch clearance."
+  ]
+}

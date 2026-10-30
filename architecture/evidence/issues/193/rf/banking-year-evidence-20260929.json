@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_BANKING_EVIDENCE",
+  "baseCommit": "6a179533537dcb437160b9278403f551e9673f2a",
+  "change": "Banking publishes complete year counts and a versioned SHA-256 commitment to all fixed v1 canonical transaction fields. The read requires READ COMMITTED, holds the company guard and refreshes accepted ownership after a wait. RF source admission calls the owned read on its existing connection; no private Banking table access.",
+  "verification": {
+    "unit": "83 unit/public-contract/admission tests passed.",
+    "database": "58 Banking projection/evidence/guard tests passed on disposable PostgreSQL17. All 23 new evidence cases also passed in the full local Supabase rehearsal.",
+    "coverage": "504-row completeness; same-count fact changes; warning/deletion; stable observation-time/timezone/physical-order handling; forbidden scopes; concurrent committed changes and revoked ownership; same-connection RF lock retention; rollback/replay; isolation and subject mismatch.",
+    "restrictedMigration": "Forward replay, rollback and replay passed under a nonsuperuser without BYPASSRLS or initial owner SET; exact memberships and schema ACLs restored.",
+    "architecture": "npm run check:architecture passed.",
+    "fullGate": "Not yet complete. Previous CI at6a179533 failed after384 authority tests because a Billing synthetic full-year pilot fixture retained its row. Current local rehearsal independently observed that exact synthetic evidence before RF tests; fixture repair has a separate focused pass."
+  },
+  "limits": [
+    "Annual readiness composition and replacement of the stored release input are still pending.",
+    "Digest does not prove complete bank-statement coverage or opening currentness.",
+    "All seven RF acceptance criteria remain pending; no real AS, production provider operation or hosted migration."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-evidence-20260929-14d7",
+  "sha256": {
+    "talli-bank-evidence-unit.log": "99ee2d491d4583562bd2328d3df497e6de9c3c917079eb6f7e86188624adf017",
+    "talli-bank-evidence-database.log": "7d772768e67423886acba337715677c9eddecc2cec893d61dbf8e0e5d1f3d8bf",
+    "talli-bank-evidence-restricted.log": "c9f02e7f49b70790aee2090e2a76bc416157cd879ac38f81a79718ef760fb031",
+    "talli-bank-evidence-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-pilot-fixture-cleanup-check.log": "9b1c139e3673a78f941811e63b91939481fd177c00255f47698ddfeff8cac5f2",
+    "talli-6a179533-database.log": "6e1e1bd8daccee2d590e9da02fca83428e85a2f98aa734a641947fba0cec26be"
+  }
+}

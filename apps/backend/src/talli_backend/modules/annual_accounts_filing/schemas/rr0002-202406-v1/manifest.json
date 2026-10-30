@@ -1,0 +1,30 @@
+{
+  "version": "annual-accounts-rr0002-schemas-v1",
+  "applicationId": "brg/aarsregnskap-vanlig-202406",
+  "observedAt": "2026-10-26",
+  "files": {
+    "applicationmetadata.json": {
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/v1/applicationmetadata",
+      "bytes": 6452,
+      "sha256": "45da74344955265ede80e42726a29ce33c8efa81090cf45ab6739f00a3ad7aa6"
+    },
+    "process.bpmn": {
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/v1/meta/process",
+      "bytes": 6823,
+      "sha256": "96242b8b7af14606ecb68b01dd9628885a2c780ae68154ac27e95bed586ca90e"
+    },
+    "Hovedskjema.json": {
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema",
+      "bytes": 21555,
+      "sha256": "3776336fa2f7e1ef4773e8cb2800d7930415b9b1c028a59a338327f68b8b4f68"
+    },
+    "Underskjema.json": {
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Underskjema",
+      "bytes": 330252,
+      "sha256": "e17fc7f6cb45984f5ab74dc614955199610deab9b12f9eb1012772f2e0e7c931"
+    }
+  },
+  "qualification": "Exact public JSON model schemas, application metadata and BPMN. A local closed XML validator may derive constraints from their XSD annotations; derived validation is not an upstream XSD or proof of runtime acceptance. Authority validation and person signing are separate.",
+  "publicDocumentation": "https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/hvordan-sende-inn/",
+  "postmanArchiveSha256": "3540361d3d264ffc4435df24eb31fd66a436f9d01d6407dbb722bb73ee7d8461"
+}

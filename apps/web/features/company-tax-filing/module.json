@@ -14,7 +14,9 @@
   ],
   "ownedRoutes": [
     "/workspace",
-    "/actions/[type]"
+    "/actions/[type]",
+    "/filing/skattemelding",
+    "/api/company-tax/delivery-original"
   ],
   "apiOperations": [
     "companyTaxPreviewSettlement",
@@ -29,7 +31,26 @@
     "companyTaxConfirmPermission",
     "companyTaxRecordTestEvidence",
     "companyTaxPreviewReadiness",
-    "companyTaxPreviewAnnualEstimate"
+    "companyTaxPreviewAnnualEstimate",
+    "companyTaxGetSourceFacts",
+    "companyTaxGetDeliveryDraftArchive",
+    "companyTaxGetDeliveryJournalArchive",
+    "companyTaxGetDeliveryOwnerReview",
+    "companyTaxGetDeliveryWorkspace",
+    "companyTaxGetDeliveryOriginal",
+    "companyTaxPrepareDeliveryDraft",
+    "companyTaxPrepareDeliveryCorrection",
+    "companyTaxApproveDeliveryDraft",
+    "companyTaxAdvanceDelivery",
+    "companyTaxAdvanceDeliveryUpload",
+    "companyTaxReconcileDeliveryUpload",
+    "companyTaxAdvanceDeliveryValidation",
+    "companyTaxReconcileDeliveryValidation",
+    "companyTaxAdvanceDeliveryConfirmation",
+    "companyTaxReconcileDeliveryConfirmation",
+    "companyTaxConfirmDeliverySubmission",
+    "companyTaxReconcileDeliverySubmission",
+    "companyTaxReconcileDeliveryFeedback"
   ],
   "dependencies": [],
   "allowedImports": [

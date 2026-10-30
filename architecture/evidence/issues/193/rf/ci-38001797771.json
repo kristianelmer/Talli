@@ -1,0 +1,300 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T23:16:10.198695+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 38001797771,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38001797771",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T22:55:31Z",
+    "updatedAt": "2026-10-09T23:13:45Z",
+    "durationSecondsFromCreatedToUpdated": 1094
+  },
+  "checkout": {
+    "revision": "39cbc95e144401b8dc82f86c75454a06144ab880",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114061358791,
+        "revision": "39cbc95e144401b8dc82f86c75454a06144ab880",
+        "headParent": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parents independently verified through GitHub Git commit API."
+      },
+      {
+        "jobId": 114061359095,
+        "revision": "39cbc95e144401b8dc82f86c75454a06144ab880",
+        "headParent": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parents independently verified through GitHub Git commit API."
+      }
+    ],
+    "limit": "Run headSha is the PR head; both jobs tested this synthetic merge. Later commits, fixture repairs and uncommitted work are outside this run."
+  },
+  "jobs": [
+    {
+      "id": 114061358791,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T22:55:33Z",
+      "completedAt": "2026-10-09T23:13:38Z",
+      "durationSeconds": 1085,
+      "failedSteps": [
+        {
+          "number": 12,
+          "name": "Prove the web-to-FastAPI contract boundary",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114061359095,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T22:55:34Z",
+      "completedAt": "2026-10-09T23:08:07Z",
+      "durationSeconds": 753,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114061360286,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T22:55:32Z",
+      "completedAt": "2026-10-09T22:55:31Z",
+      "durationSeconds": 0,
+      "failedSteps": [],
+      "durationLimit": "Skipped-job API timestamps are inverted by one second; raw timestamps retained and non-executed duration recorded as zero."
+    },
+    {
+      "id": 114066377039,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T23:13:41Z",
+      "completedAt": "2026-10-09T23:13:44Z",
+      "durationSeconds": 3,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114061358791,
+      "step": "Prove the web-to-FastAPI contract boundary",
+      "file": "tests/corporate_governance_review_fixes.test.mjs",
+      "observedAssertions": [
+        {
+          "line": 21,
+          "test": "corporate-governance manifests declare the implemented public surface",
+          "expected": "Previous exact Governance migration list ending at 20260924083154_governance_guarded_reporting_year_read.sql",
+          "actual": "That list additionally includes 20261009223340_governance_register_observation_completion_guard.sql"
+        },
+        {
+          "line": 102,
+          "test": "document evidence ownership is acyclic and declared",
+          "expected": [],
+          "actual": [
+            {
+              "module": "shareholder_register_filing",
+              "kind": "query",
+              "imports": [
+                "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)"
+              ]
+            }
+          ]
+        }
+      ],
+      "supportedDiagnosis": "The pinned test expectations predate the declared Governance completion guard migration and public RF query dependency. Update exact expectations while preserving the contract and acyclic dependency assertions.",
+      "observationLimit": "These assertion failures do not establish a runtime defect in the declared guard. Later build, smoke and rehearsal steps were skipped.",
+      "sourceEvidence": [
+        {
+          "revision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+          "path": "tests/corporate_governance_review_fixes.test.mjs",
+          "lines": [
+            15,
+            21,
+            92,
+            102
+          ],
+          "sha256": "8707780f573cb3e05c3c62422652fccc884756313c1624b429465afdc02c9929"
+        },
+        {
+          "revision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+          "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+          "lines": [],
+          "sha256": "b451cb229eaa7ae28bee95f6b2c95308a0c138029cb7e94c60bfef58aee59d2e"
+        }
+      ]
+    },
+    {
+      "jobId": 114061359095,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "test:authority-connections-database",
+      "file": "apps/backend/tests/test_authority_connections_database_runtime.py",
+      "test": "test_capability_rollback_recutover_preserves_original_rows_type_oids_and_fk",
+      "failureKind": "fixture setup error",
+      "stackLines": [
+        548,
+        540,
+        54
+      ],
+      "message": "psycopg.errors.InsufficientPrivilege: permission denied for schema corporate_governance",
+      "supportedDiagnosis": "Pinned rf193_successor_topology sets local role shareholder_register_filing_store_owner before evaluating successor presence queries. The newly declared Governance probe calls to_regprocedure on Governance function signatures, requiring visibility the RF owner does not hold. This is a cross-owner topology-observation mismatch; no runtime grant expansion follows from this diagnosis.",
+      "observationLimit": "The log provides the schema-permission failure and stack; current-role context follows from the inspected pinned source. A successor catalog-probe repair is outside this tested revision.",
+      "sourceEvidence": [
+        {
+          "revision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+          "path": "apps/backend/tests/test_authority_connections_database_runtime.py",
+          "lines": [
+            51,
+            54,
+            509,
+            540,
+            548
+          ],
+          "sha256": "712a933f93dc0e0f3867f3cfefe3c5e71a29116b1763ef76d2f465c6739db50f"
+        },
+        {
+          "revision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+          "path": "scripts/rf-consequential-successors.json",
+          "lines": [],
+          "sha256": "7aafc089c2b5fa7366a7d2e39b5599020208ee93c1049eaff1e15055ca7c4bbb"
+        }
+      ]
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "backendSuite": {
+        "passed": 8351,
+        "skipped": 2,
+        "deselected": 1653,
+        "durationSeconds": 675.38,
+        "scope": "Backend contract-boundary pytest selection, separate from authority_database."
+      },
+      "laterNodeSelections": [
+        {
+          "tests": 600,
+          "passed": 600,
+          "failed": 0
+        },
+        {
+          "tests": 123,
+          "passed": 123,
+          "failed": 0
+        },
+        {
+          "tests": 95,
+          "passed": 93,
+          "failed": 2
+        }
+      ],
+      "completed": [
+        "anonymous PostgreSQL prefetch",
+        "pinned official tax schema fetch",
+        "credential scan",
+        "typecheck and architecture",
+        "legacy interface rejection"
+      ],
+      "notReached": [
+        "production web and backend build steps",
+        "production artifact smoke",
+        "complete launch rehearsal",
+        "production dependency audits",
+        "whitespace step"
+      ]
+    },
+    "database": {
+      "authorityRfSuite": {
+        "passed": 16,
+        "errors": 1,
+        "durationSeconds": 7.45,
+        "stoppedAfterFirstFailure": true
+      },
+      "billingPredecessorPytest": {
+        "passed": 700,
+        "durationSeconds": 281.82
+      },
+      "ownerBrowserSelection": {
+        "tests": 29,
+        "passed": 29,
+        "failed": 0
+      },
+      "completedPredecessors": [
+        "anonymous PostgreSQL 17, 17-alpine and 16-alpine prefetch",
+        "initial Supabase advisors: zero blocking findings; 62 performance warnings",
+        "Ledger, Banking, Investments, Documents, Marketing, validation and predecessor lifecycle suites",
+        "RF workspace and owner browser",
+        "hosted migration authority, Corporate Governance and Billing lifecycle predecessors"
+      ],
+      "notReached": [
+        "remaining Authority/RF database cases, including new withdrawal lifecycle/generation/review and final Governance guard behavior",
+        "fresh RF filing browser and corrected v4 archive expectation",
+        "full-year source browser journey and lost-capture recovery",
+        "database/object-store and independent Auth restore",
+        "Company Tax and Annual Accounts database/browser successors",
+        "separate public acquisition database-job step"
+      ],
+      "stageEvidence": "Completed serial command markers and test summaries; Authority/RF stopped at early predecessor rollback/recutover fixture setup."
+    }
+  },
+  "sanitizedExcerpts": [
+    {
+      "jobId": 114061358791,
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-application-failure-context-sanitized.log",
+      "sha256": "0682f1a66d2b646d79f15cd2383f096688b030cd76c05b964fab30ad7bd2a922",
+      "bytes": 4540,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114061359095,
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-database-failure-context-sanitized.log",
+      "sha256": "1815e1c83dd08feb2d888ac95fc54213331634edf527ab1a45fc81fc59710eeb",
+      "bytes": 4171,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114061358791,
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-application-failure-sanitized.log",
+      "sha256": "e5328331e0b77a89f7352b37b4fbdae4b98d33e46a51d3575eed8b2f07275a47",
+      "bytes": 5417,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114061359095,
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-database-failure-sanitized.log",
+      "sha256": "a11b8f8e3f3fbf447bb46baf26e890c1f29e14d477e7711d587a0751cec0c39d",
+      "bytes": 1680,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    }
+  ],
+  "limits": [
+    "Entire workflow failed. Passing backend and predecessor selections do not complete any RF acceptance criterion.",
+    "Observed failures and source-supported diagnosis are distinguished; later repairs need a new immutable run. No result is transferred to the current local HEAD.",
+    "Immutable evidence was skipped in this ordinary PR run; this is not an 11/11 canonical complete-gate receipt or either of two linked immutable passes.",
+    "No independent Auth restore, hosted key recovery, genuine-company production acceptance, criterion promotion, provider activation, outreach or launch clearance is claimed.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Only this receipt was written in the repository; no index or product source changes."
+  ]
+}

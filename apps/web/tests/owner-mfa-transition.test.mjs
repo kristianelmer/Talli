@@ -6,12 +6,17 @@ import { TalliApiError } from "@talli/talli-api-client";
 
 import { listCompanyAccessContexts } from "../app/lib/company-access-context.ts";
 import {
-  inspectOwnerMfa,
+  inspectOwnerMfa as inspectOwnerMfaApi,
   ownerMfaEnrollmentControl,
   ownerMfaCopy,
+  ownerMfaHistoryDownloadReturn,
   startOwnerMfaEnrollment,
   verifyOwnerMfa,
 } from "../app/lib/owner-mfa.ts";
+
+function inspectOwnerMfa(api, options = {}) {
+  return inspectOwnerMfaApi(api, { accessToken: "synthetic-test-session", ...options });
+}
 
 function problem(status, code) {
   return {
@@ -24,6 +29,18 @@ function problem(status, code) {
     requestId: "request-owner-mfa",
   };
 }
+
+test("MFA download completion returns to the same company's history without accepting other destinations", () => {
+  const company = "10000000-0000-0000-0000-000000000001";
+  const history = `/companies/${company}/rf1086-test-history`;
+  assert.equal(ownerMfaHistoryDownloadReturn(`${history}/download`), history);
+  for (const value of [history, `${history}/download?next=/dashboard`, `${history}/download#other`,
+    `https://outside.invalid${history}/download`, `//outside.invalid${history}/download`,
+    "/companies/00000000-0000-0000-0000-000000000000/rf1086-test-history/download",
+    "/dashboard", "/auth/callback", "/companies/not-a-company/rf1086-test-history/download"]) {
+    assert.equal(ownerMfaHistoryDownloadReturn(value), null);
+  }
+});
 
 function mfaApi(overrides = {}) {
   return {
@@ -125,6 +142,30 @@ test("owner MFA inspection chooses enrollment, challenge, or verified state and 
   );
 });
 
+test("multiple registered authenticators expose only the provider's verified TOTP choices", async () => {
+  const result = await inspectOwnerMfa(mfaApi({
+    async listFactors() { return { data: { all: [{ id: "pending", status: "unverified" }], phone: [], webauthn: [],
+      totp: [{ id: "primary", friendly_name: "Daglig app" }, { id: "backup", friendly_name: "Reserve" }] }, error: null }; },
+  }));
+  assert.deepEqual(result, { kind: "challenge", factorId: "primary", factors: [
+    { id: "primary", label: "Daglig app (1)" }, { id: "backup", label: "Reserve (2)" },
+  ] });
+});
+
+test("MFA inspection requires and forwards the access token for verified provider state", async () => {
+  const tokens = [];
+  const api = mfaApi({
+    async getAuthenticatorAssuranceLevel(token) {
+      tokens.push(token);
+      return { data: { currentLevel: "aal1", nextLevel: "aal1" }, error: null };
+    },
+  });
+  assert.deepEqual(await inspectOwnerMfaApi(api), { kind: "error", message: ownerMfaCopy.statusError });
+  assert.deepEqual(tokens, []);
+  assert.deepEqual(await inspectOwnerMfaApi(api, { accessToken: "verified-provider-token" }), { kind: "enrollment" });
+  assert.deepEqual(tokens, ["verified-provider-token"]);
+});
+
 test("enrollment and verification expose no provider errors and only resume after confirmed AAL2", async () => {
   assert.deepEqual(
     ownerMfaEnrollmentControl({ busy: false, errorKind: "enrollment" }),
@@ -219,6 +260,7 @@ test("owner transition is reachable after company-year admission and exposes an 
   assert.match(component, /autoComplete="one-time-code"/u);
   assert.match(component, /window\.location\.assign\(returnTo\)/u);
   assert.equal(ownerMfaCopy.heading, "Beskytt kontoen før du fortsetter");
-  assert.match(ownerMfaCopy.intro, /Selskapet er opprettet/u);
+  assert.match(ownerMfaCopy.intro, /Bekreft innloggingen.+autentiseringsapp/u);
+  assert.doesNotMatch(ownerMfaCopy.intro, /Selskapet er opprettet/u);
   assert.match(ownerMfaCopy.statusError, /fortsatt stengt/u);
 });

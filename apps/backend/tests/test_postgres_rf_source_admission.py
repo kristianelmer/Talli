@@ -1,0 +1,333 @@
+"""Guarded RF scope keeps every owner call on the opened authenticated connection."""
+import asyncio
+from contextlib import asynccontextmanager
+from dataclasses import replace
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from psycopg.pq import TransactionStatus
+
+from talli_backend.adapters.postgres_shareholder_register_filing import _source_admission_company
+from talli_backend.modules.shareholder_register_filing import public as rf
+from talli_backend.shared.kernel import CorrelationId
+from test_consequential_adapter_guards import rf_session
+from test_rf1086_source_admission import AdmissionHarness, COMPANY, YEAR
+
+
+def projection(h):
+    company=h.source.command.case.company
+    return {'companyId':str(COMPANY),'incomeYear':int(YEAR),'organizationNumber':company.org_number,
+        'legalName':company.name,'entityType':'AS','address':company.address,'postalCode':company.postal_code,
+        'city':company.city,'identityConfirmedAt':h.identity.identity_confirmed_at,
+        'identityLockedAt':h.identity.identity_locked_at,'acceptedOwner':True,'consequentialOperationsAllowed':True}
+
+
+@pytest.mark.parametrize('change',[('acceptedOwner',False),('consequentialOperationsAllowed',False),
+    ('incomeYear',True),('companyId',str(uuid4())),('entityType','ENK'),('identityLockedAt',None),
+    ('identityConfirmedAt','2026-01-01T00:00:00'),('legalName','')],
+    ids=['owner','eligibility','year','company','entity','unconfirmed','naive-time','missing-name'])
+def test_malformed_company_owner_projection_never_becomes_trusted_context(change):
+    h=AdmissionHarness(); value=projection(h); value[change[0]]=change[1]
+    with pytest.raises(rf.ShareholderRegisterFilingError):
+        _source_admission_company(value,rf.Rf1086SourceQuery(COMPANY,YEAR,h.actor))
+
+
+def test_projection_matches_capture_timestamp_precision():
+    h=AdmissionHarness(); value=projection(h)
+    value['identityConfirmedAt']='2026-01-01T00:00:00.123+00:00'
+    identity=_source_admission_company(value,rf.Rf1086SourceQuery(COMPANY,YEAR,h.actor))
+    assert identity.identity_confirmed_at=='2026-01-01T00:00:00.123000+00:00'
+
+
+def test_submission_history_uses_held_connection_and_enumerates_every_owner_without_limit():
+    from dataclasses import fields
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_correction import predecessor_snapshot
+    h=AdmissionHarness(); store=rf_session(); calls=[]
+    record=predecessor_snapshot().submission
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args): calls.append((sql,args)); return self
+        async def fetchall(self): return [{field.name:getattr(record,field.name) for field in fields(record)}]
+    db=Connection(); scoped=_SourceAdmission(store,db,query,h.identity)
+    async def run():
+        assert await scoped.submission_history()==(record,)
+        assert calls==[(
+            'select * from shareholder_register_filing.production_filing_submissions '
+            'where company_id=%s::uuid and income_year=%s '
+            "and obligation='aksjonaerregisteroppgaven' and environment='production' order by id",
+            (str(COMPANY),int(YEAR)))]
+        scoped.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError): await scoped.submission_history()
+        assert len(calls)==1
+    asyncio.run(run())
+
+
+def test_actual_scope_orders_company_before_year_and_reuses_connection_then_expires():
+    h=AdmissionHarness(); store=rf_session(); calls=[]
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args=()): calls.append((sql,args)); return self
+        async def fetchone(self): return {'admission':projection(h)}
+    db=Connection()
+    @asynccontextmanager
+    async def transaction(): yield db
+    store._transaction=transaction
+    async def current(connection,company,year):
+        assert connection is db and company==COMPANY and year==YEAR; return h.source
+    async def preview(connection,preview_id):
+        assert connection is db and preview_id==h.preview.preview_id; return h.preview
+    async def register(connection,actual_query,observation_id,*,current=False):
+        assert connection is db and actual_query==query and current; return None
+    store._current_year_source=current;store._read_source_preview=preview;store._read_register_observation=register
+    async def run():
+        async with store.source_admission(query) as scoped:
+            assert calls[0][0].startswith('select public.company_access_read_rf_admission_v1(')
+            assert calls[1] == (
+                "select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+                ('{"' + str(COMPANY) + '":"owner"}',),
+            )
+            assert calls[2][0].startswith('select shareholder_register_filing.lock_year_source_v1(')
+            assert await scoped.current_source()==h.source
+            assert await scoped.source_preview(h.preview.preview_id)==h.preview
+            assert await scoped.read_current_register_observation(query,rf.Rf1086RegisterObservationId(str(uuid4()))) is None
+            with pytest.raises(rf.ShareholderRegisterFilingError):
+                await scoped.read_current_register_observation(replace(query,income_year=type(YEAR)(2023)),rf.Rf1086RegisterObservationId(str(uuid4())))
+        for action in (scoped.company_identity,scoped.current_source):
+            with pytest.raises(rf.ShareholderRegisterFilingError): await action()
+    asyncio.run(run())
+
+
+def test_bridge_uses_guarded_connection_and_rejects_changed_projection_and_expired_scope():
+    import hashlib
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    h=AdmissionHarness();store=rf_session();calls=[]
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args):calls.append((sql,args));return self
+        async def fetchone(self):return {'id':h.preview.preview_id.value}
+    db=Connection()
+    async def read(connection,preview_id):
+        assert connection is db;return h.preview
+    store._read_source_preview=read
+    scope=_SourceAdmission(store,db,query,h.identity)
+    async def run():
+        assert await scope.bridge_source_preview(h.preview)==h.preview.preview_id
+        assert calls==[('select shareholder_register_filing.bridge_source_preview_v1(%s::uuid,%s,%s) as id',
+            (h.preview.preview_id.value,hashlib.sha256(rf.serialize_rf1086_source_preview(h.preview).encode()).hexdigest(),str(store.actor_id.subject)))]
+        with pytest.raises(rf.Rf1086YearSourceError):
+            await scope.bridge_source_preview(replace(h.preview,preview_text='changed review'))
+        with pytest.raises(rf.Rf1086YearSourceError):
+            await scope.bridge_source_preview(replace(h.preview,income_year=type(YEAR)(2023)))
+        scope.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.bridge_source_preview(h.preview)
+        assert len(calls)==1
+    asyncio.run(run())
+
+
+def approval_context(h,entitlement):
+    return {'companyId':str(COMPANY),'incomeYear':int(YEAR),'previewId':h.preview.preview_id.value,
+        'sourceId':h.source.source_id.value,'sourceSha256':h.source.source_sha256,
+        'entitlementId':entitlement,'reviewSha256':'a'*64,
+        'warningCodes':sorted({i.code for i in h.preview.readiness_issues if i.level=='warning'}),'blockers':[]}
+
+
+@pytest.mark.parametrize('field,value',[('companyId',str(uuid4())),('incomeYear',True),
+    ('previewId',str(uuid4())),('sourceId',str(uuid4())),('sourceSha256','f'*64),
+    ('entitlementId',str(uuid4())),('reviewSha256','A'*64),('warningCodes',['x','x']),
+    ('blockers',[' ']),('blockers',['z','a']),('internalReview',{})],
+    ids=['company','year','preview','source','source-hash','entitlement','review-hash','duplicate-warning','blank-blocker','unordered-blockers','extra-field'])
+def test_approval_context_rejects_incoherent_owner_projection(field,value):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_approval_review
+    h=AdmissionHarness();entitlement=str(uuid4());wire=approval_context(h,entitlement);wire[field]=value
+    with pytest.raises(rf.Rf1086ProductionError):
+        _source_approval_review(wire,rf.Rf1086SourceQuery(COMPANY,YEAR,h.actor),h.preview,entitlement)
+
+
+
+def source_reads(store, db, h):
+    async def current(connection, company, year):
+        assert connection is db and company == COMPANY and year == YEAR
+        return h.source
+    async def preview(connection, identity):
+        assert connection is db and identity == h.preview.preview_id
+        return h.preview
+    store._current_year_source = current
+    store._read_source_preview = preview
+
+
+def test_approval_context_and_append_use_one_live_connection_and_exact_manifest_bytes():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    h=AdmissionHarness();store=rf_session();entitlement=str(uuid4());approval_id=str(uuid4());calls=[]
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id);wire=approval_context(h,entitlement)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args):calls.append((sql,args));return self
+        async def fetchone(self):
+            if 'read_source_approval_context' in calls[-1][0]:return {'context':wire}
+            return {'id':approval_id,'company_id':str(COMPANY),'income_year':int(YEAR)}
+    db=Connection()
+    async def read(connection,preview_id):
+        assert connection is db and preview_id==h.preview.preview_id;return h.preview
+    source_reads(store,db,h);scope=_SourceAdmission(store,db,query,h.identity)
+    from test_rf1086_annual_readiness import ready_inputs
+    annual=rf.build_rf1086_annual_readiness(h.source,h.preview,ready_inputs())
+    async def run():
+        review=await scope.read_source_approval_context(h.preview.preview_id,entitlement,annual)
+        assert review.can_approve and review.source_id==h.source.source_id
+        manifest=rf.build_rf1086_source_approval_manifest(rf.Rf1086SourceApprovalManifestBasis(
+            h.source,h.preview,store.actor_id,entitlement,review.review_sha256,review.warning_codes,annual_readiness=annual))
+        result=await scope.append_source_approval(h.preview,entitlement,manifest,review.review_sha256)
+        assert result.record_id==approval_id and result.company_id==COMPANY and result.income_year==YEAR
+        assert calls[-1][1]==(h.preview.preview_id.value,entitlement,
+            rf.serialize_rf1086_source_approval_manifest(manifest),manifest.manifest_sha256,'a'*64,str(store.actor_id.subject))
+        with pytest.raises(rf.Rf1086ProductionError):
+            await scope.append_source_approval(h.preview,str(uuid4()),manifest,'a'*64)
+        assert len(calls)==2
+        async def rejected(sql,args):
+            from psycopg.errors import RaiseException
+            raise RaiseException('rf1086_source_predecessor_mismatch')
+        db.execute=rejected
+        with pytest.raises(rf.Rf1086ProductionError,match='payload_changed'):
+            await scope.append_source_approval(h.preview,entitlement,manifest,'a'*64)
+        scope.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_approval_context(h.preview.preview_id,entitlement,annual)
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.append_source_approval(h.preview,entitlement,manifest,'a'*64)
+    asyncio.run(run())
+
+
+def claim_wire(c, actor):
+    return {'submission_id':c.claim.submission_id.value,'approval_id':c.approval_id.value,
+        'company_id':str(COMPANY),'income_year':int(YEAR),'manifest_sha256':c.manifest_sha256,
+        'payload_sha256':c.claim.payload_sha256,'predecessor_submission_id':None,
+        'claimed_by':str(actor.subject),'claimed_at':c.claim.claimed_at}
+
+
+def test_claim_and_recovery_use_same_guarded_connection_and_expire():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();h=c.h;store=rf_session();calls=[]
+    wire=claim_wire(c,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args):calls.append((sql,args));return self
+        async def fetchone(self):
+            if 'read_source_submission_claim' in calls[-1][0]:return wire
+            return {'result':{'claim':wire,'newlyClaimed':True}}
+    db=Connection();source_reads(store,db,h)
+    scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),h.identity)
+    async def run():
+        claimed=await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,c.h.last_annual)
+        assert claimed.newly_claimed is True and claimed.claim.claimed_by==store.actor_id
+        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,None,
+            rf.serialize_rf1086_annual_readiness(h.last_annual,h.source,h.preview),str(store.actor_id.subject))
+        assert await scope.read_source_submission_claim(c.approval_id,c.manifest_sha256,None)==claimed.claim
+        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,str(store.actor_id.subject))
+        scope.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,h.last_annual)
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            await scope.read_source_submission_claim(c.approval_id,c.manifest_sha256,None)
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_claim_approval(c.approval_id)
+        assert len(calls)==2
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('field,value',[('income_year',True),('claimed_by',str(uuid4())),
+    ('manifest_sha256','a'*64),('payload_sha256',None),('claimed_at','2026-01-01T00:00:00'),
+    ('predecessor_submission_id',str(uuid4())),('submission_id','bad'),('extra',True)],
+    ids=['year','actor','manifest','payload','timestamp','predecessor','submission','extra'])
+def test_claim_decoder_rejects_malformed_retained_identity(field,value):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();wire=claim_wire(c,c.h.actor);wire[field]=value
+    with pytest.raises(rf.Rf1086ProductionError):
+        _source_claim_record(wire,c.approval_id,c.manifest_sha256,None,c.h.actor)
+
+
+def test_null_postgres_composite_means_no_claim_but_partial_null_does_not():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SOURCE_CLAIM_FIELDS
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();store=rf_session();row=dict.fromkeys(_SOURCE_CLAIM_FIELDS)
+    class Connection:
+        async def execute(self,*args):return self
+        async def fetchone(self):return row
+    async def run():
+        assert await store._read_source_submission_claim(Connection(),c.approval_id,c.manifest_sha256,None) is None
+        row['approval_id']=c.approval_id.value
+        with pytest.raises(rf.Rf1086ProductionError):
+            await store._read_source_submission_claim(Connection(),c.approval_id,c.manifest_sha256,None)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('mutation',['company','year','newly-claimed','extra'])
+def test_guarded_claim_rejects_wrong_scope_or_result_shape(mutation):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();store=rf_session();wire=claim_wire(c,store.actor_id)
+    result={'claim':wire,'newlyClaimed':True}
+    if mutation=='company':wire['company_id']=str(uuid4())
+    if mutation=='year':wire['income_year']=2023
+    if mutation=='newly-claimed':result['newlyClaimed']=1
+    if mutation=='extra':result['dispatchAuthorized']=True
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,*args):return self
+        async def fetchone(self):return {'result':result}
+    db=Connection();source_reads(store,db,c.h)
+    scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
+    with pytest.raises(rf.Rf1086ProductionError):
+        asyncio.run(scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,c.h.last_annual))
+
+
+@pytest.mark.parametrize('encoded', ['2026-09-29T08:01:14.04172+00:00',
+    '2026-09-29T08:01:14.041720Z', '2026-09-29T10:01:14.041720+02:00'])
+def test_claim_json_and_native_timestamps_keep_exact_same_identity(encoded):
+    from datetime import datetime
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness(); wire=claim_wire(c,c.h.actor)
+    def decode(value):
+        return _source_claim_record(wire|{'claimed_at':value},c.approval_id,c.manifest_sha256,None,c.h.actor)
+    native=datetime.fromisoformat('2026-09-29T08:01:14.041720+00:00')
+    assert decode(encoded)==decode(native)
+    assert decode(encoded).claimed_at=='2026-09-29T08:01:14.041720+00:00'
+    assert decode('2026-09-29T08:01:14.041721+00:00')!=decode(native)
+
+
+def test_claim_timestamp_rejects_submicrosecond_precision_instead_of_truncating():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();wire=claim_wire(c,c.h.actor)|{'claimed_at':'2026-09-29T08:01:14.0417201+00:00'}
+    with pytest.raises(rf.Rf1086ProductionError):
+        _source_claim_record(wire,c.approval_id,c.manifest_sha256,None,c.h.actor)
+
+
+@pytest.mark.parametrize('encoded', ['2026-09-29T08:01:14.04172+00:00',
+    '2026-09-29T08:01:14.041720Z', '2026-09-29T10:01:14.041720+02:00'])
+def test_operation_json_replay_equals_native_outcome_timestamp(encoded):
+    from datetime import datetime
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness(); store=rf_session()
+    claim=replace(c.claim,claimed_by=store.actor_id)
+    event=dict(id=str(uuid4()),company_id=str(COMPANY),income_year=int(YEAR),
+        submission_id=claim.submission_id.value,operation_name='post_hovedskjema',
+        operation_state='unknown',attempt=1,body_hash='a'*64,idempotency_key=str(uuid4()),
+        authority_reference=None,failure_class='unknown',resulting_status='unknown',
+        artifact_hashes=[],safe_error_code=None,correlation_id=None,created_at=encoded)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,*args):return self
+        async def fetchone(self):return {'result':{'operation':event,'newlyPrepared':False}}
+    scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
+    result=asyncio.run(scope.prepare_source_operation(claim,operation_name='post_hovedskjema',
+        body_sha256='a'*64,idempotency_key=str(uuid4()), connection=rf.Rf1086Connection(
+            str(uuid4()),str(COMPANY),str(store.actor_id.subject),'aksjonaerregisteroppgaven','bound-external','accepted',True)))
+    native=event|{'created_at':datetime.fromisoformat('2026-09-29T08:01:14.041720+00:00')}
+    assert not result.newly_prepared
+    assert result.event==store._wire_record(rf.Rf1086ArchiveProductionEventRecord,native)

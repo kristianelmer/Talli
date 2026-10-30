@@ -1,0 +1,288 @@
+{
+  "schema": "rf-integration-ci-observation-v13",
+  "recordedAtUtc": "2026-10-11T21:25:30.157881+00:00",
+  "runId": 38168754188,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38168754188",
+  "headSha": "69db42b36d992edc39e8abbfa57fe7c46a3de59d",
+  "mergeSha": "f9e7d01caac1c98793ce29b78d8cfd82536c2ca4",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11764,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 831.93
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 259.51,
+    "lifecyclePassed": true,
+    "causalDeadlockFixProved": false
+  },
+  "authority": {
+    "required": 1630,
+    "passed": 1630,
+    "seconds": 1143.98,
+    "exactNodeSetVerified": true,
+    "sourceFiles": 85
+  },
+  "intent": {
+    "passed": 46,
+    "requiredParentPassed": 6
+  },
+  "rfBrowser": {
+    "selected": 38,
+    "passed": 37,
+    "failed": 1,
+    "durationMs": 1263387.719341,
+    "owningCaseDurationMs": 70192.825001
+  },
+  "databaseDurationSeconds": 3316.0,
+  "jobTimedOut": false,
+  "artifactCount": 0,
+  "narrowPrerequisites": {
+    "claim": 20,
+    "approval": 36,
+    "retention": 24,
+    "inventoryAuthority": 6,
+    "intent": 46,
+    "inventoryPipelineCleared": false
+  },
+  "catalogDifference": {
+    "counts": {
+      "changed": 153,
+      "source-only": 0,
+      "target-only": 0
+    },
+    "summary": [
+      {
+        "fields": [
+          {
+            "change": "acl-entry-order-only",
+            "count": 23,
+            "field": "acl"
+          }
+        ],
+        "kind": "default_acl",
+        "records": 23,
+        "status": "changed"
+      },
+      {
+        "fields": [
+          {
+            "change": "acl-entry-order-only",
+            "count": 1,
+            "field": "acl"
+          },
+          {
+            "change": "target-null",
+            "count": 2,
+            "field": "configuration"
+          },
+          {
+            "change": "value",
+            "count": 2,
+            "field": "security_definer"
+          }
+        ],
+        "kind": "function",
+        "records": 3,
+        "status": "changed"
+      },
+      {
+        "fields": [
+          {
+            "change": "acl-entry-order-only",
+            "count": 21,
+            "field": "acl"
+          },
+          {
+            "change": "target-null",
+            "count": 104,
+            "field": "acl"
+          }
+        ],
+        "kind": "relation",
+        "records": 125,
+        "status": "changed"
+      },
+      {
+        "fields": [
+          {
+            "change": "target-null",
+            "count": 2,
+            "field": "acl"
+          }
+        ],
+        "kind": "schema",
+        "records": 2,
+        "status": "changed"
+      }
+    ],
+    "truncated": true,
+    "sourceRecords": 2158,
+    "targetRecords": 2158,
+    "retainedDetails": 32,
+    "omittedIdentities": 121,
+    "aclEntryOrderOnlyRecords": 45,
+    "aclTargetNullRecords": 106,
+    "functionConfigurationAndSecurityChangedRecords": 2,
+    "copyCounts": {
+      "literalOccurrences": 3,
+      "completeIdenticalCopies": 3,
+      "directCompleteLines": 3,
+      "truncatedWrapperCopies": 0
+    }
+  },
+  "catalogSemantics": {
+    "selectedAclRecords": 106,
+    "counts": {
+      "defaultGrantsEqual": 104,
+      "different": 2,
+      "rawDefaultEqual": 104,
+      "targetGrantsEqual": 104,
+      "unsupported": 0
+    },
+    "schemaGrantDifferences": [
+      {
+        "identity": [
+          "schema",
+          "graphql"
+        ],
+        "identitySha256": "9b5d0b70c9d4f272f371aee08776539df9bed642d6908c06659200c44b6b7766",
+        "rawDefaultEqual": false,
+        "defaultGrantsEqual": false,
+        "targetGrantsEqual": false
+      },
+      {
+        "identity": [
+          "schema",
+          "graphql_public"
+        ],
+        "identitySha256": "ff077abe990c4e6d4247f5349dab556a182d8ce3c1ee8acb7edba0f0ac38dd04",
+        "rawDefaultEqual": false,
+        "defaultGrantsEqual": false,
+        "targetGrantsEqual": false
+      }
+    ],
+    "expandedGrantsOnlyNotCompleteAuthorization": true,
+    "exactSchemaGrantsAndDirectionCaptured": false,
+    "netFunctions": [
+      {
+        "identitySha256": "0867efef3539c49fe1e8dbcfb5c7d2fc8c9116289d60d18d07de145b39ff45ef",
+        "source": {
+          "configurationIsSearchPathNet": true,
+          "configurationNull": false,
+          "configurationSha256": "ad672bcf6ae1f669d6b1a3000fa7447d5cbb709093a9156ec89828610526afe1",
+          "definitionSha256": "a314aa28b0562dc66cc6816ef80ac8572f0f8dad52a2384436aead7f5773e391",
+          "extensionMember": true,
+          "extensionVersion": "0.20.3",
+          "securityDefiner": true
+        },
+        "target": {
+          "configurationIsSearchPathNet": false,
+          "configurationNull": true,
+          "configurationSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+          "definitionSha256": "7012c5582cd0ab8d38f546af6633ea3c531950fb009f07127b99f8a1640eac1a",
+          "extensionMember": true,
+          "extensionVersion": "0.20.3",
+          "securityDefiner": false
+        }
+      },
+      {
+        "identitySha256": "d8e240392f7f55914290dcf2c125e70a8f62eb3ac3cbb60b73c683f2f560b9d3",
+        "source": {
+          "configurationIsSearchPathNet": true,
+          "configurationNull": false,
+          "configurationSha256": "ad672bcf6ae1f669d6b1a3000fa7447d5cbb709093a9156ec89828610526afe1",
+          "definitionSha256": "0f55d7f307a02151f2ced9329d5b5ac8274a7099254fed625aaaa2722764a39b",
+          "extensionMember": true,
+          "extensionVersion": "0.20.3",
+          "securityDefiner": true
+        },
+        "target": {
+          "configurationIsSearchPathNet": false,
+          "configurationNull": true,
+          "configurationSha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+          "definitionSha256": "ee3ec5bc54158b60b6c4e3a966a07a33dc009788fad8f6b7480ad1c45acdfe78",
+          "extensionMember": true,
+          "extensionVersion": "0.20.3",
+          "securityDefiner": false
+        }
+      }
+    ],
+    "image": "sha256:2d3ac69ad5c95d81458cc93a6cc6c31a98dfa00cd28f88a0a9358d315e1c357a",
+    "archive": {
+      "bytes": 10942664,
+      "observedBinaryVersions": {
+        "dump": "17.6",
+        "restore": "17.6"
+      },
+      "sha256": "6134df28182a8ca1f321a73e342eeca4f1ce6b507486c9c3c92106e30d423dbe",
+      "status": "observed",
+      "toc": {
+        "archiveTimeVersions": {
+          "dump": "17.6",
+          "server": "17.6"
+        },
+        "completeTocEntries": 4112,
+        "functionDefinitionEntries": [
+          0,
+          0
+        ],
+        "pgNetExtensionEntries": 1,
+        "scope": "toc-membership-only-no-alter-absence-or-bootstrap-attribution",
+        "sha256": "9faa1855a8322cc7374051d99b966987f21dd9241c7b2138a73e6ea9c8222245"
+      }
+    },
+    "copyCounts": {
+      "literalOccurrences": 5,
+      "completeIdenticalCopies": 3,
+      "directCompleteLines": 3,
+      "truncatedWrapperCopies": 2
+    },
+    "phaseBinding": {
+      "schemaOwnerAclAndNetOwnerAclSecurityConfiguration": "bound-to-retained-pre-dump-catalog-rows",
+      "extensionMembershipVersionTypesAndDefinitionHashes": "additional-after-restore-observations",
+      "bootstrapExecutionOrNetCauseProved": false
+    }
+  },
+  "failure": {
+    "stage": "independent-recovery",
+    "fingerprint": "catalog",
+    "targetAuthCreationUnreached": true
+  },
+  "strictFingerprintUnchanged": true,
+  "signedStatelessFixtureCompleted": true,
+  "currentSigningAlgorithmObserved": false,
+  "es256ActualAcceptance": false,
+  "independentRecoveryAccepted": false,
+  "wholePipelineCleared": false,
+  "allThreeReady": false,
+  "repairSelected": false,
+  "limits": [
+    "All 106 explicit-to-NULL ACL identities are covered: 104 relation ACL expansions match; graphql and graphql_public differ. Exact schema grant direction/principals remain uncaptured. Expanded tuples do not prove complete authorization.",
+    "Both exact net functions belong to pg_net 0.20.3. Source SECURITY DEFINER/search_path=net differs from target invoker/NULL. Version, image and archive binding do not prove bootstrap execution or the cause.",
+    "The full archive TOC has 4112 entries, one pg_net EXTENSION and no standalone FUNCTION entries for these two identities. This does not prove absence of all relevant ALTER or other writers.",
+    "Semantic log output has three complete identical direct copies and two truncated Node wrappers; wrappers are not full diagnostics. Difference output has three complete identical copies.",
+    "Recovery failed at the strict catalog fingerprint before target Auth creation. Later Tax/Accounts/public-acquisition browser cases were unreached; immutable evidence was skipped and no artifacts uploaded.",
+    "Narrow prerequisite and Billing lifecycle passes do not clear the owning recovery pipeline or establish the prior intermittent deadlock cause. Hosted, human and all-three gates remain pending.",
+    "No raw grants, principal names, queries, credentials, Auth/customer rows or exception text published."
+  ],
+  "rawEvidenceSha256": {
+    "ci38168754188-terminal-run-v1.json": "57793ff7344539acb9b3f667381ad99e42de247d5a4ac2fed45ec2b6cb41cade",
+    "ci38168754188-terminal-jobs-v1.json": "5ca508ed5d82e238086b077daab07b261e78a142616a7ba3b3b8a064918f7ba7",
+    "ci38168754188-terminal-pr-v1.json": "308dbefd38a4dc4206b345a86add22591b881f370d9e3ba71bfe157916d997e5",
+    "ci38168754188-terminal-parents-v1.json": "891934754a7b9414a8c2d4ab3584a185c98b5862998453671fcb79e9660810d2",
+    "ci38168754188-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38168754188-db-direct-raw-v1.log": "6a7f25c161ea1ed810e83b43e694fab29d98cc93249b5305519e4b9205eb3d20",
+    "ci38168754188-app-direct-raw-v1.log": "f648cf9f2c8a2357f4189b8af6036807fb6117cd3f46b687d25b40dc78a4ae3a",
+    "ci38168754188-terminal-inspection-candidate-v1.json": "4882467baf6c6f20e7aa91179f2c97fb78a52f524eccc271e089712500ab9710",
+    "ci38168754188-catalog-difference-actual-v1.json": "c834abd9fe5f085de0a92ccbe5350a1cf10335a2418f3016665b72ecc23dfd4e",
+    "ci38168754188-catalog-semantics-actual-v1.json": "2f85a53c6c3b56f97b7358fd86e22c458b45a4ffa85b651cbf42b180e0c18615",
+    "ci38168754188-terminal-receipt-v1.json": "7b65530c82e0b5e20b29fc44bc793e9666e4a857fa6695ebeca84b18a2bd0781",
+    "ci38168754188-terminal-root-acceptance-v1.json": "f26f012ae5924874f6006feba30ff7364dba947f10ad84fc90a0daada3828d5e"
+  }
+}

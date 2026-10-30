@@ -1,0 +1,341 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "CLOSED_RF_YEAR_SOURCE_V2_SQL_AND_GOVERNANCE_PROOF",
+  "recordedAtUtc": "2026-10-10T02:23:29.463019+00:00",
+  "baseRevision": "24ce293510b486a4385508c42c9ab6ad9e821469",
+  "scope": "Closed RF year-source v2 SQL plus acyclic Governance-to-RF ephemeral evidence producer/invalidation. No runtime writer/producer grants, Python activation, HTTP or Archive changes. Independent root replay/RR/CI commits are already in HEAD and excluded.",
+  "implementation": [
+    "Governance reads its complete guarded public reporting projection and passes an RF-owned compact proof through two declared Gov-to-RF commands. No reverse dependency, caller-authored proof, private foreign row read or checker exemption.",
+    "RF accepts proof only through the Governance owner grant into a fixed ON COMMIT DROP temporary relation. Exact catalog/owner/builtin columns/owner-only ACL checks reject substituted objects. Proof binds full xid8, verified actor, company, year, source SHA and complete compact chains; repeated uses recheck ownership and exact current RF observations.",
+    "Governance row mutations invalidate all same-company proofs, including off-year chains; truncation invalidates all proofs. Savepoint rollback restores state transactionally. No durable proof table or Auth foreign key.",
+    "Closed append_year_source_v2 retains the twelve-argument v1 layout and predecessor-before-duplicate ordering. Old codec/hash bytes and fresh hook positions remain; fresh v1 writes after a v2 head fail closed. Raw append is not the replay interface.",
+    "Fresh source actors must be USER; retained embedded observation actor/time bytes remain unchanged. Exact-second owner timestamps are normalized only when adapting the new RF compact proof; original Governance hashes and receipts remain unchanged.",
+    "Schema now accepts the already-documented command contract kind; public-import and cycle enforcement are unchanged. Ordered fixture suffix restoration and exact empty-only RESTRICT teardown recognize the new owner grants/triggers.",
+    "Retentive rollback closes new caller grants while preserving v2 history, validation, downgrade fence and owner invalidation authority. It does not establish old-binary rollback."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "2de342134ef64bb263222011c5a1f02b55bcb9d40fa4d4cc0b24e8869715bca6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "4669e02ae710de86b42c95a5f5a72ba1109225a390893041d3694f14d621cf2b"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "05ef7668361e962ffeb783ab3c90c4486f295ef0a351ebd69b958ed659ee1397"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "2a2d12f3c30a802c388280156d6695e6fcb75a46ba5299d6df472a342e17e2ce"
+    },
+    {
+      "path": "apps/backend/tests/rf1086_year_source_v2_database_fixture.py",
+      "sha256": "9432e81d13e6929d1a632cc464ba417c69116ea37bf2122ac541afed21736b64"
+    },
+    {
+      "path": "apps/backend/tests/test_documents_historical_original_integrity_database.py",
+      "sha256": "134eebd2cc4ec8e96bc71e7aa74b18f9b05677be4305ef8f75a9662628fbb74d"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+      "sha256": "09375fc967b6f87c02fb0b8c9d5b1e13815fdb89b8c4435e924766783295fd1d"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+      "sha256": "ee5c431c4952cbdcc22d14edcab98954247090e3e40c334556848f0242fa7ac5"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+      "sha256": "701a25804f24fa6708d36403e553a54d203ce911f33c833ae4bc187d98d5dd5e"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py",
+      "sha256": "f123c200259df13556144e78e5609c680ca7bd8fb3913748bc90e9a9665e9293"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py",
+      "sha256": "cb8946f24bda44e1b225600e0ba74fb709fbfb52aba78a5d7cbd8fff76309b32"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+      "sha256": "4c8cca16edc58caf01324447a07ae4d2e9f76bcbf657ce0299ab163769703366"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_year_source_v2_database.py",
+      "sha256": "12212c61c8c3768a2a7bf5e6b4c71c1c77176be66fa4427eb0b3745d4a396e37"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d"
+    },
+    {
+      "path": "architecture/module.schema.json",
+      "sha256": "ea3c910b93e06d1ec00374b09e3f281030143869fd735b5772743b6083d21294"
+    },
+    {
+      "path": "package.json",
+      "sha256": "4483a77c365e778a54ddb11c81856c7aadf0233678dec3f7172e7e9defdb8c92"
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "280aaba59bac968a3cd4623e3689a4eaf6db23c196feb1e29d58fb118f1f9a08"
+    },
+    {
+      "path": "supabase/migrations/20261010013307_rf1086_closed_year_source_v2.sql",
+      "sha256": "3eaa1c15087dcf1d564a09efe9fec1427de0a01d70ea4a87142d13618e016463"
+    },
+    {
+      "path": "supabase/migrations/20261010015851_governance_rf_year_source_proof.sql",
+      "sha256": "3c7cd15573a733eb04be213e4096ec5d915c3430a74f8c293a86da9b22c62c51"
+    },
+    {
+      "path": "supabase/rollback/20261010013307_rf1086_closed_year_source_v2.sql",
+      "sha256": "5864e70051ba8ddbdc65e2bb8517568df9ca836aed8f482d0d9f29bc7c0bbb7d"
+    },
+    {
+      "path": "supabase/rollback/20261010015851_governance_rf_year_source_proof.sql",
+      "sha256": "8a786982bf473ff5d506aa231ec439ce016c87501e94a4b8cefc46e739d8f0e6"
+    },
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "3e85297271127325ef46f8cbdf9246e4b6356bfad0d86c72e2c80c07e98d74d5"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "1e30a63b9bfa8ec9895cad25b6d4e9eb1aeb18fc7a155785008095cbb3e1aaa8"
+    },
+    {
+      "path": "tests/support/governance_amendment_rehearsal.mjs",
+      "sha256": "18446e10e5889df7fcd5e96aae27624dd9edeb0d88a04fa68fd062d4faaaada5"
+    }
+  ],
+  "checks": {
+    "nativeImplementationGroups": 9,
+    "nativePrototypeGroups": 7,
+    "independentOwnerWireAndTeardownGroups": 5,
+    "nativeCountsMustNotBeSummed": true,
+    "allOwnedNativeClustersRemoved": true,
+    "newDatabaseCollected": 109,
+    "repairedPrerequisiteCollected": 300,
+    "fullDatabaseExecuted": 0,
+    "offlineFixtureConstructionPassed": 5,
+    "centralRegistrationPassed": 119,
+    "targetedArchitectureInitial": {
+      "passed": 2,
+      "failed": 1
+    },
+    "finalManifestOraclePassed": 1,
+    "orderedFixtureSuffixPairs": 14,
+    "fixtureSyntaxFiles": 7,
+    "diffCheck": "PASS"
+  },
+  "checkScope": [
+    "Native9 executes actual new SQL/codec/proof/append with explicit old owner/admission/authoritative Governance/current RF stubs. Prototype7 proves only a privilege design. Independent5 executes actual Governance wire/producer and teardown with recording RF receiver/identity stubs; four teardown groups overlap an earlier run.",
+    "Owner-wire parity covers original/one-amendment/two-amendment prefixes and four chains through the public Python decoder, including zero/nonzero microseconds. Prefix views use privileged rollback-only fixture deletion; no business-write proof.",
+    "Central119 and manifest1 passed before the final four test-only suffix repairs; production/central/manifest sources remained unchanged. Repaired four files then collected300 cases, and all14 suffix pairs passed static syntax/adjacency checks.",
+    "Initial manifest literal ordering failure and missing prepared Python environment failure are preserved. Later targeted successful runs are scoped, not represented as a complete rerun."
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "56d0e32ffd7af71ace208528b4929d62a3107d16ba8500bc0d1004cb0bc4620a"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "1d87b3b759cedee9313c4c55b0e6b3dd284422da4bd1f2b34a4309725932a9e4"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "8bdd9e2a325ae452ee9bf18b358ca10dafc7b494b01e5ae82dd10cceac181901"
+    }
+  },
+  "resolvedReviewFindings": [
+    "Reverse RF-to-Governance dependency replaced with visible acyclic Gov-to-RF public commands and RF-owned ephemeral proof. Superseded native evidence is not current proof.",
+    "Fresh source actor kind explicitly USER;26 fully rehashed native non-user forgeries rejected; embedded legacy observation actor bytes preserved.",
+    "New database lane filename moved inside pytest arguments; both ordered successor entries moved inside generated fixture array before map.",
+    "Actual Governance six-microsecond exact-second strings normalized only at RF compact adaptation boundary; independent actual owner-wire parity0/1/2 passes.",
+    "Four finally restorations now replay Governance proof suffix after RF closure; all14 restoration pairs validated."
+  ],
+  "privateArtifactPins": [
+    {
+      "file": "check-year-source-v2-native.py",
+      "sha256": "e6527f4db6fa3ebef1dfabdb03b63da02e2075379f6c67e7b6f34f10f8d9ffa8",
+      "bytes": 30325
+    },
+    {
+      "file": "year-source-v2-native.json",
+      "sha256": "d73dd1133ca68814774a6a09b14fd4b8b054dcb023dd0834f2560a164ec8494b",
+      "bytes": 1858
+    },
+    {
+      "file": "year-source-v2-native.log",
+      "sha256": "9d1813ae0919353433bde8b644f63e55f560d231d5a95dd857a436f6de38a0b4",
+      "bytes": 971
+    },
+    {
+      "file": "year-source-v2-native-command.log",
+      "sha256": "63fb827cd02b6b4439369e9af57a5e6fd9511144ed9d95055cd996b965765cc1",
+      "bytes": 1802
+    },
+    {
+      "file": "check-rf-temp-proof-prototype.py",
+      "sha256": "a28dc7a95289c2868f3f42787ec8ead1d52b695a38c0e86bffb333b0e6009b92",
+      "bytes": 14486
+    },
+    {
+      "file": "rf-temp-proof-prototype.json",
+      "sha256": "b843d14cbb61132f7e8c4505f83b0e2d1961a3e9c3558875c61959d934c173c5",
+      "bytes": 1305
+    },
+    {
+      "file": "rf-temp-proof-prototype.log",
+      "sha256": "3040a55fe95f5af317e03e7ee80e6ffb68ea88450b17fc3a932bc701b40bb7a2",
+      "bytes": 972
+    },
+    {
+      "file": "rf-temp-proof-prototype-command.log",
+      "sha256": "b843d14cbb61132f7e8c4505f83b0e2d1961a3e9c3558875c61959d934c173c5",
+      "bytes": 1305
+    },
+    {
+      "file": "check-governance-proof-owner-wire-native.py",
+      "sha256": "3785fde1a7ac3cbb5795a1c701d97ea97414190d2513723f460420fa534261a9",
+      "bytes": 41415
+    },
+    {
+      "file": "governance-proof-owner-wire-native.json",
+      "sha256": "d0e787315e0e4d43589dafd5f5b254476e8afd5699533c7f5dc5e0f13b4f387b",
+      "bytes": 3011
+    },
+    {
+      "file": "governance-proof-owner-wire-native.log",
+      "sha256": "759865106d75599cc4a1b95fbe54fa87d2596d52c0c0bc9df6a2d2274ad548c2",
+      "bytes": 989
+    },
+    {
+      "file": "governance-proof-owner-wire-native-output.log",
+      "sha256": "b6ad687d5b355476fe406d9067e3b22bbb24867d0f711773b39dd0d738d754bd",
+      "bytes": 2761
+    },
+    {
+      "file": "rf1086-year-source-v2-proof-db-test-checks.json",
+      "sha256": "5af9e9a9fe3f11d0ca12764db7b18fedce3fad244c9ff907384204d4625255ad",
+      "bytes": 5302
+    },
+    {
+      "file": "rf1086-year-source-v2-proof-db-collection.log",
+      "sha256": "da6032391ec705f80e1c8787621639a745028fb232c4232da7672f41d9ff68ca",
+      "bytes": 15014
+    },
+    {
+      "file": "check-rf1086-year-source-v2-proof-db-fixtures.py",
+      "sha256": "6ac25b15ed4613cb7c0daea000f6b09ca2c018e0ba06787ef88fc6ac2758c3f3",
+      "bytes": 4338
+    },
+    {
+      "file": "rf1086-year-source-v2-proof-db-fixtures-offline.log",
+      "sha256": "007c9cfb71345c2f4c0e0220f182c13519febd5d04ce6ae49f0d96331b5075ba",
+      "bytes": 506
+    },
+    {
+      "file": "year-source-v2-architecture-final.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "year-source-v2-targeted-architecture.log",
+      "sha256": "4214719c3b46a8484705146e5be950f97a8953477a37b3c63af5e2d142848b72",
+      "bytes": 17796
+    },
+    {
+      "file": "year-source-v2-targeted-architecture-final.log",
+      "sha256": "7aed7602b39bdda63632304ca2c3d0677b0d6c0991ba2cd032ebaa3612adfc32",
+      "bytes": 214
+    },
+    {
+      "file": "year-source-v2-central.log",
+      "sha256": "8ad418e74b7939e307e22ccfe03b86e91b8d6539fe89e24e66bdca6b3ab9bbad",
+      "bytes": 19697
+    },
+    {
+      "file": "year-source-v2-central-final.log",
+      "sha256": "b2fe088f751f1ed660a87105b272afdf15d88595deb334075a67d422abf01dc9",
+      "bytes": 12702
+    },
+    {
+      "file": "check-rf-v2-finally-restoration.py",
+      "sha256": "dfc0793973644c33ec341161790fe16f10ca81f04e73fd13fd3e75e165b7b156",
+      "bytes": 1626
+    },
+    {
+      "file": "rf-v2-finally-restoration.json",
+      "sha256": "e541375b885c8d3a6df494e2af82ea18ba26fb39aca6ff71ccdb185400e74334",
+      "bytes": 1977
+    },
+    {
+      "file": "rf-v2-finally-restoration.log",
+      "sha256": "e541375b885c8d3a6df494e2af82ea18ba26fb39aca6ff71ccdb185400e74334",
+      "bytes": 1977
+    },
+    {
+      "file": "year-source-v2-finally-restoration-collection.log",
+      "sha256": "cef49c3985c7dd2aab674d589a6b3826fccde06ac222b23268d4ea24ea38dbe9",
+      "bytes": 42288
+    },
+    {
+      "file": "rf-year-source-v2-sql-freeze.json",
+      "sha256": "88135fb14bb41d3e89787d0eea6181a94f35e1bf28c2318fbc128c4947d637e3",
+      "bytes": 5297
+    },
+    {
+      "file": "rf-year-source-v2-sql-checks.json",
+      "sha256": "bc72f08fd1aa0007b510889bb2a1a3eaaceec1e854dcf635b8a4b19f7a49af07",
+      "bytes": 16231
+    },
+    {
+      "file": "rf-year-source-v2-spec-review.json",
+      "sha256": "56d0e32ffd7af71ace208528b4929d62a3107d16ba8500bc0d1004cb0bc4620a",
+      "bytes": 11685
+    },
+    {
+      "file": "rf-year-source-v2-sql-standards-review.json",
+      "sha256": "1d87b3b759cedee9313c4c55b0e6b3dd284422da4bd1f2b34a4309725932a9e4",
+      "bytes": 7195
+    },
+    {
+      "file": "rf-closed-year-source-v2-root-review.json",
+      "sha256": "8bdd9e2a325ae452ee9bf18b358ca10dafc7b494b01e5ae82dd10cceac181901",
+      "bytes": 3626
+    },
+    {
+      "file": "rf-v2-spec-proof-time-shape-red.json",
+      "sha256": "b8ddfa5c6ee922a15aaeec16dcbb77f4eb11e7184d7cbc4c10999957e09d76d2",
+      "bytes": 2854
+    },
+    {
+      "file": "rf-v2-spec-finally-successor-red.json",
+      "sha256": "743e1a6487ad18fa9b2ebc06ab335067a5c475000926d9c25c2423841e9f5b89",
+      "bytes": 1764
+    },
+    {
+      "file": "rf-v2-spec-finally-successor-green.json",
+      "sha256": "d46b18161a8c9345838b0154a10db8bca777d0bb2e198deea9be3d078b5049e4",
+      "bytes": 1245
+    }
+  ],
+  "limits": [
+    "No runtime EXECUTE grants for v2 append or Governance producer. No Python source writer/consumer, HTTP, provider, or Archive activation.",
+    "Native7 prototype, native9 implementation, and independent native5 have different explicit stubs and overlap; their counts are not a full integration total. All owned clusters removed.",
+    "109 new database cases and300 existing prerequisite cases collected only, zero full database executions. Five offline fixture constructions do not prove SQL/RLS/races.",
+    "Eight downstream hooks have catalog routing coverage; prepared real runtime case is preview, not full downstream activation.",
+    "SQL authenticates exact owner chain manifest and current RF references, not corporate-reporting-year-2 business selection/status/hash. Future same-held-connection public Python validation and complete transitive consumers remain required.",
+    "Plain caller JSON/GUC cannot mint evidence. Proof catalog, RF owner, exact builtin schema, full xid8/current actor/scope/source SHA, and actual Gov input invalidation are enforced; verified identity/owner production providers are not proven by stubbed native probes.",
+    "Current CI38015434253 is for baseline24ce only and excludes this slice; no hosted result transfers to these bytes.",
+    "Same-held-connection public Python original-year/status/economic/hash validation, complete downstream dual-codec consumers, actual original-byte availability and full database/browser/Auth/recovery evidence remain required before activation.",
+    "No runtime writer or producer activation, launch, genuine-company admission, outreach, provider activation or paid action. All A1-A7 remain pending."
+  ],
+  "claim": "Reviewable closed SQL prerequisite only. Not RF completion or a release candidate approval."
+}

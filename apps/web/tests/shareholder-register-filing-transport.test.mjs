@@ -1,3 +1,4 @@
+import { mockLegacyRfBackend } from "./fixtures/rf1086-legacy-backend.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
@@ -27,6 +28,17 @@ const archiveSource = (incomeYear = 2025) => ({
     createdBy: other, acknowledgedBy: null, acknowledgedAt: null, createdAt: "2025-01-01T12:00:00Z" }],
   permissions: [], testEvidence: [],
 });
+const productionArchive = (incomeYear = 2025) => ({
+  ...archiveSource(incomeYear), overrides: [],
+  approvals: [],
+  feedbackArtifacts: [],
+  productionEvents: [],
+  productionSubmissions: [],
+});
+const productionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production-v4";
+const oldProductionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production";
+const legacyArchivePath = "/api/v1/shareholder-register-filings/archive-source";
+
 function environment(t) {
   const prior = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = "https://backend.example";
@@ -37,7 +49,7 @@ const invalidResponse = (error) => error instanceof TalliApiError && error.statu
 test("retained history reads keep every requested company and all years with authenticated no-store transport", async (t) => {
   environment(t);
   const calls = [];
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     const query = new URL(url).searchParams;
     calls.push(query.get("companyId"));
     assert.equal(query.has("incomeYear"), false);
@@ -54,15 +66,15 @@ test("retained history reads keep every requested company and all years with aut
 
 test("archive source requests exactly one company/year and retains company-wide review facts", async (t) => {
   environment(t);
-  const calls = [], value = archiveSource();
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  const calls = [], value = productionArchive();
+  mockLegacyRfBackend(t, async (url, request) => {
     calls.push({ url: new URL(url), request });
     return Response.json(value);
   });
   assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025, "rf-archive-request"), value);
   assert.equal(calls.length, 1);
   const { url, request } = calls[0];
-  assert.equal(url.pathname, "/api/v1/shareholder-register-filings/archive-source");
+  assert.equal(url.pathname, productionArchivePath);
   assert.deepEqual([...url.searchParams.entries()].sort(), [["companyId", company], ["incomeYear", "2025"]]);
   assert.equal(request.method, "GET");
   assert.equal(request.body, undefined);
@@ -72,35 +84,65 @@ test("archive source requests exactly one company/year and retains company-wide 
   assert.equal(request.signal instanceof AbortSignal, true);
 });
 
-for (const corruption of ["company", "year", "preview-company", "preview-year", "duplicate-preview", "comment-company", "duplicate-comment", "nested-issue", "extra-workspace-field"]) {
-  test(`archive source rejects ${corruption} without silently broadening or dropping evidence`, async (t) => {
+for (const mode of ["production", "legacy"]) {
+  test(`${mode} archive accepts a complete unmodified response`, async (t) => {
     environment(t);
-    const value = archiveSource();
-    if (corruption === "company") value.companyId = other;
-    if (corruption === "year") value.incomeYear = 2024;
-    if (corruption === "preview-company") value.previews[0].companyId = other;
-    if (corruption === "preview-year") value.previews[0].incomeYear = 2024;
-    if (corruption === "duplicate-preview") value.previews.push(value.previews[0]);
-    if (corruption === "comment-company") value.reviewComments[0].companyId = other;
-    if (corruption === "duplicate-comment") value.reviewComments.push(value.reviewComments[0]);
-    if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
-    if (corruption === "extra-workspace-field") value.productionSubmissions = [];
-    let calls = 0;
-    t.mock.method(globalThis, "fetch", async () => { calls += 1; return Response.json(value); });
-    await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
-    assert.equal(calls, 1);
+    const value = mode === "production" ? productionArchive() : archiveSource();
+    const calls = [];
+    mockLegacyRfBackend(t, async url => {
+      const path = new URL(url).pathname;
+      calls.push(path);
+      if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(path))
+        return new Response(null, { status: 404 });
+      return Response.json(value);
+    });
+    assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025), value);
+    assert.deepEqual(calls, mode === "production"
+      ? [productionArchivePath] : [productionArchivePath, oldProductionArchivePath, legacyArchivePath]);
   });
+}
+
+for (const mode of ["production", "legacy"]) {
+  const corruptions = ["company", "year", "preview-company", "preview-year", "duplicate-preview", "comment-company", "duplicate-comment", "nested-issue"];
+  // Only the legacy contract includes company-wide workspace entries.
+  if (mode === "legacy") corruptions.push("extra-workspace-field");
+  for (const corruption of corruptions) {
+    test(`${mode} archive source rejects ${corruption} without silently broadening or dropping evidence`, async (t) => {
+      environment(t);
+      const value = mode === "production" ? productionArchive() : archiveSource();
+      if (corruption === "company") value.companyId = other;
+      if (corruption === "year") value.incomeYear = 2024;
+      if (corruption === "preview-company") value.previews[0].companyId = other;
+      if (corruption === "preview-year") value.previews[0].incomeYear = 2024;
+      if (corruption === "duplicate-preview") value.previews.push(value.previews[0]);
+      if (corruption === "comment-company") value.reviewComments[0].companyId = other;
+      if (corruption === "duplicate-comment") value.reviewComments.push(value.reviewComments[0]);
+      if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
+      if (corruption === "extra-workspace-field") value.productionSubmissions = [];
+      let calls = 0;
+      mockLegacyRfBackend(t, async url => {
+        calls += 1;
+        if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(new URL(url).pathname))
+          return new Response(null, { status: 404 });
+        return Response.json(value);
+      });
+      await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
+      assert.equal(calls, mode === "production" ? 1 : 3);
+    });
+  }
 }
 
 test("year-bound archive decoding does not relax the unchanged all-history workspace decoder", async (t) => {
   environment(t);
   const malformed = { ...preview(company, 2024), id: setupId, issues: [{ level: "warning", message: "Original optional-code historical issue" }] };
   const calls = [];
-  t.mock.method(globalThis, "fetch", async url => {
+  mockLegacyRfBackend(t, async url => {
     const parsed = new URL(url); calls.push(parsed.pathname);
-    if (parsed.pathname.endsWith("/archive-source")) {
+    if (parsed.pathname === productionArchivePath) {
       const year = Number(parsed.searchParams.get("incomeYear"));
-      return Response.json({ ...archiveSource(year), previews: [year === 2024 ? malformed : preview()] });
+      const value = productionArchive(year);
+      if (year === 2024) value.previews[0].issues = malformed.issues;
+      return Response.json(value);
     }
     assert.equal(parsed.searchParams.has("incomeYear"), false);
     return Response.json({ ...workspace(), previews: [preview(), malformed] });
@@ -108,7 +150,7 @@ test("year-bound archive decoding does not relax the unchanged all-history works
   assert.equal((await loadRf1086ArchiveSource("owner", company, 2025)).previews[0].incomeYear, 2025);
   await assert.rejects(loadRf1086ArchiveSource("owner", company, 2024), invalidResponse);
   await assert.rejects(loadRf1086Workspaces("owner", [company]), invalidResponse);
-  assert.deepEqual(calls, ["/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/workspace"]);
+  assert.deepEqual(calls, [productionArchivePath, productionArchivePath, "/api/v1/shareholder-register-filings/workspace"]);
 });
 
 for (const corruption of ["company", "child-company", "duplicate", "year", "invalid-status"]) {
@@ -120,7 +162,7 @@ for (const corruption of ["company", "child-company", "duplicate", "year", "inva
     if (corruption === "duplicate") value.previews.push(value.previews[0]);
     if (corruption === "year") value.previews[0].incomeYear = 2024;
     if (corruption === "invalid-status") value.previews[0].status = "provider_claims_ready";
-    t.mock.method(globalThis, "fetch", async () => Response.json(value));
+    mockLegacyRfBackend(t, async () => Response.json(value));
     await assert.rejects(loadRf1086Workspaces("owner", [company], 2025), invalidResponse);
   });
 }
@@ -129,7 +171,7 @@ test("preview generation sends only original input identities and rejects a misb
   environment(t);
   const calls = [];
   let misbound = false;
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     calls.push({ url, request });
     return Response.json({ recordId: previewId, companyId: misbound ? other : company, incomeYear: 2025 });
   });
@@ -143,7 +185,7 @@ test("preview generation sends only original input identities and rejects a misb
 
 test("a preview read cannot substitute another aggregate", async (t) => {
   environment(t);
-  t.mock.method(globalThis, "fetch", async () => Response.json({ ...preview(), id: setupId }));
+  mockLegacyRfBackend(t, async () => Response.json({ ...preview(), id: setupId }));
   await assert.rejects(loadRf1086Preview("owner", previewId), invalidResponse);
 });
 
@@ -198,7 +240,7 @@ for (const [status, code, absent] of [
 ]) {
   test(`canonical ownership fallback requires exact not-found (${status}/${code})`, async (t) => {
     environment(t);
-    t.mock.method(globalThis, "fetch", async () => Response.json({
+    mockLegacyRfBackend(t, async () => Response.json({
       type: "about:blank", title: "Unavailable", status, detail: "Sanitized", code,
       instance: "/fixture", requestId: "ownership-fixture",
     }, { status, headers: { "content-type": "application/problem+json" } }));
@@ -206,5 +248,32 @@ for (const [status, code, absent] of [
       if (absent) assert.equal(await operation(), null);
       else await assert.rejects(operation, (error) => error instanceof TalliApiError && error.status === status);
     }
+  });
+}
+
+const sourceArchiveFixture = JSON.parse((await import('node:fs')).readFileSync(
+  new URL('./fixtures/rf1086-source-submission-archive.json', import.meta.url), 'utf8'));
+
+test('full-year archive response preserves actual backend claim, head and retained lineage DTOs', async t => {
+  environment(t);
+  mockLegacyRfBackend(t, async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(sourceArchiveFixture));
+  assert.deepEqual(await loadRf1086ArchiveSource('owner', sourceArchiveFixture.companyId, sourceArchiveFixture.incomeYear), sourceArchiveFixture);
+});
+
+for (const mutation of ['missing-lineage','missing-claims','missing-head','claim-company','claim-payload','duplicate-claim','head-year','head-submission','unknown-claim-property']) {
+  test(`full-year archive transport rejects ${mutation}`, async t => {
+    environment(t);
+    const value = structuredClone(sourceArchiveFixture);
+    if (mutation === 'missing-lineage') delete value.sourceApprovalLineage;
+    if (mutation === 'missing-claims') delete value.sourceSubmissionClaims;
+    if (mutation === 'missing-head') delete value.submissionHead;
+    if (mutation === 'claim-company') value.sourceSubmissionClaims[0].companyId = other;
+    if (mutation === 'claim-payload') value.sourceSubmissionClaims[0].payloadSha256 = 'f'.repeat(64);
+    if (mutation === 'duplicate-claim') value.sourceSubmissionClaims.push(value.sourceSubmissionClaims[0]);
+    if (mutation === 'head-year') value.submissionHead.incomeYear = 2024;
+    if (mutation === 'head-submission') value.submissionHead.submissionId = other;
+    if (mutation === 'unknown-claim-property') value.sourceSubmissionClaims[0].dispatchAuthorized = true;
+    mockLegacyRfBackend(t, async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(value));
+    await assert.rejects(loadRf1086ArchiveSource('owner', value.companyId, value.incomeYear), invalidResponse);
   });
 }

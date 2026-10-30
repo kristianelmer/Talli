@@ -4,9 +4,11 @@ from typing import Protocol
 
 from talli_backend.modules.annual_accounts_filing.public import AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, AnnualAccountsSourcePersistence
 from talli_backend.shared.kernel import ActorId
+from talli_backend.modules.annual_accounts_filing.public import AnnualAccountsDeliveryDraftPersistence, AnnualAccountsDeliveryJournalPersistence
+from talli_backend.application.annual_accounts_delivery_source import AnnualAccountsDeliverySourceInputs
 
 
-class AnnualAccountsTransaction(AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, AnnualAccountsSourcePersistence, Protocol):
+class AnnualAccountsTransaction(AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, AnnualAccountsSourcePersistence, AnnualAccountsDeliverySourceInputs, AnnualAccountsDeliveryDraftPersistence, AnnualAccountsDeliveryJournalPersistence, Protocol):
     @property
     def actor_id(self) -> ActorId: ...
 

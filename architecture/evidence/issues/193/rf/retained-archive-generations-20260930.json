@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "60ab2f9fa01ac840119cdaccba74adda2f96677c",
+  "problem": "Eight RF history/head/binding tables and both Documents retention tables serialized writes but did not participate in company-archive receipt generation invalidation. An earlier receipt could remain current after new retained evidence.",
+  "implementation": {
+    "migration": "20260930160335_rf1086_retained_archive_generations.sql",
+    "rfYearScopedTables": 8,
+    "documentsCompanyScopedTables": 2,
+    "firstActivation": "Invalidate existing generations of affected companies once without changing source evidence",
+    "replay": "Preserve generations, source snapshots, complete role memberships, tracker EXECUTE grants, table ACLs and exact RLS settings",
+    "documents": "Keep existing BEFORE company guard; track actual changes AFTER the write so INSERT ON CONFLICT DO NOTHING does not invalidate a receipt",
+    "rollback": "Application rollback keeps the invalidation triggers; transactional rollback restores all changes"
+  },
+  "validation": {
+    "databaseChecksPassed": 55,
+    "databaseDurationSeconds": 7.27,
+    "ciAndInventoryChecksPassed": 101,
+    "finalIndependentInventoryChecksPassed": 16,
+    "browserPassed": 1,
+    "browserDurationMilliseconds": 153194.666917,
+    "architecture": "passed",
+    "supabaseAdvisors": {
+      "blockingSecurityOrErrorFindings": 0,
+      "performanceWarnings": 52
+    },
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "ownedCleanup": "Passed: no restore containers/volumes remain; owned stack removed, 42 recorded running containers restored, Colima stopped and generated Next files restored",
+    "newRevisionCi": "pending"
+  },
+  "databaseAssertions": [
+    "Current synthetic completed receipt admits cancellation into retention_hold; baseline transaction is rolled back",
+    "Unapproved source capture invalidates completed receipt and in-flight export; cancellation rejects stale receipt",
+    "Unreviewed preview invalidates in-flight export, while identical preview replay preserves generations",
+    "Prior-year retained-original insertion invalidates all existing company years, including a later filing year",
+    "Aborted retained-original insertion leaves no original and no generation change",
+    "Identical retained-original read/replay returns the same receipt without generation changes",
+    "First-activation migration invalidates affected historical scopes once; replay and rollback preserve source evidence and exact authority",
+    "All ten trackers are enabled with the expected phase and original table protections"
+  ],
+  "browserRestore": {
+    "scope": "Synthetic rejected filing, accepted correction, unknown send, unapproved fourth source and prior-year original",
+    "databaseRestorePerformed": true,
+    "retainedOriginalBytesRestored": true,
+    "objectStorageRestorePerformed": true,
+    "sourceVersions": 4,
+    "sourceApprovals": 3,
+    "submissions": 3,
+    "sourceOriginals": 4,
+    "feedbackOriginals": 4,
+    "ordinaryObjects": 8,
+    "ownerDownloadsMatch": true,
+    "crossOwnerAndPreMfaDenied": true,
+    "directStorageReadsDenied": true,
+    "sourceStateUnchanged": true,
+    "createdRestoreResourcesRemoved": true
+  },
+  "baseCi": {
+    "runId": 36739176198,
+    "revision": "256c3602a1eb883d0703867be40e7e6691da9c5f",
+    "conclusion": "cancelled",
+    "application": "success",
+    "database": "cancelled",
+    "releaseGate": "failure",
+    "browserHistoriesPassed": 9,
+    "annotation": "The job has exceeded the maximum execution time of 45m0s",
+    "change": "Database timeout increased to 60 minutes; full coverage retained"
+  },
+  "diagnosticsResolved": [
+    "Documents evidence_references is a private ACL-protected table without FORCE RLS; migration now validates ownership and preserves exact existing protections",
+    "Documents retained-copy INSERT uses ON CONFLICT DO NOTHING; AFTER invalidation preserves ordinary read replay",
+    "Historical Documents replay suite belongs before Tax/Accounts table contraction; corrected private rehearsal order"
+  ],
+  "limitations": [
+    "Cancellation checks use synthetic internal archive receipts; complete cancellation/expiry/deletion browser and restore histories remain",
+    "Full retention inventory/policy, retained-original generations and independent Auth/role/hosted restoration remain open",
+    "Other RF security/conformance, unknown-operation reconciliation, legacy feedback backfill, HTTP/concurrency and immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; no hosted mutation, provider operation, production enablement or real AS data"
+  ],
+  "sha256": {
+    "supabase/migrations/20260930160335_rf1086_retained_archive_generations.sql": "006648b2bc55098e20fbef19c07312de5a424be30e07f5c6b34ce2c042d04288",
+    "supabase/rollback/20260930160335_rf1086_retained_archive_generations.sql": "1a9e7fc730197385e726e1c3415e3f75c310bf5ed75f2398fcdf16c27bb3429c",
+    "architecture/company-archive-sources.json": "a88efd84b7d5048c5df19b15d80b064538d0fd357104c02de8b8b1c7786479a8",
+    "scripts/rf-consequential-successors.json": "e77ada4e7bab816b9e379c38eeeb72781d079455fe581528cafd9f53d8624672",
+    "apps/backend/tests/test_rf1086_retained_archive_generations.py": "8c9ecf9e4b7b2c85c1e26481f5ea51e53c2fb05b1e04ab9b68fe4d69493c8e6e",
+    "apps/backend/tests/test_document_originals_database.py": "0657709e3aa023cf2ff22d1bafbf206c6c4826cf9bb766017f977f7e0774c5f5",
+    "tests/company_access_cancellation_schema.test.mjs": "2a90e98cc38d649a85fce35aac0d50badc6771a2741aa785fa9860d3cdb706ef",
+    "tests/ci_release_gate.test.mjs": "89758cf775b3d0865186eb187edd889b01ec37632554f769a3f8dd39c3df8210",
+    ".github/workflows/release-gate.yml": "c7329f2a0ea921c9906ed20b924024f7d18e31e49bffdc362f41404eefa4a660",
+    "package.json": "72947cc445b8642a263e733d78fddfcf37ed6e5722a21c37953389c926fd8ed4",
+    "docs/security/backup-restore-runbook.md": "a10a4408cd92e1b873397999add7a4289b8af4027468b7649382427fef55e672"
+  }
+}

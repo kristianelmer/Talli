@@ -1,0 +1,68 @@
+{
+  "version": "tax-calculated-document-scope-proof-v1",
+  "baselineRevision": "38d6d1bc6ab33dab0abd93a2f2e414a2961fdd7b",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "schemaSha256": "c9631dcb56397a2e9632f9a8339d4060aa8f3ae6f58c7bf35b7cc19df5e77769",
+  "preservedPins": {
+    "delivery": "56668da96711b664843df91d518bb127eb79bddf93c9635765bbd28d35bdda1b",
+    "response": "eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1"
+  },
+  "scope": [
+    "Complete company statutory pair, pinned XSD/code categories, re-inspected retained current party and draft binding, intrinsic year/party on statutory/summary documents",
+    "Optional computed tax and summary XSDs, exact packaged type-catalog imports, all original bytes retained; computed tax has no intrinsic scope fields",
+    "Unsupported personal/Svalbard/Petroleum/SDF documents and special regimes cannot be omitted; normalize schema boolean whitespace",
+    "Derived exact original/draft/pin inspection only; rejected codes and guidance/deviations remain visible"
+  ],
+  "validation": {
+    "focusedRegressionPassed": 172,
+    "privateLog": "calculated-scope-regression-v1.log",
+    "architecture": "PASS; dependency evidence unchanged",
+    "whitespace": "PASS",
+    "currentOfficialResources": {
+      "status": "current",
+      "observedSourceCommit": "3f41e954dbc665139f7bb432cfd99a0f039117fe",
+      "completeEnumeration": true,
+      "distinctResources": 14,
+      "privateLog": "calculated-current-resources-v1.json"
+    }
+  },
+  "review": {
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "agentsClosed": true
+  },
+  "notEstablished": [
+    "Durable owner review, confirmation/submission transitions",
+    "Final feedback/receipt/correction chain",
+    "Signed-JWT desktop/touch Tax or Accounts completion",
+    "Known-job binding or submission permission from derived inspection alone",
+    "Customer-ready release or original Model3/P-H compatibility"
+  ],
+  "rollout": {
+    "hostedChanges": false,
+    "pushDeployment": false,
+    "defaultCompositionEnabled": false,
+    "providerActivation": false,
+    "liveFiling": false,
+    "paidActivation": false
+  },
+  "sourceFiles": {
+    "apps/backend/src/talli_backend/adapters/company_tax_calculated_schemas.py": "d3b3f1d32ad38d9bf69fe5b6c491bb1304c66215d5159a0a506dace3655040a8",
+    "apps/backend/src/talli_backend/adapters/company_tax_schemas.py": "116575358241f895735ec63b01a63e6b1dc0d18b1e6c7c7c93e09b5df70fe9cf",
+    "apps/backend/src/talli_backend/adapters/company_tax_xml.py": "315c935a07a30068fdb2d15dc3d19feb16120bf1b1e2ed075a97ba01f73d5d61",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "3b28aa52b8350658ab7ef0377e6b1490528c6fd551c4f83282a70c9024f14df3",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_calculated_documents.py": "77cebecbdf71a06d27a0bdb36fe404d886cbb29f3a30b23f33e0440468edba4f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "a75bc5ec906755787c9c13fe6f8d325fb2b591f116d72d341babffb5a407c7d8",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "29a6ea2061f1c53a42cb9d8c7e4888508cacd602d0f5914c15466e4e1634d79c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/calculated-2025/LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/calculated-2025/beregnetskatt_upersonlig_v6.xsd": "f28915757108833b1cb5f4b553f2f1aca0148b3e88491c00aa2ad6510838b574",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/calculated-2025/manifest.json": "c9631dcb56397a2e9632f9a8339d4060aa8f3ae6f58c7bf35b7cc19df5e77769",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/calculated-2025/summertSkattegrunnlagForVisning_upersonligskattyter_v4.xsd": "7cec8b92a464e7699aa752365786675f6267a44ed28f7b4f14ec43000f1770be",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/calculated-2025/typekatalog_v2.xsd": "bea285abd803a2f81a17f392202427a0decdb4054889c8438cbcd02b13e04ba5",
+    "apps/backend/tests/test_company_tax_calculated_schemas.py": "4d04d43124014815abdaac88a09d97453d9c4a320fec956c1d81a670fcc63b07",
+    "apps/backend/tests/test_company_tax_schema_drift.py": "dc0dea17cbabdaf4f5d44ccff2f59280eb29b71578718a45b77acea826c423f1",
+    "architecture/BACKEND-SYSTEM.md": "7e88d2e699532bb90ff8ccb392fcc171daca6c5e34127edfb9b0d3dfc829f2bd",
+    "architecture/backend-system.json": "e0fc15453fca98b58a48c46f1b32d454b00b1c80ffbe8b0c4fc0307c7ad54cf1",
+    "scripts/check_company_tax_schema_drift.py": "604bba7ad0823770a1f900d47aa054f3b84f66187321856f7eb020509f885e3e"
+  }
+}

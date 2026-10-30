@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:altinn="http://altinn.no/process" id="Altinn_Data_Data_Data_Process_Definition" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.1" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL bpmn0.xsd">
+  <bpmn2:process id="Altinn_Data_Data_Data_Process" isExecutable="false">
+    <bpmn2:startEvent id="StartEvent_1">
+      <bpmn2:outgoing>s1_t1</bpmn2:outgoing>
+    </bpmn2:startEvent>
+    <bpmn2:task id="Utfylling" name="Utfylling">
+      <bpmn2:extensionElements>
+        <altinn:taskExtension>
+          <altinn:taskType>data</altinn:taskType>
+          <altinn:actions>
+            <altinn:action>confirm</altinn:action>
+          </altinn:actions>
+        </altinn:taskExtension>
+      </bpmn2:extensionElements>
+      <bpmn2:incoming>s1_t1</bpmn2:incoming>
+      <bpmn2:outgoing>TilSignering</bpmn2:outgoing>
+    </bpmn2:task>
+    <bpmn2:endEvent id="EndEvent_1">
+      <bpmn2:incoming>Avslutt</bpmn2:incoming>
+    </bpmn2:endEvent>
+    <bpmn2:sequenceFlow id="s1_t1" sourceRef="StartEvent_1" targetRef="Utfylling" />
+    <bpmn2:task id="Signering" name="Signering">
+      <bpmn2:extensionElements>
+        <altinn:taskExtension>
+          <altinn:taskType>signing</altinn:taskType>
+          <altinn:actions>
+            <altinn:action>sign</altinn:action>
+            <altinn:action>reject</altinn:action>
+          </altinn:actions>
+          <altinn:signatureConfig>
+            <altinn:dataTypesToSign>
+              <altinn:dataType>ref-data-as-pdf</altinn:dataType>
+              <altinn:dataType>Hovedskjema</altinn:dataType>
+              <altinn:dataType>Vedlegg</altinn:dataType>
+              <altinn:dataType>VedleggBaerekraft</altinn:dataType>
+              <altinn:dataType>Underskjema</altinn:dataType>
+            </altinn:dataTypesToSign>
+            <altinn:signatureDataType>signature</altinn:signatureDataType>
+          </altinn:signatureConfig>
+        </altinn:taskExtension>
+      </bpmn2:extensionElements>
+      <bpmn2:incoming>TilSignering</bpmn2:incoming>
+      <bpmn2:outgoing>FraSignering</bpmn2:outgoing>
+    </bpmn2:task>
+    <bpmn2:sequenceFlow id="TilSignering" sourceRef="Utfylling" targetRef="Signering" />
+    <bpmn2:sequenceFlow id="FraSignering" sourceRef="Signering" targetRef="Gateway_FraSignering" />
+    <bpmn2:sequenceFlow id="TilbakeTilUtfylling" sourceRef="Gateway_FraSignering" targetRef="Utfylling" />
+    <bpmn2:exclusiveGateway id="Gateway_FraSignering">
+      <bpmn2:incoming>FraSignering</bpmn2:incoming>
+      <bpmn2:outgoing>Avslutt</bpmn2:outgoing>
+      <bpmn2:outgoing>RedigeringForbudt</bpmn2:outgoing>
+      <bpmn2:outgoing>TilbakeTilUtfylling</bpmn2:outgoing>
+    </bpmn2:exclusiveGateway>
+    <bpmn2:sequenceFlow id="Avslutt" sourceRef="Gateway_FraSignering" targetRef="EndEvent_1" />
+    <bpmn2:sequenceFlow id="RedigeringForbudt" sourceRef="Gateway_FraSignering" targetRef="Signering" />
+    <bpmn2:textAnnotation id="TextAnnotation_0an85it">
+      <bpmn2:text>TilSignering</bpmn2:text>
+    </bpmn2:textAnnotation>
+    <bpmn2:association id="Association_0ovtjgt" sourceRef="TilSignering" targetRef="TextAnnotation_0an85it" />
+    <bpmn2:textAnnotation id="TextAnnotation_1ret91z">
+      <bpmn2:text>signu</bpmn2:text>
+    </bpmn2:textAnnotation>
+    <bpmn2:association id="Association_0jtdy8p" sourceRef="FraSignering" targetRef="TextAnnotation_1ret91z" />
+    <bpmn2:textAnnotation id="TextAnnotation_1w9hha1">
+      <bpmn2:text>reject</bpmn2:text>
+    </bpmn2:textAnnotation>
+  </bpmn2:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Altinn_Data_Data_Data_Process">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="186" y="155" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_1_di" bpmnElement="Utfylling">
+        <dc:Bounds x="330" y="133" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="832" y="155" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0esimdy_di" bpmnElement="Signering">
+        <dc:Bounds x="520" y="133" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_FraSignering_di" bpmnElement="Gateway_FraSignering" isMarkerVisible="true">
+        <dc:Bounds x="715" y="148" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0an85it_di" bpmnElement="TextAnnotation_0an85it">
+        <dc:Bounds x="435" y="100" width="100" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1ret91z_di" bpmnElement="TextAnnotation_1ret91z">
+        <dc:Bounds x="680" y="80" width="100" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1w9hha1_di" bpmnElement="TextAnnotation_1w9hha1">
+        <dc:Bounds x="510" y="330" width="100" height="30" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="s1_t1_di" bpmnElement="s1_t1">
+        <di:waypoint x="222" y="173" />
+        <di:waypoint x="330" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="TilSignering_di" bpmnElement="TilSignering">
+        <di:waypoint x="430" y="173" />
+        <di:waypoint x="520" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="FraSignering_di" bpmnElement="FraSignering">
+        <di:waypoint x="620" y="173" />
+        <di:waypoint x="715" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Avslutt_di" bpmnElement="Avslutt">
+        <di:waypoint x="765" y="173" />
+        <di:waypoint x="832" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="RedigeringForbudt_di" bpmnElement="RedigeringForbudt">
+        <di:waypoint x="715" y="173" />
+        <di:waypoint x="620" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0ovtjgt_di" bpmnElement="Association_0ovtjgt">
+        <di:waypoint x="475" y="173" />
+        <di:waypoint x="482" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0jtdy8p_di" bpmnElement="Association_0jtdy8p">
+        <di:waypoint x="715" y="173" />
+        <di:waypoint x="718" y="110" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn2:definitions>

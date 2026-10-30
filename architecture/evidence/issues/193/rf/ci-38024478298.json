@@ -1,0 +1,454 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "recordedAtUtc": "2026-10-10T04:54:17.988530+00:00",
+  "run": {
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T04:33:20Z",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+    "status": "completed",
+    "updatedAt": "2026-10-10T04:52:19Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38024478298",
+    "id": 38024478298,
+    "durationSecondsFromCreatedToUpdated": 1139
+  },
+  "checkout": {
+    "revision": "635a95d3b253bd04169c68d84bb02ec01045e6ae",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114132269546,
+        "revision": "635a95d3b253bd04169c68d84bb02ec01045e6ae",
+        "headParent": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log git log -1 --format=%H; parent hashes independently verified through GitHub commit API."
+      },
+      {
+        "jobId": 114132269492,
+        "revision": "635a95d3b253bd04169c68d84bb02ec01045e6ae",
+        "headParent": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log git log -1 --format=%H; parent hashes independently verified through GitHub commit API."
+      }
+    ],
+    "limit": "Exact cdce synthetic merge includes pure retained claim/dispatch 87ecadd8, prior terminal receipt c5f9aa2d and dynamic replay fixture repair cdce7100. Later pure recovery/correction, proposed reader integration and next fixture repair are excluded."
+  },
+  "jobs": [
+    {
+      "id": 114132269492,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T04:33:23Z",
+      "completedAt": "2026-10-10T04:50:16Z",
+      "durationSeconds": 1013,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114132269546,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T04:33:23Z",
+      "completedAt": "2026-10-10T04:52:12Z",
+      "durationSeconds": 1129,
+      "failedSteps": []
+    },
+    {
+      "id": 114132270419,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T04:33:21Z",
+      "completedAt": "2026-10-10T04:33:21Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114135527189,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T04:52:14Z",
+      "completedAt": "2026-10-10T04:52:18Z",
+      "durationSeconds": 4,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114132269492,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "Selected authority/RF suite; Governance accepted-scope test setup after 807 passes",
+      "file": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "line": 249,
+      "test": "test_replay_cannot_disclose_event_under_other_accepted_scope[year-False]",
+      "observedError": "psycopg.errors.CheckViolation: new row for relation company_eligibility_assessments violates check constraint company_eligibility_assessments_accounting_year_check",
+      "observedStack": [
+        "test_governance_register_observation_completion_database.py:249 calls admit_prior_year",
+        "test_governance_register_observation_completion_database.py:237 attempts cloned assessment insert"
+      ],
+      "supportedDiagnosis": "Fixture helper attempts a 2025 accepted admission, while all three canonical admission tables require accounting_year=2026. The first assessment insert fails before the intended foreign-year replay assertion. Both accepted foreign-company variants already passed. The published constraints and consequential-admission command domain consistently reject 2025.",
+      "recommendedFixtureRepair": "Keep accepted foreign-company idempotency-conflict coverage. Split foreign-year coverage into actual nonadmitted-year denial for prepare and complete, requiring exact corporate_governance_forbidden and preserved originals; remove synthetic prior-year admission cloning. Do not weaken constraints, change production policy or claim execution of an accepted-foreign-year comparison branch.",
+      "observationLimit": "Observed setup error is distinct from an RPC replay failure. Expected nonadmitted-year error is source-traced: prepare/complete call assert_owner_v1(...,true) before replay comparison, which rejects unavailable Company Access admission. Repair and any local proof after this run remain untested by this receipt."
+    }
+  ],
+  "testedSourceEvidence": [
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "supabase/migrations/20260826110000_company_year_admission.sql",
+      "sha256": "3cb044a4075ce33e1f75f6ff3d61a27b148fcfc41abde1224b5b9ac95627d7ef",
+      "lines": [
+        32,
+        69,
+        78,
+        93,
+        343,
+        656
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql",
+      "sha256": "c64f260a40dd651f80d0890e9a72278bca57c58abe8f7e0991af7492ff3c1c03",
+      "lines": [
+        1121,
+        1147,
+        1152
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec",
+      "lines": [
+        49,
+        153
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "1256c86d33f855323db8a5bcff4361bca73740919c7e903104cc2c80f7089336",
+      "lines": []
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "sha256": "226f0bd82d40d16a2fb944c3f547321530c09ab04f2308c70cda72a08da4a3c0",
+      "lines": [
+        223,
+        232,
+        237,
+        244,
+        249,
+        261
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/governance_completion_rehearsal.py",
+      "sha256": "f4191eccf912044e4a5fa9f051dd563eaded2bb7cb108ff0473156f511299302",
+      "lines": [
+        11,
+        23
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_authority_connections_database_runtime.py",
+      "sha256": "e14c260badfc7761e55aec796dbc066e62d8eda394822a13c7273d6fea22bc9d",
+      "lines": [
+        574
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_rf1086_source_approval_database.py",
+      "sha256": "e62cac0f3f36cff99827a7e4029ed1efcbf2055adb175e277a5155a84ec9a192",
+      "lines": [
+        39
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_rf1086_annual_approval_database.py",
+      "sha256": "08c5cb19d5ef4c6ac4e60f6e14d0499a7e74a4ece48dd5abd676a2b6066d3941",
+      "lines": [
+        54
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_rf1086_source_review_bridge_database.py",
+      "sha256": "4d581900e4923f08bdecb5dea05269ca2265d8a97582a45e7d89bd54e589f23e",
+      "lines": [
+        159
+      ]
+    },
+    {
+      "revision": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+      "path": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
+      "sha256": "7cbdcc759ffcc828042a67eaf09515676ff93db484efe990a684bbe7a83610ba",
+      "lines": [
+        152
+      ]
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "backendSuite": {
+        "selected": 9961,
+        "passed": 9959,
+        "failed": 0,
+        "skipped": 2,
+        "deselected": 2206,
+        "durationSeconds": 487.58,
+        "scope": "Backend contract-boundary pytest selection; authority_database excluded."
+      },
+      "boundaryNodeSelections": [
+        {
+          "tests": 600,
+          "passed": 600,
+          "failed": 0
+        },
+        {
+          "tests": 123,
+          "passed": 123,
+          "failed": 0
+        },
+        {
+          "tests": 95,
+          "passed": 95,
+          "failed": 0
+        }
+      ],
+      "completed": [
+        "anonymous PostgreSQL fixture prefetch",
+        "official tax schema fetch and committed-credential scan",
+        "typecheck, declared architecture and legacy interface rejection",
+        "complete web-to-FastAPI contract boundary",
+        "production web and backend builds",
+        "production artifact smoke (1 test passed)",
+        "complete launch rehearsal",
+        "production dependency audits (both zero vulnerabilities)",
+        "whitespace check"
+      ],
+      "notReached": [],
+      "limit": "Application launch-rehearsal fixtures do not establish the later independent real RF/database/Auth restore or genuine-company/provider proof."
+    },
+    "database": {
+      "authorityRfSuite": {
+        "status": "FAILED",
+        "collected": 1418,
+        "passed": 807,
+        "failed": 1,
+        "notExecuted": 610,
+        "durationSeconds": 298.9,
+        "passedByTestFile": {
+          "test_authority_connections_database_runtime.py": 22,
+          "test_authority_operations_database_runtime.py": 13,
+          "test_launch_signoffs_database_runtime.py": 8,
+          "test_rf1086_database_runtime.py": 41,
+          "test_banking_year_reconciliation_database.py": 3,
+          "test_banking_year_reconciliation_evidence_database.py": 23,
+          "test_banking_company_guard_database.py": 32,
+          "test_annual_interview_company_guard_database.py": 7,
+          "test_rf_annual_interview_admission_database.py": 5,
+          "test_rf_annual_ledger_admission_database.py": 5,
+          "test_rf_annual_document_admission_database.py": 5,
+          "test_rf_annual_opening_admission_database.py": 4,
+          "test_rf1086_annual_readiness_database.py": 1,
+          "test_rf1086_annual_approval_database.py": 23,
+          "test_rf1086_durable_source_operation_database.py": 47,
+          "test_rf1086_year_source_database.py": 14,
+          "test_rf1086_retained_archive_generations.py": 2,
+          "test_rf1086_source_preview_database.py": 11,
+          "test_rf1086_source_review_bridge_database.py": 12,
+          "test_rf1086_source_approval_database.py": 49,
+          "test_rf1086_journal_company_guard_database.py": 17,
+          "test_rf1086_source_company_guard_database.py": 11,
+          "test_governance_ledger_company_guard_database.py": 20,
+          "test_company_access_rf_admission_database.py": 24,
+          "test_documents_rf_company_guard_database.py": 21,
+          "test_rf1086_register_observation_database.py": 13,
+          "test_rf1086_register_observation_withdrawal_database.py": 36,
+          "test_rf1086_withdrawal_admission_database.py": 103,
+          "test_rf1086_withdrawal_archive_generation_database.py": 20,
+          "test_rf1086_withdrawal_review_database.py": 31,
+          "test_rf1086_register_observation_lifecycle_database.py": 3,
+          "test_rf1086_observation_evidence_assertions_database.py": 37,
+          "test_rf1086_register_observation_evidence_reader_database.py": 90,
+          "test_governance_register_observation_completion_database.py": 54
+        },
+        "countsLimit": "File counts are actual PASSED lines within the selected 1418 suite and sum to 807; they do not imply all cases in the last file or whole suite completed."
+      },
+      "validationObservationPytest": {
+        "passed": 17,
+        "skipped": 1,
+        "durationSeconds": 0.2
+      },
+      "nodeSelections": [
+        {
+          "owner": "Ledger",
+          "tests": 70,
+          "passed": 70,
+          "failed": 0
+        },
+        {
+          "owner": "Banking",
+          "tests": 21,
+          "passed": 21,
+          "failed": 0
+        },
+        {
+          "owner": "Investments",
+          "tests": 33,
+          "passed": 33,
+          "failed": 0
+        },
+        {
+          "owner": "Documents",
+          "tests": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        {
+          "owner": "Marketing",
+          "tests": 2,
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "owner": "validation",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "predecessor",
+          "tests": 55,
+          "passed": 55,
+          "failed": 0
+        },
+        {
+          "owner": "RF workspace lifecycle",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "RF workspace and owner browser",
+          "tests": 29,
+          "passed": 29,
+          "failed": 0
+        },
+        {
+          "owner": "hosted migrator authority",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "Corporate Governance lifecycle",
+          "tests": 24,
+          "passed": 24,
+          "failed": 0
+        },
+        {
+          "owner": "Corporate Governance contract",
+          "tests": 2,
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "owner": "Billing lifecycle",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      ],
+      "billingPytest": {
+        "passed": 700,
+        "durationSeconds": 253.86
+      },
+      "completedPredecessors": [
+        "PostgreSQL 17, 17-alpine and 16-alpine prefetch",
+        "fresh migration installation and initial advisors",
+        "initial authority/RF rollback",
+        "first workspace recutover and workspace/owner browser",
+        "second authority/RF rollback, hosted migrator, Governance and Billing predecessors",
+        "final authority/RF recutover",
+        "historical source/annual/review/journal restoration cases repaired by cdce",
+        "withdrawal admission 103, withdrawal archive-generation 20, withdrawal review 31, observation assertions 37 and current evidence reader 90 actual database cases",
+        "Governance committed replay survives withdrawal (both prepare/complete variants) and SELECT visibility without UPDATE authority"
+      ],
+      "notReached": [
+        "remaining 610 selected authority/RF cases, including year-True scope variant and later Governance/Document/Ledger/source-v2 groups",
+        "fresh RF filing browser and v4 archive expectation",
+        "full-year source browser journey and lost-capture recovery",
+        "database/object-store and independent Auth restore",
+        "Company Tax and Annual Accounts database/browser successors",
+        "separate rendered public acquisition step"
+      ],
+      "stageEvidence": "Completed serial markers and verbose selected-case PASSED lines, followed by first fixture setup failure. Workspace owner browser is distinct from later filing/full-year journeys."
+    }
+  },
+  "sanitizedExcerpts": [
+    {
+      "jobId": 114132269546,
+      "path": "/private/tmp/talli-release-20261009/ci38024478298-application-summary-sanitized.log",
+      "sha256": "083ba146537f22ab08ebd53b903c96250067f48571daa7e24355ecd10a445f8b",
+      "bytes": 1211,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114132269492,
+      "path": "/private/tmp/talli-release-20261009/ci38024478298-database-failure-context-sanitized.log",
+      "sha256": "b50c1789a91d35f3b9bb4499514ae27cdb5282185126a2c0baa0faeb053e8b5e",
+      "bytes": 1709,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    }
+  ],
+  "privateRawLogDigests": [
+    {
+      "jobId": 114132269546,
+      "path": "/private/tmp/talli-release-20261009/ci38024478298-application-full-private.log",
+      "sha256": "43deb976b6b60ecb5b58cf288156331906f9beff2aecf75a77421cb96db437db",
+      "bytes": 458162,
+      "limit": "Raw log retained privately; only separately sanitized excerpt is publishable."
+    },
+    {
+      "jobId": 114132269492,
+      "path": "/private/tmp/talli-release-20261009/ci38024478298-database-full-private.log",
+      "sha256": "83755e3d844485123977319b16cdad92fdb67600974e6aa9acd3c826c8be4ecd",
+      "bytes": 448924,
+      "limit": "Raw log retained privately; only separately sanitized excerpt is publishable."
+    }
+  ],
+  "limits": [
+    "Whole workflow failed; Application success and 807 selected database passes close no acceptance criterion. A1\u2013A7 remain pending.",
+    "This receipt binds cdce and its exact synthetic merge only. Prior and later revisions do not inherit these results.",
+    "Immutable evidence skipped for this ordinary PR run; neither a canonical 11/11 complete-gate receipt nor either of two linked immutable passing revisions.",
+    "An initial image-pull rate-limit warning occurred, but the database proceeded through migrations, recutovers and 807 selected tests. It is not the terminal failure.",
+    "No independent Auth restore, genuine-company production acceptance, criterion promotion, provider activation, outreach or launch clearance claimed.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Repository write is only this receipt; root owns index changes."
+  ]
+}

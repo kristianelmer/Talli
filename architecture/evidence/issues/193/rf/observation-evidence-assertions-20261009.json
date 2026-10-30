@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Staged RF public observation evidence assertions",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "00f7fcb5c6225e43e38dd2ff6ad9238b0f3b28f5",
+  "status": "IMPLEMENTED_REVIEWED_LOCAL_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "behavior": [
+    "Additive current-observation v2 preserves the frozen v1 authorization/currentness guard and binds the exact capture to a finite server cutoff. The consumer must use the identical cutoff as its immutable event time.",
+    "Additive retained-withdrawal assertion binds exact receipt, target, both digests and capture/withdrawal/cutoff chronology; returns canonical retained receipt text without the actor-scoped idempotency key. Different accepted current owners may read historical actor evidence.",
+    "Both assertions retain verified subject, accepted-owner checks around the company lock and READ COMMITTED. No RF year lock is introduced into a Governance company/event lock path.",
+    "All new runtime and Governance owner EXECUTE grants remain closed. Original v1 body, identity and ACL remain unchanged; rollback retains the staged contracts."
+  ],
+  "checks": {
+    "full_database_tests_collected": 37,
+    "full_database_tests_executed": false,
+    "native_probe_grouped_checks_passed": 16,
+    "native_scope": "Whole migration with exact current assertion/company lock/active predicate/canonical receipt functions/withdrawal table. Preparation access explicitly STUBBED, minimal observation table and synthetic RLS policy. No actual Supabase owner authorization, full migration chain or concurrency execution. Private cluster stopped and removed.",
+    "ci_registration_harness_tests_passed": 106,
+    "architecture": "PASS",
+    "diff_check": "PASS"
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009222053_rf1086_observation_evidence_assertions.sql": "2245e19954956669f653aac7ff7c9257056e9e4efc4c82fd2481f93f8a4ec74a",
+    "supabase/rollback/20261009222053_rf1086_observation_evidence_assertions.sql": "1f662741bd719c27042491618c85c59d50b81f745d75dc6ec32ca5b4316b5905",
+    "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py": "20eae1e9bc1bb071f070be4fcd986c55108e1ab83dec41054b945be2bd9d55f8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "b7ade77051b2c6cdba4a9128a46f69faf9043f468994d9a3b307e2bd9a0a9d7b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "997368b80dfee563bb140bbc85d6374186df02ad073a454d914fc0e9742e42bf",
+    "scripts/rf-consequential-successors.json": "43f1cb39d422e1dd63e6971f8c1af6d8ea825af06ecf425fd951b9e8968f0741",
+    "package.json": "e891a021f4485ef6b1281e1a8720b61ee8464abd7efde05a8c0706dfbff329df",
+    "tests/ci_release_gate.test.mjs": "6dc7be3fd1c608d791364d306b7596623b4b249e657327fec78a923efedcf0ab"
+  },
+  "privateArtifacts": {
+    "talli-rf-observation-evidence-collect.log": {
+      "path": "/private/tmp/talli-rf-observation-evidence-collect.log",
+      "sha256": "d357c1a369a1be3f9a1608ee11298b0d5814a2d2560bfe61ac54ca95bcb23054",
+      "bytes": 5378
+    },
+    "check-observation-evidence-migration.py": {
+      "path": "/private/tmp/talli-release-20261009/check-observation-evidence-migration.py",
+      "sha256": "9f97c9239f4c6918880f917445c43ddb33b7cbb603232d951fe905de789b4db0",
+      "bytes": 14289
+    },
+    "observation-evidence-migration-native.json": {
+      "path": "/private/tmp/talli-release-20261009/observation-evidence-migration-native.json",
+      "sha256": "6c2ead1ee0b38a4431bccdfbdf16b3effaf3c21a1bb3502e8a2df9db247252ba",
+      "bytes": 1657
+    },
+    "observation-evidence-migration-native.log": {
+      "path": "/private/tmp/talli-release-20261009/observation-evidence-migration-native.log",
+      "sha256": "028d91b248af22c76d8e34970e7f600326d705dcc75ffba2f2b84884cc2ac013",
+      "bytes": 970
+    },
+    "talli-rf-observation-evidence-ci.log": {
+      "path": "/private/tmp/talli-rf-observation-evidence-ci.log",
+      "sha256": "af51c556e25e82b9db728a938a57983ca2b9e504b6f7cf0c29866425b88408e5",
+      "bytes": 11130
+    },
+    "talli-rf-observation-evidence-architecture.log": {
+      "path": "/private/tmp/talli-rf-observation-evidence-architecture.log",
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    }
+  },
+  "review": {
+    "independent": "Standards reviewer observed zero material findings on exact core SQL/rollback/test hashes and independently collected all37 DB cases; source review only, no real DB/RLS/race execution.",
+    "root": "Verified all eight source and six private artifact hashes; inspected SQL, native probe results and completed harness log. No remaining material findings in this bounded prerequisite."
+  },
+  "limits": [
+    "37 full database cases were collected only. Actual accepted-owner authorization, Supabase RLS, complete migration chain and concurrent lock-order tests still require CI.",
+    "The native probe uses preparation-access stubs, a minimal observation schema and synthetic RLS; its 16 grouped passes are not full database proof.",
+    "These contracts establish identity/currentness/time, not original document bytes, economic equivalence, fresh MFA or Ledger lifecycle. Governance must retain those checks.",
+    "Governance consumer grant, final write backstop and immutable evidence-amendment workflow remain separate serial work. No withdrawal writer activation or Archive-owner policy change occurs here.",
+    "All A1-A7 and immutable release gates remain pending; no launch or external filing authorization follows from this checkpoint."
+  ]
+}

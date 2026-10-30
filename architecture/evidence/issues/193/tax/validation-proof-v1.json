@@ -1,0 +1,204 @@
+{
+  "version": "tax-validation-proof-v1",
+  "baselineRevision": "cc74fdbbe10883a51da94b173e2504be1669d2d0",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Default-closed validation-evidence successor, positive Source V6 / Journal V4, same exact nine-table extent and preserved V1/V2 historical bytes.",
+    "Fresh current owner/MFA, complete owning Annual/Ledger/Investments and current authority document before one committed validation-start intent. Fresh bounded Clean metadata and exact approved file originals, one reviewed active data resource, scope/media/size and causal references are mandatory.",
+    "Explicit validation-advance/reconciliation; no generic next-stage selector. Lost response or commit acknowledgment never elects a second start. A missing retained job ID has no invented lookup.",
+    "Known validation-job status and result GETs retain exact UTF-8/BOM/whitespace originals. Unknown/malformed status stays unknown. Only a finished known job may supply a result target.",
+    "Known original-actor start results survive access, MFA or containment changes. New read writes/disclosures still require current owner/MFA before and after I/O. No SQL held during authority I/O.",
+    "Separate pinned common V2 response XSD, preserving the original delivery/review schema hash. Local inspection exposes result code, deviation/guidance counts and exact decoded calculated-document bytes; no inner-document scope, owner confirmation or Tax acceptance claim.",
+    "Additive validationEvidence=true beside readEvidenceVersion=2 preserves both rollout orders. Older callers get complete compatible V5/V4/V3 only before unsupported originals; invalid higher proof is never downgraded and new originals are never omitted.",
+    "Generated SDK binds scope/approval/mutation kind. Web reader verifies original bytes/hashes, closed codecs/wrappers, causal prefix, fresh Clean/file proof and known-job/status/result identities. XML retention does not itself become an XSD or Tax-success verdict."
+  ],
+  "pins": {
+    "deliverySchemaSha256": "56668da96711b664843df91d518bb127eb79bddf93c9635765bbd28d35bdda1b",
+    "validationResponseSchemaSha256": "eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1",
+    "approvedSourceCommit": "74d9c7dd020aa4701034194630c1b16609154986",
+    "currentSourceCheck": {
+      "status": "current",
+      "observedSourceCommit": "3f41e954dbc665139f7bb432cfd99a0f039117fe",
+      "completeEnumeration": true,
+      "privateLog": "validation-response-current-resource-check-v1.log"
+    }
+  },
+  "validation": {
+    "domainAndSourceRegression": {
+      "passed": 434,
+      "privateLog": "validation-regression-final-v1.log"
+    },
+    "httpApi": {
+      "passed": 53,
+      "privateLog": "validation-api-v2.log"
+    },
+    "workflowUnit": {
+      "passed": 27,
+      "privateLog": "validation-workflow-v2.log"
+    },
+    "nativeValidationStorage": {
+      "passed": 12,
+      "privateLog": "validation-review-green-native-v1.log"
+    },
+    "actualHttpNative": {
+      "passed": 6,
+      "privateLog": "validation-review-http-native-v1.log",
+      "includes": "Commit before actual POST; concurrent election; response/commit-ack loss; known-result retention after revocation; BOM originals."
+    },
+    "predecessorNativeOverlap": {
+      "passed": 14,
+      "privateLog": "validation-predecessor-native-v1.log"
+    },
+    "signedMfaFullOwningTopology": {
+      "passed": 5,
+      "privateLog": "validation-review-signed-topology-v1.log",
+      "includes": "Actual signed GoTrue AAL2/AAL1, complete owning sources, restricted runtime and real loopback HTTP; actual source-facts/archive through generated SDK and web verifier."
+    },
+    "signedGuidanceAndPredecessorOverlap": {
+      "passed": 2,
+      "privateLog": "validation-signed-guidance-overlap-v1.log"
+    },
+    "clients": {
+      "passed": 152,
+      "privateLog": "validation-review-green-client-v1.log"
+    },
+    "mandatoryPartition": {
+      "status": "PASS",
+      "minimumTaxCases": 138,
+      "markerParity": true,
+      "privateLog": "validation-partition-final-v1.log"
+    },
+    "architecture": "PASS; dependency evidence unchanged",
+    "typecheck": "PASS",
+    "generatedArtifacts": "PASS",
+    "whitespace": "PASS",
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    }
+  },
+  "review": {
+    "standards": {
+      "initialFindings": 2,
+      "resolved": 2,
+      "remaining": 0
+    },
+    "spec": {
+      "initialFindings": 3,
+      "resolved": 3,
+      "remaining": 0
+    },
+    "distinctFindings": 3,
+    "independentFollowup": {
+      "standards": 0,
+      "spec": 0
+    },
+    "resolutions": [
+      "Inspect exactly one leading BOM without changing originals; double BOM remains unknown.",
+      "Reject recognizable foreign job identity before classifying invalid timing as unknown.",
+      "Close new request/observation roots and nested scope/time wrappers."
+    ],
+    "redThenGreenEvidence": [
+      "validation-review-red-native-v1.log",
+      "validation-review-red-client-v1.log",
+      "validation-review-green-native-v1.log",
+      "validation-review-green-client-v1.log"
+    ]
+  },
+  "contracts": {
+    "paths": 191,
+    "schemas": 525,
+    "addedPaths": [
+      "/api/v1/company-tax/delivery-validation-advances",
+      "/api/v1/company-tax/delivery-validation-reconciliations"
+    ],
+    "changedExistingPaths": [
+      "/api/v1/company-tax/archive-source/delivery-journal-v1"
+    ],
+    "changedSchemas": [
+      "CompanyTaxDeliveryJournalOriginalWire"
+    ],
+    "predecessorOriginalCodecsUnchanged": true,
+    "frozenExportRouteUnchanged": true
+  },
+  "rollout": {
+    "hostedChanges": false,
+    "pushOrDeployment": false,
+    "validationWritesDefaultEnabled": false,
+    "realProviderActivation": false,
+    "productionFiling": false,
+    "paidActivation": false,
+    "liveData": false,
+    "publicLaunch": false,
+    "minimumRollback": "Contain new validation work with the matching deferred rollback; retain V6-compatible readers and every original. Narrow original-actor known-result retention remains available."
+  },
+  "notEstablished": [
+    "Calculated inner-document scope and consequential confirmation prerequisite",
+    "Owner confirmation and actual submission transition",
+    "Final feedback/receipt truth and correction chain",
+    "Actual signed-JWT desktop/touch Tax completion",
+    "Accounts completion",
+    "Commercial Annual/Billing or production authority",
+    "Original Model3/P-H compatibility",
+    "Customer-ready release verdict"
+  ],
+  "sourceFiles": {
+    "apps/backend/src/talli_backend/adapters/company_tax_response_schemas.py": "ef1d1c6627d706a34b9a53a524be2e5aa1ee56ba475751f2bc7c35066ab96229",
+    "apps/backend/src/talli_backend/adapters/company_tax_schemas.py": "e88005f00a81ce8011eae156e13fd2e675b745691e508df0af166e898dc6bc1a",
+    "apps/backend/src/talli_backend/adapters/company_tax_xml.py": "32220f439c02e9ac7ee6d87939a5d19f100f47bb4149b9a06d9ca2bc76ec4c2a",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_delivery.py": "6db8040a92f44e4f0cda23ed0629b0032f31e98d41e264c20ff96b2db0ee585d",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "65b7e56683c90c6ea62489f14d4b632d6eb4ae034a5896f4eb3d54775f88bdbc",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "16841137a77821dc5dd6421b3e4651dc2fe73d7fc684e22fdc83101deafd274f",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "bdda11443a4572c5bad08d47dbef0e4caaff6b2827e4540cc3680e4e71e0746b",
+    "apps/backend/src/talli_backend/main.py": "71bcea45f1577d0c2ea040a30a04d726dd38b3d239f701116405ec70867c319c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "db31fbc2921b0fd7e56332fa52f93e154457e172858e6924f62521064afa067a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_archive.py": "1e5d7378f0f788fc1bdcd864df5b47a8ede660748e0c4a4f46ffb0b29235ba2d",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "16da3f66e19b7d281596bc6ac53c05d479b3abc0fa671dd643a685fdc7a43eb7",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_journal.py": "bced40cde8f5e978704e55371042a9b7fc0cb7edb4b154729bd8aed91dc2c319",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_observation.py": "7ea56a9cbd0e83216ea43e7f328910a3220bddbb5f33d933bd8a98e7bc062140",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_original.py": "7c872f549464228dfdeb85cd6a650541adf8f072e987b8ac3dc32fa029f9ae28",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_validation_job.py": "eae58c2ede722cf035b85ac8e9ebe6bb7a27f8b0d7bf8c6036bb8c4c78c8369c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_validation_prerequisite.py": "de957bc08c25ebb25dc2dd028bde0e9780e51854650ff475bd62b9e14fe74ff2",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_validation_response.py": "33c8e67587de48619130020b1e479f96fd12920ae43104c930db36457c11500b",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_validation_result.py": "9f1396065dae6732fd059dbb4e2fc5187bfb18438c1fc6f538d55fa77e50ceca",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "511a958d9675db79e105909c78dc7d8670533321456b0ff21d4d832411b32be5",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "5d82a321c58df74662805e9362ba701a6e002e537c2cde9368e7e8dfe4f2c75c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/validation-v2/LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/validation-v2/manifest.json": "eaeabcebee3915f31113f026a1d7f854343670c2f45a584691213668d18a71a1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/schemas/validation-v2/skattemeldingognaeringsspesifikasjonresponse_v2.xsd": "60109b3338bb81d057ff5dc5f5275c8a5f645dce582f794bca61510641c7f09e",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "18a1c9e0adfe06e88559e15b8d3b72b1452f1388fb3230907ac418e064f76a60",
+    "apps/backend/tests/test_company_tax_delivery_journal_archive.py": "e22acdd9b729d599d9b1dbe34cbe956fa04a5cea6262eaf310bf94369d681ff5",
+    "apps/backend/tests/test_company_tax_delivery_observations_database.py": "23975bcd04acffd3ac1253018edd288a0879e982765441e91d07cdade845e487",
+    "apps/backend/tests/test_company_tax_delivery_submission.py": "552a04d3fd05b09e74c31f320c4aa8397946b2148c6120e053bef2bf48e5658f",
+    "apps/backend/tests/test_company_tax_delivery_submission_api.py": "5e0e285940c23bb90f04f83529fa3e1b621c6a04733a38cb52c0b36d7fb27d13",
+    "apps/backend/tests/test_company_tax_delivery_upload_workflow.py": "732c85b78052353c85950289fd91778d6609f1d80e572a428af0b9b54635093b",
+    "apps/backend/tests/test_company_tax_delivery_validation_api.py": "7545afcdca0b124ddbc540c666edf0d2de2ae9be02b03c888137c0535e5cd1ae",
+    "apps/backend/tests/test_company_tax_delivery_validation_workflow.py": "71b1dfe3330cba7106cccce27477006f52e16e10925478414dae1485f5f53059",
+    "apps/backend/tests/test_company_tax_schema_drift.py": "bca9d1ee8a5f90d6cc5b149be2bed871bd3a2528b2c891d961225e3ec0be9f18",
+    "apps/backend/tests/test_company_tax_validation_database.py": "a2516d52094fdb67490fcc4cb5d8a2d1aaaede4ba63c326e878587419c449dff",
+    "apps/backend/tests/test_company_tax_validation_observations.py": "663163309c8dd9d8f0b589c8dd51d7cd9008005ff02619ab0d147e2e26695965",
+    "apps/backend/tests/test_company_tax_validation_prerequisite.py": "2b47ebf91dfc4a84e121adab1c8efd0e349548c5758afc416c06e46070e24626",
+    "apps/backend/tests/test_company_tax_validation_response_schemas.py": "b7937c85ac095f3815f491aaefdf99542a7f2e682e4446ad9962d4f5fd711003",
+    "apps/backend/tests/test_company_tax_validation_transport.py": "2c8825597358cbb16f399e1f7aa747ce5a7d6e17065a6da930f6460901da9bc0",
+    "apps/backend/tests/test_postgres_tax_upload_submission.py": "8b110cb8fbbcd9d119f7d4490226b4d568cbbbd6a463637e99205e7a4e59f20b",
+    "apps/backend/tests/test_postgres_tax_validation_evidence.py": "670b9c71b3e00d762342ea08727903b7f703e197b4255c49ffa251062cda3319",
+    "apps/backend/tests/test_postgres_tax_validation_submission.py": "052e4ec98dbacc9c540b7ed27e5809dee0a1af88bf029d4e6f7072b7140d1ee6",
+    "apps/web/features/company-tax-filing/transport.ts": "dd2c111c070dd15a2fb30c7b7ab6e1aab0ef0bf1eb0e11de6cf6cfd35d746f8e",
+    "architecture/BACKEND-SYSTEM.md": "bf7168ae07f745515b8d7a23aafa347bcae2ebc36805e4ebda0f123064954ee3",
+    "architecture/backend-system.json": "09ff04cbb31c23e990b4afeb5910426547fd4f1084874704d7d1d8be32cfaf35",
+    "contracts/openapi/talli-v1.json": "1272685f1584d7475e1f8905bd6c4b583bfa9f62df055ccaecaf684e0d374d12",
+    "package.json": "839dea4628781f0dddb8b9164b2bcf1528e20e53093fa236eba3f5e75d5c36e6",
+    "packages/talli-api-client/src/generated/client.ts": "6880de9c2d765b948aa06f0370cf7b34920dcef1fd0dd32e31da0b8e0943f221",
+    "scripts/check_company_tax_schema_drift.py": "2cadf9bf7f55370403ef9f4e0788bbaaa5533bcf2e9e8a52ca3ec45b9cdac154",
+    "scripts/generate-api-client.mjs": "7bc4c19f6f728532a47e0db1143295b9f37e52227311ad6a0521b5cc990234e8",
+    "scripts/rehearse-tax-topology.mjs": "623bde0364e68670bbab6280d7352e489071f0a448cd6c607aabc0f06a5fc3e3",
+    "supabase/contract-migrations/20261026143210_company_tax_validation_evidence_v1.sql": "96e8c8beb806e7c6f5e96abf36dbffecdd58a5b78a08cfbf5cd662feb830bb0f",
+    "supabase/rollback/20261026143210_company_tax_validation_evidence_v1.sql": "ce1630861f67ef39380d1e72b3e992fba3e4850fd2df61983c964d5e18af3099",
+    "tests/ci_release_gate.test.mjs": "51d688bf8192c98359374849690164fb3a7220b9522b244b1bba416d78d645ab",
+    "tests/contract/company_tax_finite_delivery_client.test.mjs": "b683dd5a3cec077f42d865c1ec9b4db3964576a08e827b1964262bf17c406695",
+    "tests/contract/company_tax_journal_archive_client.test.mjs": "ca059cab7ec4db0a78f48da2a9cb72b2086d18fe214f5c1e5d0c614531bd70cb",
+    "tests/support/check-tax-journal-client.mjs": "d42545a7342849d26543bb3c1eab513f83060377a6109767f2d58228184fefa8"
+  }
+}

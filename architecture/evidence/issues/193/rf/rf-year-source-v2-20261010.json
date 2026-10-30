@@ -1,0 +1,257 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_PURE_RF_YEAR_SOURCE_V2",
+  "recordedAtUtc": "2026-10-10T01:19:26.532183+00:00",
+  "baseRevision": "a6a45247804073693eb7aefb0904a82a3640670b",
+  "scope": "Pure RF source-v2 only; no runtime, persistence, SQL, HTTP, Governance, Ledger, Documents or Archive changes",
+  "implementation": [
+    "Add RF-local original/effective register references, compact linear amendment chains, complete company-wide owner projection commitments and wrapped unchanged v1 Governance receipts carrying the full effective RF observation.",
+    "Validate exact scope, counts, sorted event bijections, linear prior head/target/replacement links, unique observations/withdrawals/heads, actual RF observation integrity, event states/economics/date and exact original document bindings. Current-year capital receipts must cover all supplied eligible chains; off-year chains remain committed.",
+    "Require original-or-latest-amendment cutoff and effective observation to predate source confirmation; the effective observation may equal the cutoff. New proof times require UTC; embedded legacy timestamp offsets and command ordering retain their existing hash-significant bytes.",
+    "Keep the unchanged command and its original request digest. Versioned source identity commits the original receipts, complete compact projection and effective observations. Freshness compares the entire stored projection as well as all freshness digests.",
+    "Reuse existing business validation through a discarded correction-free v1 result. Validate real v1 or v2 predecessors separately: new source ID, exact previous SHA, same scope, later confirmation, reason and correction ordinal plus one. No invented historical predecessor is persisted.",
+    "Expose separate explicit v2 preparation, integrity, freshness, replay and storage APIs with an independent closed registry. The v1 source codec and shared observation/preview/archive registry remain unchanged; mixed-codec substitution is rejected."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "c2099d52cecb62af1fdf5c835086720610bf42adc19c8f707115d9c692f7cc25"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_v2.py",
+      "sha256": "3b253c01c3f7194c405daabf2f018a9bd4d0ac0139f197ac26910e2096ad5873"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage_v2.py",
+      "sha256": "cfde29ef19f19d47068bfcdfdb5c88d0584fcab4b89bda993bec0f774d6cc23a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "d4fe4071327d3c2e54226668564ea269d0c0f3fd56a9434a92b35aaa9c7e9915"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "1168c267e4aacf36e80dca9967e5511d082289ce7f5e454a6ebdad40f4c0fedc"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_year_source_v2.py",
+      "sha256": "4ee7f739eceddba60a1356b1a1d880cdf8835a4909b655e0817ac3b118db00df"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_year_source_storage_v2.py",
+      "sha256": "e5c9b8c060926ab995f62db88d9a3ba4569662def71c5af1d5d4808e64a30dd4"
+    },
+    {
+      "path": "apps/backend/tests/fixtures/rf1086_year_source_v1_pre_v2.json",
+      "sha256": "1a513c33b1e892dbf5363f8e6f1e88b29e95ee96513ff96bb2d65bd05c71bf51"
+    }
+  ],
+  "checks": {
+    "pureRegressionPassed": 469,
+    "newIncluded": 259,
+    "legacyIncluded": 210,
+    "preeditV1GoldenCases": 7,
+    "preexistingPublicDefinitionsUnchanged": 257,
+    "databaseExecuted": 0,
+    "centralRegistrationPassed": 117,
+    "targetedArchitecturePassed": 1,
+    "architectureCheck": "PASS; generated dependency evidence unchanged",
+    "initialCombinedRun": {
+      "tests": 173,
+      "passed": 171,
+      "failed": 2,
+      "scope": "Stale committed Governance edge oracle and concurrent test-collection change; repaired targeted assertion and frozen-input central selection rerun separately. No whole-suite rerun claimed."
+    },
+    "diffCheck": "PASS",
+    "compile": "PASS"
+  },
+  "testCommands": [
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/capture-rf1086-year-source-v1-pre-v2.py > /private/tmp/talli-release-20261009/rf1086-year-source-v1-pre-v2.log",
+      "result": "7 preedit golden byte roundtrips; captured before public/code changes"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-initial.log 2>&1",
+      "result": "88 passed, 144 failed due to test fixture missing exact effective-RF Documents union; fixture repaired"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-fixture-corrected.log 2>&1",
+      "result": "233 passed, 1 failed: compact link tampering not detected by freshness; author repaired complete projection comparison"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-freshness-red.log 2>&1",
+      "result": "253 passed; filename says red but source repair landed BEFORE execution; this is green evidence only"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py apps/backend/tests/test_rf1086_year_source.py apps/backend/tests/test_rf1086_year_source_storage.py apps/backend/tests/test_rf1086_source_production.py apps/backend/tests/test_rf1086_source_preview.py apps/backend/tests/test_rf1086_full_year_correction.py apps/backend/tests/test_rf1086_archive_storage.py -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-regression.log 2>&1",
+      "result": "469 passed, 0 failed; includes 259 new and 210 unchanged legacy tests"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py --collect-only -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-new-collection.log 2>&1",
+      "result": "259 pure tests collected; no database tests"
+    }
+  ],
+  "repairObserved": {
+    "initialFixtureFailure": "Initial test fixture omitted effective RF observation documents; corrected before semantic validation. Not a production defect.",
+    "freshnessDefect": "One independently authored test changed a compact withdrawal digest while retaining opaque owner labels; the old freshness implementation accepted it. The repaired assertion compares the full locally committed projection. The exact 233-pass/1-fail log is retained.",
+    "laterLogLabel": "The artifact named freshness-red.log is green evidence: the author repair landed before that execution. Its name is not a claim that it reproduced a failure."
+  },
+  "independentReviews": {
+    "spec": {
+      "reviewer": "/root/rf_reader_spec_review",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "freezeSha256": "2a37eacc1d2d45978b92adcdd76bcc83f58bd2cc3782d9bea3df59333d7771ca",
+      "oldPublicAstCount": 257,
+      "otherOldRfImplementationFilesByteIdentical": 32,
+      "testsRerun": false
+    },
+    "standards": {
+      "reviewer": "/root/release_plan",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "freezeSha256": "2a37eacc1d2d45978b92adcdd76bcc83f58bd2cc3782d9bea3df59333d7771ca",
+      "oldPublicAstCount": 257,
+      "testsRerun": false
+    },
+    "root": {
+      "sourceAndPrivateArtifactHashesVerified": true,
+      "oldPublicAstCount": 257,
+      "actionableFindings": 0
+    }
+  },
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-freeze.json",
+      "sha256": "2a37eacc1d2d45978b92adcdd76bcc83f58bd2cc3782d9bea3df59333d7771ca"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-checks.json",
+      "sha256": "9aba4be8a78e2c547f7fee536d14b10ef275e2e8c30eb0a60c7dcf0832e2ef51"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-test-checks.json",
+      "sha256": "0391a7d721bc91ce535ff2efef13f826cb149be5fa1413e55275770b777fca9d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-rf1086-year-source-v1-pre-v2.py",
+      "sha256": "61fe34fc2e644cfcf351ce29b3e3e234d1dc113d7e4971cef953d1e464b12538"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v1-pre-v2.json",
+      "sha256": "f46c1c769c1d3ae4e32e6921318121e0a821e365570e95a31cf3c56e1c188328"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v1-pre-v2.log",
+      "sha256": "2b9be9a7bcc9134dd3e6c17be1689ad4aef6c149c97ad76ca4eb8dec4adfcb58"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-initial.log",
+      "sha256": "8d3c3f28f092e6a6d83fba2018acfe590554920310a41891bdd2a6f0440578a2"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-fixture-corrected.log",
+      "sha256": "1d8e3b4a38df5633ab08c7a30d28beb6562ec07cbbda565199982e2ad56aaf34"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-freshness-red.log",
+      "sha256": "31b6d912d25ea6c1737d2fb24dfdedf46c199b90e6783ae6ea1887c65632ba4b"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-regression.log",
+      "sha256": "e9cbce0f5a4ca9ca5f420031351b604c3c647217cb6489ad920c4f977cb9270d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf1086-year-source-v2-new-collection.log",
+      "sha256": "d925d88db2128f7042e7c041fbd48651df52b82b34acf945c0751731185249c9"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-architecture.log",
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-rf-year-source-v2-compatibility.py",
+      "sha256": "a1f581c6536d06a2eba18fcb18d68945a3a7e70b56f73e8ef4dbec854eb57705"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-compatibility.json",
+      "sha256": "9d1528fe94dc767428862bfaee068254e191e9a48c656dbd9f01e8f0b41f5550"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-compatibility.log",
+      "sha256": "9d1528fe94dc767428862bfaee068254e191e9a48c656dbd9f01e8f0b41f5550"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-legacy-regression.log",
+      "sha256": "7d62cf37a4ad604759f19ad7b29f4db528c3e77f3175eeb65d396ff768d8acd3"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-central.log",
+      "sha256": "ef7ac4316d07dd9aeaa05da1834422c4c483c705a2c99e39645abe6d7f66e320"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-central-stable.log",
+      "sha256": "95f663c1818e4d2601f7b330c2fb723a030e3c1bcdc0b5539de80cc98d38c59a"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-cleanup.json",
+      "sha256": "5dee471be7f01010354ef68254392c006f35592239726166efcc029110572fae"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-year-source-v2-architecture-targeted.log",
+      "sha256": "bd57b032a84052c5989827d5feda3eb3ffb8a3552609b2045314be9b16c62924"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/freeze-rf-year-source-v2.py",
+      "sha256": "c7610f46d4b1ff6319e47b937ed76741802b236f265fc2a3fde536131abfa478"
+    }
+  ],
+  "limits": [
+    "Synthetic pure RF evidence; Governance anchor/receipt/chain digests are trusted test labels, not independent owner proofs.",
+    "No database, RLS, role grants, locking, current-owner/current-head authorization, provider, byte I/O, browser, workflow integration, HTTP, or rollout execution.",
+    "Seven preedit fixed fixtures preserve old source storage bytes and source/case/request digests; v2 nominal increase deliberately unsupported pending producer support.",
+    "Only three new test/fixture files edited by this agent. Production author owns code, manifests and architecture checks.",
+    "Governance original/finalization/amendment/chain hashes and completeness are owner commitments. Pure RF validates supplied relations and the compact public manifests; it cannot independently authenticate foreign receipt bodies, discover omitted fully recommitted owner rows or establish live authority.",
+    "The future workflow must validate the complete public Governance projection and preserve old corrected/reversed/conflicting and cross-year blockers before mapping these compact values. The compact RF values do not independently implement that foreign policy.",
+    "Current ordinary PR CI38011213837 tests db1ea71ce7d7ad2771d4685237a6b73b580a1a02 and excludes this slice. No CI result transfers to these source bytes.",
+    "No writer activation, SQL migration, provider call, paid action, future Archive facade or cancellation-policy change. All A1-A7, mixed-version rollout/rollback and two linked immutable complete gates remain pending."
+  ],
+  "nextDependency": "Explicit persisted v1/v2 dispatch and all RF-owned readers/preview/readiness/approval/archive consumers, guarded SQL append/admission, public Governance reader grants and final same-connection workflow validation must be implemented and verified before a v2 writer is activated.",
+  "preCommitHead": "3b26b7aedd41208b4f74fdc50650ff054a414c52",
+  "finalCheckCommands": [
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source_v2.py apps/backend/tests/test_rf1086_year_source_storage_v2.py apps/backend/tests/test_rf1086_year_source.py apps/backend/tests/test_rf1086_year_source_storage.py apps/backend/tests/test_rf1086_source_production.py apps/backend/tests/test_rf1086_source_preview.py apps/backend/tests/test_rf1086_full_year_correction.py apps/backend/tests/test_rf1086_archive_storage.py -q > /private/tmp/talli-release-20261009/rf1086-year-source-v2-regression.log 2>&1",
+      "result": "469 passed: 259 new pure tests and 210 legacy tests, including seven pre-edit byte/hash goldens"
+    },
+    {
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs --write-evidence > /private/tmp/talli-release-20261009/rf-year-source-v2-architecture.log 2>&1",
+      "result": "Passed; generated dependency evidence unchanged"
+    },
+    {
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-rf-year-source-v2-compatibility.py > /private/tmp/talli-release-20261009/rf-year-source-v2-compatibility.log 2>&1",
+      "result": "All 257 prior public definitions AST-identical; 5 old domain/codec/archive files byte-identical"
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_year_source.py apps/backend/tests/test_rf1086_year_source_storage.py apps/backend/tests/test_rf1086_source_production.py apps/backend/tests/test_rf1086_source_preview.py -q > /private/tmp/talli-release-20261009/rf-year-source-v2-legacy-regression.log 2>&1",
+      "result": "118 passed; overlapping subset of the 469-test regression, not additive coverage"
+    },
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/ci_release_gate.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-central-stable.log 2>&1",
+      "result": "117 passed, 0 failed after fixture inputs stabilized"
+    },
+    {
+      "command": "python3 -m compileall -q apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_v2.py apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage_v2.py; git diff --check",
+      "result": "Passed"
+    },
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/ci_release_gate.test.mjs tests/architecture_foundation.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-central.log 2>&1",
+      "result": "171 passed, 2 failed in 678.19s: stale architecture expected edges omit four committed Governance query edges; lane collection changed from 11064 to 11065 when root added its separate fixture test during collection. Root owns the stale expectation repair; the stable central rerun is recorded separately."
+    },
+    {
+      "command": "PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test --test-name-pattern='^architecture manifests, scoped documentation, and dependency evidence agree$' tests/architecture_foundation.test.mjs > /private/tmp/talli-release-20261009/rf-year-source-v2-architecture-targeted.log 2>&1",
+      "result": "1 passed, 0 failed; only the repaired manifest expectation test rerun, not the full architecture suite"
+    }
+  ],
+  "separateArchitectureRepair": "architecture-query-expectation-repair-20261010.json"
+}

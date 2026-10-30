@@ -1,0 +1,121 @@
+{
+  "version": "annual-accounts-delivery-schema-proof-v1",
+  "baselineRevision": "7c38d29732a82334b70a9c9d41bf8df3c6b1cbb9",
+  "status": "SCHEMA_FOUNDATION_ONLY_ACCOUNTS_DELIVERY_IN_PROGRESS",
+  "scope": [
+    "Four exact public RR0002 TT02 resources, fetched 2026-10-26: both JSON model schemas, application metadata and BPMN. Manifest hash04653f5ef226df749e5d9cd7a66dd5c061de85c2c1a7f44ce7c12cea3e1faa49. No network resolver at runtime.",
+    "Strict local XML constraints derived from the public models XSD annotations. Internal references, required/occurrence constraints, fixed attributes, scalar bounds and enums are compiled; unsupported root/definition/property combinations fail. This is not an upstream XSD or proof of runtime authority acceptance.",
+    "Exact supported renderer branches, AS/small/standalone/no-audit/NOK/whole-kroner/2025 profile. Schema-instance attributes, contradictory unmodeled optional branches, extra XML, DTD/entities/processing instructions/comments/nonUTF8/overlarge or deep documents are rejected. Public BPMN parsing remains separate from packet restrictions.",
+    "Frozen inspection binds both exact original hashes plus organization/year/content-pinned schema generation. No signed/submitted/accepted/ready claim, CompanyId authorization, persistent write, system-user signing or provider activation. Existing renderer/calculator byte contracts remain unchanged."
+  ],
+  "sources": [
+    {
+      "name": "applicationmetadata.json",
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/v1/applicationmetadata",
+      "status": 200,
+      "mediaType": "application/json; charset=utf-8",
+      "bytes": 6452,
+      "sha256": "45da74344955265ede80e42726a29ce33c8efa81090cf45ab6739f00a3ad7aa6"
+    },
+    {
+      "name": "process.bpmn",
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/v1/meta/process",
+      "status": 200,
+      "mediaType": "text/xml; charset=utf-8",
+      "bytes": 6823,
+      "sha256": "96242b8b7af14606ecb68b01dd9628885a2c780ae68154ac27e95bed586ca90e"
+    },
+    {
+      "name": "Hovedskjema.json",
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema",
+      "status": 200,
+      "mediaType": "text/plain; charset=utf-8",
+      "bytes": 21555,
+      "sha256": "3776336fa2f7e1ef4773e8cb2800d7930415b9b1c028a59a338327f68b8b4f68"
+    },
+    {
+      "name": "Underskjema.json",
+      "url": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Underskjema",
+      "status": 200,
+      "mediaType": "text/plain; charset=utf-8",
+      "bytes": 330252,
+      "sha256": "e17fc7f6cb45984f5ab74dc614955199610deab9b12f9eb1012772f2e0e7c931"
+    },
+    {
+      "name": "official-postman.zip",
+      "url": "https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip",
+      "status": 200,
+      "mediaType": "application/x-zip-compressed",
+      "bytes": 82488,
+      "sha256": "3540361d3d264ffc4435df24eb31fd66a436f9d01d6407dbb722bb73ee7d8461"
+    }
+  ],
+  "validation": {
+    "newAndFrozenConformance": {
+      "passed": 293,
+      "privateLog": "delivery-schema-v4.log"
+    },
+    "finalScopeCompilerPinControls": {
+      "passed": 35,
+      "privateLog": "delivery-schema-v5.log",
+      "detail": "Correct official optional-branch ORIDs, with local compiled public constraints asserted valid before profile rejection."
+    },
+    "packaging": {
+      "status": "PASS",
+      "wheelSha256": "5f20aa5405a62c2189c57ebc08bbe95c209c51cd505e683651cd4a52e3579490",
+      "schemaResources": 5,
+      "exactResourceBytes": true,
+      "installedIsolatedImportAndValidation": true,
+      "scope": "Built wheel only; no deployment or authority activation"
+    },
+    "architecture": "PASS delivery-schema-architecture-v2.log; dependency evidence unchanged",
+    "whitespace": "PASS"
+  },
+  "review": {
+    "initialStandards": 0,
+    "initialSpec": 3,
+    "fixed": [
+      "Packet-only explicit namespaced attribute denial",
+      "Closed supported renderer branches against contradictory optional forms",
+      "Context-specific compiler vocabulary and root namespace metadata checks"
+    ],
+    "finalStandards": 0,
+    "finalSpec": 0,
+    "allAgentsClosed": true,
+    "limitation": "Independent static reviews; runtime tests and packaging are main-agent checks."
+  },
+  "separation": {
+    "systemUser": "May instantiate, fill, upload and lock. Cannot sign.",
+    "person": "Signing requires ID-porten under current official BRG documentation; a synthetic loopback exercise cannot establish real ID-porten signing.",
+    "authorityResult": "Provider validation, signature, archive/receipt and processing decision remain distinct evidence."
+  },
+  "remaining": [
+    "Full owning Annual/Ledger/current Corporate source binding",
+    "Durable draft/review/intent/unknown recovery journal and positive extended source coverage",
+    "Separate finite system preparation and person handoff/signing rehearsal",
+    "Exact original validation/signature/PDF receipt retention, correction lineage and archive",
+    "Generated API/SDK and actual signed desktop/touch Accounts flow"
+  ],
+  "closedGates": [
+    "Real provider activation",
+    "Live filing",
+    "Production/public launch",
+    "Paid operations and Billing",
+    "Original Model3/P-H compatibility"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/annual_accounts_schemas.py": "b431e47f5049eb0af661ff3154baac494e79190cd73f4e3d5b48721def7d2263",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "2130b7800b0a22d284292bc810518a892d1adf09a846447273fa6a3ae3ebab34",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/delivery_documents.py": "f0f6846e599df82f76e46e54e3d401c558b82c21c702fe9e24c2b5671378c6da",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "4081c8ef53e95e13c67befa8a5b5cf771cf84a7fd4f176d399176e1c659a4ed5",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "9ee33e4097189420c15f4ffc0c620099b6baecf425475a4af389107f619d9759",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/schemas/rr0002-202406-v1/Hovedskjema.json": "3776336fa2f7e1ef4773e8cb2800d7930415b9b1c028a59a338327f68b8b4f68",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/schemas/rr0002-202406-v1/Underskjema.json": "e17fc7f6cb45984f5ab74dc614955199610deab9b12f9eb1012772f2e0e7c931",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/schemas/rr0002-202406-v1/applicationmetadata.json": "45da74344955265ede80e42726a29ce33c8efa81090cf45ab6739f00a3ad7aa6",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/schemas/rr0002-202406-v1/manifest.json": "04653f5ef226df749e5d9cd7a66dd5c061de85c2c1a7f44ce7c12cea3e1faa49",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/schemas/rr0002-202406-v1/process.bpmn": "96242b8b7af14606ecb68b01dd9628885a2c780ae68154ac27e95bed586ca90e",
+    "apps/backend/tests/test_annual_accounts_delivery_schemas.py": "015f6d409b4c46bbe1c62ca9027797c52b7aa37fd2bb941814ba9a2271420212",
+    "architecture/BACKEND-SYSTEM.md": "d68a6876646e7e98ac0d32783bbbab244a9828580db886b38bd4a9c00448a7f8",
+    "architecture/backend-system.json": "5df3d71fbb0d6c8d3ba1ac34f87a3ea87d021420f50751be64f2680aa8ddb91c"
+  }
+}

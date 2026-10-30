@@ -1,0 +1,210 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T10:26:08.234200+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38042950875,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+    "createdAt": "2026-10-10T09:52:56Z",
+    "updatedAt": "2026-10-10T10:22:09Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38042950875"
+  },
+  "runAttempt": 1,
+  "checkout": {
+    "revision": "85e5909323d607014488f9be8f9ebecaacd4a880",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d"
+    ]
+  },
+  "jobs": [
+    {
+      "databaseId": 114186744154,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T09:53:18Z",
+      "completedAt": "2026-10-10T10:22:03Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38042950875/job/114186744154"
+    },
+    {
+      "databaseId": 114186744273,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T09:53:19Z",
+      "completedAt": "2026-10-10T10:04:19Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38042950875/job/114186744273"
+    },
+    {
+      "databaseId": 114186745153,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T09:53:17Z",
+      "completedAt": "2026-10-10T09:53:16Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38042950875/job/114186745153"
+    },
+    {
+      "databaseId": 114191612663,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T10:22:05Z",
+      "completedAt": "2026-10-10T10:22:08Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38042950875/job/114191612663"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "status": "SUCCESS",
+      "backendSuite": {
+        "passed": 10570,
+        "skipped": 2,
+        "deselected": 2237,
+        "durationSeconds": 818.65
+      },
+      "durationSeconds": 1725.0,
+      "completed": [
+        "Typecheck, architecture, legacy interfaces and web/backend contract boundary",
+        "Production builds and smoke",
+        "Complete launch rehearsal",
+        "Both production dependency audits: 0 vulnerabilities; whitespace"
+      ]
+    },
+    "database": {
+      "billingSuite": {
+        "collected": 700,
+        "passed": 625,
+        "failed": 4,
+        "errors": 71,
+        "durationSeconds": 226.53
+      },
+      "authorityRfSuite": {
+        "collectedBySuccessorCommand": 1449,
+        "executed": 0
+      },
+      "notReached": [
+        "Off-year Governance fixture repair",
+        "All 31 retained correction reader DB cases",
+        "RF browser and independent Auth/object recovery",
+        "Tax and Accounts successors",
+        "Separate rendered public acquisition step"
+      ]
+    }
+  },
+  "failure": {
+    "test": "test_adapter_records_survive_two_rollback_recutover_cycles",
+    "path": "apps/backend/tests/test_annual_checkout_runtime.py",
+    "line": 901,
+    "phase": "Full checkout observation migration replay",
+    "error": "psycopg.errors.DeadlockDetected",
+    "observedWaitCycle": {
+      "migrationProcess": 9410,
+      "relationOid": 24194,
+      "databaseOid": 5,
+      "relationLock": "AccessExclusiveLock",
+      "competingProcess": 9394,
+      "competingWait": "ShareLock on transaction 2976"
+    },
+    "secondaryFailures": [
+      "Three subsequent rollback rehearsals: missing billing.annual_checkout_observation_principals",
+      "71 fixture errors: role or missing-table errors"
+    ],
+    "cause": "UNRESOLVED: no competing query, relation-name mapping or failed-server catalog captured",
+    "comparison": "Checkout fixture and observation migration/rollback bytes match 05042db7, whose complete 700-case Billing suite passed. The c103 fixture change runs later and was not reached."
+  },
+  "testedSourceEvidence": [
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "c36423758d21621f33c4c97774c6bf95f00e76b140ec474a90684f9878d4acce",
+      "bytes": 7723
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "6436e60c2f5710dd5d9b1bfc7e480ab8610c7a10db402d8704e8d7e7d47a02d7",
+      "bytes": 8364
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "apps/backend/tests/test_annual_checkout_runtime.py",
+      "sha256": "b225b1ad01e5139f28b19dad35a60870fe37f596a7daae5bb19da49ac6de7e11",
+      "bytes": 58816
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "apps/backend/tests/test_annual_purchase_basis_runtime.py",
+      "sha256": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977",
+      "bytes": 17072
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "supabase/migrations/20260907153938_annual_checkout_observation.sql",
+      "sha256": "1e467a7210e6ecaed047e4a7ffac18f35f1545c4803ba09e6fd1d7f0c262b116",
+      "bytes": 24968
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "supabase/rollback/20260907153938_annual_checkout_observation.sql",
+      "sha256": "814e451e7bd96d149ef9dbfd7d6627fb2966c8593887b6e952f8f4bd567df550",
+      "bytes": 4490
+    },
+    {
+      "revision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+      "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+      "sha256": "8b67dd2236c818276617d86374b96e60264344879f71d3be27523c2268c1a8be",
+      "bytes": 18052
+    }
+  ],
+  "sanitizedExcerpts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-attempt1-summary-sanitized.log",
+      "sha256": "0829f4c0dcf839bdc0af1d1205d001afd5a8232fa4cded6b03a989190aa14d35",
+      "bytes": 645
+    }
+  ],
+  "privateRawLogDigests": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-application-job-full-private.log",
+      "sha256": "3c890157d19ec70b0adda9a8f9ab95c8882c68f6d4a321150459912302948ec9",
+      "bytes": 465966
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-database-job-full-private.log",
+      "sha256": "11bc828b07ed4018d9816b417971627f1235125788d5e0ff78f0966258c94cf4",
+      "bytes": 583387
+    }
+  ],
+  "metadataPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-terminal-attempt-1-status.json",
+      "sha256": "52384c0e8d747023df430ba284ca3ba547dd1baac5a0c91e88f0d6804f50481f",
+      "bytes": 7472
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-terminal-attempt-1-api.json",
+      "sha256": "f41d9269fd3fca15f163bd37fa9bb5d6cfd103519d26e377bf7b3cc8c39f3648",
+      "bytes": 12745
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38042950875-merge-parents.json",
+      "sha256": "6627ffd094654be829fc7cbca88fd1227d6c22250c5c713b389b5538185403e4",
+      "bytes": 149
+    }
+  ],
+  "limits": [
+    "Whole attempt failed; A1\u2013A7 remain pending.",
+    "Ordinary PR immutable-evidence job skipped; no canonical gate receipt.",
+    "Staged additive source-v2 context is excluded from c103.",
+    "A same-head failed-job rerun is diagnostic only; a green rerun would not establish that the deadlock is fixed.",
+    "No provider/service/genuine-company acceptance, recovery, activation, filing, spending or outreach claimed."
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "rf-integration-ci-observation-v2",
+  "recordedAtUtc": "2026-10-11T03:45:50.505948+00:00",
+  "runId": 38104559587,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38104559587",
+  "headSha": "e86d6ac3ead0f6a2f382ef16aa52f369cdda6623",
+  "mergeSha": "8f953c2969beafed415aa990674ef425e073e675",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempts": [
+    {
+      "attempt": 1,
+      "application": {
+        "passed": 11237,
+        "skipped": 2,
+        "deselected": 2366,
+        "seconds": 650.0
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 251.64
+      },
+      "authority": {
+        "passed": 1578,
+        "seconds": 841.32,
+        "approvalExactPassed": 36,
+        "claimExactPassed": 20,
+        "retentionExactPassed": 24
+      },
+      "failure": "Authority connections browser callback GET404 before RF browser/independent restore; no route404 reproduced by separate route-only local probe."
+    },
+    {
+      "attempt": 2,
+      "application": {
+        "reusedAttempt": 1,
+        "passed": 11237,
+        "skipped": 2,
+        "deselected": 2366,
+        "freshExecution": false
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 248.69
+      },
+      "authority": {
+        "passed": 1578,
+        "seconds": 814.95,
+        "approvalExactPassed": 36,
+        "claimExactPassed": 20,
+        "retentionExactPassed": 24
+      },
+      "rfBrowser": {
+        "selected": 38,
+        "passed": 37,
+        "failed": 1
+      },
+      "failure": "pg_restore completed and strict recovered fingerprint differs before independent Auth start; component unknown"
+    }
+  ],
+  "verification": {
+    "freshPrAndMergeParentsVerified": true,
+    "actualDatabaseCheckoutVerified": true,
+    "reusedApplicationOriginalCheckoutVerified": true,
+    "requiredPassOnlyNodesAndSourceGitPinsVerified": true,
+    "artifacts": 0
+  },
+  "rawEvidenceSha256": {
+    "ci38104559587-app-raw-v1.log": "ec0d3c24b34dc6f823156930ff9c1ac48dfefa8981a943b21301410f7b864b2d",
+    "ci38104559587-db-raw-v1.log": "dc744da7805a2a8d680918d0f0c568aba3595a8ea855e911cda77f4231c1a864",
+    "ci38104559587-attempt2-db-direct-raw-v2.log": "1e9ce9fc2eab3e3679ac1014c08165c9bc93712ef38731ddf075318c3bc63f34",
+    "ci38104559587-attempt2-terminal-run-v1.json": "0021c5e935c751d2bd2d3edbd3112153daf53a88b66ac5a97f3c49048541f03a",
+    "ci38104559587-attempt2-terminal-jobs-v1.json": "7029054019c4b21597a541b0f061c12b60428c2fd2f70e5f917f994efdf7cc4e",
+    "ci38104559587-attempt2-terminal-pr-v1.json": "8263aad7d290919448ba40d1f565f6cd06b9128725ee66a0ac447c31a9056e78",
+    "ci38104559587-attempt2-terminal-parents-v1.json": "1482f32c3b9a20361e0ad2e6919b07a449061f484b43fecbc120cb0e4fa5a438",
+    "ci38104559587-attempt2-db-annotations-v1.json": "6d68ede89cfc12fb636a6591a89f380deafd22c8c71097994b0adbae809e29f1",
+    "ci38104559587-attempt2-approval-actual-prerequisite-v1.json": "bdedbf1865de0598f7e5f987b73b4acacea441810038669141a2a7eb1098524b",
+    "ci38104559587-attempt2-claim-actual-prerequisite-v1.json": "dee3a788aea1bcd5f5fab51fc503deefdded70cc8226710671e809cae12f2ab6",
+    "ci38104559587-attempt2-retention-actual-prerequisite-v1.json": "5e94724d6ab65b3faf75f17a6015c6505bb08c9764ad7d6bab32ac53cc17fcf5"
+  },
+  "limits": [
+    "Attempt2 reused Application from attempt1; no fresh ordinary execution claimed.",
+    "Unchanged retry reaches/passes prior callback boundary; no diagnosed callback fix/stability proof.",
+    "Target default-database preparation and pg_restore now complete, but strict recovered fingerprint fails before target Auth. Mismatched component is unknown; no independent Auth/nonce/successor recovery acceptance.",
+    "Both attempts exclude new company bundle/inventory pipeline and fingerprint diagnostic changes. No acceptance transfer.",
+    "Immutable evidence skipped, no artifacts/final aggregate. Whole release/RET002/all-three remain uncleared.",
+    "Raw logs stay private. Direct terminal jobs API log is canonical; alternate gh run view job log is incomplete and preserved."
+  ]
+}

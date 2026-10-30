@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "DISPOSABLE_GOVERNANCE_REPLAY_CONSUMER_REPAIR",
+  "recordedAtUtc": "2026-10-10T04:33:04.839404+00:00",
+  "sourceBaseRevision": "87ecadd854fbf1ef5ecf14cc51ac3b95a1a205a3",
+  "parentRevision": "c5f9aa2d3dd3e0dd0b6dad0a116a3a347046b459",
+  "observedCi": "ci-38022965879.json",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/governance_completion_rehearsal.py",
+      "sha256": "f4191eccf912044e4a5fa9f051dd563eaded2bb7cb108ff0473156f511299302",
+      "bytes": 1149
+    },
+    {
+      "path": "apps/backend/tests/test_authority_connections_database_runtime.py",
+      "sha256": "e14c260badfc7761e55aec796dbc066e62d8eda394822a13c7273d6fea22bc9d",
+      "bytes": 46985
+    },
+    {
+      "path": "apps/backend/tests/test_governance_completion_rehearsal.py",
+      "sha256": "49156e1ac21ff28ecf48c367b3fd937a208bad300927c940dfb5376a1aca1cc6",
+      "bytes": 3611
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_annual_approval_database.py",
+      "sha256": "08c5cb19d5ef4c6ac4e60f6e14d0499a7e74a4ece48dd5abd676a2b6066d3941",
+      "bytes": 21103
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
+      "sha256": "7cbdcc759ffcc828042a67eaf09515676ff93db484efe990a684bbe7a83610ba",
+      "bytes": 14080
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_predecessor_rehearsal.py",
+      "sha256": "58cb9e040c61134d62814e4647ad33da47cca7f4a1f7fe016403890c3cd80676",
+      "bytes": 4071
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_approval_database.py",
+      "sha256": "e62cac0f3f36cff99827a7e4029ed1efcbf2055adb175e277a5155a84ec9a192",
+      "bytes": 55296
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_review_bridge_database.py",
+      "sha256": "4d581900e4923f08bdecb5dea05269ca2265d8a97582a45e7d89bd54e589f23e",
+      "bytes": 10549
+    }
+  ],
+  "diagnosis": [
+    "Four additional dynamic consequential replay loops bypassed the already pinned disposable adapter. Actual CI failed in source approval restoration and annual cleanup; review bridge and journal cleanup are source-audited additional consumers.",
+    "Three predecessor unit variants supplied pathname strings instead of real frozen migration text, correctly rejected by the pinned adapter."
+  ],
+  "implementation": [
+    "Shared forward migration reader applies the existing exact adapter. All five dynamic Python consequential restoration loops use it; order and cleanup remain fixed.",
+    "Predecessor test double provides the real frozen target SQL and verifies exact adapted output bytes before recording migration identity; existing topology/role restoration assertions remain.",
+    "Two new actual historical fixture executions verify restoration SQL and order for normal close and injected body error."
+  ],
+  "checks": {
+    "python": {
+      "passed": 14,
+      "seconds": 0.87,
+      "includesNewCases": 2
+    },
+    "databaseCollection": {
+      "collected": 101,
+      "executed": 0
+    },
+    "whitespace": "PASS",
+    "before": {
+      "predecessorFailed": 3,
+      "predecessorPassed": 4,
+      "newFixtureFailed": 2
+    },
+    "independentSpec": {
+      "repeatedTests": 14,
+      "probeGroups": 6,
+      "scope": "Preserved caller AST, unchanged hash guard, wrong output digest and corrupt original/adapted bytes in all three predecessor phases; no database execution."
+    }
+  },
+  "unchangedFiles": [
+    {
+      "path": "tests/fixtures/governance_completion_replay.json",
+      "sha256": "982590222bb58d53e8b58c79ba46bfc870a242d272ea9eab12c7242fbff95617",
+      "bytes": 823
+    },
+    {
+      "path": "tests/support/governance_completion_rehearsal.mjs",
+      "sha256": "1a655d83e2360e6af95638f1e859f7e77efa6cbba14409ffdf0448b9b3a3fd81",
+      "bytes": 911
+    },
+    {
+      "path": "scripts/rehearse-authority-topology.mjs",
+      "sha256": "37e046286edb4c2be20efa2f15847be6c6b823fa63b355ee515d4abfa833fdb5",
+      "bytes": 10024
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "aab0f06c8ba56f46e9b1ceae5b9a8fd3e8555aa3fe62e09096b584dcbc050ec8",
+      "bytes": 17520
+    },
+    {
+      "path": "supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec",
+      "bytes": 15235
+    },
+    {
+      "path": "supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "1256c86d33f855323db8a5bcff4361bca73740919c7e903104cc2c80f7089336",
+      "bytes": 5611
+    },
+    {
+      "path": "supabase/rollback/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "217966099845128c462d95cb914191512878e168ad6fa2e69da0e3d9067ed6da",
+      "bytes": 243
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "d138b75bbe2f3dd378736746e6cc44a8ba556e9431c9c2f0b8dce1554bd6b0f5"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "fe68dc68e746e871081f716bfa799dea6dd576f8d25d692b96abe13100bb1ce8"
+    },
+    "Root": {
+      "unresolved": 0,
+      "review": [
+        "Authored and read the complete eight-file diff; searched all consequential-topology consumers. The lifecycle consumer only rolls back in a transaction and does not replay forward migrations.",
+        "Reproduced the three predecessor-double failures. Added and observed two actual historical-fixture regressions fail on the unadapted SQL; final 14 focused cases pass. The 101 real database cases were collected only.",
+        "All five forward consequential loops preserve their original ordering and cleanup. The helper invokes the unchanged exact filename/input hash/single anchor/output hash adapter. No production SQL or grants change.",
+        "Read both independent final reviews and verified the exact source, log and unchanged-file hashes before committing. The next complete CI run must prove real restoration."
+      ]
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "governance-replay-consumers-final-freeze.json",
+      "sha256": "10740c9550ce25a5887070f2be83f2dc354fba68f105822ad072237a57a8f163",
+      "bytes": 5710
+    },
+    {
+      "file": "governance-replay-consumers-final-spec-review.json",
+      "sha256": "d138b75bbe2f3dd378736746e6cc44a8ba556e9431c9c2f0b8dce1554bd6b0f5",
+      "bytes": 7523
+    },
+    {
+      "file": "governance-replay-consumers-final-standards-review.json",
+      "sha256": "fe68dc68e746e871081f716bfa799dea6dd576f8d25d692b96abe13100bb1ce8",
+      "bytes": 8252
+    },
+    {
+      "file": "governance-replay-consumers-before.log",
+      "sha256": "cae500f980ac8c4b58a7155fdf97a89200e388a6c3ab6d4a02a4e8df92ccd3fc",
+      "bytes": 14784
+    },
+    {
+      "file": "governance-replay-consumers-fixture-red.log",
+      "sha256": "2a391645f4cd5a13dd342e47d7a7f861fd37c6a68d7b801eb34de857506aa42e",
+      "bytes": 4773
+    },
+    {
+      "file": "governance-replay-consumers-final-tests.log",
+      "sha256": "531dc712a154e51d99bfd41617c24d35a883bae21c1ebb5cb35b1460f1f1b255",
+      "bytes": 99
+    },
+    {
+      "file": "governance-replay-consumers-db-collection.log",
+      "sha256": "156f9700199b5f4f819c3f4b55ec5b62680fa94096dbbeb3c761dd718535025f",
+      "bytes": 12573
+    },
+    {
+      "file": "governance-replay-consumers-spec-tests.log",
+      "sha256": "7ce54d4f8241dc4817326e1568126626d6b5cb49346def5ca78039daf10e550d",
+      "bytes": 99
+    },
+    {
+      "file": "check-governance-replay-consumers-spec.py",
+      "sha256": "96fbde3bab212df7bcef89667fcc117e696bcc97f820ccd0f29ecec573e6e17f",
+      "bytes": 6014
+    },
+    {
+      "file": "governance-replay-consumers-spec-probes.json",
+      "sha256": "13b138eb63c2b29c0b1bedd934c5cc143c09a65505d265a6be38ad7b164ef627",
+      "bytes": 2410
+    },
+    {
+      "file": "governance-replay-consumers-spec-probes.log",
+      "sha256": "81c951acecbf530e3a59a44f80f5aeca07824e92306f227b7a7ad10be648599c",
+      "bytes": 202
+    }
+  ],
+  "limits": [
+    "No production migration, rollback, registry, grant or runtime change. Existing exact source/output hash protection and original frozen bytes unchanged.",
+    "Local execution uses fixture doubles and the real original SQL bytes, not a live database. The next whole PR run must prove real restoration; 101 is collection only.",
+    "No new native SQL rehearsal: adapted SQL bytes are identical to the previously reviewed helper. No complete gate or A1\u2013A7 closure.",
+    "The b702 run excludes this repair and the subsequent retained claim/dispatch slice. Its 169 database and 9,815 application passes cannot be transferred to this revision.",
+    "The next ordinary PR run still cannot satisfy the two linked immutable complete gates. A1\u2013A7 and broader release dependencies remain pending."
+  ]
+}

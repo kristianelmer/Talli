@@ -1,0 +1,307 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_GOVERNANCE_REPORTING_REGISTER_EVIDENCE_PROJECTION",
+  "recordedAtUtc": "2026-10-10T01:01:57.979702+00:00",
+  "baseRevision": "e70ed28bc89d9ce9d4c547de56323d75b5a3f991",
+  "preCommitHead": "db1ea71ce7d7ad2771d4685237a6b73b580a1a02",
+  "scope": "Additive Governance reporting register-evidence projection, guarded producer and same-connection adapter. No RF consumer, HTTP or Archive activation.",
+  "implementation": [
+    "Add a guarded Governance owner query that returns the unchanged complete reporting inputs and complete evidence chains for every eligible original across the company: registered cash capital increase, registered loss reduction and first-recognized-after-registration loss reduction.",
+    "Only correction rows are excluded from the chain inventory. Requested year, current reporting status, presence of RF facts and amendment count never filter eligible originals. A missing or invalid legacy anchor rejects the whole new projection; a trusted empty scope has an explicit zero count.",
+    "A strict additive public builder validates the exact original-to-chain bijection, scope, original contents, complete amendment history, count and enumeration digest. A new projection digest commits to the unchanged corporate-reporting-year-2 hash plus the complete chain manifest.",
+    "Original reporting selection, cross-year cash phases, correction/reversal/conflict status and all old hashes remain unchanged. Effective evidence references accompany original events without rewriting postings or granting new filing eligibility.",
+    "The Governance application reads through one guarded owner transaction. A separate Postgres adapter reads through its caller-held connection. Both use one additive strict payload decoder; missing, malformed or incomplete data never falls back to the old reader.",
+    "Only the Governance workflow executor receives the new reader grant. The RF grant/consumer remains separate. Retentive rollback removes only the new grant and keeps definitions and history; exact role/schema authority is restored.",
+    "Successor registration, predecessor fixture restoration and empty-only teardown support the ordered 22/23/24-function topology. Populated history prevents teardown."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_corporate_reporting_evidence.py",
+      "sha256": "d63e1a85caf90932fb91f8c5e166de64d64c0a980bfcc75ee4d9044466117b13"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+      "sha256": "56cc38ddde684052421f6287490883a61e4763e96946cbcaf64f2f4f6deb7e07"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/corporate_governance_workflow.py",
+      "sha256": "ff5cf12271de4e813c04aedf06ecc7925eb4900bcda4c0911c5cff170d21b6a7"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "25e022db6bdf810d4f81b261c02895b875f18a80bbecbee9e66f2d6e8f8ed378"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "3ee0118410c7f105ed952acc73dc61b4de63bf5f87dd8af7f9297c5af9505247"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/public.py",
+      "sha256": "13767b70c5633ccc4caf0e2c57827002682c45aefc1a1b33b51d23355f06a572"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/reporting_register_evidence.py",
+      "sha256": "5d4967eaae8dacfa4a121e5cca0639cb3e79ba343e2c719736283731d3c9d588"
+    },
+    {
+      "path": "apps/backend/tests/test_corporate_governance_reporting_register_evidence.py",
+      "sha256": "14345986628cb72f7e49eed7479fa75dc2876723a580ef9edb7f6cc190b5382f"
+    },
+    {
+      "path": "apps/backend/tests/test_documents_historical_original_integrity_database.py",
+      "sha256": "fb1bf4fc82e7aad43ddd8cbdca6eac06a0d005a2955badedcdb663e470e01c8a"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+      "sha256": "d9326daa43d367125cd55bd2db2fdb64d5b02024bbbda8a0cc3e04ccd35308c6"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+      "sha256": "793de92bf4c74fcf819504e2875412c0eea4a5d44666c959fdb106b15da74531"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+      "sha256": "548988789087a890becde09cc8fdc52d8265ddb68a4be75502d2c083d21c07b9"
+    },
+    {
+      "path": "apps/backend/tests/test_postgres_corporate_reporting_register_evidence.py",
+      "sha256": "444a3e9cb81d7c731ef6588e25ff82826ba12c7c389c4cdbc4f1f3a676a0ef43"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py",
+      "sha256": "bc7cfa412619267993c2e47ab2e101ec59850454e0fb62d58182d82ef1dcca28"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py",
+      "sha256": "fe322f5be7074870e9acf12ea189dc6305263cf1a9c2493e71467d48f9a6d448"
+    },
+    {
+      "path": "package.json",
+      "sha256": "90f88611047d2928012463a6adf5197528d83513ebc4b9e50482c0eedcb9a61d"
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "1d4dde9eec0d734941651aa3f0cea1b514b4f18e127fa7a002f2ee73fea53933"
+    },
+    {
+      "path": "supabase/migrations/20261010005413_governance_reporting_register_evidence.sql",
+      "sha256": "77620f8e2479a8331a7057e0bed849b320f75bdd20ae8986437ff0705bc652b4"
+    },
+    {
+      "path": "supabase/rollback/20261010005413_governance_reporting_register_evidence.sql",
+      "sha256": "e45bd9d18080ba7d92cf8a03a738129a461ebb5ea4c75f7c26e294b3b90d710d"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "2c7c196a2beeffa8a6fa2c66f5b9c6b6acf132f3e968e13d05496982920f0a5c"
+    },
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "8c79f937badfe17cc7789a54760e34e92dc28bcb1aed9aab455f69b0be5ece81"
+    },
+    {
+      "path": "tests/support/governance_amendment_rehearsal.mjs",
+      "sha256": "187a762bd997745ea86ef2e4fc34e82d2300ce9188579cd7592a16bc15b48691"
+    }
+  ],
+  "checks": {
+    "regressionPassed": 170,
+    "newUnitTestsIncluded": 101,
+    "centralAndManifestPassed": 128,
+    "centralSkipped": 0,
+    "newDatabaseCollected": 28,
+    "databaseExecuted": 0,
+    "nativeReportingGroupedChecks": 8,
+    "nativeClusterRemoved": true,
+    "architecture": "PASS; dependency evidence unchanged",
+    "compatibility": "PASS: prior public definitions/old readers AST-identical, old reporting builder/amendment codec/golden/frozen SQL/OpenAPI bytes exact",
+    "openapi": "PASS: generated schema matches tracked bytes",
+    "diffCheck": "PASS"
+  },
+  "nativeEvidence": {
+    "status": "PASS",
+    "scope": "Whole additive reporting migration plus exact existing guarded reader, supported-event list/result, anchor and chain bodies on native PostgreSQL17. CompanyAccess/owned lifecycle and public RF/Documents/Ledger append proofs are explicit stubs; original events table minimal. Actual company advisory lock check is used. No full Supabase, actual owner proofs, byte IO or concurrency proof.",
+    "serverVersion": "17.11 (Homebrew)",
+    "checks": [
+      "Whole additive migration restores ADMIN/SET/INHERIT/grantor/schema ACLs; all old function OIDs/bodies/ACLs unchanged",
+      "Exact SQL\u2192shared Python decoder parity for all3 eligible kind/phase paths, complete company-wide off-year chains and byte-equivalent original input object",
+      "Actual server-minted one/two amendment chains preserve old year view/hash and change only additive projection commitment/effective reference",
+      "Actual guarded reader rejects absent held guard, non-RC and wrong subject; explicit current-owner stub revocation fails closed",
+      "Empty trusted owner scope yields known-zero; eligible legacy original missing RF facts rejects whole projection even with zero amendment rows",
+      "Non-anchor correction row with accepted fractional old JSON remains in unchanged inputs/status; compact new commitment never strict-reencodes that old payload",
+      "Only Governance producer gains EXEC; old RF read grant stays exact and new RF read denied; reapply/retentive rollback preserve all rows/old functions/roles/schema",
+      "Disposable exact-inventory teardown accepts22/23/24 empty topologies; populated24 refusal and rollback-isolated empty checks preserve retained rows and exact24 function definitions/OIDs/ACLs/authority"
+    ],
+    "checkCount": 8,
+    "projectionSha256": "77620f8e2479a8331a7057e0bed849b320f75bdd20ae8986437ff0705bc652b4",
+    "clusterRemoved": true,
+    "migrationSha256": "a592388697cb64aeee183fdb849d39d6eac63b385f7615c5143c6abb8306132c"
+  },
+  "compatibility": {
+    "status": "PASS",
+    "base": "e70ed28bc89d9ce9d4c547de56323d75b5a3f991",
+    "checks": [
+      "All140 prior public definitions unchanged; persistence protocol only additive",
+      "Old reporting producer/consumer methods and original payload parsers AST-identical",
+      "Old reporting builder, amendment codec/golden, frozen persistence/application/guard migration+rollback and OpenAPI exact bytes unchanged"
+    ],
+    "files": [
+      {
+        "path": "supabase/migrations/20261009234529_governance_register_evidence_amendments.sql",
+        "sha256": "a592388697cb64aeee183fdb849d39d6eac63b385f7615c5143c6abb8306132c"
+      },
+      {
+        "path": "supabase/rollback/20261009234529_governance_register_evidence_amendments.sql",
+        "sha256": "bedf373770156b7c8448915e42d8e168b0249eff909ae5693e34cd8d03e56399"
+      },
+      {
+        "path": "supabase/migrations/20261010001936_governance_register_evidence_application.sql",
+        "sha256": "9abe61bd3a04af484eea44421166bcfe7a63af98707d5938e4fc0324271b8090"
+      },
+      {
+        "path": "supabase/rollback/20261010001936_governance_register_evidence_application.sql",
+        "sha256": "d856a68fcca82792f280177823ca54ea412dc26a310808fe79e844749471ed7d"
+      },
+      {
+        "path": "supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql",
+        "sha256": "355868018c9b6fe4e46d18237bf8f7ce6f460b70905eaed36276259a4424f615"
+      },
+      {
+        "path": "supabase/rollback/20261010004653_governance_register_evidence_company_guard.sql",
+        "sha256": "a83c49ecd4d4f46753fcbcf56f6eea074131c06abb11b0176128f96cff469151"
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/corporate_governance/reporting_year.py",
+        "sha256": "6269f9658f1b9df18b743ddfe93b75548eac4af323d511d747328829f1859fa9"
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/corporate_governance/register_evidence_amendment.py",
+        "sha256": "e933a626c7439101ccbbc2837055b5c88a0a7139b94b456f3d10eb80ae85a0e4"
+      },
+      {
+        "path": "apps/backend/tests/fixtures/governance-register-evidence-amendment-goldens.json",
+        "sha256": "ee2e9082d30ea19287c5ff73067c056f1e03534f2a4b8fc9861c03dcac636cb6"
+      },
+      {
+        "path": "contracts/openapi/talli-v1.json",
+        "sha256": "ad3db2af0e4a92b42820662bf0249fbf041419ba623219518bf2d57c4a212d59"
+      }
+    ]
+  },
+  "nativeRepair": {
+    "provenance": "Author native tool-output observation; initial failed JSON was overwritten by successful rerun, not retained as a separate raw failure log.",
+    "failedExecution": "Whole new migration compiled, first read_guarded_reporting_register_evidence_v1 call failed.",
+    "exception": "psycopg.errors.AmbiguousColumn: column reference \"item\" is ambiguous; could refer to PL/pgSQL variable or table column.",
+    "location": "duplicate check: jsonb_array_elements(inputs->'supportedEvents') item group by item->>'eventId'",
+    "repair": "Use explicit observed(value) alias and qualified observed.value. No semantic or legacy contract change.",
+    "verifiedBy": "governance-reporting-register-native.json (final8 grouped checks)",
+    "finalMigrationSha256": "77620f8e2479a8331a7057e0bed849b320f75bdd20ae8986437ff0705bc652b4"
+  },
+  "independentReviews": {
+    "spec": {
+      "reviewer": "/root/rf_reader_spec_review",
+      "remainingFindings": 0,
+      "freezeSha256": "9457326fdc5491761742b7f0db4a342299e6c6ee4659b0dba5f18f84356f1ca1",
+      "checksSha256": "5a070c791064053fd2ede6e7e78dd096655b3c9e0139eb37a29a9067d70a0c5c"
+    },
+    "standards": {
+      "reviewer": "/root/release_plan",
+      "remainingFindings": 0,
+      "freezeSha256": "9457326fdc5491761742b7f0db4a342299e6c6ee4659b0dba5f18f84356f1ca1",
+      "checksSha256": "5a070c791064053fd2ede6e7e78dd096655b3c9e0139eb37a29a9067d70a0c5c"
+    },
+    "root": {
+      "sourceAndArtifactHashesVerified": true,
+      "frozenCompatibilityBytesVerified": true,
+      "unresolvedFindings": 0
+    }
+  },
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-freeze.json",
+      "sha256": "9457326fdc5491761742b7f0db4a342299e6c6ee4659b0dba5f18f84356f1ca1"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-checks.json",
+      "sha256": "5a070c791064053fd2ede6e7e78dd096655b3c9e0139eb37a29a9067d70a0c5c"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-test-checks.json",
+      "sha256": "07a746cb3ea1df1d0271c28ba5bb5317f54b099b0cc6ea00214e2c8712ddb207"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-regression.log",
+      "sha256": "dfa2bf409942b4ecccb76b103d951fd93ffe06c42209988fbf6a40cc58c8522c"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-db-collection.log",
+      "sha256": "5f885afcaa04a9efb821fb72f456c6b1b24d80aea45b997eb9b2a7229e7b228a"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-reporting-register-native.py",
+      "sha256": "9e8b029b4557e5a6e9e47708b314deca9a180f3f598e685059f48c7dcbe8f46d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-native.json",
+      "sha256": "2054e7600ff429595c815fa85710e52ef9d88ac9e0519a04065aad263f94e418"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-native.log",
+      "sha256": "94040060caafc36a10757c162f30374f3b5d27633a4454cf48095e952967cab6"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-central.log",
+      "sha256": "a49410010633d0b0131f3b74a37a8c4de0eb1c8cab8f25a78aed8543593c1bd6"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-architecture.log",
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-reporting-compatibility.py",
+      "sha256": "9dc7c09f80aec94219ba9c9d67c2c81bc06a0d3cb4b35d58257ea68a67035ef8"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-compatibility.json",
+      "sha256": "e26575cfb0eeb570b9f5901a5ef8b773aea4e4634016a3b06c754cf27130445d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-compatibility.log",
+      "sha256": "cfd9b65a7a55ff30e1d1f435142bad61e66dadf8fd5240d9c20ba25f4f3b3710"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-register-alias-repair-observation.json",
+      "sha256": "aa76fdd0eae3b69649437aa8a182efccf3a0bc22bcc164c99f744a6ddde0b923"
+    }
+  ],
+  "restoration": {
+    "scope": "Preserved projection work before the separate company-guard repair; restored all 21 original file hashes, resolved five shared registration conflicts, and renamed only the new projection migration after the committed guard.",
+    "stashOid": "cc62d86e359ecbefe0cda17e710d439eae75a191",
+    "restorationArtifact": {
+      "path": "/private/tmp/talli-release-20261009/governance-reporting-projection-restored-after-guard.json",
+      "sha256": "b8c5aa3befe71f1f3f70d06a57845d6ea22025349594ba759cba847fe3ea6c61"
+    },
+    "retainedStash": "Kept as a recovery reference; this evidence and final freeze describe the reviewed result."
+  },
+  "limits": [
+    "All28 new real DB cases collected only; no full Supabase execution, real multi-owner RLS/race or external byte proof.",
+    "Native PostgreSQL17 uses whole new migration and exact old guarded query/list/result/anchor/chain with actual advisory guard and installed004653backstop; CompanyAccess/lifecycle/public RF/Documents/Ledger append proofs are explicit stubs and original table is minimal. Eight reporting groups include actual minted1/2chain fixtures and22/23/24teardown plus populated refusal; they are not independent full integration tests.",
+    "Unit application transactions and SQL connections are fakes, with actual public codecs/builders.",
+    "Projection builder proves exact chain bijection against supplied company-wide inputs; hashes cannot independently disprove a fully recommitted omitted owner input. SQL enumeration remains the trusted completeness boundary.",
+    "Legacy eligible originals without valid RF anchor make the new projection unavailable, while old reader behavior is unchanged. No evidence lease or new filing eligibility is implied.",
+    "Root restoration128check run is prior merge evidence; final128run has its own log and is not additional independent coverage.",
+    "The bounded verification commands made no RF consumer grant/business change, HTTP/Archive activation, provider call, paid action, Docker or CI operation. This record accompanies the subsequent reviewed source commit.",
+    "Ordinary PR CI38011213837 tests db1ea71ce7d7ad2771d4685237a6b73b580a1a02 and excludes this projection. No result transfers from that run or earlier heads.",
+    "All A1-A7 remain pending. Full Supabase authorization/races, full browser recovery, independent Auth/object restore, hosted/provider acceptance, supported capital cases and two linked immutable complete gates remain required."
+  ],
+  "nextOwnerDependency": [
+    "RF must consume this public projection through additive versioned source/receipt commitments that bind effective register evidence and amendment cutoff/head, while preserving old source bytes, replay and historical reads.",
+    "The immutable RF append and withdrawal-admission SQL currently accept the exact v1 storage codec/receipt shape. Python-only changes cannot activate a v2 consumer; SQL dispatch, current owner/evidence fences, freshness, rollback and old-binary behavior require explicit proof.",
+    "No Archive facade or cancellation-policy change is included; the separate requested owner-order decision remains unresolved."
+  ]
+}

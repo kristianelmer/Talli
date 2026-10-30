@@ -836,7 +836,9 @@ test("company-access onboarding is atomic, replay-safe, tenant-isolated, and pha
     assert.equal(started.status, 0, started.stderr);
     let readyChecks = 0;
     for (let attempt = 0; attempt < 60; attempt += 1) {
-      if (docker(["exec", containerName, "pg_isready", "-U", "postgres", "-d", "talli_test"]).status === 0) {
+      // The image's temporary initialization server accepts Unix-socket
+      // connections before shutting down. Only the final server listens on TCP.
+      if (docker(["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "talli_test"]).status === 0) {
         readyChecks += 1;
         if (readyChecks === 2) break;
       } else {

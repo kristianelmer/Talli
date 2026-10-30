@@ -29,33 +29,37 @@ def _sale_component(action, key, fallback):
     return _amount(action, key) if key in action['payload'] else fallback
 
 
-def _ledger_totals(entries):
+def _ledger_totals(entries, *, delivery_codes=False):
     lines = [line for entry in entries for line in entry['lines']]
 
     def balance(account):
         matching = [line for line in lines if line.get('account') == account]
         return money(total(number(line.get('debit')) for line in matching) - total(number(line.get('credit')) for line in matching))
 
-    def debit(account):
-        return money(total(number(line.get('debit')) for line in lines if line.get('account') == account))
-
     def credit(account):
         return money(-balance(account))
 
     investments = [{'account': account, 'amount': balance(account)} for account in ('1300', '1310', '1350', '1800', '1810', '1815') if balance(account) != 0]
-    groups = {}
+    groups, source_accounts = {}, {}
     for account in ('6700', '6705', '6420', '6720', '7770', '7790', '7795'):
-        value = debit(account)
+        value = balance(account)
         if value == 0:
             continue
-        target = {'6705': '6700', '7795': '7790'}.get(account, account)
+        targets = ({'6700':'6700', '6705':'6700', '6720':'6700', '6420':'6400',
+                    '7770':'7700', '7790':'7700', '7795':'7700'} if delivery_codes
+                   else {'6705':'6700', '7795':'7790'})
+        target = targets.get(account, account)
         groups[target] = money(groups[target] + value) if target in groups else value
-    costs = [{'account': account, 'amount': groups[account]} for account in sorted(groups)]
+        source_accounts.setdefault(target, []).append(account)
+    costs = [{'account': account, 'amount': groups[account],
+              'source': 'ledger.' + ('_or_'.join(source_accounts[account]) if delivery_codes else account)}
+             for account in sorted(groups)]
     return {
         'bankBalance': balance('1920'), 'investmentBalances': investments,
         'adminCostsByAccount': costs, 'adminCosts': money(total(item['amount'] for item in costs)),
         'dividendAndGainIncome': money(credit('8070') + credit('8071') + credit('8074')),
-        'interestIncome': credit('8050'), 'shareSaleLoss': money(debit('8090') + debit('8171') + debit('8174')),
+        'interestIncome': credit('8050'), 'shareSaleLoss': money(balance('8090') + balance('8171') + balance('8174')),
+        'investmentReceivables': money(balance('1530') + balance('1570')),
         'shareCapital': credit('2000'), 'retainedEarnings': credit('2050'),
         'shortTermDebt': credit('2255') + credit('2990'),
     }
@@ -124,12 +128,14 @@ def _difference(index, kind, value, source):
         ('.id', f'permanent-{index}'), ('.permanentForskjellstype.permanentForskjellstype', kind), ('.beloep.beloep.beloep', value))]
 
 
-def build(input):
+def build(input, *, projection_version='legacy-characterized-2025'):
+    if projection_version not in ('legacy-characterized-2025', 'company-tax-delivery-2025-v1'):
+        raise ValueError('Unsupported company Tax projection version.')
     party = input.get('companyPartyNumber')
     if party is None:
         party = input['companyOrgNumber']
     year = input['incomeYear']
-    totals = _ledger_totals(input['ledgerEntries'])
+    totals = _ledger_totals(input['ledgerEntries'], delivery_codes=projection_version == 'company-tax-delivery-2025-v1')
     actions = input['holdingActions']
     dividends = [a for a in actions if a['action_type'] == 'dividend_received']
     distributions = [a for a in actions if a['action_type'] == 'fund_distribution_received']
@@ -162,7 +168,7 @@ def build(input):
         _field(BUSINESS, 'naeringsspesifikasjon.inntektsaar', year, 'company.income_year', BUSINESS_XSD),
     ])
     for index, cost in enumerate(totals['adminCostsByAccount']):
-        fields.extend(_occurrence('resultatregnskap.driftskostnad.annenDriftskostnad.kostnad', index, cost['account'], cost['amount'], f"ledger.{cost['account']}"))
+        fields.extend(_occurrence('resultatregnskap.driftskostnad.annenDriftskostnad.kostnad', index, cost['account'], cost['amount'], cost['source']))
     for base, index, code, value, source in (
         ('resultatregnskap.finansinntekt.inntekt', 0, '8090', dividend, 'holding_actions.dividend_received'),
         ('resultatregnskap.finansinntekt.inntekt', 1, '8050', totals['interestIncome'], 'ledger.8050'),
@@ -170,12 +176,22 @@ def build(input):
         ('resultatregnskap.finanskostnad.kostnad', 0, '8174', loss, 'holding_actions.share_sale.book_gain_or_loss'),
     ):
         fields.extend(_occurrence(base, index, code, value, source))
+    current_asset_indices = set()
     for index, investment in enumerate(totals['investmentBalances']):
         account = investment['account']
         base = 'balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi' if account in ('1810', '1815') else 'balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi'
+        if account in ('1810', '1815'):
+            current_asset_indices.add(index)
         fields.extend(_occurrence(base, index, account, investment['amount'], f'ledger.{account}', balance=True))
+    bank_index = 0
+    while bank_index in current_asset_indices:
+        bank_index += 1
+    receivable_index = bank_index + 1
+    while receivable_index in current_asset_indices:
+        receivable_index += 1
     for base, index, code, value, source in (
-        ('balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi', 0, '1920', totals['bankBalance'], 'ledger.1920'),
+        ('balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi', bank_index, '1920', totals['bankBalance'], 'ledger.1920'),
+        ('balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi', receivable_index, '1570', totals['investmentReceivables'], 'ledger.1530_or_1570'),
         ('balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld', 0, '2990', totals['shortTermDebt'], 'ledger.2255_or_2990'),
         ('balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital', 0, '2000', totals['shareCapital'], 'ledger.2000'),
         ('balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital', 1, '2050', totals['retainedEarnings'], 'ledger.2050'),
@@ -216,7 +232,8 @@ def estimate(input):
     entries, actions = input['ledgerEntries'], input['holdingActions']
     costs = []
     for entry in entries:
-        if entry['entry_type'] != 'admin_cost':
+        if entry['entry_type'] != 'admin_cost' and not (
+                entry['entry_type'] == 'correction_reversal' and entry.get('reversed_entry_type') == 'admin_cost'):
             continue
         cost = 0.0
         for line in entry['lines']:

@@ -8,7 +8,7 @@ from typing import Protocol, TypeVar
 from types import MappingProxyType
 
 from talli_backend.shared.kernel import (
-    ActorId, CompanyId, CorrelationId, DomainError, ErrorCategory,
+    ActorId, ActorKind, CompanyId, CorrelationId, DomainError, ErrorCategory,
     IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp,
 )
 
@@ -89,6 +89,15 @@ class AccountingEntryReference(_UuidReference):
 
 
 class CompanyTaxError(DomainError):
+    @classmethod
+    def draft_conflict(cls) -> CompanyTaxError:
+        return cls(code='COMPANY_TAX_DRAFT_CONFLICT', category=ErrorCategory.CONFLICT)
+
+    @classmethod
+    def current_return_unsupported(cls) -> CompanyTaxError:
+        return cls(code='COMPANY_TAX_CURRENT_RETURN_UNSUPPORTED', category=ErrorCategory.PRECONDITION_FAILED,
+            message='Gjeldende skattemelding inneholder opplysninger som må behandles før nytt utkast kan lages.')
+
     @classmethod
     def hard_review_block(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
@@ -363,7 +372,10 @@ class PreparedCompanyTaxReturn:
 
 def prepare_company_tax_return(source: CompanyTaxReturnSource) -> PreparedCompanyTaxReturn:
     """Retain the authority-tool blocking gate before producing sendable XML."""
-    candidate = build_company_tax_return(source)
+    return _prepare_company_tax_candidate(build_company_tax_return(source))
+
+
+def _prepare_company_tax_candidate(candidate: CompanyTaxReturnCandidate) -> PreparedCompanyTaxReturn:
     if any(item['level'] == 'block' for item in candidate.feedback):
         raise CompanyTaxError(code='COMPANY_TAX_PAYLOAD_BLOCKED', category=ErrorCategory.PRECONDITION_FAILED)
     return PreparedCompanyTaxReturn(render_company_tax_return(candidate), candidate.feedback)
@@ -658,9 +670,14 @@ class CompanyTaxSourceSnapshot:
     coverage: Mapping[str, object] | None
     as_of: Timestamp
     complete_enumeration: bool
+    contract_version: str = 'company-tax-source-v1'
+    delivery_drafts: tuple[StoredTaxDeliveryDraft, ...] = ()
+    delivery_events: tuple[StoredTaxDeliveryEvent, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze_return_fact(self.coverage))
+        object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
+        object.__setattr__(self, "delivery_events", tuple(self.delivery_events))
 
 
 @dataclass(frozen=True, slots=True)
@@ -746,6 +763,8 @@ class CompanyTaxSourceFacts:
     correction_links: tuple[CompanyTaxCorrectionLink, ...]
     incidents: tuple[CompanyTaxIncidentFact, ...]
     outcomes: tuple[CompanyTaxOutcomeFact, ...]
+    delivery_drafts: tuple[TaxDeliveryDraftFact, ...] = ()
+    delivery_journals: tuple[TaxDeliveryJournalFact, ...] = ()
 
 
 class CompanyTaxSourcePersistence(Protocol):
@@ -764,7 +783,276 @@ def verify_company_tax_source(
     return verify(query, evidence, snapshot)
 
 
+from .delivery import (
+    TaxDeliverySource, TaxDeliveryEnvelope, TaxMutationKind, TaxMutationDisposition,
+    TaxMutationIntent, TaxMutationRecord, tax_delivery_digest, prepare_tax_delivery,
+    plan_tax_mutation, verify_tax_review,
+    TaxSchemaValidation,
+)
+from .delivery_correction import TaxDeliveryCorrectionParent, tax_delivery_lineage, bind_tax_delivery_correction_parent
+from .delivery_draft import (TaxDeliveryDraft, StoredTaxDeliveryDraft, decode_tax_delivery_draft,
+    TaxDeliveryDraftArchive, archive_tax_delivery_drafts)
+from .current_document import TaxCurrentDocument, TaxCurrentDocumentResponse, TaxCurrentDocumentKind
+from .current_document_intake import TaxCurrentDocumentIntakeQuery
+from .delivery_approval import (TaxDeliveryAuthorityMode, TaxDeliveryReviewApproval,
+    approve_tax_delivery_review, decode_tax_delivery_review_approval)
+
+from .delivery_journal import (TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion,
+    TaxDeliveryCompletionOrigin, build_tax_delivery_mutation_request, complete_tax_delivery_mutation,
+    decode_tax_delivery_mutation_request, decode_tax_delivery_mutation_completion,reconcile_tax_delivery_upload)
+from .delivery_observation import (TaxDeliveryOriginalPurpose, TaxDeliveryReadOriginal,
+    TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation, decode_tax_delivery_observation)
+from .delivery_envelope_observation import (TaxDeliveryEnvelopeObservation,decode_tax_delivery_envelope_observation)
+from .delivery_upload_prerequisite import (TaxDeliveryReadReference,TaxDeliveryUploadPrerequisite,
+    bind_tax_delivery_upload_prerequisite)
+from .delivery_upload_read_evidence import TaxDeliveryUploadReadEvidence
+from .delivery_validation_response import (TaxValidationResultCode,TaxValidationCalculatedDocument,TaxValidationResponseInspection)
+from .delivery_validation_review import (TaxValidationDeviation,TaxValidationGuidance,TaxValidationSubjectFlag,TaxValidationResponseReview)
+from .delivery_calculated_documents import TaxCalculatedDocumentsInspection
+from .delivery_confirmation_prerequisite import (TaxDeliveryConfirmationPrerequisite,bind_tax_delivery_confirmation_prerequisite,
+    is_tax_delivery_owner_confirmation_instance)
+from .delivery_confirmation_read_evidence import TaxDeliveryConfirmationReadEvidence
+from .delivery_process_acknowledgment import TaxDeliveryProcessAcknowledgment,decode_tax_delivery_process_acknowledgment
+from .delivery_journal import reconcile_tax_delivery_confirmation
+from .delivery_validation_prerequisite import (TaxDeliveryValidationPrerequisite,bind_tax_delivery_validation_prerequisite)
+from .delivery_validation_job import (TaxValidationJobStatus,TaxValidationJobInspection,TaxDeliveryValidationJobObservation,
+    decode_tax_delivery_validation_job_observation)
+from .delivery_validation_result import (TaxDeliveryValidationResultObservation,decode_tax_delivery_validation_result_observation)
+from .delivery_owner_review import (TaxCalculatedReviewField,TaxCalculatedDocumentReview,TaxCalculatedDocumentsReview,
+    TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,build_tax_delivery_owner_review)
+from .delivery_owner_confirmation import TaxDeliveryOwnerConfirmation,confirm_tax_delivery_owner_review
+from .delivery_submission_prerequisite import TaxDeliverySubmissionPrerequisite,bind_tax_delivery_submission_prerequisite
+from .delivery_submission_read_evidence import TaxDeliverySubmissionReadEvidence,is_tax_delivery_submitted_instance
+from .delivery_feedback_observation import TaxDeliveryFeedbackObservation,decode_tax_delivery_feedback_observation
+from .delivery_journal import reconcile_tax_delivery_submission
+
+from .delivery_events import (StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
+    TaxDeliveryProgress, assert_tax_delivery_attempt_history, decode_tax_delivery_event,TaxDeliveryEventFormat,tax_delivery_event_format)
+from .delivery_events import tax_delivery_snapshot_journal
+from .delivery_workspace import (TaxDeliveryWorkspaceValidation,TaxDeliveryWorkspaceState,TaxDeliveryAction,TaxDeliveryWorkspace,TaxDeliveryWorkspaceRow,
+    TaxDeliveryWorkspaceField,TaxDeliveryWorkspaceOriginal,project_tax_delivery_workspace,tax_delivery_workspace_originals)
+from .delivery_archive import TaxDeliveryJournalArchive, archive_tax_delivery_journal
+
+
+@dataclass(frozen=True, slots=True)
+class PrepareTaxDeliveryDraft:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    filing_id: TaxFilingSubmissionId
+    command_key: IdempotencyKey
+    correlation_id: CorrelationId
+
+    def __post_init__(self):
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int or int(self.income_year) != 2025
+                or type(self.actor_id) is not ActorId or self.actor_id.kind is not ActorKind.USER
+                or type(self.filing_id) is not TaxFilingSubmissionId
+                or type(self.command_key) is not IdempotencyKey or type(self.correlation_id) is not CorrelationId):
+            raise ValueError('Tax preparation command scope is invalid.')
+
+
+@dataclass(frozen=True,slots=True)
+class ApproveTaxDeliveryDraft(PrepareTaxDeliveryDraft):
+    expected_draft_sha256: str
+    expected_review_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        _digest(self.expected_draft_sha256);_digest(self.expected_review_sha256)
+
+
+@dataclass(frozen=True,slots=True)
+class AdvanceTaxDelivery(PrepareTaxDeliveryDraft):
+    expected_approval_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        _digest(self.expected_approval_sha256)
+
+
+@dataclass(frozen=True,slots=True)
+class ConfirmTaxDeliverySubmission(AdvanceTaxDelivery):
+    expected_owner_review_sha256: str
+    documents_confirmed: bool
+    warnings_acknowledged: bool
+
+    def __post_init__(self):
+        from .delivery import _digest
+        AdvanceTaxDelivery.__post_init__(self);_digest(self.expected_owner_review_sha256)
+        if (type(self.documents_confirmed) is not bool or self.documents_confirmed is not True
+                or type(self.warnings_acknowledged) is not bool or self.warnings_acknowledged is not True):
+            raise ValueError('Tax submission requires explicit owner confirmation of documents and warnings.')
+
+
+@dataclass(frozen=True, slots=True)
+class TaxDeliveryDraftFact:
+    filing_id: str
+    prepared_by: ActorId
+    recorded_at: Timestamp
+    draft_sha256: str
+    review_sha256: str
+    schema_sha256: str
+    status: str = 'prepared_only'
+
+
+class CompanyTaxTerminalParentReader(Protocol):
+    def available(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal) -> bool: ...
+    async def read_parent_instance(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal) -> TaxDeliveryInstanceObservation: ...
+    async def read_parent_feedback(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation: ...
+    async def read_parent_envelope(self, query: TaxCurrentDocumentIntakeQuery, journal: TaxDeliveryJournal, instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
+
+
+@dataclass(frozen=True,slots=True)
+class PrepareTaxDeliveryCorrection(PrepareTaxDeliveryDraft):
+    parent_filing_id: TaxFilingSubmissionId
+    expected_parent_draft_sha256: str
+    expected_parent_approval_sha256: str
+
+    def __post_init__(self):
+        from .delivery import _digest
+        PrepareTaxDeliveryDraft.__post_init__(self)
+        if type(self.parent_filing_id) is not TaxFilingSubmissionId or self.parent_filing_id==self.filing_id:
+            raise ValueError('Tax correction requires a different known parent filing.')
+        _digest(self.expected_parent_draft_sha256);_digest(self.expected_parent_approval_sha256)
+
+
+class TaxDeliveryDraftPersistence(Protocol):
+    async def store_delivery_draft(self, draft: TaxDeliveryDraft) -> StoredTaxDeliveryDraft: ...
+    async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery,
+                                    command_key: IdempotencyKey) -> StoredTaxDeliveryDraft | None: ...
+    async def delivery_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+    async def delivery_draft_archive_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+    async def lock_delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> None: ...
+
+
+class TaxDeliveryJournalPersistence(Protocol):
+    async def append_delivery_event(self, value: TaxDeliveryReviewApproval | TaxDeliveryMutationRequest | TaxDeliveryMutationCompletion | TaxDeliveryAdmissionEvidence | TaxDeliveryInstanceObservation | TaxDeliveryEnvelopeObservation | TaxDeliveryValidationJobObservation | TaxDeliveryValidationResultObservation | TaxDeliveryProcessAcknowledgment | TaxDeliveryFeedbackObservation) -> TaxDeliveryEventAppend: ...
+    async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal: ...
+    async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+
+
+@dataclass(frozen=True, slots=True)
+class TaxDeliveryJournalFact:
+    filing_id: str
+    approved_by: ActorId
+    authority_mode: TaxDeliveryAuthorityMode
+    status: str
+    mutation_kind: TaxMutationKind | None
+    approval_sha256: str
+    latest_event_sha256: str
+    recorded_at: Timestamp
+
+
+class TaxDeliverySchemaValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def validate(self, envelope: TaxDeliveryEnvelope, *, current_document: TaxCurrentDocument | None = None, correction_parent: TaxDeliveryCorrectionParent | None=None) -> TaxSchemaValidation: ...
+    def inspect_current(self, response: TaxCurrentDocumentResponse, *, correction_parent: TaxDeliveryCorrectionParent | None=None) -> TaxCurrentDocument: ...
+    def validate_calculated_pair(self,response: TaxValidationResponseInspection,*,draft: TaxDeliveryDraft) -> None: ...
+
+
+class TaxValidationResponseValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def inspect(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseInspection: ...
+    def review(self,original: TaxDeliveryReadOriginal) -> TaxValidationResponseReview: ...
+
+
+class TaxCalculatedDocumentValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def inspect(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsInspection: ...
+    def review_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> TaxCalculatedDocumentsReview: ...
+    def read_workspace_documents(self,original: TaxDeliveryReadOriginal,*,draft: TaxDeliveryDraft) -> tuple[TaxCalculatedDocumentReview,...]: ...
+
+
+class CompanyTaxCurrentDocumentReader(Protocol):
+    async def fetch_current_document(self, *, income_year: int,
+                                     company_org_number: str) -> TaxCurrentDocumentResponse: ...
+
+
+class CompanyTaxCurrentDocumentIntake(Protocol):
+    def available(self, query: TaxCurrentDocumentIntakeQuery) -> bool: ...
+    async def read_current_document(self,query: TaxCurrentDocumentIntakeQuery) -> TaxCurrentDocumentResponse: ...
+
+
+class TaxDeliveryMutationAuthority(CompanyTaxCurrentDocumentReader,Protocol):
+    async def execute(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryMutationCompletion: ...
+    async def prepare_confirmation(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment: ...
+    async def confirm_submission(self,request: TaxDeliveryMutationRequest,approval: TaxDeliveryReviewApproval,
+                      draft: TaxDeliveryDraft) -> TaxDeliveryProcessAcknowledgment: ...
+    async def observe_instance(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion) -> TaxDeliveryInstanceObservation: ...
+    async def observe_envelope(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryEnvelopeObservation: ...
+    async def observe_feedback(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+                               created: TaxDeliveryMutationCompletion,instance: TaxDeliveryInstanceObservation) -> TaxDeliveryFeedbackObservation: ...
+    async def observe_validation_job(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion) -> TaxDeliveryValidationJobObservation: ...
+    async def observe_validation_result(self,approval: TaxDeliveryReviewApproval,draft: TaxDeliveryDraft,
+            request: TaxDeliveryMutationRequest,started: TaxDeliveryMutationCompletion,
+            status: TaxDeliveryValidationJobObservation,*,schema_sha256: str) -> TaxDeliveryValidationResultObservation: ...
+
+
+def tax_delivery_schema_adapter(contract):
+    """Declare an offline schema binding without a global validator registry."""
+    def declare(adapter):
+        _ = contract
+        return adapter
+    return declare
+
+
 __all__ = [
+    'tax_delivery_snapshot_journal','TaxDeliveryWorkspaceValidation','TaxDeliveryWorkspaceState','TaxDeliveryAction','TaxDeliveryWorkspace','TaxDeliveryWorkspaceRow','TaxDeliveryWorkspaceField','TaxDeliveryWorkspaceOriginal',
+    'project_tax_delivery_workspace','tax_delivery_workspace_originals',
+    'TaxDeliveryCorrectionParent','tax_delivery_lineage','bind_tax_delivery_correction_parent','CompanyTaxTerminalParentReader','PrepareTaxDeliveryCorrection',
+    'ApproveTaxDeliveryDraft', 'AdvanceTaxDelivery', 'TaxDeliveryProgress', 'assert_tax_delivery_attempt_history',
+    'TaxDeliveryMutationAuthority',
+    'TaxDeliveryOriginalPurpose', 'TaxDeliveryReadOriginal', 'TaxDeliveryAdmissionEvidence',
+    'TaxDeliveryInstanceObservation', 'decode_tax_delivery_observation',
+    'TaxDeliveryEnvelopeObservation','decode_tax_delivery_envelope_observation',
+    'TaxDeliveryReadReference','TaxDeliveryUploadPrerequisite','bind_tax_delivery_upload_prerequisite',
+    'TaxDeliveryUploadReadEvidence','reconcile_tax_delivery_upload',
+    'TaxDeliveryJournalArchive', 'archive_tax_delivery_journal',
+    'StoredTaxDeliveryEvent', 'TaxDeliveryEventAppend', 'TaxDeliveryJournal', 'decode_tax_delivery_event',
+    'TaxDeliveryJournalPersistence',
+    'TaxDeliveryJournalFact',
+    'TaxDeliveryMutationRequest', 'TaxDeliveryMutationCompletion', 'TaxDeliveryCompletionOrigin',
+    'build_tax_delivery_mutation_request', 'complete_tax_delivery_mutation',
+    'decode_tax_delivery_mutation_request', 'decode_tax_delivery_mutation_completion',
+    'TaxDeliveryAuthorityMode', 'TaxDeliveryReviewApproval', 'approve_tax_delivery_review',
+    'decode_tax_delivery_review_approval',
+    'PrepareTaxDeliveryDraft',
+    'TaxCurrentDocument', 'TaxCurrentDocumentResponse', 'TaxCurrentDocumentKind', 'CompanyTaxCurrentDocumentReader',
+    'TaxCurrentDocumentIntakeQuery','CompanyTaxCurrentDocumentIntake',
+    'TaxDeliveryDraft', 'StoredTaxDeliveryDraft', 'TaxDeliveryDraftFact', 'decode_tax_delivery_draft', 'TaxDeliveryDraftPersistence',
+    'TaxDeliveryDraftArchive', 'archive_tax_delivery_drafts',
+    'TaxDeliverySource', 'TaxDeliveryEnvelope', 'TaxMutationKind', 'TaxMutationDisposition',
+    'TaxMutationIntent', 'TaxMutationRecord', 'tax_delivery_digest', 'prepare_tax_delivery',
+    'plan_tax_mutation', 'verify_tax_review',
+    'TaxSchemaValidation', 'TaxDeliverySchemaValidator', 'tax_delivery_schema_adapter',
+    'TaxValidationResponseValidator','TaxValidationResultCode','TaxValidationCalculatedDocument','TaxValidationResponseInspection',
+    'TaxValidationDeviation','TaxValidationGuidance','TaxValidationSubjectFlag','TaxValidationResponseReview',
+    'TaxCalculatedDocumentValidator','TaxCalculatedDocumentsInspection',
+    'TaxCalculatedReviewField','TaxCalculatedDocumentReview','TaxCalculatedDocumentsReview',
+    'TaxDeliveryOwnerReviewQuery','TaxDeliveryOwnerReview','build_tax_delivery_owner_review',
+    'TaxDeliveryOwnerConfirmation','confirm_tax_delivery_owner_review','ConfirmTaxDeliverySubmission',
+    'TaxDeliverySubmissionPrerequisite','bind_tax_delivery_submission_prerequisite',
+    'TaxDeliverySubmissionReadEvidence','is_tax_delivery_submitted_instance','reconcile_tax_delivery_submission',
+    'TaxDeliveryFeedbackObservation','decode_tax_delivery_feedback_observation',
+    'TaxDeliveryEventFormat','tax_delivery_event_format',
+    'TaxDeliveryConfirmationPrerequisite','bind_tax_delivery_confirmation_prerequisite',
+    'is_tax_delivery_owner_confirmation_instance',
+    'TaxDeliveryConfirmationReadEvidence','reconcile_tax_delivery_confirmation',
+    'TaxDeliveryProcessAcknowledgment','decode_tax_delivery_process_acknowledgment',
+    'TaxDeliveryValidationPrerequisite','bind_tax_delivery_validation_prerequisite',
+    'TaxValidationJobStatus','TaxValidationJobInspection','TaxDeliveryValidationJobObservation','decode_tax_delivery_validation_job_observation',
+    'TaxDeliveryValidationResultObservation','decode_tax_delivery_validation_result_observation',
     "CompanyTaxSourceQuery",
     "CompanyTaxSourceSnapshot",
     "CompanyTaxSourceEvidence",

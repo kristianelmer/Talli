@@ -41,6 +41,8 @@ import {
 } from "../_readiness";
 import { buildOwnerFilingPresentation } from "../_presentation";
 import { Rf1086ReconciliationControl } from "../_submission-presentation";
+import {TaxDeliveryPanel} from "../_tax-delivery";
+import {AccountsDeliveryPanel} from "../_accounts-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -189,7 +191,7 @@ export default async function FilingObligationPage({
     </>
   );
 
-  // --- Skattemelding / Årsregnskap: readiness + honest placeholder. ---
+  // Tax delivery and Accounts retain the common Annual readiness checklist.
   if (obligation !== "aksjonaerregisteroppgaven") {
     return (
       <div>
@@ -217,6 +219,8 @@ export default async function FilingObligationPage({
             )}
           </div>
         </section>
+        {obligation === "skattemelding" ? <TaxDeliveryPanel companyId={input.company.id} incomeYear={input.incomeYear}/> : null}
+        {obligation === "aarsregnskap" ? <AccountsDeliveryPanel companyId={input.company.id} incomeYear={input.incomeYear}/> : null}
         {obligation === "aarsregnskap" ? (
           <section className="filingStep">
             <div className="filingStepHead">
@@ -273,7 +277,7 @@ export default async function FilingObligationPage({
               </p>
             </div>
           </section>
-        ) : (
+        ) : obligation === "skattemelding" && input.incomeYear === 2025 ? null : (
           <section className="filingStep">
             <div className="filingStepHead">
               <h2 className="filingStepTitle">{f.preview.title}</h2>
@@ -392,6 +396,15 @@ export default async function FilingObligationPage({
     <div>
       {header}
       {banners}
+      <section className="filingStep">
+        <div className="filingStepBody">
+          <h2 className="filingStepTitle">Kontroller årsgrunnlaget</h2>
+          <p>Aksjonærer, aksjer, innbetalt kapital og hendelser for inntektsåret {input.incomeYear}.</p>
+          <LinkButton variant="primary" href={`/filing/aksjonaerregisteroppgaven/source?companyId=${encodeURIComponent(input.company.id)}&incomeYear=${input.incomeYear}`}>
+            Åpne årsgrunnlaget
+          </LinkButton>
+        </div>
+      </section>
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">

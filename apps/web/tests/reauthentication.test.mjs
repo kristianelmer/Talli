@@ -5,6 +5,7 @@ import test from "node:test";
 import vm from "node:vm";
 import React from "react";
 import ts from "typescript";
+import { ownerCopy } from "../app/lib/copy.ts";
 
 const require = createRequire(import.meta.url);
 const source = path => readFileSync(new URL(`../app/${path}`, import.meta.url), "utf8");
@@ -13,7 +14,7 @@ function compile(text, dependencies = {}, globals = {}) {
   vm.runInNewContext(ts.transpileModule(text, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
   } }).outputText, { exports, require: name => name in dependencies ? dependencies[name] : require(name),
-    URL, URLSearchParams, Error, ...globals });
+    URL, URLSearchParams, Error, Headers, ...globals });
   return exports;
 }
 const { sanitizeInternalRedirect } = compile(source("lib/internal-redirect.ts"));
@@ -35,7 +36,7 @@ function entry({ user = { email_confirmed_at: "2026-09-06" }, configured = true,
     "../../components/ui": { Banner: () => null, FormField: () => null, SubmitButton: () => null },
     "../../actions": { signIn: async () => {}, signUp: async () => {} },
     "../../lib/supabase/server": server,
-    "../../lib/copy": { ownerCopy: { brand: "Talli", auth: {} } },
+    "../../lib/copy": { ownerCopy },
     "../../lib/internal-redirect": { sanitizeInternalRedirect },
     "../../lib/eligibility-continuation": { readEligibilityContinuation: async () => { calls.push("read-eligibility"); return continuation; } },
     "../GoogleSignInButton": { GoogleSignInButton: () => null },
@@ -141,7 +142,7 @@ function callback({ error = null, configured = true, throws = false } = {}) {
   const auth = { exchangeCodeForSession: async () => { calls.push("exchange"); if (throws) throw new Error("private token"); return { error }; },
     verifyOtp: async () => { calls.push("otp"); return { error }; } };
   const run = compile(source("auth/confirm/route.ts"), {
-    "next/server": { NextResponse: { redirect: url => url } },
+    "next/server": { NextResponse: { redirect: url => Object.assign(url, { headers: new Headers() }) } },
     "../../lib/supabase/server": { hasSupabaseEnv: () => configured, createSupabaseServerClient: async () => ({ auth }) },
     "../../lib/internal-redirect": { sanitizeInternalRedirect },
   }).GET;
@@ -162,4 +163,32 @@ test("successful callback returns to the scoped page while ordinary email confir
   const target = await callback().run({ code: "synthetic" });
   assert.equal(target.pathname + target.search, next);
   assert.equal((await callback({ error: {} }).run({ code: "synthetic", reauth: "0" })).pathname, "/verify-email");
+});
+
+test("explicit recovery confirmation delegates unchanged query to the guarded route without exchanging credentials", async () => {
+  const h = callback();
+  const target = await h.run({ token_hash: "synthetic-recovery-hash", type: "recovery" });
+  assert.equal(target.pathname, "/auth/recovery");
+  assert.equal(target.searchParams.get("token_hash"), "synthetic-recovery-hash");
+  assert.equal(target.searchParams.get("type"), "recovery");
+  assert.equal(target.searchParams.get("next"), next);
+  assert.equal(target.headers.get("Cache-Control"), "private, no-store");
+  assert.equal(target.headers.get("Referrer-Policy"), "no-referrer");
+  assert.deepEqual(h.calls, []);
+});
+function textContent(element) {
+  if (typeof element === "string") return element;
+  if (!element || typeof element !== "object") return "";
+  return Array.isArray(element) ? element.map(textContent).join(" ") : textContent(element.props?.children);
+}
+test("login preserves ordinary copy, invitation-specific guidance and scoped recovery entry", async () => {
+  const ordinary = await entry({ user: null }).run({ next });
+  assert.ok(textContent(ordinary).includes(ownerCopy.auth.signInIntro));
+  const invitation = await entry({ user: null }).run({ next: "/invite/accept?token=synthetic" });
+  assert.ok(textContent(invitation).includes(ownerCopy.auth.invitationIntro));
+  assert.ok(ownerCopy.auth.signUpIntro);
+  const links = element => !element || typeof element !== "object" ? [] : Array.isArray(element)
+    ? element.flatMap(links) : [...(element.props?.href ? [element.props.href] : []), ...links(element.props?.children)];
+  const recovery = links(ordinary).find(href => href.startsWith("/forgot-password?"));
+  assert.equal(new URL(recovery, "https://talli.example").searchParams.get("next"), next);
 });

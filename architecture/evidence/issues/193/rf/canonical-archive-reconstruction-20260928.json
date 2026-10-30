@@ -1,0 +1,64 @@
+{
+  "baseCommit": "fda029c213990eb885e8ec9860ac4245801b2dec",
+  "status": "PASS_CANONICAL_RF_ARCHIVE_RECONSTRUCTION_ACTUAL_RESTORE_PENDING",
+  "scope": [
+    "Closed versioned full RF archival snapshot preserves original typed source facts, freshness, Governance receipts, approval/review lineage, claims, heads, journal and feedback metadata",
+    "Python parser checks expected company/year and existing RF source/approval/journal/correction policy",
+    "Canonical record is emitted by authenticated production archive endpoint and retained by company download",
+    "Local verifier accepts canonical files, endpoint exports and company downloads without database/provider operations",
+    "Restored original numeric types and XML bytes are retained; unknown outcomes stay unknown"
+  ],
+  "verification": {
+    "focusedBackendPassed": 361,
+    "finalCodecAndCliCasesPassed": 47,
+    "webAndArchivePassed": 156,
+    "contractPassed": 64,
+    "webTypecheck": "PASS",
+    "architecture": "PASS",
+    "actualHttpExportVerifiedByCli": "PASS"
+  },
+  "ci": {
+    "run": 36393914126,
+    "revision": "fda029c213990eb885e8ec9860ac4245801b2dec",
+    "status": "IN_PROGRESS_WHEN_RECORDED",
+    "note": "Keep existing Application/database jobs running; canonical archive revision requires later CI"
+  },
+  "limits": [
+    "The outer checksum detects accidental damage, not independent authenticity",
+    "Verifier treats the canonical record as authoritative; surrounding editable display projections are not restore authority",
+    "No database restore, original object-byte rehydration or production/provider operation",
+    "Complete unapproved source/observation history, cross-year originals, retention generations, cancellation/expiry/deletion and full recovery remain pending",
+    "All seven RF acceptance criteria remain PENDING; genuine AS pilot follows recruitment"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "5a1908bab8a91dbb4e6c302a9628cc439379ec8baf81d4d65dccea1496cc5287",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "b6c7829d048dda98231f9f9f0e220731a17e0578ed53cad11a27db4fed8ee5b6",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "d31a57c11975101d1a66b732ec96731cc0d1d87e7d4a4f26a9eab9d52a274d2f",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "7f1d0c307bb1ce49bfc9bd365d4f0be833cbcbd176b58e9294c70bdc71551309",
+    "apps/backend/tests/test_rf1086_source_approval_api.py": "9d9514e081449ece02e361991407edbd6d0a0bec4776cda8593df76a7105edd3",
+    "apps/backend/tests/test_shareholder_register_filing_api.py": "076934d56ae03422b7fd1174aff083d90872337a7e5249da00fc253298fd0fb2",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "e7aee264d66022b6d6b8a59dce1f0ac6f591eb2f17bc08f2bf07461ece799090",
+    "apps/web/app/lib/archive.ts": "68255e4fd82d2b94a9e5dd9ec7ccbe21ead1fc2ffc650908d5d2ee3f73376e74",
+    "apps/web/app/lib/rf1086-restore-integrity.ts": "4615c1f67a0c103b1625047c01055d2aaf36a90149ac3ce9ad2d55f54ea4785a",
+    "apps/web/features/shareholder-register-filing/MODULE.md": "38e6940dd5d70e97fa52604dbec95f9aadc333dba92363006814f858851d829d",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "329b560ca70f8e76fc91dc956515a624a7fe14706325287f17788a6dd8875ef6",
+    "apps/web/tests/fixtures/rf1086-source-submission-archive.json": "a1cf7304d001dd85e63a7279bf685734cd80f91264277ad264a89f7946c8edae",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "3f3f93d6d0e1894e7e3aaa28571f83915b007328f80368150b77d0f0f1b92893",
+    "contracts/openapi/talli-v1.json": "5779e3c3b9bd613090b638de32422decf72c447bb42dc2f9cfe5dd524b86ed0c",
+    "docs/security/backup-restore-runbook.md": "59ec8b7ad6d0b3bcd855b9614ed6c57f482fb9e055fe4d9382921ca9f9af9ea3",
+    "packages/talli-api-client/src/generated/client.ts": "c792ae2089e7435d00718e72932960509b31059878671a6525f562554bde83a1",
+    "tests/backup_restore.test.mjs": "2dbf4b18eb534570596cc564909ea0d06e1f5b07405dd94db445f6ed1d457c18",
+    "apps/backend/scripts/verify_rf1086_archive.py": "eef5c9388b75ff6f90f85dab88b5ab45ab7b1b5b1d245a14ed579501f3d0faa8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "2521c2faf916ea90ea9a95abe33c813295ca55307217fe726dc7f903c0823dcb",
+    "apps/backend/tests/test_rf1086_archive_storage.py": "76e1411c4e9b12db98385244b3e7c7ecf891c29620aa629d0b97c25f37873c39"
+  },
+  "privateProofSha256": {
+    "talli-archive-codec-final-backend.log": "7753b49d68c839172db060c7b824673be9798110bf66243261f0e23e241f4513",
+    "talli-archive-codec-final-delta.log": "9f3bd9a31901daa5ef033d468080f9ade23ab9464d43ca8e0159e16c9b2886cf",
+    "talli-archive-codec-web.log": "27afa4e78664304ed3eb692d9e1a40ed3405584a95d968dd8784045c4a2f6774",
+    "talli-archive-codec-contract.log": "d3c26cb9e1aaa661147aa841b223708b5287c3b3fd4efae3277e43abbaee1b9a",
+    "talli-archive-codec-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "talli-archive-codec-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-archive-codec-export-verification.log": "cf5cdb8e470abf9c7ac67511924876185b08ba0f18e00e6960fdd9b4ce5346cc"
+  }
+}

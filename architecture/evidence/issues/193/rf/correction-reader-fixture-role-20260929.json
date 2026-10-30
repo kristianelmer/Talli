@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_CORRECTION_READER_FIXTURE",
+  "baseCommit": "068399fb4e1a184b168bec637780c159d9c21c1e",
+  "problem": "CI36567309628 Database passed220 cases, including all Banking/annual guards, then failed the historical correction-reader fixture at SET ROLE shareholder_register_filing_executor. Supabase migration authority does not imply executor SET authority.",
+  "change": "Borrow only missing RF executor SET inside a force-rollback transaction containing the held guards, actual runtime identity and read. All original membership grantors/options are compared exactly after rollback, including error paths. Negative cases require the specific guard/scope/subject error instead of any database error.",
+  "verification": {
+    "focused": "Five correction-port cases pass on disposable PostgreSQL17.",
+    "restricted": "All five pass under a non-superuser migration-like fixture principal with no initial RF executor SET. Exact pg_auth_members restored and SET remains unavailable afterward. The private harness retains capability owners and gives the fixture principal ownership only of legacy public tables formerly owned by the disposable migration principal, matching cleanup requirements.",
+    "fullStack": "Independent full isolated Supabase run39728 is still live and will exercise the changed test. Current CI Application remains live; no new push until terminal."
+  },
+  "limits": [
+    "No application or migration permissions were changed.",
+    "The broader full-stack result is pending; all seven RF criteria remain pending. No real AS, hosted mutation or production provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-correction-role-20260929-14d7",
+  "sha256": {
+    "talli-068399fb-database.log": "b73faa06e799f7f6d4f4cecb3c505ac616f21fdbe6312b869d69ffc5a5a6168e",
+    "talli-correction-role-build.log": "95cb545fe1a69c96b6dbaf3c55fc2c963911a3b4e8c42abb67a69dffc1a7cb46",
+    "talli-correction-role-focused.log": "808c5651ad12601b0526001ae8078a24e8147ec2ee3c8817f7de022a221e2d7e",
+    "talli-correction-role-restricted-final.log": "8d8c5bac539d401c890c285817102715fe03dd94140ad4e8938e54ad8981352b",
+    "talli-correction-role-restricted.py": "ec76bb9473ac7dfc0388faa9a84ab8d75f1c6fb47727de7f90dec617136dfcdb"
+  }
+}

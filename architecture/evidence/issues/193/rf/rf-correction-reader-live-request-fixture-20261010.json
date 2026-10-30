@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_RETAINED_READER_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T14:38:41.440495+00:00",
+  "baseRevision": "6abe2e6670a2c59dbf5a9ac884cf590b023a6c0f",
+  "status": "REVIEWED_LOCAL_NATIVE_SEAM_FULL_DATABASE_REQUIRED",
+  "observedCi": {
+    "id": 38057406479,
+    "wholeConclusion": "failure",
+    "receipt": "ci-38057406479.json",
+    "case": "test_reader_enumerates_other_actors_and_competing_legacy_roots",
+    "failedBeforeReader": "Second accepted same-company/obligation system-user request violates unchanged system_user_requests_one_live_company_obligation."
+  },
+  "change": [
+    "Only the failing fixture function changes; independent actor, entitlement, preview, approval and submission retained for second historical unmanaged legacy root.",
+    "Use original company request/external reference; no duplicate live request and no invented request status transition.",
+    "Assert original request JSON exact, exactly one live company request, second entitlement retains outsider actor and original request FK; both held/unheld reader assertions remain.",
+    "No production SQL/code/ACL/RLS/trigger/index/constraint change; no fresh filing authority from shared historical request is claimed."
+  ],
+  "checks": {
+    "protectedOtherFunctionsExact": 32,
+    "dbCasesCollectedOnly": 31,
+    "nativePublishedDdlChecks": 10,
+    "ownedNativeClusterStopped": true,
+    "ownedNativeDirectoryRemoved": true,
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-correction-reader-live-request-fixture-freeze-v1.json",
+    "sha256": "7dfc34ca39087ca697fa8419762a42f6f03af7b2ed3ec2229f1d25f31caf1da2",
+    "bytes": 1991
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-correction-reader-live-request-fixture-spec-review-v1.json",
+      "sha256": "7699f02090f6558c29f7f650dd0e25d5f29d200ffd4d5753f2a2092bd6af8926",
+      "bytes": 5548
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-correction-reader-live-request-fixture-standards-review-v1.json",
+      "sha256": "2a45bc3c511c8fb3983c41ce31834a9265b5e1dc4b7837afa370af5c48b3fec2",
+      "bytes": 5523
+    }
+  ],
+  "nativeProbe": {
+    "path": "/private/tmp/talli-release-20261009/rf-correction-live-request-fixture-native-v1.json",
+    "sha256": "e90cf70c1086942625db7e059351b06dd705460cef09d0d2565d031715cc7b3e",
+    "bytes": 2011
+  },
+  "limits": [
+    "Native PG17 probe uses actual request/pilot/binding/index DDL with minimal FK projections; no actual full-schema RF reader/owner/Auth proof.",
+    "Collection is not execution; repaired fullDB case and remaining12 downstream cases require whole successor CI.",
+    "Freeze captured CI in-progress wording historically; verified terminal receipt supersedes that observation.",
+    "All A1-A7, canonical two-gate/all-three readiness and independent Auth/object recovery remain pending."
+  ]
+}

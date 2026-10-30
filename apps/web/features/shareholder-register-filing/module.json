@@ -12,21 +12,50 @@
     "apps/web/features/shareholder-register-filing",
     "apps/web/features/shareholder-register-filing/index.ts"
   ],
-  "ownedRoutes": [],
+  "ownedRoutes": [
+    "/filing/aksjonaerregisteroppgaven/source",
+    "/filing/aksjonaerregisteroppgaven/source/archive",
+    "/filing/aksjonaerregisteroppgaven/register",
+    "/filing/aksjonaerregisteroppgaven/source/archive-v6",
+    "/companies/[companyId]/rf1086-test-history",
+    "/companies/[companyId]/rf1086-test-history/download"
+  ],
   "apiOperations": [
-    "legacyRf1086SendApprovedFiling",
     "legacyRf1086ReconcileFeedback",
-    "rf1086Workspace",
-    "rf1086Preview",
-    "rf1086GeneratePreview",
-    "rf1086RecordOverride",
-    "rf1086AddReviewComment",
+    "legacyRf1086SendApprovedFiling",
     "rf1086AcknowledgeReviewComment",
-    "rf1086ConfirmSimulation",
-    "rf1086ConfirmFilingPermission",
-    "rf1086RecordTestEvidence",
+    "rf1086AddReviewComment",
     "rf1086ApproveProduction",
-    "rf1086GetArchiveSource"
+    "rf1086ApproveSourceProduction",
+    "rf1086CaptureRegisterObservation",
+    "rf1086CaptureYearSource",
+    "rf1086ConfirmFilingPermission",
+    "rf1086ConfirmSimulation",
+    "rf1086GeneratePreview",
+    "rf1086GenerateSourcePreview",
+    "rf1086GetArchiveSource",
+    "rf1086DownloadProductionArchive",
+    "rf1086GetProductionArchiveSource",
+    "rf1086ListRegisterObservations",
+    "rf1086PrepareSourceProductionReview",
+    "rf1086Preview",
+    "rf1086ReadCurrentYearSource",
+    "rf1086ReadSourceDocument",
+    "rf1086ReadSourceIntakeBasis",
+    "rf1086ReadSourcePreview",
+    "rf1086RecordOverride",
+    "rf1086RecordTestEvidence",
+    "rf1086Workspace",
+    "rf1086SendSourceProduction",
+    "rf1086ReadSourceProductionPosition",
+    "rf1086GetProductionArchiveSourceV4",
+    "rf1086DownloadProductionArchiveV4",
+    "rf1086LookupYearSourceCapture",
+    "rf1086LookupRegisterObservationCapture",
+    "rf1086ReadRegisterObservationLifecycle",
+    "rf1086DownloadProductionArchiveV6",
+    "rf1086ReadCompanyTestRetention",
+    "rf1086DownloadCompanyTestRetention"
   ],
   "dependencies": [],
   "allowedImports": [
@@ -44,7 +73,13 @@
     "Direct business persistence"
   ],
   "tests": {
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs",
+    "sourceApprovalControl": "apps/web/tests/shareholder-register-source-approval-control.test.mjs",
+    "registerObservationLifecycleTransport": "apps/web/tests/shareholder-register-lifecycle-transport.test.mjs",
+    "retainedArchiveStream": "apps/web/tests/rf1086-retained-archive-stream.test.mjs",
+    "companyTestHistory": "apps/web/tests/rf1086-company-test-history.test.mjs",
+    "companyTestDownload": "apps/web/tests/rf1086-company-test-download.test.mjs"
   },
   "compatibilityExceptions": []
 }

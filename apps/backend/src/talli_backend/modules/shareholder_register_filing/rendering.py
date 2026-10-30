@@ -4,6 +4,9 @@ from xml.etree import ElementTree as ET
 
 from .public import (
     Rf1086DocumentSet,
+    Rf1086CashIssueEvent as CashIssueEvent,
+    Rf1086CashNominalIncreaseEvent as CashNominalIncreaseEvent,
+    Rf1086LossCoveringReductionEvent as LossCoveringReductionEvent,
     Rf1086DividendEvent as DividendEvent,
     Rf1086Case as FilingCase,
     Rf1086FormationEvent as FormationEvent,
@@ -15,6 +18,8 @@ from .public import (
 from .readiness import assess_rf1086_readiness, format_readiness_report
 from .codes import (
     ACQUISITION_PURCHASE_CODE,
+    CASH_NEW_ISSUE_CODE,
+    CASH_NOMINAL_INCREASE_CODE,
     DISPOSAL_SALE_CODE,
     DIVIDEND_DISTRIBUTION_CODE,
     FORMATION_STIFTELSE_CODE,
@@ -24,6 +29,8 @@ SKATTEETATEN_ETAT_ID = "974761076"
 
 
 def generate_rf1086(case: FilingCase) -> Rf1086DocumentSet:
+    from .readiness import validate_capital_case
+    validate_capital_case(case)
     return Rf1086DocumentSet(
         hovedskjema_xml=_xml_to_string(_build_hovedskjema(case)),
         underskjema_xml={
@@ -58,12 +65,18 @@ def filing_preview(case: FilingCase) -> str:
     if case.events:
         lines.extend(["", "Hendelser:"])
         for event in case.events:
-            if isinstance(event, FormationEvent):
+            if isinstance(event, (FormationEvent, CashIssueEvent)):
                 lines.append(
-                    f"- Stiftelse/utstedelse {event.timestamp.isoformat()}: "
+                    f"- {'Nyemisjon (kontant)' if isinstance(event, CashIssueEvent) else 'Stiftelse/utstedelse'} {event.timestamp.isoformat()}: "
                     f"{event.issued_share_count} aksjer, pålydende {_amount(event.nominal_value)}, "
                     f"{len(event.allocations)} aksjonær(er)"
                 )
+            elif isinstance(event, CashNominalIncreaseEvent):
+                lines.append(f"- Kontant kapitalforhøyelse ved økning av pålydende {event.timestamp.isoformat()}: "
+                    f"aksjekapital {_amount(event.capital_increase)}, overkurs {_amount(event.premium)}")
+            elif isinstance(event, LossCoveringReductionEvent):
+                lines.append(f"- Registrert kapitalnedsettelse til dekning av tap {event.timestamp.isoformat()}: "
+                    f"{_amount(event.capital_reduction)}, uten utbetaling til aksjonærene")
             elif isinstance(event, ShareSaleEvent):
                 seller = shareholders_by_id[event.seller_shareholder_id].name
                 buyer = shareholders_by_id[event.buyer_shareholder_id].name
@@ -159,22 +172,46 @@ def _build_hovedskjema(case: FilingCase) -> ET.Element:
         dividends = _group(root, "Utbytte-grp-3449", "3449")
         for event in dividend_events:
             event_group = _group(dividends, "UtdeltSkatterettsligUtbytteILopetAvInntektsaret-grp-3451", "3451")
-            _data(event_group, "AksjeUtbytteISINAksjetype-datadef-17665", "17665", case.company.share_type)
+            _data(event_group, "AksjeUtbytteISINAksjetype-datadef-17665", "17665", event.total_amount)
             _data(event_group, "AksjeUtbyttePerAksje-datadef-23946", "23946", event.per_share_amount)
             _data(event_group, "AksjeUtbytteHendelsestype-datadef-36564", "36564", DIVIDEND_DISTRIBUTION_CODE)
             _data(event_group, "AksjeUtbytteTidspunkt-datadef-17667", "17667", _dt(event.timestamp))
 
-    formation_events = [event for event in case.events if isinstance(event, FormationEvent)]
+    formation_events = [event for event in case.events if isinstance(event, (FormationEvent, CashIssueEvent))]
     if formation_events:
         issuances = _group(root, "UtstedelseAvAksjerIfmStiftelseNyemisjonMv-grp-3452", "3452")
         for event in formation_events:
             issue = _group(issuances, "AntallNyutstedteAksjer-grp-3453", "3453")
             _data(issue, "AksjerNyutstedteStiftelseMvAntall-datadef-17668", "17668", event.issued_share_count)
             _data(issue, "AksjerStiftelseMvAntall-datadef-17669", "17669", event.share_count_after)
-            _data(issue, "AksjerNyutstedteStiftelseMvType-datadef-17670", "17670", FORMATION_STIFTELSE_CODE)
+            _data(issue, "AksjerNyutstedteStiftelseMvType-datadef-17670", "17670", CASH_NEW_ISSUE_CODE if isinstance(event, CashIssueEvent) else FORMATION_STIFTELSE_CODE)
             _data(issue, "AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671", "17671", _dt(event.timestamp))
             _data(issue, "AksjerNyutstedteStiftelseMvPalydende-datadef-23947", "23947", event.nominal_value)
             _data(issue, "AksjerNyutstedteStiftelseMvOverkurs-datadef-23948", "23948", event.premium)
+
+    changes = None
+    # XSD orders post 15 before post 16, irrespective of event chronology.
+    for event_class in (CashNominalIncreaseEvent, LossCoveringReductionEvent):
+        for event in case.events:
+            if not isinstance(event, event_class):
+                continue
+            if changes is None:
+                changes = _group(root, "EndringerIAksjekapitalOgOverkurs-grp-3460", "3460")
+            if isinstance(event, CashNominalIncreaseEvent):
+                change = _group(changes, "ForhoyelseAvAKVedOkningAvPalydende-grp-3463", "3463")
+                _data(change, "AksjekapitalNyemisjonForhoyelse-datadef-17713", "17713", event.capital_increase)
+                _data(change, "AksjeNyemisjonPalydendeForhoyelse-datadef-23958", "23958", event.nominal_value_increase)
+                _data(change, "AksjePalydendeEtterNyemisjon-datadef-23959", "23959", event.nominal_value_after)
+                _data(change, "AksjekapitalForhoyelsePalydendeHendelsestype-datadef-28268", "28268", CASH_NOMINAL_INCREASE_CODE)
+                _data(change, "AksjeNyemisjonTidspunkt-datadef-17716", "17716", _dt(event.timestamp))
+                _data(change, "AksjeOverkursForhoyelse-datadef-22071", "22071", event.premium)
+            else:
+                change = _group(changes, "NedsettelseAvInnbetaltOgFondsemittertAK-grp-3464", "3464")
+                _data(change, "AksjekapitalInnbetaltNedsettelse-datadef-17717", "17717", event.capital_reduction)
+                _data(change, "AksjePalydendeNedsettelseTapsdekning-datadef-23960", "23960", event.nominal_value_reduction)
+                _data(change, "AksjePalydendeEtterNedsettelseTapsdekning-datadef-23961", "23961", event.nominal_value_after)
+                _data(change, "AksjeNedsettelseTidspunkt-datadef-17720", "17720", _dt(event.timestamp))
+                _data(change, "AksjekapitalFondsemittertNedsettelse-datadef-17721", "17721", 0)
 
     return root
 
@@ -230,11 +267,11 @@ def _build_underskjema(case: FilingCase, snapshot: ShareholderSnapshot) -> ET.El
         acquisition_parent = _group(transactions, "KjopArvGaveStiftelseNyemisjonMv-grp-3993", "3993")
         for event in acquisitions:
             acquisition = _group(acquisition_parent, "AntallAksjerITilgang-grp-3998", "3998")
-            if isinstance(event, FormationEvent):
+            if isinstance(event, (FormationEvent, CashIssueEvent)):
                 allocation = next(item for item in event.allocations if item.shareholder_id == shareholder.id)
                 amount = allocation.share_count
                 value = allocation.acquisition_value
-                event_type = FORMATION_STIFTELSE_CODE
+                event_type = CASH_NEW_ISSUE_CODE if isinstance(event, CashIssueEvent) else FORMATION_STIFTELSE_CODE
             else:
                 amount = event.share_count
                 value = event.consideration
@@ -265,11 +302,26 @@ def _build_underskjema(case: FilingCase, snapshot: ShareholderSnapshot) -> ET.El
             else:
                 _data(disposal, "AksjonarOvertakendeOrganisasjonsnummer-datadef-26533", "26533", buyer.org_number)
 
+    changes = None
+    for event in case.events:
+        if isinstance(event, CashNominalIncreaseEvent):
+            for allocation in event.allocations:
+                if allocation.shareholder_id != shareholder.id:
+                    continue
+                if changes is None:
+                    changes = _group(root, "EndringerIAksjekapitalOgOverkurs-grp-3997", "3997")
+                change = _group(changes, "ForhoyelseAvInnbetaltAksjekapitalVedOkning-grp-4987", "4987")
+                _data(change, "AksjekapitalNyemisjonForhoyelseAksjonar-datadef-22073", "22073", allocation.capital_increase)
+                _data(change, "AksjeOverkursForhoyelseAksjonar-datadef-22076", "22076", allocation.premium)
+                _data(change, "AksjeNyemisjonPalydendeForhoyelseAksjonar-datadef-23971", "23971", event.nominal_value_increase)
+                _data(change, "AksjekapitalNyemisjonForhoyelsePalydendeTransaksjonstype-datadef-28267", "28267", CASH_NOMINAL_INCREASE_CODE)
+                _data(change, "AksjeNyemisjonTidspunktAksjonar-datadef-22075", "22075", _dt(event.timestamp))
+
     return root
 
 
-def _shareholder_has_acquisition(event: FormationEvent | ShareSaleEvent | DividendEvent, shareholder_id: str) -> bool:
-    if isinstance(event, FormationEvent):
+def _shareholder_has_acquisition(event: FormationEvent | CashIssueEvent | CashNominalIncreaseEvent | LossCoveringReductionEvent | ShareSaleEvent | DividendEvent, shareholder_id: str) -> bool:
+    if isinstance(event, (FormationEvent, CashIssueEvent)):
         return any(allocation.shareholder_id == shareholder_id for allocation in event.allocations)
     if isinstance(event, ShareSaleEvent):
         return event.buyer_shareholder_id == shareholder_id
@@ -303,9 +355,12 @@ def _value(value: object) -> str:
 
 
 def _amount(value: float) -> str:
-    if float(value).is_integer():
-        return f"{int(value)} kr"
-    return f"{value:.2f} kr"
+    from decimal import Decimal
+    # Filing amounts may have more than two decimal places. Preserve those
+    # digits and avoid ambient rounding or a lossy float conversion in review.
+    whole, _, fraction = format(Decimal(str(value)), "f").partition(".")
+    fraction = fraction.rstrip("0")
+    return (whole + "." + fraction.ljust(2, "0") if fraction else whole) + " kr"
 
 
 def _dt(value) -> str:
@@ -320,6 +375,9 @@ def _xml_to_string(root: ET.Element) -> str:
 def render_rf1086_preview(case: FilingCase):
     from .public import Rf1086RenderedPreview
     readiness = assess_rf1086_readiness(case)
+    if any(issue.code == "capital_event_reconciliation" for issue in readiness.issues):
+        return Rf1086RenderedPreview(readiness.filing, readiness.status, readiness.issues,
+            "RF-1086 kapitalhendelser kunne ikke avstemmes.\n")
     documents = generate_rf1086(case)
     return Rf1086RenderedPreview(readiness.filing, readiness.status, readiness.issues,
         filing_preview(case), documents.hovedskjema_xml, documents.underskjema_xml)
@@ -410,7 +468,13 @@ def render_no_activity_rf1086_preview(value):
     # The no-activity entry never renders an optional contact email; retain the
     # original deployed shape independently of the offline parser's defaults.
     raw['company'].pop('contact_email', None)
-    case = parse_rf1086_case(raw)
+    try:
+        case = parse_rf1086_case(raw)
+    except ValueError:
+        return Rf1086RenderedPreview('aksjonærregisteroppgaven', 'blocked',
+            (Rf1086ReadinessIssue('error', 'capital_event_reconciliation',
+                'Opplysninger om aksjer og kapital kan ikke avstemmes.'),),
+            'RF-1086 kunne ikke genereres: Opplysninger om aksjer og kapital kan ikke avstemmes.\n')
     main = _build_hovedskjema(case)
     sub = {snapshot.shareholder_id: _build_underskjema(case,snapshot) for snapshot in case.shareholder_snapshots}
     # Rendered numeric fields that can be fractional use the original JS

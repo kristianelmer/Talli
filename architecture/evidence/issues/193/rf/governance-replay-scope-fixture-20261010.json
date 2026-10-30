@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "GOVERNANCE_REPLAY_SCOPE_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T05:00:36.138708+00:00",
+  "baseRevision": "b05b85c6c2f2549337c6ec4216144baaf343f4dd",
+  "observedParent": "21cb20c1801becc75890e90ec6e0dfa5d3469d75",
+  "triggeringCi": {
+    "run": 38024478298,
+    "testedHead": "cdce7100383f889c0c3d60cce2bb4fd29f83584e",
+    "receipt": "ci-38024478298.json",
+    "receiptSha256": "fca16b234858bf82a27e829f76e0178bdcd4cb5b6aee99488676e57ce2498c1c"
+  },
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "sha256": "0bee1c6bf95697cdbcd5860e45c61e1b76998e8536a64d641f93331a882f5e0f",
+      "bytes": 21991
+    }
+  ],
+  "repair": [
+    "Read actual failed fixture, three 2026-only admission constraints, consequential admission check and both Governance prepare/complete paths. Both check admission before saved-event replay comparison.",
+    "Impossible 2025 accepted-scope cloning is removed. Two accepted foreign-company cases retain idempotency conflict. Two nonadmitted-year cases assert the real predicate is false and exact corporate_governance_forbidden.",
+    "Both scenarios positively reread the original request after denial and require the exact saved result with replayed=True and one original event. All 18 unrelated original functions remain unchanged.",
+    "No production SQL, constraint, grant or admission policy changes. Root collected 64 cases, executed zero locally; the failed cdce run does not test this repair.",
+    "Accepted foreign-year comparison remains unreachable under the current 2026-only schema. Nonadmission tests do not substitute for runtime proof of that branch."
+  ],
+  "checks": {
+    "collection": {
+      "cases": 64,
+      "affected": 4,
+      "executed": 0
+    },
+    "unchangedUnrelatedFunctionAST": 18,
+    "productionSqlAndGrantsChanged": false,
+    "whitespace": "PASS"
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "da2e2ddf07f5c39ef2d66f7a0dd89998217a23747e41c8809275f02c0f76bfd8"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "21dbe86584279030041800aff73d33a10b6a7509380d27c3d5ed1799f79060ca"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "547eb046ec8001a668ea8008ffc80a47ac48829f17bd777f8e50a1daa4a37965"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "governance-replay-scope-fixture-spec-review.json",
+      "sha256": "da2e2ddf07f5c39ef2d66f7a0dd89998217a23747e41c8809275f02c0f76bfd8",
+      "bytes": 5936
+    },
+    {
+      "file": "governance-replay-scope-fixture-standards-review.json",
+      "sha256": "21dbe86584279030041800aff73d33a10b6a7509380d27c3d5ed1799f79060ca",
+      "bytes": 3859
+    },
+    {
+      "file": "governance-replay-scope-fixture-root-review.json",
+      "sha256": "547eb046ec8001a668ea8008ffc80a47ac48829f17bd777f8e50a1daa4a37965",
+      "bytes": 1903
+    },
+    {
+      "file": "governance-accepted-scope-repair-collection.log",
+      "sha256": "049bfa6de05a8ec25cdadb57ebf7dbc6ad2593fef907078ff2aece3684d87def",
+      "bytes": 9791
+    }
+  ],
+  "limits": [
+    "Test fixture repair, source review and collection only. No local database execution or new full CI success.",
+    "Accepted foreign-year replay-comparison branch is not executable under current admission scope; do not claim it tested by the new denial cases.",
+    "No production behavior, genuine company, provider, paid action or launch gate changes. A1\u2013A7 and both immutable linked release gates remain pending."
+  ]
+}

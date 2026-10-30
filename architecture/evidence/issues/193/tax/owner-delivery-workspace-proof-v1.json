@@ -1,0 +1,169 @@
+{
+  "version": "tax-owner-delivery-workspace-proof-v1",
+  "baselineRevision": "59ef648fd7cb8d82a187393093d44619cfa6515b",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Server-owned read-only workspace derives states and available actions from positive complete Source9 history, one correction frontier, full owning Annual/Ledger/Investments sources, current owner/MFA and non-consuming finite runtime admission checks. Mutation guards remain authoritative.",
+    "Known uncertainty permits read recovery only. Missing create/job identifiers never produce another mutation or invented lookup. Source drift closes new mutations while known read recovery remains possible.",
+    "Exact draft/current/scan/status/validation/calculated/process/feedback/receipt and parent originals are independently selectable by purpose/hash. Archive-only original reads retain owner/MFA checks without depending on current financial source, active runtime grants or schema pinners. SDK verifies decoded raw SHA; web returns exact binary bytes with no-store/nosniff attachment headers.",
+    "Authenticated owner Tax page for 2025 presents draft fields, every supported calculated field, deviations, guidance, failure reasons and company flags, including blocked/incomplete results. Partial individual schema reads grant no complete-pair admission. Exact enclosing-response download matches the displayed response digest. Pagination remounts on original change and clamps a stale cursor.",
+    "Two explicit owner choices and the freshly reread full owner-review commitment precede final submission. Receipt possession before archive has a separate intermediate state; final technical receipt state requires archived/process-ended metadata plus the exact Clean receipt. Unchanged metadata does not cause duplicate receipt GETs. No Tax assessment acceptance or amendment eligibility is inferred.",
+    "Actual browser harness uses signed GoTrue sessions and owner TOTP, restricted SQL/RLS, process-wide loopback socket confinement, committed-intent checks before every external mutation, no SQL transaction across HTTP, initial read-only intake and one finite dispatch grant issued only after the actual draft is stored. No preseeded draft or caller-ready token.",
+    "Desktop and touch: prepare/review/create/upload/scan/validate/confirmation, all calculated documents and notes, explicit final choices, deliberately dropped submission response, known read recovery, exact opaque binary receipt download, owning interest changes from zero to 100, distinct complete child review/new instance/submission/terminal receipt. The separate blocked case retains two changed validation responses and verifies the latest partial field and exact outer download hash.",
+    "Ordinary and mandatory production-build touch runners include the new delivery journey before Accounts. Shared Annual readiness and all live/production/Billing/provider gates remain separate and closed. No new migration, hosted DDL, push or deployment in this work."
+  ],
+  "validation": {
+    "focusedWorkspaceIntake": {
+      "passed": 41,
+      "privateLog": "delivery-workspace-unit-v7.log",
+      "timing": "Before later edge review fixes; overlapping targeted cases."
+    },
+    "owningJournalRegression": {
+      "passed": 184,
+      "privateLog": "delivery-workspace-targeted-regression-v2.log",
+      "timing": "Before last edge review fixes; overlapping cases."
+    },
+    "finalSubmissionAndReviewEdgeRegression": {
+      "passed": 133,
+      "privateLog": "delivery-workspace-edge-fixes-v2.log"
+    },
+    "partialSchemaScope": {
+      "passed": 81,
+      "privateLog": "delivery-workspace-partial-scope-v1.log",
+      "detail": "Includes missing, foreign, malformed mate and unsupported regime; complete inspection remains closed."
+    },
+    "sharedValidatorAndWorkspace": {
+      "passed": 91,
+      "privateLog": "delivery-workspace-shared-validator-v1.log"
+    },
+    "clientActionComposition": {
+      "passed": 177,
+      "privateLog": "delivery-workspace-clients-v3.log",
+      "timing": "Before final edge changes; overlapping final focused cases."
+    },
+    "finalWorkspaceClientOwnerActionAndPagination": {
+      "passed": 7,
+      "privateLog": "delivery-workspace-final-clients-v1.log"
+    },
+    "changedCiRunnerChecks": {
+      "passed": 11,
+      "privateLog": "delivery-workspace-ci-wiring-v1.log"
+    },
+    "actualSignedDesktop": {
+      "passed": 2,
+      "privateLog": "delivery-browser-desktop-v10.log",
+      "webBuild": "delivery-workspace-build-v6.log"
+    },
+    "actualSignedTouch": {
+      "passed": 2,
+      "privateLog": "delivery-browser-mobile-v2.log",
+      "webBuild": "delivery-workspace-build-v6.log",
+      "viewports": [
+        "390x844 touch",
+        "320x844 reflow"
+      ]
+    },
+    "finalManualCli": {
+      "status": "PASS",
+      "privateLog": "delivery-browser-cli-v1.log",
+      "webBuild": "delivery-workspace-build-v7.log",
+      "detail": "Actual signed owner session, initial preparation through complete owner review; CLI fresh snapshots/ref-based clicks and 320px calculated-field disclosure screenshot inspected. Both owner choices remained unchecked. Temporary auth state removed; named CLI browser closed."
+    },
+    "finalBuildAndTypecheck": "PASS delivery-workspace-build-v7.log (includes final pagination fix)",
+    "architecture": "PASS delivery-workspace-architecture-v5.log; dependency evidence unchanged",
+    "generatedArtifacts": "OpenAPI and SDK --check PASS",
+    "companyExport": "Frozen company export route unchanged",
+    "whitespace": "PASS",
+    "fixtureCleanup": {
+      "runtimeRolesRestored": 4,
+      "syntheticCompaniesRemaining": 0,
+      "syntheticAuthUsersRemaining": 0
+    },
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    },
+    "secretEnvironmentAndCliAuthStateRemoved": true
+  },
+  "review": {
+    "fixed": [
+      "Shared version-aware journal factory and scope assertion",
+      "Later retained receipt state and no repeated unchanged receipt GET",
+      "Blocked validation full findings and supported document fields",
+      "Receipt possession separated from terminal archived completion",
+      "Exact latest enclosing validation-response download",
+      "Partial document display without relaxing complete-pair admission",
+      "Shared optional document schema/scope validator",
+      "Stale field pagination reset/clamp on document change"
+    ],
+    "finalStandardsFindings": 0,
+    "finalSpecFindings": 0,
+    "allReviewAgentsClosed": true,
+    "limitation": "Independent reviews were static. Runtime counts are main-agent pinned-runtime tests; groups overlap and must not be summed."
+  },
+  "closedGates": [
+    "Real provider activation",
+    "Live filing",
+    "Production/public launch",
+    "Paid operations and Billing",
+    "Original Model3/P-H compatibility"
+  ],
+  "remaining": [
+    "Accounts durable delivery completion and actual signed-JWT desktop/touch flow",
+    "Operational offsite/alert/retention readiness and any separately authorized deployment"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/company_tax_calculated_schemas.py": "42df1fd2493469c978f396608851ba0dcbe521f997b9e715418ec0e3c6b1ba57",
+    "apps/backend/src/talli_backend/adapters/company_tax_schemas.py": "56d06098ee11a0953911e77f20aa869bd79eb3e151d63b5d0c528744583335c0",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_intake.py": "dc4a22e85ab9490c3afeb56a47742094c8f926e5dba2a4954a6c30cea8791990",
+    "apps/backend/src/talli_backend/adapters/loopback_company_tax_parent_read.py": "67d9192a0bf42430cb7c66ad44b19efc30bf4f309da6c744cbce00bb9a82e0ac",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_preparation.py": "4ed2005425a96ad92c83229016f9402ef986777f3817c8114013788aa70ad917",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_rehearsal.py": "abff4ae1b6724dfdb19060260d900c82129df116496a45d3b18c1520acc2d2f1",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "9c06ebace019c69baca5053e77af5d95c46a76ef906f6398d80f5af73505d49d",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "106dbe1926ec45942fd05d10f3c408345d41618d27c650f5e702cd46da20f13e",
+    "apps/backend/src/talli_backend/application/company_tax_intake_rehearsal.py": "d04f4b64c9ee4a21c31f765e04c38388cb41ea6c1ccab029bb689848e1f09f28",
+    "apps/backend/src/talli_backend/application/company_tax_parent_read_rehearsal.py": "eb0884ff48e32d240fcf509cb0f668d7742c0ef55dfba26ac1b090bb467c8880",
+    "apps/backend/src/talli_backend/main.py": "b45fc4ebf4719b8b78bd98115889c7fb4810b1072553089860eddf252c1b76ce",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "08ee51b2118afe0e1fed185e68c2379eeea28816f71feeb810aed28a6173b3ac",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_events.py": "fe14b018de51c0e3b9a0fe98ee14d3947026a47655bc5f5ffed2f20e07665ab4",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_workspace.py": "cf2757038d7181ef7eec4f499da3893364b14a21d87cb541d780ba7d5943fc33",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "d3795e3b104bf32569033bfb829448ba50bfba40a5569a22a586b9f208bd14c6",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "879a60c3291fc36dbfa3a5bdb86f8e1f95a432c493ab94256554bb733a33758d",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "380d4fdaf80cdf57b2be6d7654857ea17aa504d5cffc6ff258ff2b7ba9991c19",
+    "apps/backend/tests/test_company_tax_calculated_schemas.py": "e4ac9a9324199051c76a9290b209703cb9afe2cc313cb591dae9b80be01bcf21",
+    "apps/backend/tests/test_company_tax_current_intake.py": "32c62e7aae4b49acdbba0a72bd6a7f5523901450535cc42fd1d9658d405d0845",
+    "apps/backend/tests/test_company_tax_delivery_workspace.py": "922b5e9a2453a9ba5b773d4e14ce08d7df768d8597a054e6ae95549b33842aa1",
+    "apps/web/app/(owner)/filing/[obligation]/page.tsx": "ccf9db4bbe067f56a983236aadd06fb9846889de75ba7e73273262c9cae682b3",
+    "apps/web/app/(owner)/filing/_tax-delivery-actions.ts": "39537880824405b572ff1a1ce17e369e98aa36411e120c30fd7ef76f3b988c91",
+    "apps/web/app/(owner)/filing/_tax-delivery-fields.tsx": "9dc863194c338b41eec7f3da9be8ab9076ce36b4e95dbbf711438c287d8c2e83",
+    "apps/web/app/(owner)/filing/_tax-delivery.module.css": "f59d98c4b10ca4df0a4725949516f0ec00e95d3a6dd9539aeccf54e29d349215",
+    "apps/web/app/(owner)/filing/_tax-delivery.tsx": "e1d0e4912d99d6d76613cb13a4ecaf69d794f674b1da079caeaa7e64f3aee8ab",
+    "apps/web/app/api/company-tax/delivery-original/route.ts": "b21c4981e3cae82bfe8b9e8cda5306a4dd02d66955ad397ce38fbc74d9b02dc6",
+    "apps/web/app/lib/copy.ts": "91fdb18ff5150c7823b31daa93438a43a34c31f5417a3c43c382214a523b362f",
+    "apps/web/features/company-tax-filing/MODULE.md": "0e703124c347467428bffa83f628c8c357808d0b21b133da8d26cfea7e06f9ee",
+    "apps/web/features/company-tax-filing/index.ts": "dabcfe090ed833cc7cffa450f1feb49d8f6817e062a32fe7e7fb7f56264b95df",
+    "apps/web/features/company-tax-filing/module.json": "3b3f1010c495e23b2b7e689f2f3d07eff8466e59298ef5c5d528879013e0887a",
+    "apps/web/features/company-tax-filing/transport.ts": "bd607bae28c1e84645e8455dd97ac65f11f0854a6a7646344f21206e48fae5bf",
+    "apps/web/tests/tax-delivery-actions.test.mjs": "b8b61e2dc89ff789e62de631a6a3109c1431b55873eb7c32cdee738ffe7e965f",
+    "apps/web/tests/tax-delivery-fields.test.mjs": "03dff4a7510fe6e818d9cd2e38247ac30a3bb444eb84daf13885f44545ba70c9",
+    "architecture/BACKEND-SYSTEM.md": "d08e5f517dfaa69323181a2ae96962997ce1340cb4451e6d883c8fb665231134",
+    "architecture/backend-system.json": "b5ba81bc5e55981afb978be605dc2e1d5a03704f59cdd471f7f5d1edd35f4d2b",
+    "contracts/openapi/talli-v1.json": "fdcdf7780f9e4f25bde535fafd74238843ad5a8b85945e27b121d13d1a957fd6",
+    "package.json": "ed8b89c15f93c0cbcd7fac8a485393fa4c66e1108f526cde9c64666a51e87553",
+    "packages/talli-api-client/src/generated/client.ts": "30f1f53fd69fb542cfca025a554e7f2820c1d266d16e2bac3720122c9e51f2c0",
+    "packages/talli-api-client/src/index.ts": "012d76b65e77c1f0be423bb2af3e91f6eeb07edcf24dc05af190b2333777f4ba",
+    "packages/talli-api-client/src/tax-delivery-evidence.ts": "99700fd7c76d755086be370516a6ab19147fc6d181f224df51b859c5e8b11764",
+    "scripts/generate-api-client.mjs": "917dc642afb517ffc5bdc88b07d76beb13744f56c9b92aa20243d14ee26c6d7c",
+    "scripts/test-supabase-local.sh": "06d90263a4e4f7aa26c1e0ba0b54acfa52dc2d9b7d5fe7c45cb53ed46ebce364",
+    "tests/browser_tax_delivery.mjs": "4e239eab435226e77355d6ac7176db886c6086dd48b13f2776cdb2cfac0eb6d5",
+    "tests/ci_release_gate.test.mjs": "2d43222d989a98532c3f7f2e9b20ed6bf49afd0353e478a46677de639dd9b079",
+    "tests/contract/company_tax_delivery_workspace_client.test.mjs": "120fd2032ebd1515323c5f641a990f4a912023dbe4c0eddd4849a1323f94bc6a",
+    "tests/fixtures/seed_tax_browser_company.py": "da8cb946380264b09adde2d57125bfe1becf1d5dc6d55136529088fdbb8c920c",
+    "tests/fixtures/seed_tax_delivery_interest.py": "e3f4bd473795ba1345b53c95c7ca56c2147e836b3e33e2da7679431b51ae3b7a",
+    "tests/fixtures/start_tax_delivery_workspace_backend.py": "8633df4b0ab1b0852c31766b67f5b0d5945ec11c2e323d3cb377a61f263b0355",
+    "tests/fixtures/tax_delivery_browser_runtime.py": "e5cef265b60098ad15cb9f6db91023c4a68e1f70536e4c2f5269df68f420ec34",
+    "tests/support/tax-browser-fixture.mjs": "65d76c2afc5c747522a83d44ae1b1da6d432cba3e4747950ddad668516f0810e"
+  }
+}

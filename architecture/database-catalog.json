@@ -21,6 +21,18 @@
       ]
     },
     {
+      "name": "annual_accounts_filing.delivery_drafts",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "annual_accounts_filing.delivery_events",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": []
+    },
+    {
       "name": "annual_accounts_filing.filing_overrides",
       "kind": "capability-business",
       "owner": "backend:annual_accounts_filing",
@@ -339,6 +351,18 @@
       "owner": "backend:company_tax_filing"
     },
     {
+      "name": "company_tax_filing.delivery_drafts",
+      "kind": "capability-business",
+      "owner": "backend:company_tax_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "company_tax_filing.delivery_events",
+      "kind": "capability-business",
+      "owner": "backend:company_tax_filing",
+      "compatibilityResources": []
+    },
+    {
       "name": "company_tax_filing.filing_overrides",
       "kind": "capability-business",
       "owner": "backend:company_tax_filing"
@@ -430,6 +454,11 @@
       "owner": "backend:corporate_governance"
     },
     {
+      "name": "corporate_governance.register_evidence_amendments",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
       "name": "corporate_governance.shareholder_loans",
       "kind": "capability-business",
       "owner": "backend:corporate_governance"
@@ -441,6 +470,11 @@
     },
     {
       "name": "documents.evidence_references",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
+      "name": "documents.retained_originals",
       "kind": "capability-business",
       "owner": "backend:documents"
     },
@@ -896,6 +930,60 @@
       "compatibilityResources": [
         "table:production_filing_submissions"
       ]
+    },
+    {
+      "name": "shareholder_register_filing.register_observation_withdrawals",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.register_observations",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_approval_bindings",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_previews",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_review_bridges",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_submission_bindings",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.submission_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_versions",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
     }
   ],
   "preservedSourceRetirements": [

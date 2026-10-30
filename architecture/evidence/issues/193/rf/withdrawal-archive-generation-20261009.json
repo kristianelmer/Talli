@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF withdrawal archive-generation registration",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "13559e96c0156e2abd53e7b4f2e2ba62837a0607",
+  "status": "IMPLEMENTED_REVIEWED_NATIVE_PROTOCOL_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "behavior": [
+    "A distinct RF-owned AFTER row trigger registers withdrawal writes with the existing company archive generation protocol. The frozen historical ten-trigger inventory is unchanged; archive completion and cancellation policy are unchanged.",
+    "Actual writes invalidate prior-generation receipts and in-flight exports in the same year. Exact withdrawal replay, INSERT ON CONFLICT DO NOTHING and rolled-back writes do not advance the committed generation.",
+    "First installation enumerates retained scopes under an exclusive table lock and owner-only transactional FORCE-RLS suspension. A correctly installed tracker makes migration replay stable; absent, disabled or conditional trackers trigger retained-scope invalidation.",
+    "Temporary role membership and tracker creation grants are restored exactly. The existing unconditional BEFORE company guard is required. Withdrawal EXECUTE remains unavailable to runtime callers.",
+    "Application rollback retains tracking; it neither deletes withdrawals nor makes older generation receipts current."
+  ],
+  "review": {
+    "reviewer": "root",
+    "result": "No remaining material findings in final generation migration/rollback/tests and native-probe source.",
+    "findingFixed": "Initial installed-trigger detection omitted conditional/constraint trigger attributes; final code requires exact unconditional ordinary immediate row-trigger shape, and tests conditional tracker/company-guard cases."
+  },
+  "checks": {
+    "databaseCollectedNotExecuted": 20,
+    "nativeProtocolProbe": {
+      "status": "PASS",
+      "migrationSha256": "21fd0d44c9aac95a75b92c4247bdf167b0b995dfa32e94c7805a3672e548de38",
+      "scope": "Entire generation migration and exact existing archive tracking/company-lock/scope-lock functions on native PostgreSQL 17 with minimal RF table, synthetic RLS policy and restricted fixture migrator. Tests generation, first activation, migration replay, no-op insert, rollback, conditional-trigger drift, temporary grant removal and role/ACL/RLS restoration. Not actual withdrawal append, Supabase authorization, complete migration chain, immutable receipt integrity or export/race execution.",
+      "serverVersion": "17.11 (Homebrew)",
+      "checks": [
+        "first activation invalidates only retained scope",
+        "temporary SET memberships and tracker grant restored exactly",
+        "FORCE RLS restored and still hides rows without synthetic actor",
+        "migration replay preserves generations and authority",
+        "restricted owner insert fires tracker after execute grant revoked",
+        "no-op insert leaves generation unchanged",
+        "aborted insert rolls generation back",
+        "conditional tracker does not suppress retained-scope invalidation",
+        "disabled tracker repaired and invalidated once",
+        "conditional company guard refusal rolls back borrowed authority",
+        "retained scope without generation row initialized once",
+        "empty activation does not invalidate unrelated generations",
+        "preexisting tracker execute grant preserved",
+        "application rollback retains tracking and generations"
+      ],
+      "checkCount": 14,
+      "clusterRemoved": true
+    },
+    "diffCheckExitCode": 0
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009220727_rf1086_withdrawal_archive_generation.sql": "21fd0d44c9aac95a75b92c4247bdf167b0b995dfa32e94c7805a3672e548de38",
+    "supabase/rollback/20261009220727_rf1086_withdrawal_archive_generation.sql": "91c5bcf3a4eb5b1e254f25ba4b6db8fb8e0be6ce60e6d801fd08e19a80f87529",
+    "apps/backend/tests/test_rf1086_withdrawal_archive_generation_database.py": "423e01147832c5535b7b61eb87eec94c12efdaa27dd11d0b3bcc5fc5a8410e1f"
+  },
+  "privateArtifacts": {
+    "check-withdrawal-generation-migration.py": {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-generation-migration.py",
+      "sha256": "64813bdc41036fe1b4fb36dcdf0221773e78c69ecc12ec279bbcd649f9df6e91",
+      "bytes": 13211
+    },
+    "withdrawal-generation-migration-native.json": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-generation-migration-native.json",
+      "sha256": "ab276b6b0e46a71a7162d0c6869c90cb7d4a1433478855d6a8f7717f21e1a49e",
+      "bytes": 1579
+    },
+    "withdrawal-generation-migration-native.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-generation-migration-native.log",
+      "sha256": "3f105fb6428647a3ffaada05c500d552c0242eb685efbbb5b11ace72daa5a4ca",
+      "bytes": 972
+    },
+    "talli-rf-withdrawal-generation-collect.log": {
+      "path": "/private/tmp/talli-rf-withdrawal-generation-collect.log",
+      "sha256": "f78d08c2b6e9874da299225419d8497428398f27c4df184dab40c4c108dfa5cc",
+      "bytes": 3135
+    }
+  },
+  "limits": [
+    "Twenty real database cases were collected only. Actual RF withdrawal append, full Supabase migration chain, immutable receipt integrity, real authorization/RLS and export-completion races require full CI execution.",
+    "The 14 native PostgreSQL checks use exact public tracking/locking functions and the entire new migration with a minimal RF table and synthetic scope policy. They prove the specified protocol/role/trigger behaviors, not complete application readiness.",
+    "An old-format exporter begun after withdrawal can still omit withdrawal history and mint a current-generation receipt. The existing completion RPC also lacks a READ COMMITTED requirement; old repeatable-read snapshots can miss a generation change after acquiring the company lock. Neither gap is fixed by generation tracking.",
+    "Archive-owner verified-byte coverage/completion and Company Access eligibility remain pending the explicit architecture decision. No future-facade change, withdrawal activation, external effect or launch authority follows."
+  ]
+}

@@ -69,28 +69,60 @@ def apply(db, name, *, rollback=False):
     assert set(memberships(db)) == expected
     # Emulate each artifact's ON COMMIT DROP without committing the outer test.
     for schema, table in db.execute("select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.oid=pg_my_temp_schema() and c.relkind='r'").fetchall():
-        db.execute(sql.SQL('drop table {}.{} cascade').format(sql.Identifier(schema), sql.Identifier(table)))
+        db.execute(sql.SQL('drop table {}.{}').format(sql.Identifier(schema), sql.Identifier(table)))
+
+
+@contextmanager
+def owned_connection(url):
+    db = psycopg.connect(url, autocommit=True)
+    primary = None
+    try:
+        yield db
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        try:
+            db.close()
+        except BaseException as error:
+            if primary is None:
+                raise
+            primary.add_note(f'accounts fixture close failed: {type(error).__name__}')
 
 
 @pytest.fixture
 def unexpanded_database():
     url = os.environ.get('DATABASE_URL')
     assert url and conninfo_to_dict(url).get('host') in ('localhost', '127.0.0.1', '::1'), 'owned disposable loopback database required'
-    with psycopg.connect(url, autocommit=True) as db:
+    with owned_connection(url) as db:
         assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0], 'run before Accounts expansion'
         assert db.execute('select phase from backend_system.company_tax_return_migration_state').fetchone()[0] == 'contracted'
         before = memberships(db)
         original_roles = db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall()
         db.execute('begin isolation level repeatable read')
+        primary = None
         try:
             seed(db)
             yield db
+        except BaseException as error:
+            primary = error
+            raise
         finally:
-            db.execute('rollback')
-            assert memberships(db) == before
-            assert db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall() == original_roles
-            assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0]
-            assert db.execute('select count(*) from public.companies where id=%s', (COMPANY,)).fetchone()[0] == 0
+            cleanup_step = 'rollback'
+            try:
+                db.execute('rollback')
+                cleanup_step = 'memberships'
+                assert memberships(db) == before
+                cleanup_step = 'roles'
+                assert db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall() == original_roles
+                cleanup_step = 'namespace'
+                assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0]
+                cleanup_step = 'fixture company'
+                assert db.execute('select count(*) from public.companies where id=%s', (COMPANY,)).fetchone()[0] == 0
+            except BaseException as error:
+                if primary is None:
+                    raise
+                primary.add_note(f'accounts fixture {cleanup_step} cleanup failed: {type(error).__name__}')
 
 
 @pytest.fixture
@@ -190,6 +222,7 @@ def test_expansion_assertion_rejects_changed_preexisting_self_grant(unexpanded_d
 def actor(db, name='owner', *, role='annual_accounts_filing_workflow_executor', fresh=True, aal='aal2'):
     """A real executor and verified claims, with the entire call rolled back."""
     db.execute('savepoint accounts_actor')
+    primary = None
     try:
         runner = db.execute('select current_user').fetchone()[0]
         db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(role), sql.Identifier(runner), sql.Identifier(runner)))
@@ -201,9 +234,19 @@ def actor(db, name='owner', *, role='annual_accounts_filing_workflow_executor', 
             db.execute('select set_config(%s,%s,true)', (key, value))
         db.execute(sql.SQL('set local role {}').format(sql.Identifier(role)))
         yield identity
+    except BaseException as error:
+        primary = error
+        raise
     finally:
-        db.execute('rollback to savepoint accounts_actor')
-        db.execute('release savepoint accounts_actor')
+        cleanup_step = 'rollback'
+        try:
+            db.execute('rollback to savepoint accounts_actor')
+            cleanup_step = 'release'
+            db.execute('release savepoint accounts_actor')
+        except BaseException as error:
+            if primary is None:
+                raise
+            primary.add_note(f'accounts actor {cleanup_step} cleanup failed: {type(error).__name__}')
 
 
 def expect_error(db, message, operation):
@@ -211,6 +254,68 @@ def expect_error(db, message, operation):
         with db.transaction():
             operation()
     assert caught.value.diag.message_primary == message
+
+
+def test_filing_permission_uses_wrappers_without_auth_schema_access(unexpanded_database):
+    db = unexpanded_database
+    assert db.execute('select rolsuper from pg_roles where rolname=current_user').fetchone() == (False,)
+    assert db.execute("""select has_schema_privilege(current_user,'auth','USAGE'),
+        has_schema_privilege(current_user,'auth','USAGE WITH GRANT OPTION')""").fetchone() == (True, False)
+    hide_existing_accounts_roles(db)
+    auth_schema = db.execute("select nspowner,nspacl::text from pg_namespace where nspname='auth'").fetchone()
+
+    def auth_foreign_keys(schema):
+        return db.execute("""select r.relname,c.conname,c.conkey::text,c.confkey::text,
+            c.confmatchtype,c.confupdtype,c.confdeltype,c.convalidated,c.condeferrable,c.condeferred,
+            pg_get_constraintdef(c.oid)
+            from pg_constraint c join pg_class r on r.oid=c.conrelid
+            join pg_namespace n on n.oid=r.relnamespace
+            where n.nspname=%s and r.relname=any(%s) and c.contype='f'
+              and c.confrelid='auth.users'::regclass
+            order by r.relname,c.conname""", (schema, list(FAMILIES))).fetchall()
+
+    original_foreign_keys = auth_foreign_keys('public')
+    assert len(original_foreign_keys) == 12
+    failed_grants = []
+
+    def record_failed_grant(notice):
+        if notice.sqlstate == '01007':
+            failed_grants.append(notice.sqlstate)
+
+    db.add_notice_handler(record_failed_grant)
+    primary_failure = None
+    try:
+        for artifact in (*EXPANSION, CUTOVER, CONTRACT):
+            apply(db, artifact)
+    except BaseException as error:
+        primary_failure = error
+        raise
+    finally:
+        try:
+            db.remove_notice_handler(record_failed_grant)
+        except BaseException:
+            if primary_failure is None:
+                raise
+            primary_failure.add_note('Grant notice handler cleanup also failed.')
+
+    assert failed_grants == []
+    assert db.execute("select nspowner,nspacl::text from pg_namespace where nspname='auth'").fetchone() == auth_schema
+    assert auth_foreign_keys('annual_accounts_filing') == original_foreign_keys
+    for role in ACCOUNTS_ROLES:
+        assert db.execute("select has_schema_privilege(%s,'auth','USAGE')", (role,)).fetchone() == (False,)
+
+    # The seeded permission exercises the real upsert and read path under the
+    # restricted workflow role. Its definer uses the public identity wrappers.
+    with actor(db) as identity:
+        permission = db.execute('select annual_accounts_filing.confirm_filing_permission_v1(%s,false,%s)',
+                                (COMPANY, identity)).fetchone()[0]
+        assert permission['company_id'] == COMPANY
+        assert permission['confirmed_by'] == identity
+        assert permission['submitter_user_id'] == identity
+        assert permission['production_enabled'] is False
+        workspace = db.execute('select annual_accounts_filing.read_workspace_v1(%s,2025,%s)',
+                               (COMPANY, identity)).fetchone()[0]
+        assert workspace['permissions'] == [permission]
 
 
 def test_latest_state_survives_contract_full_rollback_and_recutover(database):
@@ -483,13 +588,18 @@ def test_support_reads_exact_accounts_fields_only_with_open_current_case(databas
 
     def identify(identity, fresh=True, expired=False):
         claims = json.dumps({'sub': identity, 'email': identity + '@example.invalid', 'role': 'authenticated',
-            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from now())').fetchone()[0])-(86400 if expired else 1)}]})
+            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from statement_timestamp())').fetchone()[0])-(86400 if expired else 1)}]})
         for key, value in [('talli.verified_actor_id', identity), ('talli.verified_actor_claims', claims)]:
             db.execute('select set_config(%s,%s,true)', (key, value))
         db.execute('set local role company_access_executor')
 
     identify(admin)
-    case = db.execute("select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,now()-interval '30 seconds',now()+interval '30 minutes')", (uuid4(), COMPANY, operator, scopes)).fetchone()[0]
+    # Migration setup shares this transaction. now() remains at its beginning,
+    # while the grant deliberately validates its one-minute window at statement time.
+    expect_error(db, 'support_access_invalid_request', lambda: db.execute(
+        "select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,statement_timestamp()-interval '61 seconds',statement_timestamp()+interval '30 minutes')",
+        (uuid4(), COMPANY, operator, scopes)))
+    case = db.execute("select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,statement_timestamp()-interval '30 seconds',statement_timestamp()+interval '30 minutes')", (uuid4(), COMPANY, operator, scopes)).fetchone()[0]
     identify(operator)
     read = lambda: db.execute('select * from public.company_access_read_support_case(%s)', (case,)).fetchone()[3]
     expect_error(db, 'support_access_not_available', read)

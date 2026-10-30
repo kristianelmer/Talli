@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Disposable archive-generation fixture role access",
+  "baseRevision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+  "observedDateUtc": "2026-10-09",
+  "status": "SOURCE_FOUND_FIXTURE_GAP_REPAIRED_NATIVE_ROLE_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "finding": "Three conditional-trigger/missing-generation cases SET ROLE company_archive_projection_executor, but staged/backend fixtures only borrow the RF owner. Production migrations restore archive SET membership; an admin-only edge does not provide SET authority. This is a source finding, not yet an observed full-chain CI failure.",
+  "change": "A local module-scoped fixture borrows only the designated disposable BYPASSRLS principal missing self-granted SET edge. It preserves all original grantors/admin/inherit/set flags, restores the original edge after normal or exceptional body exit, and leaves pre-existing SET authority untouched. No application/runtime grant or product SQL changes.",
+  "checks": {
+    "databaseCasesCollectedOnly": 20,
+    "nativeRoleGroupsPassed": 4,
+    "nativeScope": "Exact fixture under PostgreSQL17.11 with real role metadata; no application tables/SQL stubs. Establishes role borrowing and restoration only; no archive-generation or Supabase proof.",
+    "review": "Independent fixture audit found the gap; root reviewed exact repair and native result with no material finding."
+  },
+  "sourceFileSha256": {
+    "apps/backend/tests/test_rf1086_withdrawal_archive_generation_database.py": "5c4c5427f2c006f4213a888bf0a3ad3655bb142bee748a80e7fa96e7592620df"
+  },
+  "privateArtifacts": {
+    "check-withdrawal-generation-role-fixture.py": {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-generation-role-fixture.py",
+      "sha256": "ae1d05d5e83398b97f50c04cc19c9c5e585fe7798b1d19a7be82ce2b5045c060",
+      "bytes": 5033
+    },
+    "withdrawal-generation-role-native.json": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-generation-role-native.json",
+      "sha256": "3ae58030cb2db23d49747e48d2c8a299dd3ea4e3d29ffa1a969066a14cfae4f6",
+      "bytes": 875
+    },
+    "withdrawal-generation-role-native.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-generation-role-native.log",
+      "sha256": "65a5cd375fb6eb977f3bef3626fb81b8480e53cc6e40c6ac530e05969af99268",
+      "bytes": 977
+    },
+    "withdrawal-generation-role-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-generation-role-collection.log",
+      "sha256": "8442978f467e9dbed688d172b2e91cf80bc9018d38b5b74b027f6f304bae435c",
+      "bytes": 3135
+    }
+  },
+  "limits": [
+    "Current CI38001797771 tests1dccdcdd without this repair; no result is transferred to changed source.",
+    "Actual20 generation tests and all other pending RLS/races/browser/recovery gates still require whole-chain execution.",
+    "All acceptance criteria and release gates remain pending."
+  ]
+}

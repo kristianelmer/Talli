@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ACL_REPLAY_ASSERTION",
+  "failedRun": "https://github.com/kristianelmer/Talli/actions/runs/36600550177",
+  "failedRevision": "776ffe33319e291b9d313951b324e15fc172e5e3",
+  "failure": "Application passed. Database isolation reached the final annual Ledger rollback/replay test. Role memberships and function authority were unchanged, but equivalent ACL entries changed array order; raw proacl text equality failed.",
+  "change": "Ledger and Documents migration tests compare sorted exploded ACL entries, retaining grantor, grantee, privilege type and grant option. Function body, config, owner and all role memberships remain exact assertions. No production SQL or grants change.",
+  "verification": "Local probe reproduced the raw-order failure for both readers, confirmed normalized exact grants after actual rollback/replay and proved grant-option widening still changes the assertion. All15 Ledger/Documents/opening/composed-annual database cases pass.",
+  "limits": [
+    "Local PostgreSQL with minimal Auth/Storage shims; full Supabase CI must rerun.",
+    "All RF acceptance criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-approval-20260929-14d7",
+  "sha256": {
+    "acl-probe.log": "17515c715edc246ff87c1ff793e4150382bd90dfe1cc8a19ae1419efcbe54f55",
+    "database.log": "d9b4709bbd148e4236d2cbd3d779accd62d764d63af4476b778edb6d9ce540db",
+    "database-setup.log": "f60c0c7df4d62ad3154b146e751edefe49c7f751dde6c089bfa3d261ba327a36"
+  }
+}

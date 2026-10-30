@@ -1,0 +1,475 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "recordedAtUtc": "2026-10-10T06:02:35.261795+00:00",
+  "run": {
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T05:30:48Z",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "02a762de844f6bda3366927078b6e0ea51d48c14",
+    "status": "completed",
+    "updatedAt": "2026-10-10T06:00:45Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38027757820",
+    "id": 38027757820,
+    "durationSecondsFromCreatedToUpdated": 1797
+  },
+  "checkout": {
+    "revision": "e5ea65b038a2241fc0ad2216105b727c5178826b",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114142123496,
+        "revision": "e5ea65b038a2241fc0ad2216105b727c5178826b",
+        "headParent": "02a762de844f6bda3366927078b6e0ea51d48c14",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log git log -1 --format=%H; parent hashes independently verified through GitHub commit API."
+      },
+      {
+        "jobId": 114142123686,
+        "revision": "e5ea65b038a2241fc0ad2216105b727c5178826b",
+        "headParent": "02a762de844f6bda3366927078b6e0ea51d48c14",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log git log -1 --format=%H; parent hashes independently verified through GitHub commit API."
+      }
+    ],
+    "limit": "Exact 02a762de synthetic merge includes retained recovery workflow b9a1b9f4, Governance cutoff fixture repair b61a41c5, prior receipt 3efa and complete retained archive query 02a762de. Stage3 retained stream export 8e6d9717 and any later Ledger rehearsal repair are excluded."
+  },
+  "jobs": [
+    {
+      "id": 114142123496,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T05:30:51Z",
+      "completedAt": "2026-10-10T06:00:38Z",
+      "durationSeconds": 1787,
+      "failedSteps": []
+    },
+    {
+      "id": 114142123686,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T05:30:50Z",
+      "completedAt": "2026-10-10T05:49:36Z",
+      "durationSeconds": 1126,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114142124193,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T05:30:49Z",
+      "completedAt": "2026-10-10T05:30:48Z",
+      "durationSeconds": null,
+      "failedSteps": [],
+      "durationLimit": "GitHub reports the skipped job completion one second before its start; no elapsed duration inferred."
+    },
+    {
+      "id": 114147101609,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T06:00:41Z",
+      "completedAt": "2026-10-10T06:00:44Z",
+      "durationSeconds": 3,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114142123686,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "Selected authority/RF suite; first actual public reversal in Ledger assertion concurrency cases after 874 passes",
+      "file": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+      "line": 320,
+      "test": "test_both_company_lock_orders_serialize_assertion_with_amendment[False-public_reversal]",
+      "observedError": "psycopg.errors.CheckViolation: new row for relation \"ledger_command_receipts\" violates check constraint \"ledger_command_receipts_operation_name_check\"",
+      "observedStack": [
+        "test_ledger_governance_entry_assertion_database.py:320 invokes mutate(first)",
+        "test_ledger_governance_entry_assertion_database.py:308 invokes reverse(db, saved)",
+        "test_ledger_governance_entry_assertion_database.py:283 calls ledger.reverse_supported_entry_v1",
+        "ledger.reverse_supported_entry_v1(text,uuid,integer,uuid,text,text,text,date,jsonb) line 204 inserts reverse_supported_entry receipt"
+      ],
+      "supportedDiagnosis": "The full ordered install applies the published reversal migration, whose CHECK permits six operations including reverse_supported_entry. The later shared hosted Ledger rehearsal replays corrections and company-year-close migrations, whose CHECK permits only the older five operations. The last setter is 20260827104000. Final RF recutover and the Ledger assertion fixture do not restore that CHECK. This source-derived sequence explains the observed rejection; no catalog dump from the failed database was captured.",
+      "recommendedFixtureRepair": "Preserve the exact installed published six-operation receipt constraint during historical hosted replay using a narrowly guarded disposable rehearsal adaptation. Retain original migrations, public reversal behavior, grants and race assertions; prove populated receipt preservation and exact catalog/authority restoration. Blind full reversal-migration replay is unsafe because its table/policies already exist.",
+      "observationLimit": "CI directly observes the public reversal receipt CHECK failure before the second lock participant starts. Fixture regression diagnosis is supported by executed stage markers and tested source; it is not an observed production constraint defect or proof of a lock-order defect. Later local repair/native proof is outside this tested revision."
+    }
+  ],
+  "testedSourceEvidence": [
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+      "sha256": "701a25804f24fa6708d36403e553a54d203ce911f33c833ae4bc187d98d5dd5e",
+      "lines": [
+        62,
+        67,
+        283,
+        308,
+        320
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "tests/ledger_hosted_migration_authority.test.mjs",
+      "sha256": "1a24e51d18c61a246fde9836d4455412da9bbbe65316230a4bd4697346533e7f",
+      "lines": [
+        21,
+        23,
+        24,
+        340,
+        343
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "6436e60c2f5710dd5d9b1bfc7e480ab8610c7a10db402d8704e8d7e7d47a02d7",
+      "lines": [
+        98,
+        132,
+        133,
+        135,
+        152,
+        153
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "supabase/migrations/20260904223000_ledger_supported_event_reversals.sql",
+      "sha256": "b0ae0c395b3b543d9ce7cefab4dd5e910d736a12607ba3c19076a9272dd57d36",
+      "lines": [
+        15,
+        18,
+        22,
+        25,
+        292
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "supabase/migrations/20260827103000_ledger_corrections.sql",
+      "sha256": "d71293e5dfeae0b1085825f5821b36caf68c5d4f68f6a08b2a09ec780787d205",
+      "lines": [
+        15,
+        18,
+        22
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "supabase/migrations/20260827104000_ledger_company_year_close.sql",
+      "sha256": "c2c9668cffe642d215412fddd9c3d376f5e79b6d86bd652e09a83945a1ebcee7",
+      "lines": [
+        15,
+        18,
+        22
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "scripts/rehearse-authority-topology.mjs",
+      "sha256": "37e046286edb4c2be20efa2f15847be6c6b823fa63b355ee515d4abfa833fdb5",
+      "lines": [
+        25,
+        114,
+        122
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "aab0f06c8ba56f46e9b1ceae5b9a8fd3e8555aa3fe62e09096b584dcbc050ec8",
+      "lines": []
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "sha256": "b7e58f9ebe0a6957fae6ddda42c8e517fabd906c185429fbbd2bda0fa2ea00cb",
+      "lines": [
+        305,
+        310,
+        322
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+      "sha256": "b7f2f0a1e41b0535b59a2d979917c4032c37f7e4f4d5cc95203539d3809be72c",
+      "lines": []
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+      "sha256": "9ba0c73b1f23cb1591540395f0d6d180de743836a7c4d1c71756af61b0f37945",
+      "lines": [
+        143
+      ]
+    },
+    {
+      "revision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py",
+      "sha256": "bbacd32653d6e30ee5d38469c696d6c666293863a25a783ae7db98807c28e51a",
+      "lines": []
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "backendSuite": {
+        "selected": 10311,
+        "passed": 10309,
+        "failed": 0,
+        "skipped": 2,
+        "deselected": 2237,
+        "durationSeconds": 803.13,
+        "scope": "Backend contract-boundary pytest selection; authority_database excluded."
+      },
+      "boundaryNodeSelections": [
+        {
+          "tests": 600,
+          "passed": 600,
+          "failed": 0
+        },
+        {
+          "tests": 123,
+          "passed": 123,
+          "failed": 0
+        },
+        {
+          "tests": 95,
+          "passed": 95,
+          "failed": 0
+        }
+      ],
+      "completed": [
+        "anonymous PostgreSQL fixture prefetch",
+        "official tax schema fetch and committed-credential scan",
+        "typecheck, declared architecture and legacy interface rejection",
+        "complete web-to-FastAPI contract boundary",
+        "production web and backend builds",
+        "production artifact smoke (1 test passed)",
+        "complete launch rehearsal",
+        "production dependency audits (both zero vulnerabilities)",
+        "whitespace check"
+      ],
+      "notReached": [],
+      "limit": "Application launch-rehearsal fixtures do not establish the later independent real RF/database/Auth restore or genuine-company/provider proof."
+    },
+    "database": {
+      "authorityRfSuite": {
+        "status": "FAILED",
+        "collected": 1449,
+        "passed": 874,
+        "failed": 1,
+        "notExecuted": 574,
+        "durationSeconds": 382.69,
+        "passedByTestFile": {
+          "test_authority_connections_database_runtime.py": 22,
+          "test_authority_operations_database_runtime.py": 13,
+          "test_launch_signoffs_database_runtime.py": 8,
+          "test_rf1086_database_runtime.py": 41,
+          "test_banking_year_reconciliation_database.py": 3,
+          "test_banking_year_reconciliation_evidence_database.py": 23,
+          "test_banking_company_guard_database.py": 32,
+          "test_annual_interview_company_guard_database.py": 7,
+          "test_rf_annual_interview_admission_database.py": 5,
+          "test_rf_annual_ledger_admission_database.py": 5,
+          "test_rf_annual_document_admission_database.py": 5,
+          "test_rf_annual_opening_admission_database.py": 4,
+          "test_rf1086_annual_readiness_database.py": 1,
+          "test_rf1086_annual_approval_database.py": 23,
+          "test_rf1086_durable_source_operation_database.py": 47,
+          "test_rf1086_year_source_database.py": 14,
+          "test_rf1086_retained_archive_generations.py": 2,
+          "test_rf1086_source_preview_database.py": 11,
+          "test_rf1086_source_review_bridge_database.py": 12,
+          "test_rf1086_source_approval_database.py": 49,
+          "test_rf1086_journal_company_guard_database.py": 17,
+          "test_rf1086_source_company_guard_database.py": 11,
+          "test_governance_ledger_company_guard_database.py": 20,
+          "test_company_access_rf_admission_database.py": 24,
+          "test_documents_rf_company_guard_database.py": 21,
+          "test_rf1086_register_observation_database.py": 13,
+          "test_rf1086_register_observation_withdrawal_database.py": 36,
+          "test_rf1086_withdrawal_admission_database.py": 103,
+          "test_rf1086_withdrawal_archive_generation_database.py": 20,
+          "test_rf1086_withdrawal_review_database.py": 31,
+          "test_rf1086_register_observation_lifecycle_database.py": 3,
+          "test_rf1086_observation_evidence_assertions_database.py": 37,
+          "test_rf1086_register_observation_evidence_reader_database.py": 90,
+          "test_governance_register_observation_completion_database.py": 64,
+          "test_ledger_governance_entry_assertion_database.py": 57
+        },
+        "countsLimit": "Actual PASSED lines within this selected 1,449-case suite sum to 874; they do not imply all cases in the final Ledger file or whole suite completed."
+      },
+      "validationObservationPytest": {
+        "passed": 17,
+        "skipped": 1,
+        "durationSeconds": 0.27
+      },
+      "nodeSelections": [
+        {
+          "owner": "Ledger",
+          "tests": 70,
+          "passed": 70,
+          "failed": 0
+        },
+        {
+          "owner": "Banking",
+          "tests": 21,
+          "passed": 21,
+          "failed": 0
+        },
+        {
+          "owner": "Investments",
+          "tests": 33,
+          "passed": 33,
+          "failed": 0
+        },
+        {
+          "owner": "Documents",
+          "tests": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        {
+          "owner": "Marketing",
+          "tests": 2,
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "owner": "validation",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "predecessor",
+          "tests": 55,
+          "passed": 55,
+          "failed": 0
+        },
+        {
+          "owner": "RF workspace lifecycle",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "RF workspace and owner browser",
+          "tests": 29,
+          "passed": 29,
+          "failed": 0
+        },
+        {
+          "owner": "hosted migrator authority",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "owner": "Corporate Governance lifecycle",
+          "tests": 24,
+          "passed": 24,
+          "failed": 0
+        },
+        {
+          "owner": "Corporate Governance contract",
+          "tests": 2,
+          "passed": 2,
+          "failed": 0
+        },
+        {
+          "owner": "Billing lifecycle",
+          "tests": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      ],
+      "billingPytest": {
+        "passed": 700,
+        "durationSeconds": 296.08
+      },
+      "completedPredecessors": [
+        "PostgreSQL 17, 17-alpine and 16-alpine prefetch",
+        "fresh migration installation and initial advisors",
+        "initial authority/RF rollback",
+        "first workspace recutover and workspace/owner browser",
+        "second authority/RF rollback, hosted migrator, Governance and Billing predecessors",
+        "final authority/RF recutover",
+        "historical source/annual/review/journal restoration cases repaired by cdce",
+        "Withdrawal admission 103, withdrawal archive-generation 20, withdrawal review 31, observation assertions 37 and current evidence reader 90 actual database cases",
+        "Governance committed replay survives withdrawal (both prepare/complete variants) and SELECT visibility without UPDATE authority",
+        "All 64 Governance completion cases, including both real scope classes, the repaired statement-start cutoff case and final reinstall/rollback preservation",
+        "Ledger assertion reached 57 passes covering exact original binding, malformed/stale/current-authority denials and stored-context corruption before first public reversal concurrency case"
+      ],
+      "notReached": [
+        "Remaining 574 selected authority/RF cases, including later Ledger/Governance/Documents/source-v2 groups; all 31 retained correction reader DB cases remain unexecuted",
+        "fresh RF filing browser and v4 archive expectation",
+        "full-year source browser journey and lost-capture recovery",
+        "database/object-store and independent Auth restore",
+        "Company Tax and Annual Accounts database/browser successors",
+        "separate rendered public acquisition step"
+      ],
+      "stageEvidence": "Actual serial markers and verbose selected-case PASSED lines, followed by first public reversal receipt CHECK failure. Workspace owner browser is distinct from later filing/full-year journeys."
+    }
+  },
+  "sanitizedExcerpts": [
+    {
+      "jobId": 114142123496,
+      "path": "/private/tmp/talli-release-20261009/ci38027757820-application-summary-sanitized.log",
+      "sha256": "5e6d19e23828832042460097e0a2a86606e6447f45a3defc15752fda50a132cb",
+      "bytes": 1211,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114142123686,
+      "path": "/private/tmp/talli-release-20261009/ci38027757820-database-failure-context-sanitized.log",
+      "sha256": "ca6ecb692f88720338f74467d8e98279b41e1c386921098cd66950f39c9441b9",
+      "bytes": 2049,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    }
+  ],
+  "privateRawLogDigests": [
+    {
+      "jobId": 114142123496,
+      "path": "/private/tmp/talli-release-20261009/ci38027757820-application-full-private.log",
+      "sha256": "7f341e3e3133d4750ec57d7e763de59d26c6b88a53406f384c71066e5a5d1416",
+      "bytes": 460719,
+      "limit": "Raw log retained privately; only separately sanitized excerpt is publishable."
+    },
+    {
+      "jobId": 114142123686,
+      "path": "/private/tmp/talli-release-20261009/ci38027757820-database-full-private.log",
+      "sha256": "f4ad837ae2c1e6502c27c4423c516e98f6ff2415363acc2a33ff9b2f544aeeab",
+      "bytes": 493007,
+      "limit": "Raw log retained privately; only separately sanitized excerpt is publishable."
+    }
+  ],
+  "limits": [
+    "Whole workflow failed; Application success and 874 selected database passes close no acceptance criterion. A1\u2013A7 remain pending.",
+    "This receipt binds 02a762de and its exact synthetic merge only. Earlier or later revisions do not inherit these results.",
+    "Immutable evidence skipped for this ordinary PR run; neither a canonical 11/11 complete-gate receipt nor either of two linked immutable passing revisions.",
+    "Recovery workflow and complete retained query unit coverage ran in Application. All 31 registered retained correction reader DB cases were not reached; no genuine database proof is transferred from their local collection. Stage3 stream export is excluded from this head.",
+    "No independent Auth restore, genuine-company production acceptance, criterion promotion, provider activation, outreach or launch clearance claimed.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Repository write is only this receipt; root owns index changes."
+  ]
+}

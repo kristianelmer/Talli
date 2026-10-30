@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#196",
+  "relatedCriteria": [
+    "GH-193-RF-A5",
+    "GH-193-RF-A6"
+  ],
+  "observedDate": "2026-10-09",
+  "status": "REVIEWED_LOCAL_DEPENDENCY_PROBES_LIVE_DATABASE_AND_HOSTED_EVIDENCE_PENDING",
+  "baseRevision": "eac508175fa0073e7f2cfe28034792ae17996ede",
+  "problem": "Backend readiness always returned ready; web readiness only validated its backend URL, so unavailable dependencies could still produce success.",
+  "behavior": {
+    "web": "Concurrent backend readiness and web-session Auth settings/key probes.",
+    "backend": "Actual configured HTTP application DSNs and SET ROLE grants, plus Auth settings/key. Banking retains its existing fallback; Marketing is required; notification persistence is conditional on enabled intake.",
+    "safety": "Read-only database probes, bounded no-redirect HTTP bodies, deadlines, shared in-flight work, two-second boolean caches, generic 503/no-store failures; independent process liveness.",
+    "fixtures": "Authentic browser fixtures provision the additional restricted Marketing/Banking logins and restore them through existing owned teardown.",
+    "productionSmokeRuntime": "Optional TALLI_BACKEND_PYTHON_BIN matches other backend fixtures; CI default path is unchanged."
+  },
+  "checks": [
+    {
+      "name": "backend readiness and system",
+      "passed": 31,
+      "result": "PASS",
+      "evidence": "Implementation owner tool observation."
+    },
+    {
+      "name": "web readiness and system",
+      "passed": 20,
+      "result": "PASS",
+      "evidence": "Implementation owner final tool observation."
+    },
+    {
+      "name": "typecheck, architecture/evidence, syntax, whitespace",
+      "result": "PASS",
+      "evidence": "Implementation owner tool observation; root whitespace also passed."
+    },
+    {
+      "name": "production web and backend builds",
+      "result": "PASS"
+    },
+    {
+      "name": "built artifact deployment overlap and dependency failure smoke",
+      "result": "PASS",
+      "passed": 1,
+      "seconds": 2.799628834
+    }
+  ],
+  "reviews": {
+    "spec": "No actionable findings within documented connectivity scope.",
+    "standards": "No material findings against ADR-0011/12/13 and declared ownership.",
+    "reviewedBase": "eac508175fa0073e7f2cfe28034792ae17996ede"
+  },
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/adapters/dependency_readiness.py": "8c28db2d7cc2e23b3c0795fe00179cb2820cf3502433a7557d9c151a8513872c",
+    "apps/backend/src/talli_backend/main.py": "05aaa6562161a783619358955d3a9ccd70d63b67734e518b52692952b3319721",
+    "apps/backend/src/talli_backend/modules/system_boundary/MODULE.md": "9d48d1174607393d02a51a7bd61a6fb12390294feefc09e022602b37527716e9",
+    "apps/backend/tests/test_dependency_readiness.py": "a500b4be0f32241477187b90b8fabd7a822343f68c09b3fa512e43028fd14882",
+    "apps/web/app/health/ready/route.ts": "da3efd70364c00704207929234b004f50553aed2bd9442d68252cec4a0d17427",
+    "apps/web/features/system-boundary/MODULE.md": "1a3d546d3aa57a582017c783bfd642f7240843ad39103f67c4059ec0dfaba316",
+    "apps/web/features/system-boundary/index.ts": "de64eaa7272d33890b6ce4eefc8b5cba098a521568a45c501c84c4433eb3b4f8",
+    "apps/web/features/system-boundary/module.json": "b37a6715feb7ce4a6f5f0204efa93b0a2278bdde792f008846021b83b3849ecc",
+    "apps/web/features/system-boundary/transport/readiness.ts": "44c92e025e94541d1381af9eaae47fd0ea58ba581b9098335cfb70ea8029f3a8",
+    "apps/web/tests/system-boundary-presentation.test.mjs": "7d00ca10c8216483a1ba4342b6edc741625cf83d8ed00c32c3980591ce846595",
+    "tests/browser_authority_connections.mjs": "1ef3f24e1c5829e67f5ef8bbf7e9efa054f3c02539b392ea15675bdc6029e14c",
+    "tests/browser_company_onboarding.mjs": "be6d716d10197245e566ab1d33966ef2fc44ccdb0ab6d236667cc26909b0c50f",
+    "tests/browser_owner_annual_loop.mjs": "eaf299ca7b85c504c3f6aceae9c8dc1b3a848fa909201c8c3d5d9e2bade28245",
+    "tests/browser_shareholder_register_filing.mjs": "d09dd0402f644a1ff739341e12c83dbafea53fb771547531bcfebd86724c858f",
+    "tests/fixtures/start_authority_connections_backend.py": "826b9af12b063104b8f59eda531eaac91c8b2bed9fb9321d138461819c415feb",
+    "tests/fixtures/start_rf1086_workspace_backend.py": "a903195884909e7f83ed8ec4d5205b184e009c11cdc14977195883ed49184c4d",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "a68be762072ed2062823a838ef47531d42f9226d5de15d03004ad82195388481",
+    "tests/production_boundary_smoke.mjs": "271162ddb74d823ead900e13a3379dd7ad969c4f90f93f2dc2687175be92a6c7",
+    "tests/support/rf1086-workspace-api.mjs": "d62b3f0822109b9fe922ccb7fd96c48784939c8346e4d51706256b3384b82daf",
+    "tests/support/tax-browser-fixture.mjs": "7d2dddee7fdbea445787278ba63e8435d79ffa312f3387ee0c72552034bfb8b6"
+  },
+  "privateLogSha256": {
+    "readiness-web-build.log": "9baa34f0a1a23ffb3a19f83c3f42b7719a42263d65ffefff61e34375e063e1d7",
+    "readiness-backend-build.log": "8e7729037d302084f8e6333f0202b811eb25c8a6398a034c1799a553c7822e06",
+    "readiness-production-smoke.log": "f49fbdca51693020619c75b6032aee983e19869bd725a761ac3bbe0982907bd3"
+  },
+  "primarySources": [
+    "https://github.com/supabase/supabase/blob/master/docker/volumes/api/kong.yml",
+    "https://github.com/supabase/auth/blob/master/internal/api/settings.go"
+  ],
+  "limits": [
+    "Auth settings verifies the service and gateway key, not Auth database operations or user login.",
+    "Database probes verify credentials and SET ROLE, not least-privilege attestation, function/table grants, migrations or business authorization.",
+    "Provider availability, object-store integrity, hosted target identity, recovery and launch clearance require separate evidence.",
+    "Database failure-path unit checks are mocked; actual restricted-role and authenticated browser execution on this new revision remains pending.",
+    "No production deployment, hosted configuration change, paid service, production filing, company-data admission or public launch was performed by this work.",
+    "Earlier hosted evidence is dated. The separate 9 October private hosted-readiness package, referenced by the RF release plan, supplies the current inactive-database and missing-hosted-proof findings."
+  ]
+}

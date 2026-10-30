@@ -1,0 +1,203 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "UNWIRED_COMPANY_TEST_RETENTION_READ_CODEC_FOUNDATION",
+  "recordedAtUtc": "2026-10-10T23:19:40.874574+00:00",
+  "baseline": "b5495d433e04fe49de911f73cead583a1478cbb4",
+  "scope": "Company plus canonical RF obligation, all actors/environments/statuses/dates, exact thirteen original test fields; no intrinsic income year. Current accepted member query; no fresh annual/Billing/pilot/MFA gate or URL dereference. New standalone codec, no old selected-year/archive/stream byte changes.",
+  "wireCodec": "rf1086-company-test-retention-v1",
+  "coverage": "Complete zero differs from unavailable. Integrity/count/digest alone do not prove source origin/completeness. Source capture comparison pins exact observation; fresh target comparison pins complete inventory while allowing own observation. Original nullable payload_hash remains opaque bounded text; uppercase, tagged, short, empty and surrounding spaces preserved unchanged.",
+  "acquisition": "One existing authenticated read-only RR transaction; assert_member before source count; >100000 unavailable; private32-row cursor; every matching row preserved in SQL. Per-field64KiB and total raw256KiB gate produces oversize flag plus thirteen NULLs before oversized cells cross boundary. Canonical record/artifact budgets checked incrementally; failed capture cannot complete.",
+  "bounds": {
+    "artifactBytes": 67108864,
+    "records": 100000,
+    "canonicalRecordBytes": 262144,
+    "textBytes": 65536,
+    "rawTransferRecordBytes": 262144,
+    "cursorBatchRows": 32,
+    "existingTransactionSeconds": 10
+  },
+  "validation": {
+    "unit": {
+      "newRetentionPassed": 61,
+      "protectedClaimPassed": 39,
+      "total": 100,
+      "seconds": 8.84,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-protected-unit-v3.log",
+        "sha256": "6d17cb19a62b21434d88512b9422df69d9b55443d6cf8c4fdbd45e52b1611c8e",
+        "bytes": 180
+      }
+    },
+    "projectedNative": {
+      "passed": 27,
+      "actual100000CaptureSeconds": 5.44,
+      "result": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-native-v3.json",
+        "sha256": "96487a654495677298a5abe08dc7678e29c0f87856b5fd5dddcba9c229d6d4a9",
+        "bytes": 3629
+      },
+      "script": {
+        "path": "/private/tmp/talli-release-20261009/probe-rf-company-test-retention-native-v3.py",
+        "sha256": "93492a4129c0d5288e634bfaa5391a83c2dfdb06433fe77d1a699fe772701ee2",
+        "bytes": 15049
+      },
+      "limits": [
+        "Actual new read method/canonical codec, existing transaction context, async servercursor, published binding RLS policies, assert_member/preparation functions, and copied writer with exact published company-guard insertion.",
+        "Minimal thirteen-column table/membership and verified identity/MFA/company guard/insert-row/phase dependencies are projections. No full schema/Auth/owner/producer-origin/annual/Docs/Billing/Authority or hosted/object restore proof.",
+        "Runs twenty-three newly authored full-schema test functions on that projection through a NOSUPERUSER/NOINHERIT/NOBYPASSRLS login with only explicit RFexecutor SET. Original admin helper missing SET is reproduced with a separate NOSUPERUSER/BYPASSRLS admin that has only RFstoreowner SET. Real retention-hold/cancellation owner contract requires full schema and is not run here. Serialized/raw bounds do not bound Python total RSS or PostgreSQL TOAST costs."
+      ],
+      "ownedProbeRemoved": true,
+      "restrictedLoginNoSuperuserNoInheritNoBypass": true,
+      "oldAdminMissingExecutorSetReproducedSqlstate": "42501"
+    },
+    "ciSelectors": {
+      "passed": 129,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-ci-selectors-v2.log",
+        "sha256": "6ecc9e31ba4feacb8dffb04a3efadc4f2525bcab57b6058c4cd13aa3b2f26096",
+        "bytes": 13787
+      }
+    },
+    "architecture": {
+      "exitCode": 0,
+      "derivedEvidenceByteContentUnchanged": true,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-architecture-v3.log",
+        "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+        "bytes": 20012
+      }
+    },
+    "protectedLegacyFunctionSpans": {
+      "count": 365,
+      "exact": true,
+      "receipt": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-protected-spans-v1.json",
+        "sha256": "e45ca54adcf1e2c0fef1bf4ecb20fa07f299b0c66141fd761d5efafc4e1c4d42",
+        "bytes": 94753
+      }
+    },
+    "fullSchema": {
+      "collectedOnly": 24,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-db-collection-v3.log",
+        "sha256": "126664dc1d2b0c68ae81c2a7b039b765d79729e547fd828fda454bcf0e4b67cb",
+        "bytes": 199931
+      },
+      "executed": false,
+      "futureCompleteAuthoritySelection": 1578,
+      "completeCollectionOnlyLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-full-authority-collection-v1.log",
+        "sha256": "6063be381b5874b8e81c964502c063617f1dba72cfff4c31c5204576a64f7e17",
+        "bytes": 424192
+      }
+    }
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "fc0db8946f4f88ec23f87b34e6f2b8f0afdfa3e659478a30d195c9119c68ffd0",
+      "bytes": 156494
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "9401b1cbf99e9e0549af694dc611e77651c2cb96193a4dc08169e856e05159d0",
+      "bytes": 134315
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "75a11f68bb05ea66accc3bd4ea843c32aa94de3024ae2825737fdf85b2644cf9",
+      "bytes": 32102
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "232fa3225d3db1cfa82516fba0f70629824d6c20f059dc5af47f5ffcee817716",
+      "bytes": 120724
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/package.json",
+      "sha256": "ba1c706d7e82189475d8bf4f031e8006707948e66b6d9a24adbccdd2ca98dcbc",
+      "bytes": 34833
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/tests/ci_release_gate.test.mjs",
+      "sha256": "68c525d4e352af83b39fc02b13caeaeccdca82f069044ff41e4b829de95e7f08",
+      "bytes": 56323
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/application/shareholder_register_company_test_retention.py",
+      "sha256": "d653702a6a37daa0b521be72ad664a9112e80b9b7eb4fcdd7485dc83a588b10f",
+      "bytes": 520
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/company_test_retention.py",
+      "sha256": "9979a3ffcd6939a4ffeb14f32f0b8bc6933de100b85efeaf071c58904d2fbfe3",
+      "bytes": 8180
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_company_test_retention.py",
+      "sha256": "0e2b5b791f511aa72368cb2dc9cb053e2ac52f4b18d5445778286af19916bcbf",
+      "bytes": 14008
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_company_test_retention_database.py",
+      "sha256": "c1d5a9d7e73264c37afcb58265fdc8b8c088c3068bc00eaca28a12b6a835cd3c",
+      "bytes": 15801
+    }
+  ],
+  "limits": [
+    "Closed unwired foundation only; no HTTP/download/stream/UI/CLI/bundle/independent-target Auth activation. RET002 remains incomplete; RET003/004/005, legacy original origins, all-three and canonical evidence remain mandatory.",
+    "Standalone artifact does not satisfy full legal company export/cancellation prerequisites. Full-schema retention-hold owner contract remains unexecuted here. Deleted-state/independent Auth/project/object restoration remains later mandatory.",
+    "Native27 includes twenty-three new test functions under authorization/schema projections plus100000/100001 cardinality boundaries; no genuine or full-schema owner/Auth/producer-origin clearance.5.44s observation is not a50-session/load or RPO/RTO proof.",
+    "Raw/serialized bounds do not assert64MiB total Python RSS or bounded PostgreSQL TOAST costs.",
+    "Completed failed CI38092997011 tested published b549 fixture repair; unpublished retention source was not executed there. Actual20 claim prerequisite remains pending; no intent implementation."
+  ],
+  "revision": "V2 after two frozen Spec findings; V1 evidence preserved privately",
+  "reviewV1": {
+    "SpecFindings": 2,
+    "StandardsFindings": 0,
+    "fixes": [
+      "RET-F1: removed unsupported original payload_hash lowercase64hex grammar; seven pure/writer/query preservation positives; artifact commitment validation and original text/byte/UTF8/type bounds retained.",
+      "RET-F2: actual test writer uses already restricted backend_url RF session/transaction, explicitly asserts current_user RFexecutor; no new admin SET edge. Native login has only executor SET, no superuser/inherit/bypass; original helper42501 reproduced."
+    ],
+    "reconstructedV1SourceByteExactBeforeRegression": [
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-codec-frozen-v1.py",
+        "sha256": "4f3f91a8be7b34f311ce7d9affe2f4b24da1d3bc7c926c2fa31dab8668a3bb12",
+        "bytes": 8301
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-database-frozen-v1.py",
+        "sha256": "a2dfa4a34dae2c8961eab7ed7cdf928b08df5b69101b3efba9dd532dd1678293",
+        "bytes": 14580
+      }
+    ],
+    "opaqueHashV1Regression": {
+      "failed": 5,
+      "passed": 2,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-opaque-hash-red-v1.log",
+        "sha256": "125990627a04f224ee82066c3a2f6a6a1c0762d8b0ceb636462b87b6f6938ca9",
+        "bytes": 11307
+      },
+      "limits": "Executed new assertions against byte-exact reconstructed frozenV1 codec after bounded correction; V1 test implementation/source pins reconstructed and hash-verified first."
+    },
+    "finalPairedReview": {
+      "Spec": {
+        "findings": 0,
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-foundation-spec-review-v2.json",
+        "sha256": "57ec48047d7f5492be671b4cdf74ca33e2525e9f0542318929064b486baafacc",
+        "bytes": 37790,
+        "rootUniquePinsVerified": 44
+      },
+      "Standards": {
+        "findings": 0,
+        "path": "/private/tmp/talli-release-20261009/rf-company-test-retention-foundation-standards-review-v2.json",
+        "sha256": "d56d6b01e167a118720312c42b0c29eff5065cc5459431b66a9b025b94207569",
+        "bytes": 21776,
+        "rootUniquePinsVerified": 42
+      },
+      "qualification": "Reviews apply to byte-frozen V2 implementation/source; this final metadata acknowledgment changes no implementation or acceptance claim."
+    }
+  }
+}

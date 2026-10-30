@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   checkArchitecture,
@@ -557,6 +558,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:ledger"
   },
   {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
     "from": "backend-system:investment-activity",
     "imports": [
       "talli_backend.modules.banking.public"
@@ -629,6 +638,30 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend-system:validation_observation"
   },
   {
+    "from": "backend-system:rf1086-company-test-retention-download",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:rf1086-company-test-retention-download",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
+    "from": "backend-system:rf1086-company-test-retention-read",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
     "from": "backend-system:shareholder-register-filing",
     "imports": [
       "talli_backend.modules.billing.public"
@@ -647,6 +680,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   {
     "from": "backend-system:shareholder-register-filing",
     "imports": [
+      "talli_backend.modules.corporate_governance.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:corporate_governance"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
       "talli_backend.modules.documents.public"
     ],
     "kind": "workflow",
@@ -661,12 +702,73 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:shareholder_register_filing"
   },
   {
+    "from": "backend-system:shareholder-register-source-approval",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:shareholder-register-source-approval",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
     "from": "backend-system:system-boundary-tracer",
     "imports": [
       "talli_backend.modules.system_boundary.public"
     ],
     "kind": "workflow",
     "to": "backend-system:system_boundary"
+  },
+  {
+    "from": "backend:corporate_governance",
+    "imports": [
+      "public.company_access_has_fresh_mfa_v1()"
+    ],
+    "kind": "query",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend:corporate_governance",
+    "imports": [
+      "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+      "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+    ],
+    "kind": "query",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend:corporate_governance",
+    "imports": [
+      "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+      "ledger.list_entry_amendments_v1(uuid,text)"
+    ],
+    "kind": "query",
+    "to": "backend:ledger"
+  },
+  {
+    "from": "backend:corporate_governance",
+    "imports": [
+      "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)",
+      "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)"
+    ],
+    "kind": "command",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
+    "from": "backend:corporate_governance",
+    "imports": [
+      "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+      "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+      "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)"
+    ],
+    "kind": "query",
+    "to": "backend:shareholder_register_filing"
   }
 ]);
   assert.equal(existsSync(new URL("../architecture/module.schema.json", import.meta.url)), true);
@@ -2097,6 +2199,40 @@ test("module test evidence cannot assign one path to multiple ownership categori
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
       /module\.json: test path .*test_system_boundary\.py has multiple ownership categories contract, unit/u,
     );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("command dependencies use the declared schema vocabulary without accepting unknown kinds", () => {
+  const schema = JSON.parse(readFileSync(new URL("../architecture/module.schema.json", import.meta.url), "utf8"));
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const module = JSON.parse(readFileSync(new URL("../apps/backend/src/talli_backend/modules/corporate_governance/module.json", import.meta.url), "utf8"));
+  assert(module.dependencies.some((dependency) => dependency.kind === "command"));
+  assert.equal(validate(module), true, JSON.stringify(validate.errors));
+  module.dependencies.find((dependency) => dependency.kind === "command").kind = "unchecked-command";
+  assert.equal(validate(module), false);
+  assert(validate.errors.some((error) => error.instancePath.endsWith("/kind")));
+});
+
+test("command dependencies preserve private-import and capability-cycle rejection", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-command-boundary-"));
+  // Cached build/runtime directories are not source inputs to this checker.
+  const filter = (path) => !path.split(/[\\/]/u).some((part) => ["node_modules", ".venv", ".next", "__pycache__", ".pytest_cache"].includes(part));
+  try {
+    for (const directory of ["architecture", "apps", "supabase"]) {
+      cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true, filter });
+    }
+    const rfPath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json");
+    const rfModule = JSON.parse(readFileSync(rfPath, "utf8"));
+    rfModule.dependencies.push({ module: "corporate_governance", kind: "command", imports: ["AmendSupportedCorporateRegisterEvidence"] });
+    writeFileSync(rfPath, JSON.stringify(rfModule));
+    const govPath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/corporate_governance/forbidden_command_fixture.py");
+    writeFileSync(govPath, "from talli_backend.modules.shareholder_register_filing.year_source_v2 import prepare_rf1086_year_source_v2\n");
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /forbidden backend deep import talli_backend\.modules\.shareholder_register_filing\.year_source_v2/u);
+    assert.match(errors, /circular module dependency.*corporate_governance.*shareholder_register_filing/u);
+    assert.doesNotMatch(errors, /schema .*dependencies.*kind/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }

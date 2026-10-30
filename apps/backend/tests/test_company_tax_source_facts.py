@@ -161,6 +161,8 @@ def test_source_http_authenticates_and_uses_a_repeatable_owner_snapshot():
     response = client.get(path, headers={'Authorization':'Bearer synthetic-fixture'})
     assert response.status_code == 200, response.text
     value = response.json()
+    assert set(value) == {'evidence','readinessStatus','hardBlocks','historyCoverage',
+        'recordedSubmissions','productionAttempts','correctionLinks','incidents','outcomes'}
     assert value['evidence']['companyId'] == str(query.company_id)
     assert value['evidence']['incomeYear'] == int(query.income_year)
     assert value['historyCoverage']['status'] == 'complete'

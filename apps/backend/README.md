@@ -69,3 +69,33 @@ principal with only `annual_checkout_observer_executor` membership. It must not
 reuse the HTTP business, notification, migration or service-role connection.
 The worker mode is independent of `TALLI_ANNUAL_BILLING_MODE`; neither setting
 enables the other. See [the worker runbook](../../docs/billing/annual-checkout-reconciliation.md).
+
+Company-wide RF test history defaults to `TALLI_COMPANY_TEST_RETENTION_MODE=off`.
+After the target has been admitted, `postgres` selects the existing dedicated
+reader using shared `SUPABASE_URL` / `SUPABASE_ANON_KEY` and the backend-only
+`TALLI_COMPANY_TEST_RETENTION_DATABASE_URL`. It never falls back to `DATABASE_URL`
+or `TALLI_LEDGER_DATABASE_URL`. Missing/off ignores unused history settings;
+unknown modes or incomplete/malformed enabled settings stop startup with only
+the setting name. Configuration constructs the reader without Auth/database I/O.
+Explicit `company_test_retention_session_factory` injection bypasses ambient
+history settings and retains responsibility for its own readiness probe.
+
+Before enabling, verify owner-designated Auth/key and database provenance,
+alignment with CompanyAccess's identity/company target, the restricted login's
+`SET ROLE shareholder_register_filing_executor` grant, and the installed RF
+membership function, retained-history schema and permissions. Use neither a
+migration/service-role principal nor a superuser/BYPASSRLS login. A dedicated
+setting does not prove target isolation or least privilege; different pooler
+URLs can address the same database. Current server Auth and a canonical session
+claim remain required, but configuration does not establish persisted session
+or revocation behavior. No schema, role or session is provisioned automatically.
+
+The reader keeps its read-only snapshot and current accepted-member check.
+Downloads additionally repeat CompanyAccess's current-session and fifteen-minute
+MFA check before and after capture. Internally composed history adds its actual
+DSN/executor and shared Auth to `/health/ready`, including when general RF is
+injected. These existing bounded probes establish Auth-settings/key access and
+connectivity/SET ROLE, not schema completeness, least privilege, retained records,
+user-session persistence, download authorization or hosted readiness. An explicit
+`readiness_probe` still takes precedence. Restart with mode `off` to close both
+history routes again; general RF configuration cannot enable them.

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Canonical withdrawal archive enumeration and exact current observation reads",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "f095b0c2898c5e3166dba8c1120f112af82ec457",
+  "status": "IMPLEMENTED_REVIEWED_FOCUSED_CHECKS_PASS_LIVE_DATABASE_AND_ROLLOUT_PENDING",
+  "behavior": {
+    "enumeration": "Canonical RF archive reads every scoped withdrawal receipt with its original key/request hash on the same repeatable snapshot as retained observations. A successful empty read is captured-empty, never an inferred zero.",
+    "sourceFacts": "The independent ninth family count is register_observation_withdrawals. Actual canonical adapter snapshots use archive-v5 and source-v3; legacy stored v1-v4 archive codecs and source-v1/v2 digests remain readable with their original coverage.",
+    "currentObservation": "Exact current reads exclude both superseded and withdrawn observations. Historical reads and capture lookup remain unchanged; an ancestor cannot become current again.",
+    "transport": "All four existing production JSON/stream routes still project unknown withdrawal coverage and their original codecs. No new HTTP route, public write grant or activation is added."
+  },
+  "checks": [
+    {
+      "name": "Archive, source facts, source API, stream and override regression",
+      "result": "PASS",
+      "passed": 180,
+      "seconds": 7.46,
+      "log": "withdrawal-archive-enumeration-regression.log"
+    },
+    {
+      "name": "Independent archive-v5/source facts regression",
+      "result": "PASS",
+      "passed": 55,
+      "log": "standards-review-recheck.GdiTcN/archive-source.log",
+      "overlap": "Included in the 180 checks; not additive."
+    },
+    {
+      "name": "Missing-table error translation through actual adapter transaction handler",
+      "result": "PASS",
+      "passed": 2,
+      "log": "standards-review-recheck.GdiTcN/missing-schema.log",
+      "limit": "No-network injected UndefinedTable; not real migration or database execution."
+    },
+    {
+      "name": "Expanded withdrawal database test collection",
+      "result": "COLLECTED_ONLY",
+      "collected": 36,
+      "log": "withdrawal-archive-enumeration-db-collection.log",
+      "limit": "Includes three new enumeration/snapshot cases and earlier foundation tests. No database tests executed by collection."
+    }
+  ],
+  "independentReview": {
+    "reviewer": "override_standards_review",
+    "result": "No material code defect found in the bounded adapter/test change. Confirmed historical reads, RLS scope by source inspection, same-snapshot counts and explicit old-route projections; actual DB/RLS/races remain pending."
+  },
+  "deploymentPrerequisites": [
+    "Apply 20261009213032_rf1086_observation_withdrawal_foundation.sql, including table and SELECT ACL/RLS, before routing any binary containing these readers. Missing schema is dependency-unavailable, never captured-empty.",
+    "The successor registry includes this migration for workspace/recutover rehearsals. Prove actual old-code/expanded-empty-schema overlap and new-code/expanded-schema operation in CI; source inspection is not rollout evidence.",
+    "The empty foundation rollback retains the table and closed withdrawal command grants. Stop new readers before a full predecessor schema teardown. Do not promise usable new-code/old-schema order.",
+    "After the first withdrawal, old-list routing/drain and archive completion fences remain mandatory; old projections cannot certify withdrawal completeness."
+  ],
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "455cfd8dd6b25efe941aae08c87e89272149bf628c9bb7b569aab059695408ee",
+    "apps/backend/tests/test_rf1086_full_year_source_facts.py": "734565a20ac372b1b005e633f7d4a29a4462fd752ab9f99c570f3dd730a24837",
+    "apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py": "cc6b4e50ce615c2bef3b51e3b815c4d39f960f2b2d4c6bfdf536540940e14878",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "d257c73146726d43b5cb345727bbe3beecc282f8aa9e7414a25c5fcc30875653"
+  },
+  "privateArtifacts": {
+    "withdrawal-archive-enumeration-regression.log": {
+      "sha256": "e3e613c23241dcbe58e032994b49eede11b0d5c525285a8b59baa5cead81cf27",
+      "bytes": 260
+    },
+    "withdrawal-archive-enumeration-db-collection.log": {
+      "sha256": "fc7b46332dc2f77829317d40cf17f25bd3d6fef369f9f3b0519a5df9913a969d",
+      "bytes": 16315
+    },
+    "standards-review-recheck.GdiTcN/archive-source.log": {
+      "sha256": "31b161bc9ef69d174dedc4ef706bdad9f6d2faa258b470e71cb2b0a23a6c5a68",
+      "bytes": 99
+    },
+    "standards-review-recheck.GdiTcN/missing-schema.log": {
+      "sha256": "6a0bcd65daf739edb034d6ef8a0c77e219a998519cb6c401e599dabdd8f8f9d6",
+      "bytes": 99
+    },
+    "standards-review-recheck.GdiTcN/missing-schema-probe.py": {
+      "sha256": "9c3b18e485348d7926215bc235194d6e386f5d2325878e9081654da3ca20229d",
+      "bytes": 1889
+    },
+    "standards-review-recheck.GdiTcN/results.json": {
+      "sha256": "dc78d6205f7aa75b23c73345b76d0dfa4e8c8b0e3ade3db1680b824caebca276",
+      "bytes": 3002
+    }
+  },
+  "limits": [
+    "The new enumeration/current-read cases await real restricted PostgreSQL/Supabase execution. No complete migration, RLS, concurrency or independent-identity restore result is claimed here.",
+    "Withdrawal commands remain ungranted. Governance repair, truthful list/readiness contracts, retained-generation tracking, Archive-owner completion and Company Access receipt eligibility are unresolved technical dependencies.",
+    "The separate archive-owner sequencing proposal remains unapproved; no answer is inferred. All A1-A7, immutable complete gates, external conformance and launch clearances remain pending."
+  ]
+}

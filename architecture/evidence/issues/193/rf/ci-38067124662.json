@@ -1,0 +1,216 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T17:10:38.736726+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38067124662,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "b350c29c50af62dd7d86b0d7d4b2764f92ec2b7e",
+    "runStartedAt": "2026-10-10T16:18:28Z",
+    "updatedAt": "2026-10-10T16:58:57Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38067124662"
+  },
+  "checkout": {
+    "revision": "d83cdc49e2507775ca68db7fbd0664ed2262f7b7",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "b350c29c50af62dd7d86b0d7d4b2764f92ec2b7e"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114256927314,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T16:18:31Z",
+      "completed_at": "2026-10-10T16:44:40Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38067124662/job/114256927314"
+    },
+    {
+      "id": 114256927441,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T16:18:30Z",
+      "completed_at": "2026-10-10T16:58:52Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38067124662/job/114256927441"
+    },
+    {
+      "id": 114256928175,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T16:18:29Z",
+      "completed_at": "2026-10-10T16:18:29Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38067124662/job/114256928175"
+    },
+    {
+      "id": 114264865607,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T16:58:54Z",
+      "completed_at": "2026-10-10T16:58:56Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38067124662/job/114264865607"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10889,
+        "skipped": 2,
+        "deselected": 2286,
+        "seconds": 763.89
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.15
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 218.54
+      },
+      "authority": {
+        "passed": 1498,
+        "failed": 0,
+        "collected": 1498,
+        "notExecuted": 0,
+        "seconds": 552.58
+      },
+      "sourceV2DatabasePassed": 109,
+      "closedCaptureV2DatabasePassed": 19,
+      "savedAdmissionV2DatabasePassed": 12,
+      "sourcePreviewV2DatabasePassed": 18,
+      "retainedCorrectionReaderDatabasePassed": 31,
+      "laterPythonSummaries": [
+        {
+          "passed": 15,
+          "seconds": 1.36
+        },
+        {
+          "passed": 22,
+          "seconds": 11.65
+        },
+        {
+          "passed": 3,
+          "seconds": 5.08
+        },
+        {
+          "passed": 7,
+          "seconds": 1.66
+        },
+        {
+          "passed": 41,
+          "seconds": 21.99
+        }
+      ],
+      "laterNodeSummaries": [
+        {
+          "passed": 1,
+          "durationMs": 51026.480718
+        },
+        {
+          "passed": 13,
+          "durationMs": 4070.004789
+        },
+        {
+          "passed": 14,
+          "durationMs": 30140.950478
+        }
+      ],
+      "rfBrowser": {
+        "tests": 38,
+        "passed": 34,
+        "failed": 4,
+        "durationMs": 1103777.142097
+      },
+      "fullYearCasesCompleted": 6,
+      "fullYearCasesReachedRestoreLegacyCodecFailure": 3,
+      "rejectedPredecessorCaseStoppedAtOverrideResponseIdentity": 1
+    }
+  },
+  "failure": {
+    "cases": [
+      "owner completes RF capture, correction and lost main response through the canonical backend",
+      "owner completes RF capture, correction and process crash at main response through the canonical backend",
+      "owner completes RF capture, correction and process crash before main provider mutation through the canonical backend",
+      "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend"
+    ],
+    "boundaries": [
+      "scripts/rehearse-rf1086-owned-restore.py:232 legacy verify_archive_stream",
+      "tests/fixtures/rf1086-source-browser-journey.mjs:521 recorded.id assertion"
+    ],
+    "exceptions": [
+      "DocumentsError integrity_failed for three retained stream-v2 archives",
+      "AssertionError archived override UUID versus undefined recorded.id"
+    ],
+    "diagnosis": "Both earlier CLI/route repairs passed. Six complete full-year child/confirmation loss/crash journeys pass. Three main-loss/crash journeys reach owned restore, which still dispatches only stream-v1; fourth rejected-predecessor journey creates override but fixture compares returned recordId with nonexistent id. No actual restore claim for failed cases.",
+    "repair": "Shared bounded codec dispatch and matching legacy/retained canonical serializer through database and identity comparisons; correct exactly one response-field assertion. Local verification/review and successor full database/browser execution required."
+  },
+  "notReached": [
+    "Successful database/storage/identity restore for three failed main cases",
+    "Later downloaded archive/restore in rejected-predecessor override case",
+    "Rendered public acquisition job step",
+    "New closed approvalV3 36 full-schema cases (local9212 unpushed/excluded)",
+    "Tax/Accounts technical handoff and canonical immutable release dispatch"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-app-completed-raw-v1.log",
+      "sha256": "43615bd05cf22aeaf71311518dafa8bde35ff7a88af4eea87688f63a35429f43",
+      "bytes": 467100
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-db-raw.log",
+      "sha256": "606e7b7471f72f552611a9758802f99cce32d63b8c0f8f5bc745c57368f6c84c",
+      "bytes": 689620
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-terminal-api.json",
+      "sha256": "2217f32463a284fae4da17732f3fa37b404c9716e98909ee2134d4dd7b537a7d",
+      "bytes": 12743
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-terminal-jobs.json",
+      "sha256": "364db2f6cf142ed17ad4c4872627616a0390c305ae327dd739c097679cb41424",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-merge-parents-v1.json",
+      "sha256": "6f1c68dbc83b3e801bf743d61a9ddbb97648dc69db7bd6cd9e25382904d9dc9d",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38067124662-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    }
+  ],
+  "limits": [
+    "Whole run failed; no complete passing release or canonical dispatch receipt.",
+    "All1498 full-schema Authority cases pass with explicit Auth/provider/object fixtures; actual four routine identities/origin not recorded.",
+    "Six full-year unknown/crash browser journeys passed with fresh local provider mock; three others fail before real restore and one before later archive proof. No broader provider/independent recovery acceptance inferred.",
+    "Current local approval9212 excluded. Its36 new cases remain collected only. AllA1-A7 and RF\u2192Tax\u2192Accounts handoffs pending.",
+    "Earlier Billing migration deadlock remains unresolved despite repeated700-case passes."
+  ]
+}

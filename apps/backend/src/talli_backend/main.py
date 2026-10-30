@@ -10,6 +10,7 @@ import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import asdict,replace
 from datetime import UTC, date, datetime, time as local_time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
@@ -17,18 +18,32 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import StrictBool, AwareDatetime, NaiveDatetime, BeforeValidator, AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator,field_validator
+from pydantic.json_schema import SkipJsonSchema, WithJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
+
+from talli_backend.adapters.dependency_readiness import (
+    CachedReadiness, ReadinessProbe, configured_readiness,
+)
 
 from talli_backend.application.shareholder_register_filing_session import (
     ShareholderRegisterFilingAuthenticationError, ShareholderRegisterFilingSessionFactory,
 )
 from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
+from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
+from talli_backend.application.shareholder_register_source_capture_v2 import ShareholderRegisterSourceCaptureV2
+from talli_backend.application.shareholder_register_source_preview_v2 import ShareholderRegisterSourcePreviewV2
+from talli_backend.application.shareholder_register_source_approval_v3 import ShareholderRegisterSourceApprovalV3
+from talli_backend.application.shareholder_register_source_dispatch_v3 import ShareholderRegisterSourceDispatchV3
+from talli_backend.application.shareholder_register_company_test_retention_http import (
+    CompanyTestRetentionSessionFactory, ShareholderRegisterCompanyTestRetentionHttp,
+)
+from talli_backend.modules.shareholder_register_filing.public import serialize_rf1086_company_test_retention, Rf1086ArchiveError
+from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
     LaunchSignoffRecord, LaunchSignoffSessionFactory, LaunchSignoffStatus,
@@ -39,6 +54,7 @@ from talli_backend.modules.billing.public import AnnualNotificationRejected, Ann
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.annual_billing_runtime import compose_annual_billing_runtime
+from talli_backend.adapters.company_test_retention_runtime import compose_company_test_retention_runtime
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
@@ -79,9 +95,15 @@ from talli_backend.modules.annual_accounts_filing.public import (
     ImportAnnualAccountsEvidence, AnnualAccountsError, AnnualAccountsWorkspaceQuery, AnnualAccountsRecordQuery, AnnualAccountsRecordId,
     RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment, ConfirmAnnualAccountsPermission,
     RecordAnnualAccountsTestEvidence,
+    PrepareAnnualAccountsDeliveryDraft,AnnualAccountsDeliveryBinding,AnnualAccountsDeliveryStage,AnnualAccountsDeliveryAction,
 )
+from talli_backend.adapters.annual_accounts_schemas import DeferredAnnualAccountsSchemas
+from talli_backend.application.annual_accounts_delivery_preparation import AnnualAccountsDeliveryPreparation
+from talli_backend.application.annual_accounts_delivery_workflow import AnnualAccountsDeliveryWorkflow
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
 from talli_backend.modules.company_tax_filing.public import (
     AnnualTaxEstimateSource, CompanyTaxReturnSource, assess_company_tax_readiness, estimate_annual_tax,
     CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
@@ -89,7 +111,9 @@ from talli_backend.modules.company_tax_filing.public import (
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
     CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery, TaxMutationKind,TaxDeliveryOwnerReviewQuery,ConfirmTaxDeliverySubmission,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
+    PrepareTaxDeliveryDraft,PrepareTaxDeliveryCorrection, TaxFilingSubmissionId,TaxDeliveryAction,TaxDeliveryWorkspaceState,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -252,6 +276,7 @@ from talli_backend.modules.billing.public import (
     BillingPaymentProvider,
     BillingPaymentStatus,
     BillingPlan,
+    BillingPilotCaseProfile,
     BillingSnapshot,
     BillingSnapshotQuery,
     BillingStatus,
@@ -451,10 +476,20 @@ from talli_backend.modules.shareholder_register_filing.public import (
     AcknowledgeRf1086ReviewCommentCommand, AddRf1086ReviewCommentCommand,
     ApprovalId, ApproveRf1086ProductionCommand, ConfirmRf1086FilingPermissionCommand,
     ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand, OpeningShareholder,
-    Rf1086ArchiveQuery, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
+    Rf1086ArchiveQuery, Rf1086ArchiveError, serialize_rf1086_archive, serialize_rf1086_archive_v6, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
-    Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery,
+    Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery, Rf1086SourceCorrectionPredecessor,
+    Rf1086UnknownProductionOutcomeError, Rf1086BlockedProductionOperationError,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
+    RecordRf1086YearSource, RecordRf1086RegisterObservation, Rf1086YearSourceError,
+    Rf1086RegisterObservationError, Rf1086YearSourceSnapshot, Rf1086YearSourceId, Rf1086RegisterObservationId,
+    Rf1086SourcePreview, Rf1086Company, Rf1086ShareSnapshot, Rf1086Shareholder,
+    Rf1086ShareholderKind, Rf1086ShareholderSnapshot, Rf1086FormationAllocation,
+    Rf1086FormationEvent, Rf1086CashIssueEvent, Rf1086NominalIncreaseAllocation,
+    Rf1086CashNominalIncreaseEvent, Rf1086LossCoveringReductionEvent, Rf1086ShareSaleEvent,
+    Rf1086DividendAllocation, Rf1086DividendEvent, Rf1086Case, Rf1086PaidInSourceFacts,
+    Rf1086YearDocumentEvidence, Rf1086YearEventEvidence, Rf1086RegisterHolding,
+    Rf1086RegisteredShareState, Rf1086RegisterDocumentEvidence, rf1086_year_source_digest,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -537,6 +572,131 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+class AccountsDeliveryScopeRequest(StrictTransportModel):
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+
+
+class AccountsPrepareDeliveryRequest(AccountsDeliveryScopeRequest):
+    contact_email: Annotated[str,Field(strict=True,min_length=3,max_length=1000)]
+    confirming_representative: Annotated[str,Field(strict=True,min_length=1,max_length=1000)]
+
+
+class AccountsPrepareCorrectionRequest(AccountsPrepareDeliveryRequest):
+    parent_filing_id: UUID
+    parent_draft_sha256: Annotated[str,Field(strict=True,pattern=r'^[a-f0-9]{64}$')]
+
+
+class AccountsDeliveryBoundRequest(AccountsDeliveryScopeRequest):
+    draft_sha256: Annotated[str,Field(strict=True,pattern=r'^[a-f0-9]{64}$')]
+
+
+class AccountsReviewDeliveryRequest(AccountsDeliveryBoundRequest):
+    stage: Literal['prepare','confirm','sign']
+    reviewed_evidence_sha256: Annotated[str,Field(strict=True,pattern=r'^[a-f0-9]{64}$')]
+    documents_checked: Annotated[bool,Field(strict=True)]
+    action_confirmed: Annotated[bool,Field(strict=True)]
+
+
+class AccountsAdvanceDeliveryRequest(AccountsDeliveryBoundRequest):
+    action: Literal['create_instance','upload_main_form','upload_company_accounts','confirm','sign']
+
+
+AccountsDeliveryStateWire=Literal['draft','reviewed','creation_unknown','created','main_upload_unknown','main_uploaded','accounts_upload_unknown','validation_blocked','confirmation_review','confirmation_unknown','person_review','signing_unknown','technical_archive','inspection_unavailable','correction_parent_unknown']
+AccountsDeliveryActionWire=Literal['review_prepare','review_confirm','review_sign','create_instance','upload_main_form','upload_company_accounts','confirm','sign','reconcile','prepare_correction','refresh_parent']
+
+
+class AccountsDeliveryProgressWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    filing_id: UUID
+    draft_sha256: str
+    state: AccountsDeliveryStateWire
+
+
+class AccountsDeliveryOriginalRefWire(TransportModel):
+    key: str
+    purpose: str
+    source_filing_id: UUID
+    sha256: str
+    media_type: str
+
+
+class AccountsDeliveryOriginalWire(AccountsDeliveryOriginalRefWire):
+    company_id: UUID
+    income_year: int
+    filing_id: UUID
+    body_base64: str
+
+
+class AccountsCompanyArchiveWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    codec: Literal['annual-accounts-company-year-archive-v1']
+    canonical_json: str = Field(max_length=192 * 1024 * 1024)
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    draft_count: int = Field(ge=0, le=64)
+    event_count: int = Field(ge=0, le=10000)
+    original_count: int = Field(ge=0, le=20256)
+
+
+class AccountsArchivedOriginalFactWire(StrictTransportModel):
+    filing_id: UUID
+    key: str
+    purpose: str
+    sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    media_type: str
+    byte_length: int = Field(ge=0, le=32 * 1024 * 1024)
+
+
+class AccountsArchiveVerificationWire(StrictTransportModel):
+    version: Literal['accounts-company-archive-verification-v1']
+    status: Literal['verified']
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    archive_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    source_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    draft_count: int = Field(ge=0, le=64)
+    event_count: int = Field(ge=0, le=10000)
+    original_count: int = Field(ge=0, le=20256)
+    originals: list[AccountsArchivedOriginalFactWire] = Field(max_length=20256)
+
+
+class AccountsDeliveryFieldWire(TransportModel):
+    document: str
+    path: str
+    value: str
+
+
+class AccountsDeliveryWorkspaceRowWire(TransportModel):
+    filing_id: UUID
+    parent_filing_id: UUID | None = None
+    recorded_at: AwareDatetime
+    draft_sha256: str
+    source_sha256: str
+    review_sha256: str
+    review_stage: Literal['prepare','confirm','sign']
+    state: AccountsDeliveryStateWire
+    known_instance: str | None
+    source_current: bool
+    actions: list[AccountsDeliveryActionWire]
+    fields: list[AccountsDeliveryFieldWire]
+    validation_issues: list[dict[str,Any]]
+    originals: list[AccountsDeliveryOriginalRefWire]
+
+
+class AccountsDeliveryWorkspaceWire(TransportModel):
+    version: Literal['annual-accounts-delivery-workspace-v1']
+    company_id: UUID
+    income_year: int
+    source_sha256: str | None
+    observed_at: AwareDatetime
+    preparation_available: bool
+    rows: list[AccountsDeliveryWorkspaceRowWire]
 
 
 class AnnualBillingOfferWire(TransportModel):
@@ -1015,6 +1175,78 @@ class CompanyTaxCorrectionLinkWire(TransportModel):
     supersedes_source_id: UUID
 
 
+class CompanyTaxDeliveryDraftFactWire(TransportModel):
+    filing_id: UUID
+    prepared_by: UUID
+    recorded_at: datetime
+    draft_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    review_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    schema_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    status: Literal['prepared_only']
+
+
+class CompanyTaxDeliveryDraftOriginalWire(TransportModel):
+    filing_id: UUID
+    recorded_at: datetime
+    canonical_json: str
+    draft_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CompanyTaxDeliveryDraftArchiveWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    codec: Literal['company-tax-delivery-draft-archive-v1']
+    coverage: Literal['complete']
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    observed_at: datetime
+    record_count: int = Field(ge=0, le=1000)
+    records: list[CompanyTaxDeliveryDraftOriginalWire]
+
+
+class CompanyTaxApproveDeliveryDraftRequest(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+    draft_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+
+
+class CompanyTaxAdvanceDeliveryRequest(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Annotated[int,Field(strict=True,ge=2025,le=2025)]
+    filing_id: UUID
+    approval_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+
+
+class CompanyTaxConfirmSubmissionRequest(CompanyTaxAdvanceDeliveryRequest):
+    owner_review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    documents_confirmed: StrictBool
+    warnings_acknowledged: StrictBool
+
+    @field_validator('documents_confirmed','warnings_acknowledged')
+    @classmethod
+    def explicit_owner_confirmation(cls,value):
+        if value is not True:raise ValueError('Explicit owner confirmation is required.')
+        return value
+
+
+class CompanyTaxDeliveryProgressWire(TransportModel):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    approval_id: UUID
+    approval_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    draft_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    review_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    authority_mode: Literal['finite_loopback_rehearsal']
+    status: Literal['reviewed','uncertain','mutation_completed']
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation','confirm_submission'] | None
+    latest_event_sha256: str=Field(pattern=r'^[0-9a-f]{64}$')
+    recorded_at: datetime
+
+
 class CompanyTaxSourceFactsWire(TransportModel):
     evidence: CompanyTaxSourceEvidenceWire
     readiness_status: Literal["blocked", "unavailable"]
@@ -1025,6 +1257,206 @@ class CompanyTaxSourceFactsWire(TransportModel):
     correction_links: list[CompanyTaxCorrectionLinkWire]
     incidents: list[CompanyTaxIncidentFactWire]
     outcomes: list[CompanyTaxOutcomeFactWire]
+    delivery_drafts: list[CompanyTaxDeliveryDraftFactWire] = Field(default_factory=list)
+
+
+class CompanyTaxDeliveryJournalOriginalWire(TransportModel):
+    filing_id: UUID
+    slot: str = Field(pattern=r"^(review|admission|acknowledgment:(prepare_confirmation|confirm_submission)|(intent|completion):(create_instance|upload_envelope|start_validation|prepare_confirmation|confirm_submission)|observation:(instance|envelope|validation-job|validation-result|feedback):[0-9a-f]{64})$")
+    recorded_by: UUID
+    recorded_at: datetime
+    canonical_json: str
+    event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+CompanyTaxReviewDigest=Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+CompanyTaxReviewText=Annotated[str,Field(max_length=8*1024*1024)]
+
+
+class CompanyTaxReviewContentModel(BaseModel):
+    # Inner keys are the explicit byte-contract keys. Keep them unchanged in
+    # the JSON used to verify the complete owner-review content commitment.
+    model_config=ConfigDict(extra='forbid',strict=True)
+
+
+class CompanyTaxReviewUuidValue(CompanyTaxReviewContentModel):
+    value: UUID
+
+
+class CompanyTaxReviewYearValue(CompanyTaxReviewContentModel):
+    value: Literal[2025]
+
+
+class CompanyTaxReviewActorValue(CompanyTaxReviewContentModel):
+    kind: Literal['USER']
+    subject: CompanyTaxReviewUuidValue
+
+
+class CompanyTaxReviewApprovalValue(CompanyTaxReviewContentModel):
+    approval_id: UUID
+    filing_id: UUID
+    company_id: CompanyTaxReviewUuidValue
+    income_year: CompanyTaxReviewYearValue
+    approved_by: CompanyTaxReviewActorValue
+    draft_sha256: CompanyTaxReviewDigest
+    review_sha256: CompanyTaxReviewDigest
+    source_sha256: CompanyTaxReviewDigest
+    schema_sha256: CompanyTaxReviewDigest
+    current_original_sha256: CompanyTaxReviewDigest
+    authority_mode: Literal['finite_loopback_rehearsal']
+    authority_context_sha256: CompanyTaxReviewDigest
+
+
+class CompanyTaxCalculatedReviewContextValue(CompanyTaxReviewContentModel):
+    schema_sha256: CompanyTaxReviewDigest
+    draft_sha256: CompanyTaxReviewDigest
+    company_id: CompanyTaxReviewUuidValue
+    income_year: CompanyTaxReviewYearValue
+    party_number: str = Field(min_length=1,max_length=4000)
+
+
+CompanyTaxCalculatedReviewDocumentType=Literal['skattemeldingUpersonligEtterBeregning','naeringsspesifikasjonEtterBeregning',
+    'beregnetSkattUpersonlig','summertSkattegrunnlagForVisningUpersonlig']
+
+
+class CompanyTaxCalculatedReviewFieldValue(CompanyTaxReviewContentModel):
+    path: str = Field(min_length=1,max_length=16384)
+    value: CompanyTaxReviewText
+
+
+class CompanyTaxCalculatedReviewDocumentValue(CompanyTaxReviewContentModel):
+    document_type: CompanyTaxCalculatedReviewDocumentType
+    original_sha256: CompanyTaxReviewDigest
+    fields: list[CompanyTaxCalculatedReviewFieldValue] = Field(min_length=1,max_length=100000)
+
+
+class CompanyTaxCalculatedReviewOriginalValue(CompanyTaxReviewContentModel):
+    document_type: CompanyTaxCalculatedReviewDocumentType
+    body_base64: str = Field(min_length=1,max_length=12*1024*1024)
+
+
+class CompanyTaxResponseReviewInspectionValue(CompanyTaxReviewContentModel):
+    schema_sha256: CompanyTaxReviewDigest
+    original_sha256: CompanyTaxReviewDigest
+    result_code: Literal['validertOK','validertMedFeil']
+    calculation_deviation_count: int = Field(ge=0,le=100000)
+    validation_deviation_count: int = Field(ge=0,le=100000)
+    guidance_count: int = Field(ge=0,le=100000)
+    failure_reason_count: int = Field(ge=0,le=100000)
+    calculated_documents: list[CompanyTaxCalculatedReviewOriginalValue] = Field(min_length=2,max_length=4)
+
+
+class CompanyTaxResponseReviewDeviationValue(CompanyTaxReviewContentModel):
+    type_code: CompanyTaxReviewText
+    occurrence_id: CompanyTaxReviewText | None=None
+    received_value: CompanyTaxReviewText | None=None
+    calculated_value: CompanyTaxReviewText | None=None
+    difference_value: CompanyTaxReviewText | None=None
+    received_text: CompanyTaxReviewText | None=None
+    calculated_text: CompanyTaxReviewText | None=None
+    path: CompanyTaxReviewText | None=None
+    additional_info: CompanyTaxReviewText | None=None
+
+
+class CompanyTaxResponseReviewGuidanceValue(CompanyTaxReviewContentModel):
+    type_code: CompanyTaxReviewText
+    occurrence_id: CompanyTaxReviewText | None=None
+    message: CompanyTaxReviewText | None=None
+    servicing_strategy: CompanyTaxReviewText | None=None
+    path: CompanyTaxReviewText | None=None
+
+
+class CompanyTaxResponseReviewSubjectFlagValue(CompanyTaxReviewContentModel):
+    name: Literal['erFritattForFormuesskatt','erOmfattetAvSaerreglerForKraftforetak','erOmfattetAvPetroleumsskatteloven',
+        'erOmfattetAvRederiskatteordningen','erOmfattetAvFinansskattPaaLoennOgOverskudd','harLeveringsfritak']
+    value: StrictBool
+
+
+class CompanyTaxResponseReviewValue(CompanyTaxReviewContentModel):
+    inspection: CompanyTaxResponseReviewInspectionValue
+    calculation_deviations: list[CompanyTaxResponseReviewDeviationValue] = Field(max_length=100000)
+    validation_deviations: list[CompanyTaxResponseReviewDeviationValue] = Field(max_length=100000)
+    guidance: list[CompanyTaxResponseReviewGuidanceValue] = Field(max_length=100000)
+    failure_reasons: list[CompanyTaxReviewText] = Field(max_length=100000)
+    subject_flags: list[CompanyTaxResponseReviewSubjectFlagValue] = Field(max_length=6)
+
+
+class CompanyTaxResponseReviewOriginalValue(CompanyTaxReviewContentModel):
+    purpose: Literal['validation_result']
+    body_base64: str = Field(min_length=1,max_length=12*1024*1024)
+    content_type: Literal['application/xml','text/xml']
+    http_status: Literal[200]
+
+
+class CompanyTaxOwnerReviewValue(CompanyTaxReviewContentModel):
+    approval: CompanyTaxReviewApprovalValue
+    preparation_request_sha256: CompanyTaxReviewDigest
+    preparation_result_sha256: CompanyTaxReviewDigest
+    source_sha256: CompanyTaxReviewDigest
+    calculated_context: CompanyTaxCalculatedReviewContextValue
+    documents: list[CompanyTaxCalculatedReviewDocumentValue] = Field(min_length=2,max_length=4)
+    response: CompanyTaxResponseReviewValue
+    response_original: CompanyTaxResponseReviewOriginalValue
+
+
+class CompanyTaxOwnerReviewArtifactWire(TransportModel):
+    model_config=ConfigDict(extra='forbid')
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    approval_sha256: CompanyTaxReviewDigest
+    artifact_sha256: CompanyTaxReviewDigest
+    version: Literal['company-tax-delivery-owner-review-v1']
+    review: CompanyTaxOwnerReviewValue
+
+
+class CompanyTaxDeliveryJournalFactWire(TransportModel):
+    filing_id: UUID
+    approved_by: UUID
+    authority_mode: Literal['finite_loopback_rehearsal']
+    status: Literal['reviewed','uncertain','mutation_completed']
+    mutation_kind: Literal['create_instance','upload_envelope','start_validation','prepare_confirmation','confirm_submission'] | None
+    approval_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    latest_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    recorded_at: datetime
+
+
+class CompanyTaxDeliveryJournalArchiveWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    codec: Literal['company-tax-delivery-journal-archive-v1']
+    coverage: Literal['complete']
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    observed_at: datetime
+    source_facts: CompanyTaxSourceFactsWire
+    draft_count: int = Field(ge=0,le=1000)
+    drafts: list[CompanyTaxDeliveryDraftOriginalWire]
+    event_count: int = Field(ge=0,le=9000)
+    events: list[CompanyTaxDeliveryJournalOriginalWire]
+    journals: list[CompanyTaxDeliveryJournalFactWire]
+
+
+def company_tax_source_facts_wire(result, *, include_delivery_drafts: bool = False) -> CompanyTaxSourceFactsWire:
+    evidence, coverage = result.evidence, result.history_coverage
+    return CompanyTaxSourceFactsWire(
+        evidence=CompanyTaxSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
+            obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
+            digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
+        readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
+        history_coverage=CompanyTaxHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
+            evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
+            submission_count=coverage.submission_count, scope=coverage.scope),
+        recorded_submissions=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
+        production_attempts=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
+        correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
+        incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
+        outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+        **({'delivery_drafts': [CompanyTaxDeliveryDraftFactWire(
+            filing_id=row.filing_id, prepared_by=str(row.prepared_by.subject),
+            recorded_at=row.recorded_at.value, draft_sha256=row.draft_sha256,
+            review_sha256=row.review_sha256, schema_sha256=row.schema_sha256,
+            status=row.status) for row in result.delivery_drafts]} if include_delivery_drafts else {}),
+    )
 
 
 class AnnualAccountsSourceEvidenceWire(TransportModel):
@@ -1497,6 +1929,90 @@ class CompanyTaxRecordedWire(TransportModel):
     income_year: int | None
 
 
+class CompanyTaxPrepareDeliveryDraftRequest(TransportModel):
+    model_config = ConfigDict(extra="forbid")
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2025, le=2025)]
+    filing_id: UUID
+
+
+class CompanyTaxPrepareDeliveryCorrectionRequest(CompanyTaxPrepareDeliveryDraftRequest):
+    parent_filing_id: UUID = Field(alias='parentFilingId')
+    parent_draft_sha256: str = Field(alias='parentDraftSha256',pattern=r'^[0-9a-f]{64}$')
+    parent_approval_sha256: str = Field(alias='parentApprovalSha256',pattern=r'^[0-9a-f]{64}$')
+
+
+class CompanyTaxPreparedDeliveryDraftWire(TransportModel):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    recorded_at: datetime
+    draft_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    review_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    schema_sha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
+    status: Literal["prepared_only"] = "prepared_only"
+
+
+class CompanyTaxDeliveryWorkspaceFieldWire(TransportModel):
+    document: str
+    path: str
+    value: str
+    source: str
+
+
+class CompanyTaxDeliveryOriginalRefWire(TransportModel):
+    key: Annotated[str,Field(pattern=r'^[a-z_]+:[0-9a-f]{64}$')]
+    purpose: str
+    source_filing_id: UUID
+    sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    media_type: Literal['application/json','application/xml','text/xml']
+
+
+class CompanyTaxDeliveryOriginalWire(CompanyTaxDeliveryOriginalRefWire):
+    company_id: UUID
+    income_year: Literal[2025]
+    filing_id: UUID
+    body_base64: Annotated[str,Field(min_length=1,max_length=12582912)]
+
+
+class CompanyTaxWorkspaceValidationWire(TransportModel):
+    original_sha256: CompanyTaxReviewDigest
+    result_code: Literal['validertOK','validertMedFeil']
+    calculation_deviations: list[CompanyTaxResponseReviewDeviationValue]
+    validation_deviations: list[CompanyTaxResponseReviewDeviationValue]
+    guidance: list[CompanyTaxResponseReviewGuidanceValue]
+    failure_reasons: list[CompanyTaxReviewText]
+    subject_flags: list[CompanyTaxResponseReviewSubjectFlagValue]
+    documents_available: bool
+    documents: list[CompanyTaxCalculatedReviewDocumentValue]
+
+
+class CompanyTaxDeliveryWorkspaceRowWire(TransportModel):
+    filing_id: UUID
+    parent_filing_id: UUID | None
+    recorded_at: datetime
+    draft_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    review_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    approval_sha256: Annotated[str | None,Field(pattern=r'^[0-9a-f]{64}$')]
+    state: TaxDeliveryWorkspaceState
+    source_current: bool
+    actions: list[TaxDeliveryAction]
+    fields: list[CompanyTaxDeliveryWorkspaceFieldWire]
+    originals: list[CompanyTaxDeliveryOriginalRefWire]
+    validation: CompanyTaxWorkspaceValidationWire | None
+
+
+class CompanyTaxDeliveryWorkspaceWire(TransportModel):
+    version: Literal['company-tax-delivery-workspace-v1']
+    company_id: UUID
+    income_year: Literal[2025]
+    source_sha256: Annotated[str,Field(pattern=r'^[0-9a-f]{64}$')]
+    observed_at: datetime
+    technical_mode: Literal['finite_loopback','unavailable']
+    preparation_available: bool
+    rows: list[CompanyTaxDeliveryWorkspaceRowWire]
+
+
 class CompanyTaxOverrideRequest(TransportModel):
     preview_id: UUID
     field_target: str
@@ -1589,6 +2105,676 @@ def company_tax_json_wire(value: object) -> Any:
     return value
 
 
+# Source intake is distinct from the legacy float-based case parser and storage
+# codecs. Decimal JSON strings are admitted exactly; trusted context is absent.
+def _rf_source_decimal(value: object) -> Decimal:
+    if type(value) is not str or re.fullmatch(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", value) is None:
+        raise ValueError("A nonnegative decimal string is required")
+    return Decimal(value)
+
+
+RF_SOURCE_CIVIL_TIME_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"
+
+
+def _rf_source_civil_time_input(value: object) -> str:
+    if type(value) is not str or re.fullmatch(RF_SOURCE_CIVIL_TIME_PATTERN, value) is None:
+        raise ValueError("A local civil timestamp with whole seconds is required")
+    return value
+
+
+def _rf_source_civil_time(value: datetime) -> datetime:
+    if value.microsecond:
+        raise ValueError("A local civil timestamp with whole seconds is required")
+    return value
+
+
+RfSourceCivilTime = Annotated[
+    NaiveDatetime, BeforeValidator(_rf_source_civil_time_input), AfterValidator(_rf_source_civil_time),
+    WithJsonSchema({"type": "string", "pattern": RF_SOURCE_CIVIL_TIME_PATTERN}),
+    Field(description="Local civil time without a timezone, with whole seconds (YYYY-MM-DDTHH:mm:ss)."),
+]
+RfSourceDecimal = Annotated[Decimal, BeforeValidator(_rf_source_decimal, json_schema_input_type=str)]
+RfSourceCount = Annotated[int, Field(strict=True, ge=0)]
+RfSourceYear = Annotated[int, Field(strict=True, ge=2000, le=2100)]
+RfSourceBoolean = Annotated[bool, Field(strict=True)]
+RfSourceHash = Annotated[str, Field(strict=True, pattern=r"^[a-f0-9]{64}$")]
+
+
+class RfSourceCompanyWire(StrictTransportModel):
+    org_number: str = Field(pattern=r"^\d{9}$")
+    name: str
+    address: str
+    postal_code: str = Field(pattern=r"^\d{4}$")
+    city: str
+    income_year: RfSourceYear
+    share_type: str = "01"
+    contact_email: str | None = None
+
+
+class RfSourceSharesWire(StrictTransportModel):
+    previous_share_capital: RfSourceDecimal
+    current_share_capital: RfSourceDecimal
+    previous_nominal_value: RfSourceDecimal
+    current_nominal_value: RfSourceDecimal
+    previous_share_count: RfSourceCount
+    current_share_count: RfSourceCount
+    previous_paid_in_share_capital: RfSourceDecimal
+    current_paid_in_share_capital: RfSourceDecimal
+    previous_paid_in_premium: RfSourceDecimal
+    current_paid_in_premium: RfSourceDecimal
+
+
+class RfSourceShareholderWire(StrictTransportModel):
+    id: str
+    kind: Literal["norwegian_person", "norwegian_company"]
+    name: str
+    national_id: str | None = Field(default=None, pattern=r"^\d{11}$")
+    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
+
+
+class RfSourceShareholderSharesWire(StrictTransportModel):
+    shareholder_id: str
+    previous_share_count: RfSourceCount
+    current_share_count: RfSourceCount
+
+
+class RfSourceFormationAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    share_count: RfSourceCount
+    acquisition_value: RfSourceDecimal
+
+
+class RfSourceFormationWire(StrictTransportModel):
+    type: Literal["formation"]
+    timestamp: RfSourceCivilTime
+    issued_share_count: RfSourceCount
+    share_count_after: RfSourceCount
+    nominal_value: RfSourceDecimal
+    allocations: list[RfSourceFormationAllocationWire]
+    premium: RfSourceDecimal
+
+
+class RfSourceCashIssueWire(RfSourceFormationWire):
+    type: Literal["cash_issue"]
+    registration_confirmed: RfSourceBoolean
+
+
+class RfSourceNominalAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    share_count_basis: RfSourceCount
+    capital_increase: RfSourceDecimal
+    premium: RfSourceDecimal
+
+
+class RfSourceNominalIncreaseWire(StrictTransportModel):
+    type: Literal["cash_nominal_increase"]
+    timestamp: RfSourceCivilTime
+    capital_increase: RfSourceDecimal
+    nominal_value_increase: RfSourceDecimal
+    nominal_value_after: RfSourceDecimal
+    allocations: list[RfSourceNominalAllocationWire]
+    registration_confirmed: RfSourceBoolean
+    premium: RfSourceDecimal
+
+
+class RfSourceLossReductionWire(StrictTransportModel):
+    type: Literal["loss_covering_reduction"]
+    timestamp: RfSourceCivilTime
+    capital_reduction: RfSourceDecimal
+    nominal_value_reduction: RfSourceDecimal
+    nominal_value_after: RfSourceDecimal
+    registration_confirmed: RfSourceBoolean
+    fund_issued_capital_before: Annotated[int, Field(strict=True, ge=0, le=0)]
+
+
+class RfSourceShareSaleWire(StrictTransportModel):
+    type: Literal["share_sale"]
+    timestamp: RfSourceCivilTime
+    seller_shareholder_id: str
+    buyer_shareholder_id: str
+    share_count: RfSourceCount
+    consideration: RfSourceDecimal
+
+
+class RfSourceDividendAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    amount: RfSourceDecimal
+    share_count_basis: RfSourceCount
+
+
+class RfSourceDividendWire(StrictTransportModel):
+    type: Literal["dividend"]
+    timestamp: RfSourceCivilTime
+    total_amount: RfSourceDecimal
+    per_share_amount: RfSourceDecimal
+    allocations: list[RfSourceDividendAllocationWire]
+
+
+RfSourceEventWire = Annotated[RfSourceFormationWire | RfSourceCashIssueWire | RfSourceNominalIncreaseWire
+    | RfSourceLossReductionWire | RfSourceShareSaleWire | RfSourceDividendWire, Field(discriminator="type")]
+
+
+class RfSourceCaseWire(StrictTransportModel):
+    # Input and output are identical; retain the published component identity.
+    model_config = ConfigDict(json_schema_mode_override="validation")
+    case_id: str
+    company: RfSourceCompanyWire
+    share_snapshot: RfSourceSharesWire
+    shareholders: list[RfSourceShareholderWire]
+    shareholder_snapshots: list[RfSourceShareholderSharesWire]
+    events: list[RfSourceEventWire]
+
+
+class RfSourcePaidInWire(StrictTransportModel):
+    opening_capital: RfSourceDecimal
+    closing_capital: RfSourceDecimal
+    opening_premium: RfSourceDecimal
+    closing_premium: RfSourceDecimal
+
+
+class RfSourceDocumentWire(StrictTransportModel):
+    document_id: UUID
+    company_id: UUID
+    content_version_sha256: RfSourceHash
+    content_sha256: RfSourceHash
+    document_type: str
+    integrity_status: Literal["attached", "generated_unsigned", "signed_owner_attested", "stored"]
+    byte_length: Annotated[int, Field(strict=True, gt=0)]
+    created_at: AwareDatetime
+    metadata_sha256: RfSourceHash
+    source_income_year: RfSourceYear
+
+
+class RfSourceEventEvidenceWire(StrictTransportModel):
+    event_index: RfSourceCount
+    event_sha256: RfSourceHash | None = None
+    document_ids: list[UUID]
+    governance_receipt_id: UUID | None = None
+
+
+class RfYearSourceCaptureWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    case: RfSourceCaseWire
+    paid_in: RfSourcePaidInWire
+    documents: list[RfSourceDocumentWire] = Field(min_length=1)
+    opening_document_ids: list[UUID]
+    closing_document_ids: list[UUID]
+    paid_in_document_ids: list[UUID]
+    event_evidence: list[RfSourceEventEvidenceWire]
+    identities_reviewed: RfSourceBoolean
+    complete_year_confirmed: RfSourceBoolean
+    paid_in_reviewed: RfSourceBoolean
+    no_activity_confirmed: RfSourceBoolean
+    supersedes_source_id: UUID | None = None
+    supersedes_source_sha256: RfSourceHash | None = None
+    correction_reason: str | None = None
+
+
+class RfRegisterHoldingWire(StrictTransportModel):
+    shareholder_id: str
+    name: str
+    kind: Literal["norwegian_person", "norwegian_company"]
+    identifier: str
+    share_count: RfSourceCount
+
+
+class RfRegisteredSharesWire(StrictTransportModel):
+    share_capital: RfSourceDecimal
+    share_count: RfSourceCount
+    nominal_value: RfSourceDecimal
+    holdings: list[RfRegisterHoldingWire]
+
+
+class RfRegisterDocumentWire(RfSourceDocumentWire):
+    role: Literal["register_before", "register_after", "registration"]
+
+
+class RfRegisterObservationCaptureWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    effective_at: RfSourceCivilTime
+    event_kind: Literal["cash_issue", "cash_nominal_increase", "loss_covering_reduction"]
+    before: RfRegisteredSharesWire
+    after: RfRegisteredSharesWire
+    documents: list[RfRegisterDocumentWire] = Field(min_length=1)
+    complete_register_confirmed: RfSourceBoolean
+    registration_confirmed: RfSourceBoolean
+    single_share_class_confirmed: RfSourceBoolean
+    supersedes_observation_id: UUID | None = None
+    supersedes_observation_sha256: RfSourceHash | None = None
+    correction_reason: str | None = None
+
+
+class RfSourcePreviewRequestWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    source_id: UUID
+
+
+class RfSourceProductionReviewRequestWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    preview_id: UUID
+    entitlement_id: UUID
+
+
+class RfSourceProductionSendCommandWire(StrictTransportModel):
+    approval_id: UUID
+    manifest_sha256: RfSourceHash
+    expected_head: UUID | None = None
+
+
+class RfSourceProductionSendResultWire(TransportModel):
+    submission_id: UUID
+
+
+class RfSourceProductionPositionWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    approval_id: UUID
+    manifest_sha256: RfSourceHash
+    expected_head: UUID | None
+    submission_id: UUID | None
+    disposition: Literal['unclaimed', 'confirmed', 'recovery_required', 'blocked',
+        'current_approval_required', 'current_admission_required', 'retry_admission_required']
+    feedback_state: Literal['sent', 'processing', 'accepted', 'rejected', 'action_required', 'unknown'] | None
+    approved_at: AwareDatetime
+    preview_text: str
+
+
+class RfSourceCorrectionPredecessorWire(StrictTransportModel):
+    submission_id: UUID
+    manifest_sha256: RfSourceHash
+    reason: Annotated[str, Field(strict=True, min_length=1, pattern=r"\S")]
+
+
+class RfSourceProductionApprovalCommandWire(RfSourceProductionReviewRequestWire):
+    review_sha256: RfSourceHash
+    acknowledged_warning_codes: list[Annotated[str, Field(strict=True, min_length=1, pattern=r"\S")]] = Field(
+        json_schema_extra={"uniqueItems": True})
+    real_filing_confirmed: StrictBool
+    predecessor: RfSourceCorrectionPredecessorWire | None = None
+
+    @model_validator(mode="after")
+    def unique_warning_codes(self):
+        if len(set(self.acknowledged_warning_codes)) != len(self.acknowledged_warning_codes):
+            raise ValueError("Acknowledged warning codes must be unique.")
+        return self
+
+
+class RfSourceProductionReviewWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    preview_id: UUID
+    source_id: UUID
+    source_sha256: RfSourceHash
+    entitlement_id: UUID
+    review_sha256: RfSourceHash
+    warning_codes: list[str]
+    blockers: list[str]
+    can_approve: bool
+
+
+class RfYearSourceReceiptWire(TransportModel):
+    source_id: UUID
+    company_id: UUID
+    income_year: int
+    version: int
+    source_sha256: str
+    case_sha256: str
+    confirmed_at: datetime
+
+
+class RfYearSourceDraftWire(RfYearSourceCaptureWire):
+    # The editable response uses the same JSON input representation, including
+    # decimal strings. Keep existing request schema identities across deployments.
+    model_config = ConfigDict(json_schema_mode_override="validation")
+
+
+class RfCurrentYearSourceRecordWire(TransportModel):
+    receipt: RfYearSourceReceiptWire
+    draft: RfYearSourceDraftWire
+
+
+class RfCurrentYearSourceWire(TransportModel):
+    current_source: RfCurrentYearSourceRecordWire | None
+
+
+class RfSourceIntakeDocumentWire(TransportModel):
+    document_id: UUID
+    content_sha256: RfSourceHash
+    role: str
+    source_income_year: int | None
+    variant: str | None
+    revision: int | None
+    artifact_id: UUID | None
+    supersedes_artifact_id: UUID | None
+
+
+class RfSourceIntakeRegisterWire(TransportModel):
+    observation_id: UUID
+    revision: int
+    fact_sha256: RfSourceHash
+
+
+class RfSourceIntakeAllocationWire(TransportModel):
+    shareholder_id: str
+    amount: str
+    share_count_basis: int
+
+
+class RfSourceIntakeDividendEconomicsWire(TransportModel):
+    amount: str
+    allocations: list[RfSourceIntakeAllocationWire]
+
+
+class RfSourceIntakeFinalizationWire(TransportModel):
+    receipt_id: UUID
+    source_income_year: int
+    decision_sha256: RfSourceHash
+    signed_artifact_hashes: dict[str, RfSourceHash]
+    original_document_ids: list[UUID]
+
+
+class RfSourceIntakeDividendWire(TransportModel):
+    decision_id: UUID
+    decision_sha256: RfSourceHash
+    source_income_year: int
+    reporting_date: date
+    reporting_year: int
+    status: Literal["pending", "finalized", "rejected", "superseded"]
+    supersedes_decision_id: UUID | None
+    economics: RfSourceIntakeDividendEconomicsWire | None
+    finalizations: list[RfSourceIntakeFinalizationWire]
+    documents: list[RfSourceIntakeDocumentWire]
+    blockers: list[str]
+
+
+class RfSourceIntakeCapitalEconomicsWire(TransportModel):
+    nominal_increase: str | None
+    share_premium: str | None
+    issued_share_count: int | None
+    nominal_reduction: str | None
+    old_share_capital: str | None
+    new_share_capital: str | None
+
+
+class RfSourceIntakeCapitalEventWire(TransportModel):
+    receipt_id: UUID
+    event_reference: UUID
+    event_kind: str
+    phase: str
+    source_income_year: int
+    reporting_date: date
+    reporting_year: int
+    correction_of_event_id: UUID | None
+    accounting_entry_id: UUID
+    economics: RfSourceIntakeCapitalEconomicsWire | None
+    documents: list[RfSourceIntakeDocumentWire]
+    register_observation: RfSourceIntakeRegisterWire | None
+    blockers: list[str]
+
+
+class RfSourceIntakeCapitalWire(TransportModel):
+    representative_receipt_id: UUID
+    status: Literal["recorded", "reversed", "corrected", "incomplete", "conflicting"]
+    events: list[RfSourceIntakeCapitalEventWire]
+    blockers: list[str]
+
+
+class RfSourceIntakeAmendmentWire(TransportModel):
+    original_entry_id: UUID
+    reversal_entry_id: UUID
+    replacement_entry_id: UUID | None
+    source_income_year: int
+    reason: str
+
+
+class RfSourceIntakeCompanyWire(TransportModel):
+    org_number: str
+    name: str
+    address: str
+    postal_code: str
+    city: str
+    identity_confirmed_at: AwareDatetime
+    identity_locked_at: AwareDatetime
+
+
+class RfSourceIntakeBasisWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    company: RfSourceIntakeCompanyWire
+    enumeration_sha256: RfSourceHash
+    enumeration_complete: Literal[True]
+    dividends: list[RfSourceIntakeDividendWire]
+    capital_events: list[RfSourceIntakeCapitalWire]
+    ledger_amendments: list[RfSourceIntakeAmendmentWire]
+    blockers: list[str]
+
+
+class RfRegisterObservationReceiptWire(TransportModel):
+    observation_id: UUID
+    company_id: UUID
+    income_year: int
+    version: int
+    fact_sha256: str
+    confirmed_at: datetime
+
+
+class RfYearSourceCaptureLookupWire(TransportModel):
+    status: Literal["recorded", "not_observed"]
+    receipt: RfYearSourceReceiptWire | None
+
+    @model_validator(mode="after")
+    def receipt_matches_status(self):
+        if (self.status == "recorded") != (self.receipt is not None):
+            raise ValueError("Receipt lookup status mismatch")
+        return self
+
+
+class RfRegisterObservationCaptureLookupWire(TransportModel):
+    status: Literal["recorded", "not_observed"]
+    receipt: RfRegisterObservationReceiptWire | None
+
+    @model_validator(mode="after")
+    def receipt_matches_status(self):
+        if (self.status == "recorded") != (self.receipt is not None):
+            raise ValueError("Receipt lookup status mismatch")
+        return self
+
+
+class RfRegisterObservationDraftWire(RfRegisterObservationCaptureWire):
+    model_config = ConfigDict(json_schema_mode_override="validation")
+
+
+class RfRegisterObservationRecordWire(TransportModel):
+    receipt: RfRegisterObservationReceiptWire
+    draft: RfRegisterObservationDraftWire
+    is_current: bool
+
+
+class RfRegisterObservationsWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    observations: list[RfRegisterObservationRecordWire]
+
+
+class RfRegisterObservationWithdrawalWire(TransportModel):
+    withdrawal_id: UUID
+    withdrawn_at: datetime
+    reason: str
+    withdrawal_sha256: str
+
+
+class RfRegisterObservationLifecycleRecordWire(TransportModel):
+    receipt: RfRegisterObservationReceiptWire
+    draft: RfRegisterObservationDraftWire
+    status: Literal["active", "superseded", "withdrawn"]
+    superseded_by: UUID | None
+    withdrawal: RfRegisterObservationWithdrawalWire | None
+
+
+class RfRegisterObservationLifecycleWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    observed_at: datetime
+    observations: list[RfRegisterObservationLifecycleRecordWire]
+
+
+def _rf_register_observation_record(snapshot, *, is_current: bool) -> RfRegisterObservationRecordWire:
+    command = snapshot.command
+    draft = RfRegisterObservationDraftWire.model_validate({
+        'company_id': str(command.company_id), 'income_year': int(command.income_year),
+        **{name: _rf_source_public_json(getattr(command, name)) for name in
+           ('effective_at', 'event_kind', 'before', 'after', 'documents')},
+        'complete_register_confirmed': False, 'registration_confirmed': False,
+        'single_share_class_confirmed': False,
+        'supersedes_observation_id': snapshot.observation_id.value,
+        'supersedes_observation_sha256': snapshot.fact_sha256, 'correction_reason': None,
+    })
+    return RfRegisterObservationRecordWire(
+        receipt=RfRegisterObservationReceiptWire(observation_id=UUID(snapshot.observation_id.value),
+            company_id=UUID(str(command.company_id)), income_year=int(command.income_year),
+            version=snapshot.version, fact_sha256=snapshot.fact_sha256, confirmed_at=snapshot.confirmed_at),
+        draft=draft, is_current=is_current)
+
+
+class RfSourcePreviewWire(TransportModel):
+    preview_id: UUID
+    company_id: UUID
+    income_year: int
+    source_id: UUID
+    source_sha256: str
+    case_sha256: str
+    readiness_status: Literal["ready", "blocked"]
+    readiness_issues: list[Rf1086IssueWire]
+    preview_text: str
+    hovedskjema_xml: str | None
+    underskjema_xml: dict[str, str] | None
+    rendering_profile: str
+
+
+def _rf_source_value(value: Any) -> Any:
+    """Explicit transport-to-public-value mapping, with no storage deserializer."""
+    types = {
+        RfSourceCompanyWire: Rf1086Company, RfSourceSharesWire: Rf1086ShareSnapshot,
+        RfSourceShareholderWire: Rf1086Shareholder, RfSourceShareholderSharesWire: Rf1086ShareholderSnapshot,
+        RfSourceFormationAllocationWire: Rf1086FormationAllocation, RfSourceFormationWire: Rf1086FormationEvent,
+        RfSourceCashIssueWire: Rf1086CashIssueEvent, RfSourceNominalAllocationWire: Rf1086NominalIncreaseAllocation,
+        RfSourceNominalIncreaseWire: Rf1086CashNominalIncreaseEvent, RfSourceLossReductionWire: Rf1086LossCoveringReductionEvent,
+        RfSourceShareSaleWire: Rf1086ShareSaleEvent, RfSourceDividendAllocationWire: Rf1086DividendAllocation,
+        RfSourceDividendWire: Rf1086DividendEvent, RfSourceCaseWire: Rf1086Case,
+        RfSourcePaidInWire: Rf1086PaidInSourceFacts, RfSourceDocumentWire: Rf1086YearDocumentEvidence,
+        RfSourceEventEvidenceWire: Rf1086YearEventEvidence, RfRegisterHoldingWire: Rf1086RegisterHolding,
+        RfRegisteredSharesWire: Rf1086RegisteredShareState, RfRegisterDocumentWire: Rf1086RegisterDocumentEvidence,
+    }
+    if type(value) in types:
+        values = {name: _rf_source_value(getattr(value, name)) for name in type(value).model_fields}
+        if isinstance(value, RfSourceDocumentWire):
+            values['company_id'] = CompanyId(values['company_id'])
+            values['source_income_year'] = IncomeYear(values['source_income_year'])
+        if isinstance(value, RfSourceShareholderWire):
+            values['kind'] = Rf1086ShareholderKind(values['kind'])
+        return types[type(value)](**values)
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, list):
+        return tuple(_rf_source_value(item) for item in value)
+    return value
+
+
+def _rf_source_command(body: RfYearSourceCaptureWire | RfRegisterObservationCaptureWire, actor_id: Any):
+    values = {name: _rf_source_value(getattr(body, name)) for name in type(body).model_fields
+              if not (isinstance(body, RfYearSourceCaptureWire) and name == 'event_evidence')}
+    values.update(company_id=CompanyId(values['company_id']), income_year=IncomeYear(values['income_year']), actor_id=actor_id)
+    if isinstance(body, RfYearSourceCaptureWire):
+        evidence = []
+        for item in body.event_evidence:
+            if item.event_index >= len(values['case'].events):
+                raise Rf1086YearSourceError('rf1086_source_event_evidence_incomplete')
+            # Hash the parsed domain event, never the client's JSON spelling.
+            # Explicit hashes remain assertions and are checked by RF policy.
+            digest = item.event_sha256
+            if digest is None:
+                digest = rf1086_year_source_digest(values['case'].events[item.event_index])
+            evidence.append(_rf_source_value(item.model_copy(update={'event_sha256': digest})))
+        values['event_evidence'] = tuple(evidence)
+        if values['supersedes_source_id'] is not None:
+            values['supersedes_source_id'] = Rf1086YearSourceId(values['supersedes_source_id'])
+        return RecordRf1086YearSource(**values)
+    if values['supersedes_observation_id'] is not None:
+        values['supersedes_observation_id'] = Rf1086RegisterObservationId(values['supersedes_observation_id'])
+    return RecordRf1086RegisterObservation(**values)
+
+
+def _rf_source_public_json(value: Any) -> Any:
+    """Project only the explicit public intake types, never stored codec tags."""
+    models = {
+        Rf1086Company: RfSourceCompanyWire, Rf1086ShareSnapshot: RfSourceSharesWire,
+        Rf1086Shareholder: RfSourceShareholderWire, Rf1086ShareholderSnapshot: RfSourceShareholderSharesWire,
+        Rf1086FormationAllocation: RfSourceFormationAllocationWire, Rf1086FormationEvent: RfSourceFormationWire,
+        Rf1086CashIssueEvent: RfSourceCashIssueWire, Rf1086NominalIncreaseAllocation: RfSourceNominalAllocationWire,
+        Rf1086CashNominalIncreaseEvent: RfSourceNominalIncreaseWire,
+        Rf1086LossCoveringReductionEvent: RfSourceLossReductionWire, Rf1086ShareSaleEvent: RfSourceShareSaleWire,
+        Rf1086DividendAllocation: RfSourceDividendAllocationWire, Rf1086DividendEvent: RfSourceDividendWire,
+        Rf1086Case: RfSourceCaseWire, Rf1086PaidInSourceFacts: RfSourcePaidInWire,
+        Rf1086YearDocumentEvidence: RfSourceDocumentWire, Rf1086YearEventEvidence: RfSourceEventEvidenceWire,
+        Rf1086RegisterHolding: RfRegisterHoldingWire, Rf1086RegisteredShareState: RfRegisteredSharesWire,
+        Rf1086RegisterDocumentEvidence: RfRegisterDocumentWire,
+    }
+    if type(value) in models:
+        return {name: format(Decimal(str(getattr(value, name))), 'f') if field.annotation is Decimal
+                else _rf_source_public_json(getattr(value, name))
+                for name, field in models[type(value)].model_fields.items()}
+    if isinstance(value, (Decimal, float)):
+        return format(Decimal(str(value)), 'f')
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (CompanyId, Rf1086YearSourceId)):
+        return str(value) if isinstance(value, CompanyId) else value.value
+    if isinstance(value, IncomeYear):
+        return int(value)
+    if isinstance(value, Rf1086ShareholderKind):
+        return value.value
+    if isinstance(value, tuple):
+        return [_rf_source_public_json(item) for item in value]
+    if value is None or type(value) in {str, int, bool}:
+        return value
+    raise ValueError("Unsupported public RF source value")
+
+
+def _rf_current_year_source_wire(source: Rf1086YearSourceSnapshot | None) -> RfCurrentYearSourceWire:
+    if source is None:
+        return RfCurrentYearSourceWire(current_source=None)
+    command = source.command
+    draft = RfYearSourceDraftWire.model_validate({
+        'company_id': str(source.company_id), 'income_year': int(source.income_year),
+        **{name: _rf_source_public_json(getattr(command, name)) for name in (
+            'case', 'paid_in', 'documents', 'opening_document_ids', 'closing_document_ids',
+            'paid_in_document_ids', 'event_evidence')},
+        'identities_reviewed': False, 'complete_year_confirmed': False,
+        'paid_in_reviewed': False, 'no_activity_confirmed': False,
+        'supersedes_source_id': source.source_id.value,
+        'supersedes_source_sha256': source.source_sha256, 'correction_reason': None,
+    })
+    return RfCurrentYearSourceWire(current_source=RfCurrentYearSourceRecordWire(
+        receipt=RfYearSourceReceiptWire(source_id=UUID(source.source_id.value),
+            company_id=UUID(str(source.company_id)), income_year=int(source.income_year), version=source.version,
+            source_sha256=source.source_sha256, case_sha256=source.case_sha256, confirmed_at=source.confirmed_at),
+        draft=draft))
+
+
+def _rf_source_preview_wire(preview: Rf1086SourcePreview) -> RfSourcePreviewWire:
+    return RfSourcePreviewWire(preview_id=UUID(preview.preview_id.value), company_id=UUID(str(preview.company_id)),
+        income_year=int(preview.income_year), source_id=UUID(preview.source_id.value), source_sha256=preview.source_sha256,
+        case_sha256=preview.case_sha256, readiness_status=preview.readiness_status,
+        readiness_issues=[Rf1086IssueWire.model_validate(item, from_attributes=True) for item in preview.readiness_issues],
+        preview_text=preview.preview_text, hovedskjema_xml=preview.hovedskjema_xml,
+        underskjema_xml=dict(preview.underskjema_xml) if preview.underskjema_xml is not None else None,
+        rendering_profile=preview.rendering_profile)
+
+
 class Rf1086PreviewWire(TransportModel):
     id: UUID
     company_id: UUID
@@ -1674,6 +2860,49 @@ Rf1086HistoricalTimestampWire = Annotated[
 ]
 
 
+class RfCompanyTestRetentionRecordWire(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str
+    company_id: str
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    recorded_by: str
+    recorded_at: str
+
+
+class RfCompanyTestRetentionCompleteWire(TransportModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid", strict=True)
+    codec: Literal["rf1086-company-test-retention-v1"]
+    scope: Literal["company_no_intrinsic_income_year"]
+    company_id: str
+    coverage: Literal["complete"]
+    observed_at: str
+    record_count: Annotated[int, Field(strict=True, ge=0, le=100000)]
+    records_sha256: Annotated[str, Field(pattern="^[a-f0-9]{64}$")]
+    records: list[RfCompanyTestRetentionRecordWire]
+
+
+class RfCompanyTestRetentionUnavailableWire(TransportModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid", strict=True)
+    codec: Literal["rf1086-company-test-retention-v1"]
+    scope: Literal["company_no_intrinsic_income_year"]
+    company_id: str
+    coverage: Literal["unavailable"]
+
+
+RfCompanyTestRetentionWire = Annotated[
+    RfCompanyTestRetentionCompleteWire | RfCompanyTestRetentionUnavailableWire,
+    Field(discriminator="coverage"),
+]
+
+
 class Rf1086SimulationCallWire(TransportModel):
     endpoint: str
     body_hash: str
@@ -1749,7 +2978,7 @@ class Rf1086ApprovalWire(TransportModel):
     user_id: UUID
     income_year: int
     obligation: Literal["aksjonaerregisteroppgaven"]
-    case_profile: Literal["rf1086_no_activity_v1"]
+    case_profile: Literal["rf1086_no_activity_v1", "rf1086_full_year_v1"]
     adapter_version: str
     payload_hash: str
     manifest_hash: str
@@ -1768,7 +2997,7 @@ class Rf1086ProductionSubmissionWire(TransportModel):
     user_id: UUID
     income_year: int
     obligation: Literal["aksjonaerregisteroppgaven"]
-    case_profile: Literal["rf1086_no_activity_v1"]
+    case_profile: Literal["rf1086_no_activity_v1", "rf1086_full_year_v1"]
     payload_hash: str
     adapter_version: str
     environment: Literal["production"]
@@ -1820,6 +3049,33 @@ class Rf1086WorkspaceWire(TransportModel):
     actions: list[Rf1086ActionAvailabilityWire]
 
 
+class Rf1086ArchiveProductionEventWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    submission_id: UUID
+    operation_name: str
+    operation_state: Literal["prepared", "succeeded", "failed", "unknown"]
+    attempt: int = Field(ge=1, le=20)
+    body_hash: str | None
+    idempotency_key: UUID | None
+    authority_reference: str | None
+    failure_class: Literal["retryable", "blocked", "unknown"] | None
+    resulting_status: Literal["approved", "sending", "received", "processing", "accepted", "rejected", "action_required", "unknown"]
+    artifact_hashes: list[str]
+    safe_error_code: str | None
+    correlation_id: str | None
+    created_at: datetime
+
+
+class Rf1086ArchiveFeedbackArtifactWire(Rf1086FeedbackArtifactWire):
+    authority_reference: str
+    original_id: UUID | None = None
+    original_metadata_sha256: str | None = None
+    original_source_income_year: int | None = None
+    original_retained_at: datetime | None = None
+
+
 class Rf1086ArchiveSourceWire(TransportModel):
     company_id: UUID
     income_year: int = Field(ge=2000, le=2100)
@@ -1828,6 +3084,136 @@ class Rf1086ArchiveSourceWire(TransportModel):
     review_comments: list[Rf1086ReviewCommentWire]
     permissions: list[Rf1086PermissionWire]
     test_evidence: list[Rf1086TestEvidenceWire]
+
+
+class Rf1086ArchiveSourceReviewBridgeWire(TransportModel):
+    preview_id: UUID
+    company_id: UUID
+    income_year: int
+    source_id: UUID
+    source_sha256: RfSourceHash
+    payload_sha256: RfSourceHash
+    created_by: UUID
+    created_at: Rf1086HistoricalTimestampWire
+
+
+class Rf1086ArchivedYearSourceWire(TransportModel):
+    receipt: RfYearSourceReceiptWire
+    command: RfYearSourceDraftWire
+
+
+class Rf1086ArchiveSourceApprovalLineageWire(TransportModel):
+    approval_id: UUID
+    preview_id: UUID
+    company_id: UUID
+    income_year: int
+    source_id: UUID
+    source_sha256: RfSourceHash
+    payload_sha256: RfSourceHash
+    manifest_text: str
+    manifest_sha256: RfSourceHash
+    review_text: str
+    review_sha256: RfSourceHash
+    approved_by: UUID
+    created_at: Rf1086HistoricalTimestampWire
+    source: Rf1086ArchivedYearSourceWire
+    source_preview: RfSourcePreviewWire
+    bridge: Rf1086ArchiveSourceReviewBridgeWire
+
+
+def _rf_archive_source_approval_lineage_wire(value) -> Rf1086ArchiveSourceApprovalLineageWire:
+    source = _rf_current_year_source_wire(value.source).current_source
+    if source is None:
+        raise ValueError("Retained approval source is missing.")
+    # The reusable editable projection resets confirmations/predecessor. Archives
+    # retain the captured command exactly while still excluding trusted context.
+    command = value.source.command
+    captured = RfYearSourceDraftWire.model_validate({
+        **source.draft.model_dump(mode="json"),
+        **{name: getattr(command, name) for name in (
+            'identities_reviewed', 'complete_year_confirmed', 'paid_in_reviewed',
+            'no_activity_confirmed', 'supersedes_source_sha256', 'correction_reason')},
+        'supersedes_source_id': command.supersedes_source_id.value if command.supersedes_source_id else None,
+    })
+    return Rf1086ArchiveSourceApprovalLineageWire(
+        **{name: getattr(value, name) for name in (
+            'approval_id', 'preview_id', 'company_id', 'income_year', 'source_id',
+            'source_sha256', 'payload_sha256', 'manifest_text', 'manifest_sha256',
+            'review_text', 'review_sha256', 'approved_by', 'created_at')},
+        source=Rf1086ArchivedYearSourceWire(receipt=source.receipt, command=captured),
+        source_preview=_rf_source_preview_wire(value.source_preview),
+        bridge=Rf1086ArchiveSourceReviewBridgeWire.model_validate(value.bridge, from_attributes=True))
+
+
+class Rf1086SourceSubmissionClaimWire(TransportModel):
+    submission_id: UUID
+    approval_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    manifest_sha256: RfSourceHash
+    payload_sha256: RfSourceHash
+    predecessor_submission_id: UUID | None
+    claimed_by: UUID
+    claimed_at: Rf1086HistoricalTimestampWire
+
+
+class Rf1086SubmissionHeadWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    obligation: Literal['aksjonaerregisteroppgaven']
+    environment: Literal['production']
+    submission_id: UUID
+    updated_at: Rf1086HistoricalTimestampWire
+
+
+def _rf_source_claim_wire(value):
+    return Rf1086SourceSubmissionClaimWire(submission_id=value.submission_id.value,
+        approval_id=value.approval_id.value,company_id=str(value.company_id),income_year=int(value.income_year),
+        manifest_sha256=value.manifest_sha256,payload_sha256=value.payload_sha256,
+        predecessor_submission_id=None if value.predecessor_submission_id is None else value.predecessor_submission_id.value,
+        claimed_by=str(value.claimed_by.subject),claimed_at=value.claimed_at)
+
+
+def _rf_submission_head_wire(value):
+    if value is None:return None
+    return Rf1086SubmissionHeadWire(company_id=str(value.company_id),income_year=int(value.income_year),
+        obligation=value.obligation,environment=value.environment,submission_id=value.submission_id.value,
+        updated_at=value.updated_at)
+
+
+class Rf1086ArchiveSourceOriginalWire(TransportModel):
+    document_id: UUID
+    company_id: UUID
+    source_income_year: int = Field(ge=2000, le=2100)
+    metadata_sha256: RfSourceHash
+    content_sha256: RfSourceHash
+    byte_length: int = Field(ge=1, le=10485760)
+    canonical_original: str
+
+
+class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
+    source_history_documents: list[RfSourceDocumentWire] | None = None
+    source_originals: list[Rf1086ArchiveSourceOriginalWire] = Field(default_factory=list)
+    feedback_originals: list[Rf1086ArchiveSourceOriginalWire] = Field(default_factory=list)
+    canonical_archive: str | None = None
+    source_submission_claims: list[Rf1086SourceSubmissionClaimWire] = Field(default_factory=list)
+    submission_head: Rf1086SubmissionHeadWire | None = None
+    source_approval_lineage: list[Rf1086ArchiveSourceApprovalLineageWire] = Field(default_factory=list)
+    approvals: list[Rf1086ApprovalWire]
+    production_submissions: list[Rf1086ProductionSubmissionWire]
+    production_events: list[Rf1086ArchiveProductionEventWire]
+    feedback_artifacts: list[Rf1086ArchiveFeedbackArtifactWire]
+
+
+class Rf1086ProductionArchiveSourceV4Wire(Rf1086ProductionArchiveSourceWire):
+    overrides: list[Rf1086OverrideWire]
+
+
+class Rf1086ProductionArchiveSourceV6Wire(Rf1086ProductionArchiveSourceV4Wire):
+    # The common command/receipt projection also fits V2 sources. Their complete
+    # governance and withdrawal evidence belongs to the owner's canonical V6.
+    canonical_archive: str = Field(...)
+    source_history_documents: list[RfSourceDocumentWire] = Field(...)
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -1844,6 +3230,7 @@ class BillingUnsupportedWire(BillingCompanyWire):
 
 
 class BillingPilotEntitlementCommandWire(BillingCompanyWire):
+    case_profile: BillingPilotCaseProfile = BillingPilotCaseProfile.RF1086_NO_ACTIVITY_V1
     entitlement_id: UUID | None = None
     user_id: UUID
     income_year: int = Field(ge=2000, le=2100)
@@ -4489,13 +5876,58 @@ def create_app(
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
+    readiness_probe: ReadinessProbe | None = None,
+    company_test_retention_session_factory: CompanyTestRetentionSessionFactory | None = None,
+    company_tax_delivery_preparation: CompanyTaxDeliveryPreparation | None = None,
+    company_tax_delivery_submission: CompanyTaxDeliverySubmission | None = None,
+    annual_accounts_delivery_preparation: AnnualAccountsDeliveryPreparation | None = None,
+    annual_accounts_delivery_workflow: AnnualAccountsDeliveryWorkflow | None = None,
 ) -> FastAPI:
+    # Readiness follows the infrastructure selected here. Injected adapters own
+    # their operational contract; unit/custom applications can inject a probe.
+    database_roles: dict[str, tuple[str, ...]] = {}
+
+    def require_database(setting: str, roles: tuple[str, ...]) -> None:
+        database_roles[setting] = database_roles.get(setting, ()) + roles
+
+    ledger_dependencies = (
+        (ledger_session_factory, ("ledger_executor", "ledger_workflow_executor")),
+        (company_tax_session_factory, ("company_tax_filing_workflow_executor",)),
+        (annual_accounts_session_factory, ("annual_accounts_filing_workflow_executor",)),
+        (investments_session_factory, ("investments_executor", "investments_workflow_executor")),
+        (corporate_governance_session_factory, ("corporate_governance_workflow_executor",)),
+        (documents_session_factory, ("documents_executor",)),
+        (billing_session_factory, ("billing_executor", "billing_store_owner")),
+        (annual_billing_session_factory, ("billing_store_owner",)),
+        (shareholder_register_filing_session_factory, ("shareholder_register_filing_executor",)),
+        (launch_signoff_session_factory, ("launch_signoff_executor",)),
+        (authority_connections_session_factory, ("authority_connections_executor",)),
+    )
+    for dependency, roles in ledger_dependencies:
+        if dependency is None:
+            require_database("TALLI_LEDGER_DATABASE_URL", roles)
+    if company_access_gateway is None or documents_session_factory is None:
+        require_database("TALLI_COMPANY_ACCESS_DATABASE_URL", ("company_access_executor", "company_access_recovery_executor"))
+    if banking_session_factory is None:
+        require_database("TALLI_BANKING_DATABASE_URL", ("banking_executor", "banking_provider_executor", "banking_workflow_executor"))
+    if company_test_retention_session_factory is None:
+        company_test_retention_session_factory = compose_company_test_retention_runtime()
+        if company_test_retention_session_factory is not None:
+            require_database("TALLI_COMPANY_TEST_RETENTION_DATABASE_URL", ("shareholder_register_filing_executor",))
+    auth_required = bool(database_roles)
+    if marketing_measurement_gateway is None:
+        require_database("TALLI_MARKETING_MEASUREMENT_DATABASE_URL", ("marketing_measurement_ingest_executor", "marketing_measurement_report_executor"))
     # Explicit test/application dependencies form their own composition. Avoid
     # mixing an injected provider or intake with an ambient merchant account.
     if annual_billing_provider is None and annual_notification_intake is None:
         annual_runtime = compose_annual_billing_runtime()
         annual_billing_provider = annual_runtime.provider
         annual_notification_intake = annual_runtime.notification_intake
+        if annual_notification_intake is not None:
+            require_database("TALLI_ANNUAL_NOTIFICATION_DATABASE_URL", ("annual_notification_executor",))
+    dependency_readiness = CachedReadiness(readiness_probe if readiness_probe is not None else configured_readiness(
+        os.environ, database_roles, auth_required=auth_required,
+    ))
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -4505,6 +5937,7 @@ def create_app(
         redoc_url=None,
     )
     application.add_middleware(RequestIdMiddleware)
+    application.router.add_event_handler("shutdown", dependency_readiness.close)
     gateway = (
         company_access_gateway
         if company_access_gateway is not None
@@ -4515,8 +5948,8 @@ def create_app(
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
-    company_tax_application = compose_company_tax_application(company_tax_session_factory)
-    annual_accounts_application = compose_annual_accounts_application(annual_accounts_session_factory)
+    company_tax_application = compose_company_tax_application(company_tax_session_factory,
+        preparation=company_tax_delivery_preparation,submission=company_tax_delivery_submission)
     investments_application = compose_investments_application(
         investments_session_factory
     )
@@ -4524,10 +5957,6 @@ def create_app(
         documents_session_factory
         if documents_session_factory is not None
         else SupabaseDocumentsAdapter.from_environment()
-    )
-    corporate_governance_application = compose_corporate_governance_application(
-        corporate_governance_session_factory,
-        documents_application,
     )
     banking_application = compose_banking_application(banking_session_factory)
     billing_sessions = (
@@ -4553,13 +5982,39 @@ def create_app(
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
     if shareholder_register_filing_session_factory is None:
-        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
+        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterSourceDispatchV3Adapter
         async def rf_billing_queries(access_token: str):
             return BillingWorkflow(await billing_sessions.session(access_token), billing_provider)
-        shareholder_register_filing_session_factory = PostgresShareholderRegisterFilingAdapter.from_environment(
+        shareholder_register_filing_session_factory = PostgresShareholderRegisterSourceDispatchV3Adapter.from_environment(
             billing_queries_factory=rf_billing_queries, documents_session_factory=documents_application,
             company_access_service=company_access_service,
         )
+
+    corporate_governance_application = compose_corporate_governance_application(
+        corporate_governance_session_factory,
+        documents_application,
+        CorporateRegisterEvidenceVerifier(shareholder_register_filing_session_factory, documents_application),
+    )
+    accounts_schemas=DeferredAnnualAccountsSchemas()
+    annual_accounts_application=compose_annual_accounts_application(annual_accounts_session_factory,
+        preparation=annual_accounts_delivery_preparation or AnnualAccountsDeliveryPreparation(corporate_governance_application,accounts_schemas),
+        delivery=annual_accounts_delivery_workflow or AnnualAccountsDeliveryWorkflow(corporate=corporate_governance_application,schemas=accounts_schemas))
+    shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
+        shareholder_register_filing_session_factory, company_access_service,
+        documents_application, corporate_governance_application,
+    )
+    shareholder_register_source_capture = ShareholderRegisterSourceCaptureV2(
+        shareholder_register_filing_session_factory, company_access_service, documents_application,
+    )
+    shareholder_register_source_preview = ShareholderRegisterSourcePreviewV2(
+        shareholder_register_filing_session_factory, documents_application,
+    )
+    shareholder_register_source_approval = ShareholderRegisterSourceApprovalV3(
+        shareholder_register_filing_session_factory, documents_application,
+    )
+    shareholder_register_source_dispatch = ShareholderRegisterSourceDispatchV3(
+        shareholder_register_filing_session_factory, documents_application,
+    )
 
     if launch_signoff_session_factory is None:
         from talli_backend.adapters.postgres_launch_signoffs import PostgresLaunchSignoffsAdapter
@@ -4657,8 +6112,8 @@ def create_app(
         except asyncio.CancelledError:
             pass
 
-    application.add_event_handler("startup", start_marketing_measurement_maintenance)
-    application.add_event_handler("shutdown", stop_marketing_measurement_maintenance)
+    application.router.add_event_handler("startup", start_marketing_measurement_maintenance)
+    application.router.add_event_handler("shutdown", stop_marketing_measurement_maintenance)
 
     def banking_provider(connector_id: BankConnectorId) -> BankDataProvider:
         provider = provider_registry.get(str(connector_id))
@@ -5053,6 +6508,38 @@ def create_app(
             raise ApiProblem(status=statuses[error.category], code=str(error.code),
                 title="RF-1086-handlingen kunne ikke fullføres",
                 detail="Handlingen kunne ikke bekreftes. Se lagret status før du prøver igjen.") from None
+
+    async def shareholder_register_source_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except (ShareholderRegisterFilingAuthenticationError, CorporateGovernanceAuthenticationError):
+            raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.") from None
+        except Rf1086ProductionError as error:
+            status = 401 if error.code == "authentication_required" else 422 if error.code == "invalid_request" else (
+                503 if error.code in {"configuration_unavailable", "status_unavailable", "send_unavailable"} else 409)
+            raise ApiProblem(status=status, code=error.code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except CompanyAccessError as error:
+            raise ApiProblem(status=error.status, code=error.code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (ShareholderRegisterFilingError, DocumentsError, CorporateGovernanceError, LedgerError) as error:
+            statuses = {ErrorCategory.INVALID_INPUT: 422, ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409, ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409, ErrorCategory.DEPENDENCY_UNAVAILABLE: 503}
+            raise ApiProblem(status=statuses[error.category], code=str(error.code),
+                title="Kildegrunnlaget kunne ikke bekreftes", detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (Rf1086YearSourceError, Rf1086RegisterObservationError) as error:
+            code = str(error)
+            if re.fullmatch(r"rf1086_(?:source|register)_[a-z_]+", code) is None:
+                code = "rf1086_source_unavailable"
+            status = 403 if code.endswith("owner_required") else 404 if code.endswith("not_found") else (
+                503 if "storage_invalid" in code or code.endswith("unavailable") and code == "rf1086_source_unavailable" else 409)
+            raise ApiProblem(status=status, code=code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (ValidationError, ValueError):
+            raise ApiProblem(status=422, code="rf1086_source_invalid_request", title="Ugyldig kildegrunnlag",
+                detail="Forespørselen oppfyller ikke kildekontrakten.") from None
 
     async def shareholder_register_filing_workflow(
         credentials: HTTPAuthorizationCredentials | None,
@@ -6320,7 +7807,7 @@ def create_app(
                     decision_kind=item.decision_kind,
                     annual_close_source_id=UUID(str(item.annual_close_source_id)),
                     source_hash=item.source_hash,
-                    canonical_input=dict(item.canonical_input),
+                    canonical_input=json_value(item.canonical_input),
                     decision_hash=item.decision_hash,
                     supersedes_decision_id=(
                         UUID(str(item.supersedes_decision_id))
@@ -6386,7 +7873,7 @@ def create_app(
                     created_at=item.created_at,
                     decision_hash=item.decision_hash,
                     content_sha256=item.content_sha256,
-                    metadata=dict(item.metadata),
+                    metadata=json_value(item.metadata),
                     idempotency_key=item.idempotency_key,
                 )
                 for item in value.events
@@ -10479,6 +11966,125 @@ def create_app(
                 raise AnnualAccountsError.invalid_input() from None
         return await annual_accounts_call(execute)
 
+    @application.get('/api/v1/annual-accounts/delivery-workspace',operation_id='annualAccountsGetDeliveryWorkspace',
+        response_model=AccountsDeliveryWorkspaceWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_delivery_workspace(request: Request,company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            result=await session.delivery_workspace(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),
+                correlation_id=ledger_correlation(request))
+            return AccountsDeliveryWorkspaceWire.model_validate(company_tax_json_wire(result))
+        return await annual_accounts_call(execute)
+
+    @application.get('/api/v1/annual-accounts/company-year-archive', operation_id='annualAccountsGetCompanyYearArchive',
+        response_model=AccountsCompanyArchiveWire, responses=ledger_errors, tags=['annual-accounts'],
+        openapi_extra={'parameters': [REQUEST_ID_PARAMETER]})
+    async def accounts_company_year_archive(company_id: Annotated[UUID, Query(alias='companyId')],
+        income_year: Annotated[int, Query(alias='incomeYear', ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY):
+        async def execute():
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.company_year_archive(AnnualAccountsSourceQuery(CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id))
+            return AccountsCompanyArchiveWire(**asdict(result))
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/company-year-archive-verifications', operation_id='annualAccountsVerifyCompanyYearArchive',
+        response_model=AccountsArchiveVerificationWire, responses=ledger_errors, tags=['annual-accounts'],
+        openapi_extra={'parameters': [REQUEST_ID_PARAMETER]})
+    async def accounts_verify_company_year_archive(archive: AccountsCompanyArchiveWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY):
+        async def execute():
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.verify_company_year_archive(AnnualAccountsSourceQuery(CompanyId(str(archive.company_id)),
+                IncomeYear(archive.income_year), session.actor_id), archive.canonical_json, archive.sha256)
+            if (archive.source_sha256 != result.source_sha256 or archive.draft_count != result.draft_count
+                    or archive.event_count != result.event_count or archive.original_count != result.original_count):
+                raise AnnualAccountsError.invalid_input()
+            return AccountsArchiveVerificationWire(**asdict(result))
+        return await annual_accounts_call(execute)
+
+    @application.get('/api/v1/annual-accounts/delivery-original',operation_id='annualAccountsGetDeliveryOriginal',
+        response_model=AccountsDeliveryOriginalWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_delivery_original(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],filing_id: Annotated[UUID,Query(alias='filingId')],
+        key: Annotated[str,Query(pattern=r'^[a-z_]+:[0-9a-f]{64}$',max_length=128)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            original=await session.delivery_original(AnnualAccountsSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),str(filing_id),key)
+            return AccountsDeliveryOriginalWire(company_id=company_id,income_year=income_year,filing_id=filing_id,**asdict(original))
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/delivery-drafts',operation_id='annualAccountsPrepareDeliveryDraft',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_prepare_delivery(request: Request,command: AccountsPrepareDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            try:
+                stored=await session.prepare_delivery_draft(PrepareAnnualAccountsDeliveryDraft(CompanyId(str(command.company_id)),IncomeYear(command.income_year),
+                    session.actor_id,AnnualAccountsRecordId(str(command.filing_id)),IdempotencyKey(idempotency_key),ledger_correlation(request),
+                    command.contact_email,command.confirming_representative))
+            except (ValueError,TypeError):raise AnnualAccountsError.invalid_input() from None
+            return AccountsDeliveryProgressWire(company_id=str(stored.draft.source.company_id),income_year=int(stored.draft.source.income_year),
+                filing_id=stored.draft.filing_id,draft_sha256=stored.draft.sha256,state='draft')
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/delivery-corrections',operation_id='annualAccountsPrepareDeliveryCorrection',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_prepare_correction(request: Request,command: AccountsPrepareCorrectionRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            binding=AnnualAccountsDeliveryBinding(str(command.parent_filing_id),CompanyId(str(command.company_id)),IncomeYear(command.income_year),session.actor_id,command.parent_draft_sha256)
+            state=await session.prepare_delivery_correction(PrepareAnnualAccountsDeliveryDraft(CompanyId(str(command.company_id)),IncomeYear(command.income_year),
+                session.actor_id,AnnualAccountsRecordId(str(command.filing_id)),IdempotencyKey(idempotency_key),ledger_correlation(request),
+                command.contact_email,command.confirming_representative),binding)
+            return AccountsDeliveryProgressWire(company_id=str(state.stored.draft.source.company_id),income_year=int(state.stored.draft.source.income_year),
+                filing_id=state.stored.draft.filing_id,draft_sha256=state.stored.draft.sha256,state=state.inspection.state)
+        return await annual_accounts_call(execute)
+
+    async def accounts_delivery_action(request,command,credentials,operation,key=None):
+        async def execute():
+            session=await annual_accounts_application.session(bearer_token(credentials))
+            binding=AnnualAccountsDeliveryBinding(str(command.filing_id),CompanyId(str(command.company_id)),IncomeYear(command.income_year),session.actor_id,command.draft_sha256)
+            if operation=='review':
+                state=await session.review_delivery(binding,stage=AnnualAccountsDeliveryStage(command.stage),
+                    reviewed_evidence_sha256=command.reviewed_evidence_sha256,documents_checked=command.documents_checked,
+                    action_confirmed=command.action_confirmed,command_key=IdempotencyKey(key),correlation_id=ledger_correlation(request))
+            elif operation=='advance':state=await session.advance_delivery(binding,action=AnnualAccountsDeliveryAction(command.action),correlation_id=ledger_correlation(request))
+            else:state=await session.reconcile_delivery(binding)
+            return AccountsDeliveryProgressWire(company_id=str(state.stored.draft.source.company_id),income_year=int(state.stored.draft.source.income_year),
+                filing_id=state.stored.draft.filing_id,draft_sha256=state.stored.draft.sha256,state=state.inspection.state)
+        return await annual_accounts_call(execute)
+
+    @application.post('/api/v1/annual-accounts/delivery-reviews',operation_id='annualAccountsReviewDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_review_delivery(request: Request,command: AccountsReviewDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'review',idempotency_key)
+
+    @application.post('/api/v1/annual-accounts/delivery-advances',operation_id='annualAccountsAdvanceDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_advance_delivery(request: Request,command: AccountsAdvanceDeliveryRequest,
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'advance')
+
+    @application.post('/api/v1/annual-accounts/delivery-reconciliations',operation_id='annualAccountsReconcileDelivery',
+        response_model=AccountsDeliveryProgressWire,responses=ledger_errors,tags=['annual-accounts'],openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def accounts_reconcile_delivery(request: Request,command: AccountsDeliveryBoundRequest,
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY):
+        return await accounts_delivery_action(request,command,credentials,'reconcile')
+
     @application.get(
         "/api/v1/annual-accounts/source-facts",
         operation_id="annualAccountsGetSourceFacts", response_model=AnnualAccountsSourceFactsWire,
@@ -10755,12 +12361,14 @@ def create_app(
     @application.get(
         "/api/v1/company-tax/source-facts",
         operation_id="companyTaxGetSourceFacts", response_model=CompanyTaxSourceFactsWire,
+        response_model_exclude_unset=True,
         responses=ledger_errors, tags=["company-tax"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def company_tax_source_facts(
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        include_delivery_drafts: Annotated[bool, Query(alias="includeDeliveryDrafts")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyTaxSourceFactsWire:
         async def execute() -> CompanyTaxSourceFactsWire:
@@ -10769,22 +12377,354 @@ def create_app(
                 CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id,
             ))
             try:
-                evidence, coverage = result.evidence, result.history_coverage
-                return CompanyTaxSourceFactsWire(
-                    evidence=CompanyTaxSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
-                        obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
-                        digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
-                    readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
-                    history_coverage=CompanyTaxHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
-                        evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
-                        submission_count=coverage.submission_count, scope=coverage.scope),
-                    recorded_submissions=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
-                    production_attempts=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
-                    correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
-                    incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
-                    outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
-                )
+                return company_tax_source_facts_wire(result,include_delivery_drafts=include_delivery_drafts)
             except ValidationError:
+                raise CompanyTaxError.unavailable() from None
+        return await company_tax_call(execute)
+
+    def company_tax_original_ref(original):
+        return dict(key=original.key,purpose=original.purpose,source_filing_id=UUID(original.source_filing_id),
+            sha256=original.sha256,media_type=original.media_type)
+
+    def company_tax_workspace_validation(value):
+        if value is None:return None
+        # Projection text is separate from the byte-committed confirmation
+        # artifact; a blocked response remains readable without enabling send.
+        response=company_tax_json_wire(asdict(value.response))
+        return CompanyTaxWorkspaceValidationWire(original_sha256=value.response.inspection.original_sha256,
+            result_code=value.response.inspection.result_code.value,
+            **{name:response[name] for name in ('calculation_deviations','validation_deviations','guidance','failure_reasons','subject_flags')},
+            documents_available=value.calculated is not None,documents=[company_tax_json_wire(asdict(document)) for document in value.documents])
+
+    @application.get('/api/v1/company-tax/delivery-workspace',operation_id='companyTaxGetDeliveryWorkspace',
+        response_model=CompanyTaxDeliveryWorkspaceWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_workspace(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxDeliveryWorkspaceWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            workspace=await session.delivery_workspace(CompanyTaxSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id))
+            return CompanyTaxDeliveryWorkspaceWire(version='company-tax-delivery-workspace-v1',company_id=company_id,income_year=income_year,
+                source_sha256=workspace.source_sha256,observed_at=workspace.observed_at.value,
+                technical_mode='finite_loopback' if workspace.preparation_available or any(row.actions for row in workspace.rows) else 'unavailable',
+                preparation_available=workspace.preparation_available,
+                rows=[CompanyTaxDeliveryWorkspaceRowWire(filing_id=UUID(row.filing_id),parent_filing_id=None if row.parent_filing_id is None else UUID(row.parent_filing_id),
+                    recorded_at=row.recorded_at.value,draft_sha256=row.draft_sha256,review_sha256=row.review_sha256,approval_sha256=row.approval_sha256,
+                    state=row.state,source_current=row.source_current,actions=list(row.actions),
+                    fields=[CompanyTaxDeliveryWorkspaceFieldWire(document=item.document,path=item.path,value=item.value,source=item.source) for item in row.fields],
+                    originals=[CompanyTaxDeliveryOriginalRefWire(**company_tax_original_ref(item)) for item in row.originals],
+                    validation=company_tax_workspace_validation(row.validation)) for row in workspace.rows])
+        return await company_tax_call(execute)
+
+    @application.get('/api/v1/company-tax/delivery-original',operation_id='companyTaxGetDeliveryOriginal',
+        response_model=CompanyTaxDeliveryOriginalWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_original(company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],filing_id: Annotated[UUID,Query(alias='filingId')],
+        key: Annotated[str,Query(pattern=r'^[a-z_]+:[0-9a-f]{64}$',max_length=128)],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxDeliveryOriginalWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            original=await session.delivery_original(CompanyTaxSourceQuery(CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),str(filing_id),key)
+            return CompanyTaxDeliveryOriginalWire(**company_tax_original_ref(original),company_id=company_id,income_year=income_year,
+                filing_id=filing_id,body_base64=original.body_base64)
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/delivery-drafts",
+        operation_id="companyTaxPrepareDeliveryDraft", response_model=CompanyTaxPreparedDeliveryDraftWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_prepare_delivery_draft(
+        request: Request,
+        command: CompanyTaxPrepareDeliveryDraftRequest,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxPreparedDeliveryDraftWire:
+        async def execute() -> CompanyTaxPreparedDeliveryDraftWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.prepare_delivery_draft(PrepareTaxDeliveryDraft(
+                CompanyId(str(command.company_id)), IncomeYear(command.income_year), session.actor_id,
+                TaxFilingSubmissionId(str(command.filing_id)), IdempotencyKey(idempotency_key),
+                ledger_correlation(request)))
+            draft = result.draft
+            # Ordinary replay returns identifiers/hashes only. Retained originals
+            # and their source facts remain behind the fresh-MFA archive read.
+            return CompanyTaxPreparedDeliveryDraftWire(company_id=command.company_id,
+                income_year=command.income_year, filing_id=UUID(draft.filing_id),
+                recorded_at=result.recorded_at.value, draft_sha256=draft.sha256,
+                review_sha256=draft.envelope.review_sha256, schema_sha256=draft.envelope.schema_sha256)
+        return await company_tax_call(execute)
+
+    @application.post('/api/v1/company-tax/delivery-corrections',operation_id='companyTaxPrepareDeliveryCorrection',
+        response_model=CompanyTaxPreparedDeliveryDraftWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_prepare_delivery_correction(request: Request,command: CompanyTaxPrepareDeliveryCorrectionRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY) -> CompanyTaxPreparedDeliveryDraftWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            result=await session.prepare_delivery_draft(PrepareTaxDeliveryCorrection(CompanyId(str(command.company_id)),
+                IncomeYear(command.income_year),session.actor_id,TaxFilingSubmissionId(str(command.filing_id)),IdempotencyKey(idempotency_key),
+                ledger_correlation(request),TaxFilingSubmissionId(str(command.parent_filing_id)),command.parent_draft_sha256,command.parent_approval_sha256))
+            draft=result.draft
+            return CompanyTaxPreparedDeliveryDraftWire(company_id=command.company_id,income_year=command.income_year,
+                filing_id=UUID(draft.filing_id),recorded_at=result.recorded_at.value,draft_sha256=draft.sha256,
+                review_sha256=draft.envelope.review_sha256,schema_sha256=draft.envelope.schema_sha256)
+        return await company_tax_call(execute)
+
+    async def company_tax_delivery_action(request,credentials,command,idempotency_key,action):
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            scope=(CompanyId(str(command.company_id)),IncomeYear(command.income_year),session.actor_id,
+                TaxFilingSubmissionId(str(command.filing_id)),IdempotencyKey(idempotency_key),ledger_correlation(request))
+            if action=='approve':
+                result=await session.approve_delivery_draft(ApproveTaxDeliveryDraft(*scope,command.draft_sha256,command.review_sha256))
+                if result.draft_sha256!=command.draft_sha256 or result.review_sha256!=command.review_sha256:
+                    raise CompanyTaxError.unavailable()
+            else:
+                intent=AdvanceTaxDelivery(*scope,command.approval_sha256)
+                if action=='advance':result=await session.advance_delivery(intent)
+                elif action=='reconcile':result=await session.reconcile_delivery(intent)
+                elif action=='advance-upload':result=await session.advance_delivery_upload(intent)
+                elif action=='reconcile-upload':result=await session.reconcile_delivery_upload(intent)
+                elif action=='advance-validation':result=await session.advance_delivery_validation(intent)
+                elif action=='reconcile-validation':result=await session.reconcile_delivery_validation(intent)
+                elif action=='advance-confirmation':result=await session.advance_delivery_confirmation(intent)
+                elif action=='reconcile-confirmation':result=await session.reconcile_delivery_confirmation(intent)
+                elif action=='advance-submission':result=await session.confirm_delivery_submission(ConfirmTaxDeliverySubmission(
+                    *scope,command.approval_sha256,command.owner_review_sha256,command.documents_confirmed,command.warnings_acknowledged))
+                elif action=='reconcile-submission':result=await session.reconcile_delivery_submission(intent)
+                elif action=='reconcile-feedback':result=await session.reconcile_delivery_feedback(intent)
+                else:raise CompanyTaxError.unavailable()
+                if result.approval_sha256!=command.approval_sha256:raise CompanyTaxError.unavailable()
+                if action in ('advance-upload','reconcile-upload') and result.mutation_kind is not TaxMutationKind.UPLOAD_ENVELOPE:
+                    raise CompanyTaxError.unavailable()
+                if action in ('advance-validation','reconcile-validation') and result.mutation_kind is not TaxMutationKind.START_VALIDATION:
+                    raise CompanyTaxError.unavailable()
+                if action in ('advance-confirmation','reconcile-confirmation') and result.mutation_kind is not TaxMutationKind.PREPARE_CONFIRMATION:
+                    raise CompanyTaxError.unavailable()
+                if action in ('advance-submission','reconcile-submission','reconcile-feedback') and result.mutation_kind is not TaxMutationKind.CONFIRM_SUBMISSION:
+                    raise CompanyTaxError.unavailable()
+            if (str(result.company_id)!=str(command.company_id) or int(result.income_year)!=command.income_year
+                    or result.filing_id!=str(command.filing_id)):
+                raise CompanyTaxError.unavailable()
+            return CompanyTaxDeliveryProgressWire(company_id=str(result.company_id),income_year=int(result.income_year),
+                filing_id=result.filing_id,approval_id=result.approval_id,approval_sha256=result.approval_sha256,
+                draft_sha256=result.draft_sha256,review_sha256=result.review_sha256,authority_mode=result.authority_mode.value,
+                status=result.status,mutation_kind=result.mutation_kind.value if result.mutation_kind else None,
+                latest_event_sha256=result.latest_event_sha256,recorded_at=result.recorded_at.value)
+        return await company_tax_call(execute)
+
+    @application.post('/api/v1/company-tax/delivery-reviews',operation_id='companyTaxApproveDeliveryDraft',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_approve_delivery_draft(
+        request: Request,command: CompanyTaxApproveDeliveryDraftRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'approve')
+
+    @application.post('/api/v1/company-tax/delivery-advances',operation_id='companyTaxAdvanceDelivery',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance')
+
+    @application.post('/api/v1/company-tax/delivery-reconciliations',operation_id='companyTaxReconcileDelivery',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile')
+
+    @application.post('/api/v1/company-tax/delivery-upload-advances',operation_id='companyTaxAdvanceDeliveryUpload',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery_upload(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-upload')
+
+    @application.post('/api/v1/company-tax/delivery-upload-reconciliations',operation_id='companyTaxReconcileDeliveryUpload',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_upload(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-upload')
+
+    @application.post('/api/v1/company-tax/delivery-validation-advances',operation_id='companyTaxAdvanceDeliveryValidation',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery_validation(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-validation')
+
+    @application.post('/api/v1/company-tax/delivery-validation-reconciliations',operation_id='companyTaxReconcileDeliveryValidation',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_validation(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-validation')
+
+    @application.post('/api/v1/company-tax/delivery-confirmation-advances',operation_id='companyTaxAdvanceDeliveryConfirmation',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_advance_delivery_confirmation(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-confirmation')
+
+    @application.post('/api/v1/company-tax/delivery-confirmation-reconciliations',operation_id='companyTaxReconcileDeliveryConfirmation',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_confirmation(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-confirmation')
+
+    @application.post('/api/v1/company-tax/delivery-submission-advances',operation_id='companyTaxConfirmDeliverySubmission',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_confirm_delivery_submission(
+        request: Request,command: CompanyTaxConfirmSubmissionRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'advance-submission')
+
+    @application.post('/api/v1/company-tax/delivery-submission-reconciliations',operation_id='companyTaxReconcileDeliverySubmission',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_submission(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-submission')
+
+    @application.post('/api/v1/company-tax/delivery-feedback-reconciliations',operation_id='companyTaxReconcileDeliveryFeedback',
+        response_model=CompanyTaxDeliveryProgressWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_reconcile_delivery_feedback(
+        request: Request,command: CompanyTaxAdvanceDeliveryRequest,
+        idempotency_key: Annotated[str,Header(alias='Idempotency-Key',min_length=16,max_length=255,pattern=r'^[A-Za-z0-9._:-]+$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryProgressWire:
+        return await company_tax_delivery_action(request,credentials,command,idempotency_key,'reconcile-feedback')
+
+    @application.get('/api/v1/company-tax/delivery-owner-review',operation_id='companyTaxGetDeliveryOwnerReview',
+        response_model=CompanyTaxOwnerReviewArtifactWire,responses=ledger_errors,tags=['company-tax'],
+        openapi_extra={'parameters':[REQUEST_ID_PARAMETER]})
+    async def company_tax_delivery_owner_review(
+        request: Request,
+        company_id: Annotated[UUID,Query(alias='companyId')],
+        income_year: Annotated[int,Query(alias='incomeYear',ge=2025,le=2025)],
+        filing_id: Annotated[UUID,Query(alias='filingId')],
+        approval_sha256: Annotated[str,Query(alias='approvalSha256',pattern=r'^[0-9a-f]{64}$')],
+        credentials: HTTPAuthorizationCredentials | None=BEARER_DEPENDENCY,
+    ) -> CompanyTaxOwnerReviewArtifactWire:
+        async def execute():
+            session=await company_tax_application.session(bearer_token(credentials))
+            artifact=await session.delivery_owner_review(TaxDeliveryOwnerReviewQuery(CompanyId(str(company_id)),IncomeYear(income_year),
+                session.actor_id,str(filing_id),approval_sha256,ledger_correlation(request)))
+            content=json.loads(artifact.canonical_json)
+            payload=content|{'companyId':str(artifact.approval.company_id),'incomeYear':int(artifact.approval.income_year),
+                'filingId':artifact.approval.filing_id,'approvalSha256':artifact.approval.sha256,'artifactSha256':artifact.sha256}
+            return CompanyTaxOwnerReviewArtifactWire.model_validate_json(json.dumps(payload,ensure_ascii=False,allow_nan=False))
+        return await company_tax_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/archive-source/delivery-drafts-v1",
+        operation_id="companyTaxGetDeliveryDraftArchive", response_model=CompanyTaxDeliveryDraftArchiveWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_delivery_draft_archive(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryDraftArchiveWire:
+        async def execute() -> CompanyTaxDeliveryDraftArchiveWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.delivery_draft_archive(CompanyTaxSourceQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id))
+            return CompanyTaxDeliveryDraftArchiveWire(company_id=str(result.company_id), income_year=int(result.income_year),
+                codec='company-tax-delivery-draft-archive-v1', coverage='complete', source_sha256=result.source_sha256,
+                observed_at=result.observed_at.value, record_count=len(result.drafts),
+                records=[CompanyTaxDeliveryDraftOriginalWire(filing_id=row.draft.filing_id,
+                    recorded_at=row.recorded_at.value, canonical_json=row.draft.canonical_json,
+                    draft_sha256=row.draft.sha256) for row in result.drafts])
+        return await company_tax_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/archive-source/delivery-journal-v1",
+        operation_id="companyTaxGetDeliveryJournalArchive", response_model=CompanyTaxDeliveryJournalArchiveWire,
+        response_model_exclude_unset=True, responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_delivery_journal_archive(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        read_evidence: Annotated[bool, Query(alias="readEvidence")] = False,
+        read_evidence_version: Annotated[int, Query(alias="readEvidenceVersion",ge=1,le=2)] = 1,
+        validation_evidence: Annotated[bool, Query(alias="validationEvidence")] = False,
+        confirmation_evidence: Annotated[bool, Query(alias="confirmationEvidence")] = False,
+        submission_evidence: Annotated[bool, Query(alias="submissionEvidence")] = False,
+        correction_evidence: Annotated[bool, Query(alias="correctionEvidence")] = False,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxDeliveryJournalArchiveWire:
+        async def execute() -> CompanyTaxDeliveryJournalArchiveWire:
+            session=await company_tax_application.session(bearer_token(credentials))
+            result=await session.delivery_journal_archive(CompanyTaxSourceQuery(
+                CompanyId(str(company_id)),IncomeYear(income_year),session.actor_id),read_evidence=read_evidence,
+                guarded_upload=read_evidence and read_evidence_version==2,
+                validation_evidence=read_evidence and read_evidence_version==2 and validation_evidence,
+                confirmation_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence,
+                submission_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence,
+                correction_evidence=read_evidence and read_evidence_version==2 and validation_evidence and confirmation_evidence and submission_evidence and correction_evidence)
+            facts=result.source_facts
+            try:
+                return CompanyTaxDeliveryJournalArchiveWire(company_id=str(result.company_id),income_year=int(result.income_year),
+                    codec='company-tax-delivery-journal-archive-v1',coverage='complete',source_sha256=facts.evidence.digest,
+                    observed_at=result.observed_at.value,source_facts=company_tax_source_facts_wire(facts,include_delivery_drafts=True),
+                    draft_count=len(result.drafts),drafts=[CompanyTaxDeliveryDraftOriginalWire(filing_id=row.draft.filing_id,
+                        recorded_at=row.recorded_at.value,canonical_json=row.draft.canonical_json,draft_sha256=row.draft.sha256)
+                        for row in result.drafts],
+                    event_count=len(result.events),events=[CompanyTaxDeliveryJournalOriginalWire(filing_id=row.binding.filing_id,
+                        slot=row.slot,recorded_by=str(row.recorded_by.subject),recorded_at=row.recorded_at.value,
+                        canonical_json=row.value.canonical_json,event_sha256=row.value.sha256) for row in result.events],
+                    journals=[CompanyTaxDeliveryJournalFactWire(filing_id=row.filing_id,approved_by=str(row.approved_by.subject),
+                        authority_mode=row.authority_mode.value,status=row.status,mutation_kind=row.mutation_kind.value if row.mutation_kind else None,
+                        approval_sha256=row.approval_sha256,latest_event_sha256=row.latest_event_sha256,
+                        recorded_at=row.recorded_at.value) for row in facts.delivery_journals])
+            except (ValidationError,ValueError,AttributeError):
                 raise CompanyTaxError.unavailable() from None
         return await company_tax_call(execute)
 
@@ -11154,8 +13094,10 @@ def create_app(
 
     @application.get("/health/ready", include_in_schema=False)
     async def readiness() -> JSONResponse:
+        ready = await dependency_readiness()
         return JSONResponse(
-            {"status": "ready"},
+            {"status": "ready" if ready else "not_ready"},
+            status_code=200 if ready else 503,
             headers={"Cache-Control": "no-store"},
         )
 
@@ -11345,7 +13287,7 @@ def create_app(
     ) -> Rf1086ArchiveSourceWire:
         async def execute():
             workflow = await shareholder_register_filing_workflow(credentials)
-            result = await workflow.archive_source(Rf1086ArchiveQuery(
+            result = await workflow.legacy_archive_source(Rf1086ArchiveQuery(
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
             ))
             try:
@@ -11356,6 +13298,266 @@ def create_app(
                     review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
                     permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
                     test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    async def rf_company_test_retention_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except ShareholderRegisterFilingAuthenticationError:
+            raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.") from None
+        except CompanyAccessError as error:
+            raise ApiProblem(status=error.status, code=error.code, title="Testhistorikken kunne ikke lastes ned",
+                detail="Tilgang og fersk identitetsbekreftelse må kontrolleres på nytt.") from None
+        except ShareholderRegisterFilingError as error:
+            statuses = {ErrorCategory.INVALID_INPUT: 422, ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409, ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409, ErrorCategory.DEPENDENCY_UNAVAILABLE: 503}
+            raise ApiProblem(status=statuses[error.category], code=str(error.code), title="Testhistorikken er utilgjengelig",
+                detail="Historikken kunne ikke bekreftes. Prøv igjen senere.") from None
+        except (Rf1086ArchiveError, ValidationError, ValueError, TypeError):
+            raise ApiProblem(status=503, code="rf1086_company_test_retention_unavailable", title="Testhistorikken er utilgjengelig",
+                detail="Historikken kunne ikke bekreftes. Prøv igjen senere.") from None
+
+    def rf_company_test_retention_component(request: Request, company_id: UUID):
+        if (set(request.query_params) != {"companyId"} or len(request.query_params.getlist("companyId")) != 1
+                or request.query_params["companyId"] != str(company_id)):
+            raise ApiProblem(status=422, code="rf1086_company_test_retention_invalid_request", title="Ugyldig selskap",
+                detail="Velg ett gyldig selskap.")
+        if company_test_retention_session_factory is None:
+            raise ApiProblem(status=503, code="rf1086_company_test_retention_not_configured", title="Testhistorikken er utilgjengelig",
+                detail="Historikken kan ikke hentes ennå.")
+        return ShareholderRegisterCompanyTestRetentionHttp(company_test_retention_session_factory, company_access_service)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/company-test-retention",
+        operation_id="rf1086ReadCompanyTestRetention", response_model=RfCompanyTestRetentionWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf_company_test_retention_read(
+        request: Request, company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            component = rf_company_test_retention_component(request, company_id)
+            snapshot = await component.read(bearer_token(credentials), company_id=CompanyId(str(company_id)))
+            text = serialize_rf1086_company_test_retention(snapshot)
+            model = RfCompanyTestRetentionCompleteWire if snapshot.coverage == "complete" else RfCompanyTestRetentionUnavailableWire
+            model.model_validate(json.loads(text))
+            # Return RF-owned canonical bytes; DTO conversion cannot rewrite originals.
+            return Response(content=text, media_type="application/json", headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+        return await rf_company_test_retention_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/company-test-retention/stream-v1",
+        operation_id="rf1086DownloadCompanyTestRetention", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Standalone company test history; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf_company_test_retention_download(
+        request: Request, company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            component = rf_company_test_retention_component(request, company_id)
+            content = await component.download(bearer_token(credentials), company_id=CompanyId(str(company_id)))
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-company-tests-{company_id}.ndjson"',
+            })
+        return await rf_company_test_retention_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v6",
+        operation_id="rf1086DownloadProductionArchiveV6", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Complete retained archive-v6 NDJSON; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_retained_production_archive_stream(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            archive = await workflow.retained_archive_source(query)
+            from talli_backend.application.shareholder_register_archive import prepare_retained_archive_stream
+            content = await prepare_retained_archive_stream(archive, query=query, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-{company_id}-{income_year}.ndjson"',
+            })
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v4",
+        operation_id="rf1086DownloadProductionArchiveV4", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream",
+        operation_id="rf1086DownloadProductionArchive", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_production_archive_stream(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            archive = await workflow.archive_source(query)
+            # Frozen stream routes predate withdrawal coverage. An additive
+            # future v5 producer must use its own route and complete contract.
+            archive = replace(archive, withdrawal_capture_records=None)
+            if request.url.path.endswith('/production-stream-v4'):
+                if archive.overrides is None:
+                    raise ShareholderRegisterFilingError.unavailable()
+            else:
+                # Existing stream consumers support codecs v1–v3. Keep their
+                # transport projection stable while the owner retains all facts.
+                archive = replace(archive, overrides=None)
+            from talli_backend.application.shareholder_register_archive import prepare_archive_stream
+            content = await prepare_archive_stream(archive, query=query, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-{company_id}-{income_year}.ndjson"',
+            })
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-v6",
+        operation_id="rf1086GetProductionArchiveSourceV6", response_model=Rf1086ProductionArchiveSourceV6Wire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_retained_production_archive_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086ProductionArchiveSourceV6Wire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            result = await workflow.retained_archive_source(query)
+            try:
+                # Keep every captured section. In particular, a withdrawal is
+                # never projected away to fit an older archive allowlist.
+                canonical_archive = serialize_rf1086_archive_v6(result, query=query)
+            except Rf1086ArchiveError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+            from talli_backend.application.shareholder_register_archive import archive_source_originals, archive_feedback_originals, source_document_evidence
+            source_originals = await archive_source_originals(result, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            feedback_originals = await archive_feedback_originals(result, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            try:
+                return Rf1086ProductionArchiveSourceV6Wire(
+                    company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
+                    canonical_archive=canonical_archive, source_originals=source_originals,
+                    feedback_originals=feedback_originals,
+                    source_history_documents=[RfSourceDocumentWire.model_validate({
+                        name: _rf_source_public_json(getattr(document, name)) for name in RfSourceDocumentWire.model_fields})
+                        for document in source_document_evidence(result)],
+                    overrides=[Rf1086OverrideWire.model_validate(row, from_attributes=True) for row in result.overrides],
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                    approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
+                        update={"manifest": rf1086_json_wire(row.manifest)}) for row in result.approvals],
+                    production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
+                    production_events=[Rf1086ArchiveProductionEventWire.model_validate(row, from_attributes=True) for row in result.production_events],
+                    feedback_artifacts=[Rf1086ArchiveFeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
+                    source_approval_lineage=[_rf_archive_source_approval_lineage_wire(row) for row in result.source_approval_lineage],
+                    source_submission_claims=[_rf_source_claim_wire(row) for row in result.source_submission_claims],
+                    submission_head=_rf_submission_head_wire(result.submission_head),
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-v4",
+        operation_id="rf1086GetProductionArchiveSourceV4", response_model=Rf1086ProductionArchiveSourceV4Wire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production",
+        operation_id="rf1086GetProductionArchiveSource", response_model=Rf1086ProductionArchiveSourceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_production_archive_source(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086ProductionArchiveSourceWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
+            )
+            result = await workflow.archive_source(query)
+            include_overrides = request.url.path.endswith('/production-v4')
+            if include_overrides and result.overrides is None:
+                raise ShareholderRegisterFilingError.unavailable()
+            # ADR0012: do not add fields or a new codec to the existing strict
+            # client contract. This projection does not mutate the domain record.
+            projection = replace(result, withdrawal_capture_records=None,
+                                 overrides=result.overrides if include_overrides else None)
+            try:
+                canonical_archive = serialize_rf1086_archive(projection, query=query)
+            except Rf1086ArchiveError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+            from talli_backend.application.shareholder_register_archive import archive_source_originals, archive_feedback_originals, source_document_evidence
+            source_originals = await archive_source_originals(result, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            try:
+                wire = Rf1086ProductionArchiveSourceV4Wire if include_overrides else Rf1086ProductionArchiveSourceWire
+                return wire(
+                    **({"overrides": [Rf1086OverrideWire.model_validate(row, from_attributes=True)
+                        for row in result.overrides]} if include_overrides else {}),
+                    source_history_documents=None if result.source_history is None else [
+                        RfSourceDocumentWire.model_validate({name: _rf_source_public_json(getattr(document, name))
+                            for name in RfSourceDocumentWire.model_fields})
+                        for document in source_document_evidence(result)],
+                    canonical_archive=canonical_archive, source_originals=source_originals,
+                    feedback_originals=await archive_feedback_originals(result, documents_factory=documents_application,
+                        access_token=bearer_token(credentials), actor_id=workflow.actor_id),
+                    company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                    approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
+                        update={"manifest": rf1086_json_wire(row.manifest)},
+                    ) for row in result.approvals],
+                    production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
+                    production_events=[Rf1086ArchiveProductionEventWire.model_validate(row, from_attributes=True) for row in result.production_events],
+                    feedback_artifacts=[Rf1086ArchiveFeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
+                    source_approval_lineage=[_rf_archive_source_approval_lineage_wire(row) for row in result.source_approval_lineage],
+                    source_submission_claims=[_rf_source_claim_wire(row) for row in result.source_submission_claims],
+                    submission_head=_rf_submission_head_wire(result.submission_head),
                 )
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
@@ -11398,6 +13600,347 @@ def create_app(
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-documents/{documentId}",
+        operation_id="rf1086ReadSourceDocument", response_model=RfSourceDocumentWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_document(
+        documentId: UUID,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceDocumentWire:
+        async def execute():
+            source = await shareholder_register_source_workflow.read_source_document(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), document_id=DocumentId(str(documentId)))
+            return RfSourceDocumentWire(document_id=UUID(source.document_id), company_id=UUID(str(source.company_id)),
+                content_version_sha256=source.content_version_sha256, content_sha256=source.content_sha256,
+                document_type=source.document_type, integrity_status=source.integrity_status,
+                byte_length=source.byte_length, created_at=source.created_at, metadata_sha256=source.metadata_sha256,
+                source_income_year=int(source.source_income_year))
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-intake-basis",
+        operation_id="rf1086ReadSourceIntakeBasis", response_model=RfSourceIntakeBasisWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_intake_basis(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceIntakeBasisWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.read_source_intake_basis(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year),
+                correlation_id=CorrelationId(request.state.request_id))
+            return RfSourceIntakeBasisWire.model_validate(result, from_attributes=True)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/current-year-source",
+        operation_id="rf1086ReadCurrentYearSource", response_model=RfCurrentYearSourceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_current_year_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfCurrentYearSourceWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.read_current_year_source(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            return _rf_current_year_source_wire(result)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/register-observations",
+        operation_id="rf1086ListRegisterObservations", response_model=RfRegisterObservationsWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_list_register_observations(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationsWire:
+        async def execute():
+            snapshots = await shareholder_register_source_workflow.read_register_observations(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            superseded = {item.command.supersedes_observation_id for item in snapshots}
+            observations = [_rf_register_observation_record(snapshot,
+                is_current=snapshot.observation_id not in superseded) for snapshot in snapshots]
+            return RfRegisterObservationsWire(company_id=company_id, income_year=income_year, observations=observations)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/register-observations/lifecycle",
+        operation_id="rf1086ReadRegisterObservationLifecycle", response_model=RfRegisterObservationLifecycleWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_register_observation_lifecycle(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationLifecycleWire:
+        async def execute():
+            snapshot = await shareholder_register_source_workflow.read_register_observation_lifecycle(
+                bearer_token(credentials), company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            observations = []
+            for row in snapshot.observations:
+                record = _rf_register_observation_record(row.observation, is_current=row.status == 'active')
+                withdrawal = row.withdrawal
+                observations.append(RfRegisterObservationLifecycleRecordWire(receipt=record.receipt,
+                    draft=record.draft, status=row.status,
+                    superseded_by=None if row.superseded_by is None else UUID(row.superseded_by.value),
+                    withdrawal=None if withdrawal is None else RfRegisterObservationWithdrawalWire(
+                        withdrawal_id=UUID(withdrawal.withdrawal_id.value), withdrawn_at=withdrawal.withdrawn_at,
+                        reason=withdrawal.command.reason, withdrawal_sha256=withdrawal.withdrawal_sha256)))
+            return RfRegisterObservationLifecycleWire(company_id=company_id, income_year=income_year,
+                observed_at=snapshot.observed_at.value, observations=observations)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/register-observations",
+        operation_id="rf1086CaptureRegisterObservation", response_model=RfRegisterObservationReceiptWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_capture_register_observation(
+        body: RfRegisterObservationCaptureWire, request: Request,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationReceiptWire:
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.capture_register_observation(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key), correlation_id=CorrelationId(request.state.request_id))
+            return RfRegisterObservationReceiptWire(observation_id=UUID(result.observation_id.value),
+                company_id=UUID(str(result.command.company_id)), income_year=int(result.command.income_year),
+                version=result.version, fact_sha256=result.fact_sha256, confirmed_at=result.confirmed_at)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/year-sources",
+        operation_id="rf1086CaptureYearSource", response_model=RfYearSourceReceiptWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_capture_year_source(
+        body: RfYearSourceCaptureWire, request: Request,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfYearSourceReceiptWire:
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_capture.capture_year_source(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key), correlation_id=CorrelationId(request.state.request_id))
+            return RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
+                company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
+                source_sha256=result.source_sha256, case_sha256=result.case_sha256, confirmed_at=result.confirmed_at)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        operation_id="rf1086LookupYearSourceCapture", response_model=RfYearSourceCaptureLookupWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_lookup_year_source_capture(
+        body: RfYearSourceCaptureWire, response: Response,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfYearSourceCaptureLookupWire:
+        response.headers["Cache-Control"] = "no-store"
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.lookup_year_source_capture(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key))
+            receipt = None if result is None else RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
+                company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
+                source_sha256=result.source_sha256, case_sha256=result.case_sha256, confirmed_at=result.confirmed_at)
+            return RfYearSourceCaptureLookupWire(status="not_observed" if receipt is None else "recorded", receipt=receipt)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        operation_id="rf1086LookupRegisterObservationCapture", response_model=RfRegisterObservationCaptureLookupWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_lookup_register_observation_capture(
+        body: RfRegisterObservationCaptureWire, response: Response,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationCaptureLookupWire:
+        response.headers["Cache-Control"] = "no-store"
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.lookup_register_observation_capture(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key))
+            receipt = None if result is None else RfRegisterObservationReceiptWire(observation_id=UUID(result.observation_id.value),
+                company_id=UUID(str(result.command.company_id)), income_year=int(result.command.income_year),
+                version=result.version, fact_sha256=result.fact_sha256, confirmed_at=result.confirmed_at)
+            return RfRegisterObservationCaptureLookupWire(status="not_observed" if receipt is None else "recorded", receipt=receipt)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-previews",
+        operation_id="rf1086GenerateSourcePreview", response_model=RfSourcePreviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_generate_source_preview(
+        body: RfSourcePreviewRequestWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourcePreviewWire:
+        async def execute():
+            result = await shareholder_register_source_preview.generate(bearer_token(credentials),
+                company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
+                source_id=Rf1086YearSourceId(str(body.source_id)), correlation_id=CorrelationId(request.state.request_id))
+            return _rf_source_preview_wire(result.preview)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}",
+        operation_id="rf1086ReadSourcePreview", response_model=RfSourcePreviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_preview(
+        previewId: UUID, request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourcePreviewWire:
+        async def execute():
+            result = await shareholder_register_source_preview.read(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year),
+                preview_id=PreviewId(str(previewId)), correlation_id=CorrelationId(request.state.request_id))
+            return _rf_source_preview_wire(result)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-production-reviews",
+        operation_id="rf1086PrepareSourceProductionReview", response_model=RfSourceProductionReviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_prepare_source_production_review(
+        body: RfSourceProductionReviewRequestWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceProductionReviewWire:
+        async def execute():
+            context = await shareholder_register_source_approval.read_review(bearer_token(credentials),
+                company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
+                preview_id=PreviewId(str(body.preview_id)), entitlement_id=str(body.entitlement_id),
+                correlation_id=CorrelationId(request.state.request_id))
+            value = context.review
+            return RfSourceProductionReviewWire(
+                company_id=UUID(str(value.company_id)), income_year=int(value.income_year),
+                preview_id=UUID(value.preview_id.value), source_id=UUID(value.source_id.value),
+                source_sha256=value.source_sha256, entitlement_id=UUID(value.entitlement_id),
+                review_sha256=value.review_sha256, warning_codes=list(value.warning_codes),
+                blockers=list(value.blockers), can_approve=value.can_approve)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-production-approvals",
+        operation_id="rf1086ApproveSourceProduction", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_approve_source_production(
+        body: RfSourceProductionApprovalCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            predecessor = None if body.predecessor is None else Rf1086SourceCorrectionPredecessor(
+                SubmissionId(str(body.predecessor.submission_id)), body.predecessor.manifest_sha256,
+                body.predecessor.reason)
+            value = await shareholder_register_source_approval.approve(bearer_token(credentials),
+                company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
+                preview_id=PreviewId(str(body.preview_id)), entitlement_id=str(body.entitlement_id),
+                review_sha256=body.review_sha256, acknowledged_warning_codes=tuple(body.acknowledged_warning_codes),
+                real_filing_confirmed=body.real_filing_confirmed, predecessor=predecessor,
+                correlation_id=CorrelationId(request.state.request_id))
+            return rf1086_recorded_wire(value)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-production-filings",
+        operation_id="rf1086SendSourceProduction", response_model=RfSourceProductionSendResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_send_source_production(
+        body: RfSourceProductionSendCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceProductionSendResultWire:
+        async def execute():
+            try:
+                value = await shareholder_register_source_dispatch.send(bearer_token(credentials),
+                    approval_id=ApprovalId(str(body.approval_id)), manifest_sha256=body.manifest_sha256,
+                    expected_head=None if body.expected_head is None else SubmissionId(str(body.expected_head)),
+                    correlation_id=CorrelationId(request.state.request_id))
+                return RfSourceProductionSendResultWire(submission_id=UUID(value.submission_id))
+            except ValueError:
+                # Transport is already validated. A provider/result decoding
+                # failure cannot be presented as an invalid caller command.
+                raise Rf1086ProductionError("send_unavailable") from None
+        try:
+            return await shareholder_register_source_call(lambda: billing_call(
+                lambda: shareholder_register_filing_call(execute)))
+        except Rf1086UnknownProductionOutcomeError as error:
+            raise ApiProblem(status=409, code=error.code, title="Innsendingsutfallet må avklares",
+                detail="En operasjon har ukjent utfall. Kontroller lagret status og avklar utfallet før du gjør noe mer.") from None
+        except Rf1086BlockedProductionOperationError as error:
+            raise ApiProblem(status=409, code=error.code, title="Innsendingen er stanset",
+                detail="Den lagrede operasjonen tillater ikke et nytt forsøk. Kontroller innsendingsstatus.") from None
+        except ApiProblem:
+            raise
+        except Exception:
+            raise ApiProblem(status=503, code="send_unavailable", title="Innsendingen kunne ikke bekreftes",
+                detail="Kontroller lagret innsendingsstatus før du gjør noe mer. Innsendingen kan ha blitt mottatt.") from None
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-production-filings/{approvalId}",
+        operation_id="rf1086ReadSourceProductionPosition", response_model=RfSourceProductionPositionWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_production_position(
+        approvalId: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceProductionPositionWire:
+        async def execute():
+            value = await shareholder_register_source_dispatch.position(bearer_token(credentials),
+                approval_id=ApprovalId(str(approvalId)))
+            return RfSourceProductionPositionWire(company_id=UUID(str(value.company_id)),
+                income_year=int(value.income_year), approval_id=UUID(value.approval_id.value),
+                manifest_sha256=value.manifest_sha256,
+                expected_head=None if value.expected_head is None else UUID(value.expected_head.value),
+                submission_id=None if value.submission_id is None else UUID(value.submission_id.value),
+                disposition=value.disposition, feedback_state=value.feedback_state,
+                approved_at=value.approved_at, preview_text=value.preview_text)
+        return await shareholder_register_source_call(execute)
 
     @application.get(
         "/api/v1/shareholder-register-filings/previews/{previewId}",
@@ -12375,6 +14918,7 @@ def create_app(
                 starts_at=Timestamp(command.starts_at),
                 expires_at=Timestamp(command.expires_at),
                 evidence_reference=command.evidence_reference,
+                case_profile=command.case_profile,
             ))
             return billing_pilot_wire(await workflow.manage_pilot_entitlement(domain))
 

@@ -233,6 +233,7 @@ export const ownerCopy = {
   auth: {
     signInTitle: "Logg inn",
     signInIntro: "Holding-først årsrapportering for enkle AS.",
+    invitationIntro: "Bruk e-postadressen som fikk invitasjonen.",
     signInCta: "Logg inn",
     signInPending: "Logger inn …",
     signUpTitle: "Opprett bruker",
@@ -1216,7 +1217,7 @@ export const ownerCopy = {
         },
         action_required: {
           label: "Trenger oppfølging",
-          body: "Tilbakemeldingen må følges opp før saken kan avsluttes.",
+          body: "Tilbakemeldingen må følges opp før saken kan avsluttes. Når problemet er løst, kan du kontrollere statusen på nytt. Det sender ikke oppgaven på nytt.",
           variant: "danger",
         },
         approved: {
@@ -1263,7 +1264,7 @@ export const ownerCopy = {
         short: "Skattemelding",
         summary: "Selskapets skatt for året.",
         lede:
-          "Talli rydder grunnlaget for skattemeldingen. Selve forhåndsvisningen og innsendingen er under arbeid.",
+          "Kontroller grunnlaget for skattemeldingen, les de beregnede dokumentene og følg leveringsstatus når leveringsløpet er tilgjengelig.",
       },
       aarsregnskap: {
         label: "Årsregnskap",

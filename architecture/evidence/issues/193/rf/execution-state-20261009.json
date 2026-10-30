@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-10-09T19:45:41.875Z",
+  "nativeGoal": {
+    "threadId": "01a12210-cfe0-7010-8acd-ec4ad4bfad7d",
+    "objective": "Produce a verified, reviewable Talli shipping candidate: preserve and integrate the existing RF override-export/recovery checkpoint, prove database/browser and independent-identity/deleted-actor recovery, reconcile A1–A7 against evidence, and prepare dependency-based release/PR/CI/rollback evidence for the accepted all-three annual-filings scope without activating launch or claiming unmet external gates.",
+    "status": "active",
+    "tokensUsed": 465575,
+    "timeUsedSeconds": 2183,
+    "createdAt": 1791572919,
+    "updatedAt": 1791575113
+  },
+  "previousTurn": "progress: inspection, independent reviews and isolated worktree allocation; transfer stopped at sandbox approval and did not execute",
+  "runtimeContext": {
+    "approvalPolicy": "never",
+    "filesystem": "danger-full-access",
+    "network": true,
+    "source": "actual current turn developer permission context"
+  },
+  "worktreeConfig": {
+    "path": ".codex/config.toml",
+    "verifiedBy": "fresh app-server config/read and configRequirements/read",
+    "adminRequirements": null,
+    "productGitIgnored": true
+  },
+  "predecessor": {
+    "threadId": "01a0af0c-2346-70a3-9429-49f383c04520",
+    "goalStatus": "blocked",
+    "preserved": true,
+    "source": "reviews/2026-10-09-rf-handoff/evidence/goal.json"
+  },
+  "limits": [
+    "No product activation, real-company admission, filings, payments or outreach.",
+    "All seven RF criteria remain pending.",
+    "Technical readiness for all three precedes later pilot outreach; canonical stage closure still requires explicit evidence."
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "WITHDRAWAL_PRIVATE_PARSER_FIXTURE_ROLE_REPAIR",
+  "recordedAtUtc": "2026-10-10T02:30:57.675366+00:00",
+  "baseRevision": "c1112db5464aeee12e7057db47a005bff46e3906",
+  "trigger": {
+    "workflowRun": 38015434253,
+    "testedHead": "24ce293510b486a4385508c42c9ab6ad9e821469",
+    "databaseSelected": 1308,
+    "databasePassed": 550,
+    "databaseFailed": 1,
+    "firstFailure": "test_rf1086_withdrawal_admission_database.py::test_reference_parser_fails_closed_before_any_new_effect[missing]",
+    "actualDenial": "permission denied for function assert_source_approval_guards_v1",
+    "expected": "rf1086_source_storage_invalid",
+    "diagnosis": "Direct SECURITY INVOKER owner-private helper used a restricted fixture caller. Closed nested EXECUTE denied before parser; no malformed-data admission occurred."
+  },
+  "implementation": [
+    "Two direct private-helper tests now select the RF store owner through the existing connection helper, retaining verified actor claims and actual held company/year locks.",
+    "Remove unused temporary grants and their revoke-only cleanup. No production SQL or runtime grants change.",
+    "All20 other function ASTs,103 test cases and all13 restricted public-entrypoint admission stages remain unchanged."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+      "sha256": "053bf56e98485e4b8563b5ba2edf3e6bbabf89e363f38a6d52c75b72891dbc31"
+    }
+  ],
+  "checks": {
+    "collected": 103,
+    "fullDatabaseExecuted": 0,
+    "nativeGroupsPassed": 7,
+    "nativeClusterRemoved": true,
+    "pythonSyntax": "PASS",
+    "diffCheck": "PASS",
+    "unchangedFunctionAsts": 20,
+    "testNamesUnchanged": true
+  },
+  "commands": {
+    "collection": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest --collect-only -q apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+    "native": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-withdrawal-parser-role-native.py"
+  },
+  "nativeScope": "Exact two raw parser overloads, active-observation predicate and held-scope-lock assertion, real private ACLs and real advisory locks. CompanyAccess/current-owner/verified-subject dependencies stubbed; minimal RF tables without RLS. Not full migration/Supabase/RLS/business admission/race proof.",
+  "nativeCases": [
+    "red: old fixture grant cannot execute nested private scope guard",
+    "red: granting first helper exposes next closed active predicate",
+    "green: exact owner caller reaches malformed parser error",
+    "green: owner raw and stored-source overloads accept actual pure reference",
+    "owner access does not bypass real held-lock assertion",
+    "owner caller still rejects actual retained withdrawal",
+    "fixed fixture needs no raw/nested grants and execution leaves ACLs unchanged"
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "a920227149960d6a751c1700a442f89f5161c74b8da63f4431fe8a8523e51ce1"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "13e91904c13fceb7d4b022f2555143c3957638aa815fd0242d2b020de37edb92"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "6b55ce74facee412bc6a1f659999622edb825728263a613d6f6f7090830e7438"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "check-withdrawal-parser-role-native.py",
+      "sha256": "be826cf2e33ead428dd379c6ad1732d87e8d74e3a3339824d4544d379464fa84",
+      "bytes": 9364
+    },
+    {
+      "file": "withdrawal-parser-role-native.json",
+      "sha256": "68184313032f485af9c0cbee830ec41c758e140fbb7a2c7cdc35734acd2661b2",
+      "bytes": 1769
+    },
+    {
+      "file": "withdrawal-parser-role-native.log",
+      "sha256": "fc049bb39bbecbb0f97d043fe829024743a5e2a1c51b169b06c0b33d51b0a097",
+      "bytes": 973
+    },
+    {
+      "file": "withdrawal-parser-role-native-result.log",
+      "sha256": "68184313032f485af9c0cbee830ec41c758e140fbb7a2c7cdc35734acd2661b2",
+      "bytes": 1769
+    },
+    {
+      "file": "withdrawal-parser-role-collection.log",
+      "sha256": "da3d50e0208ba4dde72bc2459e87b3dbeb6ee4f4daf8dea43a6fc13b81dd8902",
+      "bytes": 13788
+    },
+    {
+      "file": "withdrawal-parser-role-checks.json",
+      "sha256": "aefd0faf763ea0198f378f383c0fdf8afc0f4241e25156a0a9aa1d474dfa5e11",
+      "bytes": 2459
+    },
+    {
+      "file": "withdrawal-parser-role-spec-review.json",
+      "sha256": "a920227149960d6a751c1700a442f89f5161c74b8da63f4431fe8a8523e51ce1",
+      "bytes": 6197
+    },
+    {
+      "file": "withdrawal-parser-role-standards-review.json",
+      "sha256": "13e91904c13fceb7d4b022f2555143c3957638aa815fd0242d2b020de37edb92",
+      "bytes": 2312
+    },
+    {
+      "file": "withdrawal-parser-role-root-review.json",
+      "sha256": "6b55ce74facee412bc6a1f659999622edb825728263a613d6f6f7090830e7438",
+      "bytes": 1355
+    },
+    {
+      "file": "ci38015434253-database-failure-context-sanitized.log",
+      "sha256": "61ed668df5dd81164cd7d7ade2a8d7230ba4a80bc6ffe7a2c069f3d7c0f7e637",
+      "bytes": 1903
+    }
+  ],
+  "limits": [
+    "Native extracts the unchanged original v1 helpers; it does not execute the additive v2 dispatcher or full final migration chain.",
+    "Native7 includes two reproduced permission denials and later owner/parser/currentness/lock checks with explicit CompanyAccess/identity stubs; no full Supabase/RLS/business authorization/race proof.",
+    "All103 final database cases remain collected only until exact-head hosted execution. The failed baseline CI is not evidence that this repair passed.",
+    "No runtime activation, launch, external provider action or real-company proof. AllA1-A7 remain pending."
+  ],
+  "claim": "Fixture caller correction only; production permission policy retained."
+}

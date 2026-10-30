@@ -1,0 +1,88 @@
+{
+  "baseCommit": "82192e73a5d0b3ddf3d861918a2969e74630ebdf",
+  "status": "PASS_BOUNDED_APPLICATION_AND_MINIMAL_SQL_DATABASE_INTEGRATION_PENDING",
+  "scope": [
+    "Exact Billing full-year pilot profile with preserved omitted-profile default and immutable entitlement scope",
+    "Immutable source-preview review projection with composite evidence binding and existing review identity",
+    "Legacy approval/send barriers remain closed to source previews",
+    "Exact historical Ledger delegate ownership admitted by guarded migration"
+  ],
+  "verification": {
+    "rfBackend": 350,
+    "sourceAdmissionAndLegacyPreparation": 83,
+    "billingBackend": 261,
+    "billingWeb": 62,
+    "billingContracts": 62,
+    "ciOrchestration": 63,
+    "actualBridgePostgresChecks": 31,
+    "databaseCasesCollected": 50,
+    "fullDatabaseCasesExecutedLocally": 0,
+    "architecture": "PASS",
+    "independentReview": "No remaining concrete blocker found after SQL ambiguity repair"
+  },
+  "ciPredecessor": {
+    "run": 35977234022,
+    "conclusion": "FAILURE",
+    "sharedCause": "Fresh migration principal owns historical Ledger delegate; strict owner check rejected its exact signature",
+    "fix": "Only the exact historical overload and principal qualify; helper EXECUTE remains narrow"
+  },
+  "otherProofSha256": {
+    "billing": "f6f8431642a98de0b3b388b101d7317723b15b490ab8e62a723a87705ae2488b",
+    "ciOwnerRepair": "e2c73eea9b19e4e34577a9ffd176d5e7aa85d5fd9e5c772356699ca33c5265ea"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "d757cfdb809ab929d532b1a07e7a0b09c18ef2ce2d7c5ab2ae8044741d5dbce3",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py": "055c4e146565ea58f0a2021ade5693a521afcbdc12e7e548125b07c307f3c4f4",
+    "apps/backend/src/talli_backend/main.py": "7571e4be1cfc3a2806fd9ed508050cb6aa4bde57872777846eae109478172c3e",
+    "apps/backend/src/talli_backend/modules/billing/MODULE.md": "fdd612ad2a8a2a25df05fc0b27183903af8ae6430b65059a82d22bfb1dd44f59",
+    "apps/backend/src/talli_backend/modules/billing/module.json": "b0a1a8933d1aefe69ec4006aa5e930ccf76c87f4630841c6e1f1e94cb404832c",
+    "apps/backend/src/talli_backend/modules/billing/public.py": "492ae950d4b0973723c2f81eedfe3a8ab4654ce7b6a0cbc5a58597413281d105",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "7eaf915b3b55c505cd02b18c8e206cd1b42affa609de507665571e46345e0bdf",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "0d92fb29cd62b100e6d0a63f7cca67c558464a0aba0266d51ec3c0803cb5095e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "53f0d8657dcb46669698108f8de7bbbf4ab0f10614d8539c345b83b81bf3cf5b",
+    "apps/backend/tests/test_billing.py": "4d291598a04b50f6690ffffeb216b6102547dadf99a2a27ec645bfb28c1f8954",
+    "apps/backend/tests/test_billing_api.py": "88fb9ff7e03da7006ea22611f53ce7970310559d41851d1772f851edb218e6a8",
+    "apps/backend/tests/test_postgres_rf_source_admission.py": "23d9dc449005916274da46f6b6674bc77cc9fa86750435662466742419408db8",
+    "apps/backend/tests/test_rf1086_preparation.py": "95de91c283be8f466815de19c4b58a7f323479d217b8f95ec1fe19893836e169",
+    "apps/backend/tests/test_rf1086_source_admission.py": "b7e60878a8855f325dacde02f69df6e54c485f2726daf1cde68e7a567bc47634",
+    "apps/backend/tests/test_rf1086_source_review_bridge_database.py": "fc73b556b6140b0d032e1edb1411d7908910ce96e91a7ce6785d3767a2246ae1",
+    "apps/backend/tests/test_supabase_billing_runtime.py": "a48ddb2cf07c1a3a236f2deb10cca34f2b3f237d9a04edf3e86d3a09a5b7f336",
+    "apps/web/app/(operator)/operator/page.tsx": "836fe9e70e8aadcb34cb60dbd5f2518e34d1c645fcb1b095521ee8659e2fdcca",
+    "apps/web/app/actions.ts": "d65e78878eb53a79793b402ad5113f2e1abcb5dd850f3dfde40838dde8216cfd",
+    "apps/web/app/lib/supabase/server.ts": "0b48d295b7f7a6762461801e7fe8adb5cc75525d13c2778753d13e366d6a3a4f",
+    "apps/web/app/lib/workspace-data.ts": "991474af411498af58c0b276c0b42a3ae48070f57c9dc470d45cce6c8635acfa",
+    "apps/web/tests/billing-transport.test.mjs": "afa8600de1e46b85d88e4d4f3baa5f547eb53c292bc6d4701a333112e3e1f113",
+    "architecture/database-catalog.json": "6cf121f49a7f271e357f67898bad9f04d91e245cbdfd1d6455358e4ef6741cb6",
+    "contracts/openapi/talli-v1.json": "1e9caa839d5391391363c38745e06c2d28f2d7bd01633cc9e00d8794cf6c5ef0",
+    "package.json": "7f5b6d4a84530ada2da14949bde31d802569d3fef05286e3fcf7463c26ed3752",
+    "packages/talli-api-client/src/generated/client.ts": "9ea892c460fc1a3e998052c35971cf81de94a52d3ce9119e815dc941309fa873",
+    "scripts/generate-api-client.mjs": "40a29caf236ee07c0cb6e6d77888a1ece52dd54fddb347bff4428486bc04762b",
+    "scripts/rehearse-authority-topology.mjs": "e7fd44163e4432c3c7786061d8f604d08e33b2683623c6190c91197ced712bf1",
+    "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql": "7f17e97a461c135226e778e802ec6b7135b8ce968d9555bac993ee3328effee5",
+    "supabase/migrations/20260924084752_billing_rf_full_year_pilot_profile.sql": "98a3a817acc91fe5bf206b3b9ced4a2d58796c3fb78192dd7f870781e9969114",
+    "supabase/migrations/20260924085227_rf1086_source_review_bridge.sql": "a449d369ee16adada7c4e58a73cd942b0bb2ca937d324a1554695f1e274d0740",
+    "supabase/rollback/20260924084752_billing_rf_full_year_pilot_profile.sql": "f05029ee868f1bae58e5eb464856840550e23dff5550096b352aa5bd43d8272f",
+    "supabase/rollback/20260924085227_rf1086_source_review_bridge.sql": "ec08ff123652ede5ccb2d1fca182adb4b08104aff49f33e08eb15da644ca3e35",
+    "tests/ci_release_gate.test.mjs": "268db6b3764e856b4e7cf4a8bec7dbe879fde38ecee23d65eda0c4c040ba3d58"
+  },
+  "logsSha256": {
+    "backend.log": "5621520ce5a8891a2179daba6a049b16dc42873b5d0badc57db4ebc6ed8f6b99",
+    "focused.log": "c2aff164c4f698b6f482cb4ca1ecf5dd3b6ea3b86f467d2f410f689bc268439e",
+    "ci-contract.log": "19fff7d855b42f3c9d7079f69723b5c7344356a6309c2fd8ee9afa1d459669cb",
+    "db-collection.log": "680d04e92ee47d95c0342eff84edb91ef5a8de231fdc7ba07b5000311efb9ebe",
+    "architecture.log": "98d90dad7e9beb9045e3b1686f3a85891e9a4753d99f7b95c8348d1a2b5865fe",
+    "ci-application.log": "83b79ca2f6c1675a29cd2548c02fbd7f6969bb586f3513fc3f11779859ad3577"
+  },
+  "limits": [
+    "Review bridge remains internal; no public full-year approval/send route",
+    "Guarded approval append, review digest, exact Authority/Billing checks, submission head/correction and journal integration remain pending",
+    "No hosted migrations or provider calls; no real AS records; all seven RF criteria remain pending"
+  ],
+  "actualPostgres": {
+    "bridgeProofSha256": "2580af3ddc47b13835c8db95e5baf8133632eb5a3c93ec54dccab8344a94187b",
+    "bridgeRed": "Ambiguous preview trigger variable conflicts with filing_previews.preview",
+    "bridgeFix": "Qualified local v_preview; both source barriers and ordinary noactivity production verified",
+    "limits": "Synthetic fixed authorization seams, not full schema/RLS/concurrency integration"
+  },
+  "privateProofSha256": "60a8891d5401e11e2d6fffea67ceca31ffd7770943d16263d025f585bbb52aca"
+}

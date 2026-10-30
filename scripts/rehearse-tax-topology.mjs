@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract", "filing-expand", "filing-contract"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract", "delivery-expand", "current-expand", "current-enable", "journal-expand", "journal-enable", "observation-expand", "observation-enable", "guarded-upload-expand", "guarded-upload-enable", "validation-expand", "validation-enable", "confirmation-expand", "confirmation-enable", "submission-expand", "submission-enable", "correction-expand", "correction-enable"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -33,13 +33,82 @@ try {
     }
     const state = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (["expanded", "rolled_back"].includes(state)) await apply("migrations/20260913171000_company_tax_settlement_expand.sql");
+    // Settlement expansion recreates two Banking RPCs. Preserve the installed
+    // Banking successor before exercising them in this predecessor lane.
+    const bankingGuard = (await database.query("select to_regprocedure('banking.acquire_company_write_guard_v1(uuid,text)') is not null present")).rows[0].present;
+    if (bankingGuard) await apply("migrations/20260929092425_banking_company_write_guards.sql");
   } else if (direction === "contract") {
     await apply("contract-migrations/20260913172000_company_tax_settlement_cutover.sql");
     await apply("contract-migrations/20260913173000_company_tax_settlement_contract.sql");
   } else {
     const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
-    if (direction === "filing-expand") {
+    if (direction === "correction-expand") {
+      await apply("contract-migrations/20261026192349_company_tax_correction_lineage_v1.sql");
+    } else if (direction === "correction-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026192349_company_tax_correction_lineage_v1.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_correction_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "submission-expand") {
+      await apply("contract-migrations/20261026180325_company_tax_submission_evidence_v1.sql");
+    } else if (direction === "submission-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026180325_company_tax_submission_evidence_v1.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_submission_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "confirmation-expand") {
+      await apply("contract-migrations/20261026162340_company_tax_confirmation_evidence_v1.sql");
+    } else if (direction === "confirmation-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026162340_company_tax_confirmation_evidence_v1.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_confirmation_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "validation-expand") {
+      await apply("contract-migrations/20261026143210_company_tax_validation_evidence_v1.sql");
+    } else if (direction === "validation-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026143210_company_tax_validation_evidence_v1.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_validation_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "guarded-upload-expand") {
+      await apply("contract-migrations/20261026124307_company_tax_guarded_upload_v2.sql");
+    } else if (direction === "guarded-upload-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026124307_company_tax_guarded_upload_v2.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_guarded_upload_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "observation-expand") {
+      await apply("contract-migrations/20261026111629_company_tax_delivery_observations.sql");
+    } else if (direction === "observation-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026111629_company_tax_delivery_observations.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_observation_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "journal-enable") {
+      const rollback = await readFile(new URL("../supabase/rollback/20261026100000_company_tax_delivery_events.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      if (rollback.split(closed).length !== 2) throw new Error("tax_journal_rehearsal_containment_changed");
+      await database.query(rollback.replace(closed,"begin return true; end; $function$;"));
+    } else if (direction === "journal-expand") {
+      await apply("contract-migrations/20261026100000_company_tax_delivery_events.sql");
+    } else if (direction === "current-enable") {
+      // This entire entry point requires loopback PostgreSQL. Reuse the exact
+      // containment authority round-trip, opening only its one private fence
+      // and RPC privilege for the synthetic rehearsal. No hosted activation.
+      const rollback = await readFile(new URL("../supabase/rollback/20261026074827_company_tax_current_draft_v2.sql", import.meta.url), "utf8");
+      const closed = "begin return false; end; $function$;";
+      const revoked = "revoke execute on function company_tax_filing.store_delivery_draft_v2(text,text,text) from company_tax_filing_workflow_executor;";
+      if (rollback.split(closed).length !== 2 || rollback.split(revoked).length !== 2) {
+        throw new Error("current_draft_rehearsal_containment_changed");
+      }
+      await database.query(rollback.replace(closed, "begin return true; end; $function$;")
+        .replace(revoked, "grant execute on function company_tax_filing.store_delivery_draft_v2(text,text,text) to company_tax_filing_workflow_executor;"));
+    } else if (direction === "current-expand") {
+      await apply("contract-migrations/20261026074827_company_tax_current_draft_v2.sql");
+    } else if (direction === "delivery-expand") {
+      await apply("contract-migrations/20261026062315_company_tax_delivery_journal.sql");
+    } else if (direction === "filing-expand") {
       for (const name of ["20260914200000_company_tax_return_expand.sql", "20260914201000_company_tax_return_read_contracts.sql",
         "20260914202000_company_tax_return_import_contract.sql", "20260914203000_company_tax_return_preparation_contracts.sql",
         "20260914022608_company_tax_return_source_contract.sql"]) {
@@ -48,6 +117,9 @@ try {
     } else {
       await apply("contract-migrations/20260914012503_company_tax_return_cutover.sql");
       await apply("contract-migrations/20260914012930_company_tax_return_contract.sql");
+      // Governance's predecessor rehearsal can recreate the frozen Annual
+      // reader. Restore Tax's exact successor read admission after that lane.
+      await apply("migrations/20261026043538_company_tax_delivery_annual_read_admission.sql");
     }
   }
   console.log(`Company Tax local topology ${direction} completed`);

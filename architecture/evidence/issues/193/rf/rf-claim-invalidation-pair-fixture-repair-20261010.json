@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "CLAIM_INVALIDATION_FIXTURE_PUBLISHED_PAIR_CONSTRAINT_REPAIR",
+  "baseline": "a83e018715459bb49c6d62d5be7876cfd06b924b",
+  "failureRun": 38092997011,
+  "scope": "Fixture-only helper sets paired timestamp and reason and verifies exact approval ID/non-null time/claim-fixture reason. All twelve remaining test/helper function bodies and every claim assertion remain exact. Production SQL/constraints/policies/grants/routes unchanged.",
+  "cause": "Published filing_approval_snapshots CHECK requires invalidated_at/invalidation_reason both null or both nonnull; prior fixture set only timestamp. Earlier context repair passes the admission trigger.",
+  "validation": {
+    "projectedNativeRed": {
+      "passedDiagnosticChecks": 7,
+      "exactFailureSqlstate": "23514",
+      "constraint": "filing_approval_snapshots_check1",
+      "result": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-context-native-v3.json",
+        "sha256": "2b8a2465c5b0992ff4998592908f6859cf4e27b1da657b94b069e99be35ff131",
+        "bytes": 1680
+      },
+      "script": {
+        "path": "/private/tmp/talli-release-20261009/probe-rf-claim-invalidation-context-v3.py",
+        "sha256": "f505f780ad53aa42489e3c6726ce81a0a05e42d64912be9562dc89a1e0ef3c07",
+        "bytes": 10367
+      }
+    },
+    "projectedNativeGreen": {
+      "passedChecks": 7,
+      "actualFixedHelper": true,
+      "result": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-context-native-v4.json",
+        "sha256": "b230994b63bdf31bbbaae3ece22b441e97a2354ddd252936f1e645559ca515c2",
+        "bytes": 1688
+      },
+      "script": {
+        "path": "/private/tmp/talli-release-20261009/probe-rf-claim-invalidation-context-v4.py",
+        "sha256": "c983cb13738fcb10920ea662c986d01fb38221c6c5e7a0f98b8494328fcbddba",
+        "bytes": 10105
+      },
+      "limits": [
+        "Exact published trigger body, binding SELECT RLS policy and timestamp/reason pair CHECK; other tables/constraints and verified-actor/accepted-member functions are projections.",
+        "Does not prove full-schema claim replay, Auth, owner membership, producer origin, annual/Governance/Docs/Billing/Authority or hosted recovery."
+      ],
+      "ownedProbeRemoved": true
+    },
+    "fullSchemaCollectionOnly": {
+      "collected": 20,
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-pair-db-collection-v1.log",
+        "sha256": "c0377eeea8493a623afdfc90ad2bdb98f09cbd58db1e689f114b88395b03afa4",
+        "bytes": 2526
+      }
+    },
+    "protectedFunctionsExact": 12
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_source_claim_v3_database.py",
+      "sha256": "1c4efed0e7d5f66854885cba02f6678e62d71670256b4482bf2fbbc0d5b36029",
+      "bytes": 16367
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/supabase/migrations/20260715180000_controlled_production_beta.sql",
+      "sha256": "e4ebf5a35731795f75c1c2b2ba1843162694e1bc5fa3cf9668f180fa50fdc0ae",
+      "bytes": 25078
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+      "sha256": "e1672bfe0f16b75216641cd52c32dd55213fbf611f4eaa4532a4ffdafde3bfac",
+      "bytes": 31119
+    }
+  ],
+  "limits": [
+    "Full20 actual replay/first-effect cases remain uncleared; CI38092997011 has9PASS/1setupFAIL/10UNEXECUTED.",
+    "New constraint/trigger/RLS projection includes the previously omitted pair invariant but is not full schema/Auth/owner/producer proof.",
+    "No intent implementation/route/grant/provider/hosted/genuine/spend activation. Retention foundation is independently reviewed local commit; actual24/fullpipeline/canonical/all-three remain pending."
+  ]
+}

@@ -296,6 +296,8 @@ h2 {
 .formPanel {
   display: grid;
   gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-wrap: anywhere;
 }
 
 .formPanel label {
@@ -304,6 +306,15 @@ h2 {
   font-size: 14px;
   font-weight: 700;
   gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.formPanel input,
+.formPanel select,
+.formPanel textarea {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .formPanel input {
@@ -346,6 +357,8 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 8px;
   min-height: 132px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 20px;
 }
 
@@ -518,6 +531,10 @@ h2 {
   .setupGrid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .readinessGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .primaryButton,
@@ -826,6 +843,19 @@ h2 {
   max-width: 400px;
   padding: var(--space-6);
   width: 100%;
+}
+
+.ownerMfaCard {
+  min-width: 0;
+}
+
+.ownerMfaCard code {
+  overflow-wrap: anywhere;
+}
+
+.ownerMfaCard img {
+  height: auto;
+  max-width: 100%;
 }
 
 .authTitle {

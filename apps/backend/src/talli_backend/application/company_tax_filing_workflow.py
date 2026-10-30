@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from talli_backend.application.company_tax_filing_session import CompanyTaxSession, CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
 from talli_backend.modules.audit.public import AuditEventDraft
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
@@ -14,9 +17,13 @@ from talli_backend.modules.company_tax_filing.public import (
     normalize_company_tax_review, normalize_company_tax_test_evidence,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
-    CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, project_company_tax_source, verify_company_tax_source,
+    CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, TaxDeliverySource, project_company_tax_source, verify_company_tax_source,
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
+    TaxDeliveryDraftArchive, archive_tax_delivery_drafts,
+    TaxDeliveryJournalArchive, archive_tax_delivery_journal,
+    PrepareTaxDeliveryDraft, StoredTaxDeliveryDraft,TaxDeliveryWorkspace,project_tax_delivery_workspace,tax_delivery_workspace_originals,tax_delivery_snapshot_journal,
+    ApproveTaxDeliveryDraft, AdvanceTaxDelivery,ConfirmTaxDeliverySubmission,TaxDeliveryOwnerReviewQuery,TaxDeliveryOwnerReview,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -24,7 +31,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId, PostedLedgerEntry, PostTaxSettlementCommand,
     TaxSettlementKind as LedgerTaxSettlementKind,
 )
-from talli_backend.shared.kernel import CompanyId, IncomeYear, Money, Timestamp
+from talli_backend.shared.kernel import CompanyId, CorrelationId, IncomeYear, Money, Timestamp
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,16 +61,133 @@ def _replayed(payload: Mapping[str, object], command: RecordTaxSettlementCommand
 
 
 class CompanyTaxApplication:
-    def __init__(self, sessions: CompanyTaxSessionFactory, ledger: Callable[[LedgerPersistence], LedgerCommands]):
+    def __init__(self, sessions: CompanyTaxSessionFactory, ledger: Callable[[LedgerPersistence], LedgerCommands],
+                 *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                 submission: CompanyTaxDeliverySubmission | None = None):
         self._sessions, self._ledger = sessions, ledger
+        self._preparation = preparation
+        self._submission = submission
 
     async def session(self, access_token: str) -> AuthenticatedCompanyTax:
-        return AuthenticatedCompanyTax(await self._sessions.session(access_token), self._ledger)
+        return AuthenticatedCompanyTax(await self._sessions.session(access_token), self._ledger,
+            preparation=self._preparation,submission=self._submission)
 
 
 class AuthenticatedCompanyTax:
-    def __init__(self, session: CompanyTaxSession, ledger: Callable[[LedgerPersistence], LedgerCommands]):
+    def __init__(self, session: CompanyTaxSession, ledger: Callable[[LedgerPersistence], LedgerCommands],
+                 *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                 submission: CompanyTaxDeliverySubmission | None = None):
         self._session, self._ledger = session, ledger
+        self._preparation = preparation
+        self._submission = submission
+
+    async def approve_delivery_draft(self,command: ApproveTaxDeliveryDraft):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.approve(self._session,command)
+
+    async def advance_delivery(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance(self._session,command)
+
+    async def reconcile_delivery(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile(self._session,command)
+
+    async def advance_delivery_upload(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_upload(self._session,command)
+
+    async def reconcile_delivery_upload(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_upload(self._session,command)
+
+    async def advance_delivery_validation(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_validation(self._session,command)
+
+    async def reconcile_delivery_validation(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_validation(self._session,command)
+
+    async def advance_delivery_confirmation(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_confirmation(self._session,command)
+
+    async def reconcile_delivery_confirmation(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_confirmation(self._session,command)
+
+    async def confirm_delivery_submission(self,command: ConfirmTaxDeliverySubmission):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.advance_submission(self._session,command)
+
+    async def reconcile_delivery_submission(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_submission(self._session,command)
+
+    async def reconcile_delivery_feedback(self,command: AdvanceTaxDelivery):
+        if command.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.reconcile_feedback(self._session,command)
+
+    async def delivery_owner_review(self,query: TaxDeliveryOwnerReviewQuery) -> TaxDeliveryOwnerReview:
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        if self._submission is None:raise CompanyTaxError.unavailable()
+        return await self._submission.owner_review(self._session,query)
+
+    async def delivery_workspace(self,query: CompanyTaxSourceQuery) -> TaxDeliveryWorkspace:
+        from talli_backend.application.company_tax_delivery_source import read_company_tax_delivery_source
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as snapshot:
+                source=await read_company_tax_delivery_source(snapshot,query,correlation_id=CorrelationId('tax-workspace-source'))
+                history=await snapshot.journal_history_snapshot(query)
+            journals={row.draft.filing_id:tax_delivery_snapshot_journal(history,row.draft) for row in history.delivery_drafts}
+            preparation=self._preparation is not None and self._preparation.workspace_admission(self._session,source)
+            dispatch={filing:self._submission is not None and self._submission.workspace_admission(self._session,journal.draft)
+                for filing,journal in journals.items()}
+            correction={filing:self._preparation is not None and self._preparation.workspace_admission(self._session,source,journal)
+                for filing,journal in journals.items()}
+            validation={filing:self._submission.workspace_validation(journal) for filing,journal in journals.items()} if self._submission is not None else {}
+            result=project_tax_delivery_workspace(query,history,source,preparation_available=preparation,
+                dispatch_admissions=dispatch,correction_admissions=correction,validation=validation)
+            await guard.lock_delivery_draft_archive(query)
+        return result
+
+    async def delivery_original(self,query: CompanyTaxSourceQuery,filing_id: str,key: str):
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as snapshot:
+                history=await snapshot.journal_history_snapshot(query)
+            archive=archive_tax_delivery_journal(query,history,correction_evidence=True)
+            if history.contract_version!='company-tax-source-v9':raise CompanyTaxError.unavailable()
+            row=next((row for row in archive.drafts if row.draft.filing_id==filing_id),None)
+            if row is None:raise CompanyTaxError.not_found()
+            journal=tax_delivery_snapshot_journal(history,row.draft)
+            original=next((original for original in tax_delivery_workspace_originals(journal) if original.key==key),None)
+            if original is None:raise CompanyTaxError.not_found()
+            await guard.lock_delivery_draft_archive(query)
+        return original
+
+    async def prepare_delivery_draft(self, command: PrepareTaxDeliveryDraft) -> StoredTaxDeliveryDraft:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        if self._preparation is None:
+            raise CompanyTaxError.unavailable()
+        return await self._preparation.prepare(self._session,command)
 
     @property
     def actor_id(self):
@@ -129,6 +253,38 @@ class AuthenticatedCompanyTax:
             raise CompanyTaxError.forbidden()
         async with self._session.transaction(snapshot=True) as transaction:
             return project_company_tax_source(query, await transaction.filing_source_snapshot(query))
+
+    async def delivery_source(self, query: CompanyTaxSourceQuery, *, correlation_id: CorrelationId) -> TaxDeliverySource:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return await read_company_tax_delivery_source(transaction, query, correlation_id=correlation_id)
+
+    async def delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> TaxDeliveryDraftArchive:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        # The short READ COMMITTED guard observes current revocation after a
+        # wait. Keep the separate repeatable source read coherent under it.
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as transaction:
+                result = archive_tax_delivery_drafts(query, await transaction.delivery_draft_archive_snapshot(query))
+            await guard.lock_delivery_draft_archive(query)
+            return result
+
+    async def delivery_journal_archive(self, query: CompanyTaxSourceQuery, *, read_evidence: bool=False,guarded_upload: bool=False,
+            validation_evidence: bool=False,confirmation_evidence: bool=False,submission_evidence: bool=False,correction_evidence: bool=False) -> TaxDeliveryJournalArchive:
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        # The current guard spans the separate repeatable source snapshot. The
+        # late guard evaluates ownership/MFA after all enumeration and waits.
+        async with self._session.transaction() as guard:
+            await guard.lock_delivery_draft_archive(query)
+            async with self._session.transaction(snapshot=True) as transaction:
+                result=archive_tax_delivery_journal(query,await transaction.journal_history_snapshot(query),
+                    read_evidence=read_evidence,guarded_upload=guarded_upload,validation_evidence=validation_evidence,
+                    confirmation_evidence=confirmation_evidence,submission_evidence=submission_evidence,correction_evidence=correction_evidence)
+            await guard.lock_delivery_draft_archive(query)
+            return result
 
     async def verify_filing_source(self, query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence) -> bool:
         if query.actor_id != self.actor_id:

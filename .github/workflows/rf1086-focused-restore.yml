@@ -1,0 +1,111 @@
+name: RF focused image construction diagnostic
+
+on:
+  push:
+    branches: [codex/issue-193-completion-14d7]
+    paths:
+      - .github/workflows/rf1086-focused-restore.yml
+      - scripts/rf1086_focused_restore_check.py
+      - scripts/rf1086_identity_restore.py
+      - scripts/rf1086_restore_control.py
+      - scripts/rf1086_restore_metadata.py
+      - apps/backend/tests/test_rf1086_focused_restore_check.py
+      - apps/backend/tests/test_rf1086_identity_repaired.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out the selected revision
+        timeout-minutes: 2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Use Node.js 24
+        timeout-minutes: 2
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        timeout-minutes: 2
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned fixture dependencies
+        timeout-minutes: 6
+        run: |
+          python -m pip install uv==0.10.2
+          uv sync --project apps/backend --locked
+          npm ci
+
+      - name: Check focused diagnostic contracts
+        timeout-minutes: 2
+        run: |
+          apps/backend/.venv/bin/python -m pytest -p no:cacheprovider -c apps/backend/pyproject.toml \
+            apps/backend/tests/test_rf1086_focused_restore_check.py \
+            apps/backend/tests/test_rf1086_identity_repaired.py -q
+
+      - name: Prefetch official PostgreSQL fixture images anonymously
+        timeout-minutes: 3
+        run: bash scripts/prefetch-postgres-fixture-images.sh
+
+      - name: Prepare isolated fixture
+        timeout-minutes: 1
+        run: |
+          set -euo pipefail
+          umask 077
+          workdir="$(mktemp -d "$RUNNER_TEMP/talli-supabase-local.XXXXXX")"
+          echo "TALLI_FOCUSED_WORKDIR=$workdir" >> "$GITHUB_ENV"
+          echo "TALLI_FOCUSED_START_LOG=$RUNNER_TEMP/talli-focused-restore-start-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.log" >> "$GITHUB_ENV"
+          node scripts/prepare-isolated-supabase-workdir.mjs "$workdir"
+
+      - name: Start isolated PostgreSQL 17.6 image
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          umask 077
+          if ! npm exec -- supabase start --workdir "$TALLI_FOCUSED_WORKDIR" \
+            --exclude studio,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,edge-runtime,realtime \
+            >"$TALLI_FOCUSED_START_LOG" 2>&1; then
+            printf 'Isolated fixture startup failed; no recovery conclusion.\n' >&2
+            exit 1
+          fi
+
+      - name: Observe real identity construction and catalog postcondition
+        timeout-minutes: 4
+        run: apps/backend/.venv/bin/python scripts/rf1086_focused_restore_check.py
+
+      - name: Remove isolated fixture and containers
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          if [ -n "${TALLI_FOCUSED_WORKDIR:-}" ]; then
+            project="$(sed -n 's/^project_id = "\(tallig[0-9]*\)"$/\1/p' "$TALLI_FOCUSED_WORKDIR/supabase/config.toml")"
+            test -n "$project"
+            npm exec -- supabase stop --workdir "$TALLI_FOCUSED_WORKDIR" --no-backup >/dev/null
+            containers="$(docker ps -a --format '{{.Names}}')"
+            networks="$(docker network ls --format '{{.Name}}')"
+            volumes="$(docker volume ls --format '{{.Name}}')"
+            if grep -E "^supabase_.*_${project}$" <<< "$containers" >/dev/null; then
+              printf 'Owned Supabase containers remain after stop.\n' >&2
+              exit 1
+            fi
+            if grep -E "^supabase_.*_${project}$" <<< "$networks" >/dev/null; then
+              printf 'Owned Supabase network remains after stop.\n' >&2
+              exit 1
+            fi
+            if grep -E "^supabase_.*_${project}$" <<< "$volumes" >/dev/null; then
+              printf 'Owned Supabase volume remains after stop.\n' >&2
+              exit 1
+            fi
+            rm -rf -- "$TALLI_FOCUSED_WORKDIR"
+            rm -f -- "$TALLI_FOCUSED_START_LOG"
+          fi

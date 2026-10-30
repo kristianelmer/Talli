@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "746c3c293cf945733a352b8faaf76faedda0c08e",
+  "scope": "Additive authenticated RF streaming archive and offline verification; provider recovery contract research",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/application/shareholder_register_archive.py": "b13f935e7d30820b11aa17a1222d97e421924872208f9e8922605c411356b925",
+    "apps/backend/src/talli_backend/main.py": "a16f75c5b57e46bd07c15a801eb44f8e216f9db2d0d99aed58bcc7798390e6c3",
+    "apps/backend/scripts/verify_rf1086_archive.py": "76531c3a537a6a589f1b1080ec330dfce592fe4a15a9b0d63d7563eefc6245c8",
+    "apps/backend/tests/test_rf1086_archive_stream.py": "7332cd67f5d2aed0d66e52d815c1b32c01abef194dbb5876b7db930dbd0e9353",
+    "apps/web/tests/rf1086-archive-stream.test.mjs": "8261b738c933ebea153bb177c9ece1b16aec983c1ee5b85f1b5a23149156d80a",
+    "scripts/generate-api-client.mjs": "fa2eed0bf97f34b23061ad09e9255d110290026a11b86603f9d8281972532ea2",
+    "packages/talli-api-client/src/generated/client.ts": "4911abff97de7793e2c389f74d4e32263dc0306a9911f007234dba24f016f9fd",
+    "contracts/openapi/talli-v1.json": "5a16668f3a51530430dd40f0df3da1766ecbf2402132c3012584394838b003e8"
+  },
+  "validation": {
+    "backendArchiveTests": 291,
+    "webTransportContractTests": 200,
+    "archiveWebTests": 54,
+    "overlappingWebSuites": true,
+    "typescript": "passed",
+    "architecture": "passed; dependency evidence unchanged",
+    "generatedArtifacts": "drift checks passed",
+    "openApiCompatibility": "one new GET; every prior path and component semantically identical",
+    "exactRevisionCi": "pending at publication"
+  },
+  "limitations": [
+    "Synthetic fixtures and scaled aggregate bounds, not a 1 GiB load test",
+    "No owner browser download integration or authenticated full-stack acceptance",
+    "No database/object restoration, legacy feedback backfill or retention generations",
+    "Unknown operations remain stopped pending provider contract clarification/conformance",
+    "No provider business calls, credentials, hosted mutations or production activation",
+    "All seven RF acceptance criteria remain pending"
+  ]
+}

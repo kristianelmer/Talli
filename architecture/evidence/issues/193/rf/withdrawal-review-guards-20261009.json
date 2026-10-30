@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF current review SQL read guards",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "13559e96c0156e2abd53e7b4f2e2ba62837a0607",
+  "status": "IMPLEMENTED_REVIEWED_NATIVE_WRAPPER_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "behavior": [
+    "Public v1/v2 approval-review wrappers first execute their unchanged private context and existing authorization/READ COMMITTED/company-year checks, then assert exact context-bound source observations remain active.",
+    "Review result shape, hash and bytes are unchanged for valid sources; withdrawn references raise the existing safe stale-source error. Private context internals and exact approval/claim/intent replay paths remain unchanged.",
+    "Migration accepts only the two known original SQL bodies or its exact replacement; it preserves OID and every pg_proc field except the intentional body/language change. No grants or withdrawal command activation.",
+    "Rollback refuses retained withdrawals and otherwise keeps the read guards and inert withdrawal storage."
+  ],
+  "review": {
+    "reviewer": "override_integration",
+    "result": "No actionable findings in the final migration and 31 database cases. Root ran the native migration probe separately."
+  },
+  "checks": {
+    "databaseCollectedNotExecuted": 31,
+    "nativeMigrationProbe": {
+      "status": "PASS",
+      "migrationSha256": "69fad94d8c369b9e9ab12b5ef5c77d570a04ec168ec2004b2e10d2dac3c85837",
+      "scope": "Entire review-wrapper migration on native PostgreSQL 17.11 with original public wrapper definitions, stubbed private review/active guard. Verifies rewrite, trusted argument binding, order, unchanged result/catalog/ACLs, replay and drift refusal. Not actual RF authorization, retained storage, RLS or company-lock races.",
+      "checks": 10,
+      "clusterRemoved": true
+    },
+    "diffCheckExitCode": 0
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009221151_rf1086_withdrawal_review_read_guards.sql": "69fad94d8c369b9e9ab12b5ef5c77d570a04ec168ec2004b2e10d2dac3c85837",
+    "supabase/rollback/20261009221151_rf1086_withdrawal_review_read_guards.sql": "108a3d8ecae045ae4c1c2279bb1675f03b48a6d30723d183136ca2503df7d02f",
+    "apps/backend/tests/test_rf1086_withdrawal_review_database.py": "39fcebf586c2ec98ad8d9cc5088a89ccdb0f5a122bc38c591d09171e1a6eb6f5"
+  },
+  "privateArtifacts": {
+    "withdrawal-review-db-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-review-db-collection.log",
+      "sha256": "8b9f699dfa327d3b9a27ed650fc58fd0e54574fd1115dcf090b16a9e715b6799",
+      "bytes": 4100
+    },
+    "check-withdrawal-review-migration.py": {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-review-migration.py",
+      "sha256": "e2152b5825db3cd48f5448895d4bf355630c0f270ee3fb5f1e186b3013def545",
+      "bytes": 6569
+    },
+    "withdrawal-review-migration-native.json": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-review-migration-native.json",
+      "sha256": "978286feee312cadaa54634f8ca81bd8d0c99c7a142da0e46a5133d2f4928ede",
+      "bytes": 488
+    },
+    "withdrawal-review-migration-native.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-review-migration-native.log",
+      "sha256": "cf9245254d43d567df460eec998579b62ea6e5e0f8228a12a7923d83b599ade7",
+      "bytes": 968
+    }
+  },
+  "limits": [
+    "The 31 real database cases were collected only. Real RF authorization, fresh MFA, ACL/RLS, review result equality, both lock orders, replay and rollback require the full database lane.",
+    "The native PostgreSQL probe executed the entire migration against original public wrapper definitions with stubbed private review and active-evidence policies. Its ten checks prove rewrite/binding/order/catalog/ACL/replay/drift behavior only.",
+    "Lifecycle API/UI, canonical Governance evidence repair, Archive completion isolation/coverage and old-binary drain remain separate work. This is not an RF technical completion or launch gate.",
+    "All A1-A7 and both immutable complete gates remain pending; the withdrawal writer remains ungranted."
+  ]
+}

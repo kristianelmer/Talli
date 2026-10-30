@@ -2,6 +2,7 @@
   min-height: 100vh;
   background: #f7f8fa;
   color: #17202a;
+  overflow-wrap: anywhere;
 }
 
 .topbar {
@@ -65,8 +66,8 @@
 .emptyState { padding: 20px 0; color: #617067; }
 .notice { padding: 16px 18px; border: 1px solid var(--color-warning); border-radius: 8px; background: var(--color-warning-soft); color: var(--color-warning-text); }
 .form { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border: 1px solid #dfe5e8; border-radius: 8px; background: #fff; }
-.form label { display: grid; gap: 6px; color: #3c4a43; font-size: 13px; font-weight: 650; }
-.form input[type="text"], .form textarea, .form select, .form input[type="file"] { width: 100%; box-sizing: border-box; padding: 10px 11px; border: 1px solid #c9d2d6; border-radius: 6px; background: #fff; color: #17202a; font: inherit; }
+.form label { display: grid; min-width: 0; gap: 6px; color: #3c4a43; font-size: 13px; font-weight: 650; }
+.form input[type="text"], .form textarea, .form select, .form input[type="file"] { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px 11px; border: 1px solid #c9d2d6; border-radius: 6px; background: #fff; color: #17202a; font: inherit; }
 .check { display: flex !important; grid-template-columns: auto 1fr; align-items: flex-start; gap: 9px !important; font-weight: 500 !important; }
 .gateList { margin: 24px 0; border-top: 1px solid #dfe5e8; }
 .gateRow { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 16px 0; border-bottom: 1px solid #dfe5e8; }
@@ -82,7 +83,7 @@
   .nav { display: flex; flex-wrap: wrap; gap: 4px; min-height: auto; padding: 12px 20px; border-right: 0; border-bottom: 1px solid #dfe5e8; }
   .navLabel, .navRule { display: none; }
   .nav a { display: block; }
-  .overviewLayout, .obligationLayout { grid-template-columns: 1fr; }
+  .overviewLayout, .obligationLayout { grid-template-columns: minmax(0, 1fr); }
   .contextRail { border-left: 0; border-top: 1px solid #dfe5e8; padding: 28px 0 0; }
 }
 

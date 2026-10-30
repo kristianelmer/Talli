@@ -1,0 +1,82 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "86ef4a3d12883bd3d86912716fd9435f28c2a1f2",
+  "scope": "Actual database restore of application-created synthetic RF history and Documents retained original bytes in an owned local cluster",
+  "validation": {
+    "browser": {
+      "passed": 20,
+      "journeys": [
+        {
+          "lostResponse": "main",
+          "includesDatabaseRestore": true,
+          "durationMs": 136083.00625
+        },
+        {
+          "lostResponse": "child",
+          "durationMs": 130022.933875
+        },
+        {
+          "lostResponse": "confirmation",
+          "durationMs": 131976.010458
+        }
+      ],
+      "totalDurationMs": 402362.272958
+    },
+    "restoreRunnerTestsPassed": 13,
+    "ciControlsPassed": 90,
+    "architecture": {
+      "initialSuitePassed": 57,
+      "initialSuiteFailed": 1,
+      "isolatedFailureReproduced": true,
+      "correctedFilingRegressions": 2,
+      "currentStateCheck": "passed"
+    },
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "baseCi": {
+      "runId": 36705780825,
+      "result": "success",
+      "application": "success",
+      "databaseIsolation": "success",
+      "releaseGate": "success",
+      "immutableEvidence": "skipped"
+    },
+    "currentRevisionCi": "pending",
+    "cleanup": "Passed: owned stack removed, 42 pre-existing containers restored, Colima stopped and generated Next files restored"
+  },
+  "assertions": [
+    "Explicit local workdir, project, pinned container and live source session verified before database reads or restore operations",
+    "Existing talli_ledger_backend reader must match the owned source endpoint; no role grants added",
+    "Custom-format pg_dump restored with original ownership and ACLs into a fresh random database in the disposable cluster",
+    "RF owner-policy archive matches the strict browser download, preserving three source versions, approvals, claims and filings including accepted correction and unknown send",
+    "Documents validates three source originals and four feedback originals including captured metadata and exact bytes",
+    "Unrelated actor denied RF archive and Documents retained-original reads",
+    "Fresh restored database removed; source RF history and cluster role memberships unchanged"
+  ],
+  "result": {
+    "databaseRestorePerformed": true,
+    "retainedOriginalBytesRestored": true,
+    "objectStorageRestorePerformed": false
+  },
+  "initialFailure": "The first runner used the maintenance login for owner reads and was denied before creating a clone. Corrected to the existing restricted backend login; final browser run passes.",
+  "limitations": [
+    "Same-cluster restore does not prove independent cluster role recovery",
+    "Ordinary private Storage objects are not restored",
+    "Restored prior-year and unapproved history, cancellation, expiry and deletion remain open",
+    "Broader restore signoff, retention generations, remaining conformance/security/browser cases and both immutable acceptance gates remain open",
+    "All seven RF acceptance criteria remain pending; PR remains draft",
+    "No product behavior, real company data, hosted database, genuine provider operation or production enablement changed"
+  ],
+  "sha256": {
+    "scripts/rehearse-rf1086-owned-restore.py": "ed5b444bbb8404533b99c7a2311bfa0e080db2a4e74b7a60592b55638280127d",
+    "apps/backend/tests/test_rf1086_owned_restore_runner.py": "c5394e63585bb0e416b6c326646c2bb8ad18e3af510895e4dbc39d584eb7dff8",
+    "scripts/test-supabase-local.sh": "6436e60c2f5710dd5d9b1bfc7e480ab8610c7a10db402d8704e8d7e7d47a02d7",
+    "tests/browser_shareholder_register_filing.mjs": "6448dfc801c623a8c50fffe801e90a6021266861e80e4ca812463667b215f443",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "54cf90eb6ed55b564aed2532adb02a3a55366e4a87c867a94a2d79a455ef05e2",
+    "docs/security/backup-restore-runbook.md": "72a4ace812af92f4ee5cc863f2646d38e2e42c2855febb6fd3b9081d008cae81",
+    "scripts/check-architecture.mjs": "8824da0b16ac1eaffcd327c35ff5a17fd279476a90d6b5a86f33f5f417d7ea9b",
+    ".github/workflows/release-gate.yml": "ea781fe38bceef226cef4efe085586425f46843d8664d45bf02e6793596cd68b",
+    "tests/ci_release_gate.test.mjs": "90c44d150747e32eb3f78391a9553472c05df286378fd8ed14b30eb63d507e9e"
+  },
+  "architectureGuardCorrection": "RF archive exact-body exception now requires retired Tax/Accounts facades and exclusive Accounts ownership of all six shared filing sources. Existing negative regressions also run in CI. No Tax/Accounts business change."
+}

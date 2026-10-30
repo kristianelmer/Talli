@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_GATE_REPAIR",
+  "baseCommit": "ca124c8d30e786681398e0db63df1e8701e4f95b",
+  "problem": "CI36587512384 passed Application and the database authority/Tax/Accounts checks, then failed the fresh RF browser no-rejected-request assertion. The local RF authority mock omitted the confirmed submission archive required by the shipped send journal. The UI recovered feedback through Dialogporten, masking the initial send503 until the final assertion.",
+  "change": "Populate the mock archive from the exact submitted XML under the confirmed submission transmission. Require exactly one archive read bound to that transmission and preserve separate Dialogporten feedback discovery. Retain no-replayed-mutation/no-rejected-request assertions with safe operation diagnostics. Wait for the completed login dashboard redirect before MFA to eliminate a locally reproduced navigation race.",
+  "verification": {
+    "red": "New DB-free regression runs the real token/provider adapters and production journal against the local HTTP mock; before repair it fails on the archive GET with RF1086_HTTP_400 in under one second.",
+    "green": "The same regression sends, reads two submitted documents, discovers relationship-bound feedback and reaches accepted. Both fresh and historical fixture safety suites pass.",
+    "browser": "Complete fresh RF browser journey passed against isolated real local Supabase Auth/storage and final private contracts. It verifies successful canonical send200, private download hash, mobile widths, cross-company denial and ambiguous-send503 recovery without another provider mutation.",
+    "localSetup": "The focused local stack needed the existing Tax and Accounts contracts for the annual workspace shell; an initial incomplete-topology run was not treated as a product failure. No sibling business code changed.",
+    "next": "One complete fixed-revision release-gate run remains required. Held annual-interview feature commits remain separate until it passes."
+  },
+  "limits": [
+    "All seven RF acceptance criteria remain pending.",
+    "No genuine AS data, production provider operation or production enablement."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-browser-gate-20260929-14d7",
+  "sha256": {
+    "ci-ca124c8d-database.log": "5616a83412daff8b308be4d10b135bc84716984f44d5e068d875cf8a9dea9b59",
+    "mock-red.log": "9802c121ea2a6e839dff9ca2d6cb2e38a9dc15f6da3274f5650a0cf103b503fe",
+    "mock-green.log": "846c75bed56bd4f7dd9769f0315d1ce1348b113685918493201d5b989dab4636",
+    "browser-red.log": "a8d14a440f0fe57759e687ad5edd142157e7d8b7b28d6500d409471a4128f53f",
+    "browser-final.log": "e01c3d1fb65a1d7494ea49116563f32c555e7db39a0a416e7a365267aef0ab0f"
+  }
+}

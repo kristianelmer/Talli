@@ -128,6 +128,18 @@ Expected failures cross the interface only as `InvestmentsError` with declared
 `InvestmentsErrorCode` values. Transport, database, provider, and framework types
 are forbidden from the public contract.
 
+`read_investment_reporting_snapshot` consumes all seven published query families
+under an application-supplied coherent database snapshot. Its immutable
+`InvestmentReportingSnapshot` retains the complete canonical source and digest,
+current positions, all selected-year measurements, and selected-year economic
+heads. It includes recognition before cash settlement, admits only an exact
+duplicate lifecycle sale projection, and rejects incomplete, foreign, repeated,
+or ambiguous pagination and correction lineage. Economic corrections replace
+income facts; cash corrections retain that income and bind to the latest
+settlement. Current position balances are evidence, not historical balances;
+the reader never invents a preferred year-end measurement or a filing decision.
+This read-only contract adds no writer or provider activation.
+
 ## Workflow and persistence seam
 
 `InvestmentsPersistence` is the sole outbound port. The purchase, sale, dividend,

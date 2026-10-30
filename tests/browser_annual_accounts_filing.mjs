@@ -8,6 +8,9 @@ import { startTaxBrowserFixture } from "./support/tax-browser-fixture.mjs";
 import { establishOwnerAal2 } from "./support/tax-browser-auth.mjs";
 import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
 import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock.mjs";
+import { connectedViewport, assertConnectedLayout, activateConnectedButton, assertConnectedReflow } from "./support/connected-viewport.mjs";
+
+const viewport = connectedViewport();
 
 // Exercise the real owner form/JWT/FastAPI/restricted SQL boundary using retained
 // synthetic TT02 metadata. No signing or authority request is performed.
@@ -16,14 +19,14 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   let browser;
   t.after(async () => { try { await browser?.close(); } finally { await fixture.close(); } });
   browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext(), blockedRequests = [];
+  const context = await browser.newContext(viewport.contextOptions), blockedRequests = [];
   await installBrowserEgressGuard(context, { approvalEnabled: false, blockedRequests, mockBaseUrl: fixture.siteOrigin });
   const page = await context.newPage();
   page.setDefaultTimeout(25_000);
   await page.goto(fixture.siteOrigin + '/login');
   await page.getByRole('textbox', { name: 'E-post', exact: true }).fill(fixture.owner.email);
   await page.locator('input[name="password"]').fill(fixture.owner.password);
-  await page.getByRole('button', { name: 'Logg inn', exact: true }).click();
+  await activateConnectedButton(page, page.getByRole('button', { name: 'Logg inn', exact: true }), viewport);
   await page.waitForURL(url => url.pathname !== '/login');
   const archive = JSON.parse(await readFile(new URL('../architecture/evidence/issues/153/characterization/legacy-pure-characterization.json', import.meta.url), 'utf8'));
   const original = archive.evidenceCases.find(row => row.id === 'archived-tt02-pending').input.evidence;
@@ -37,15 +40,17 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   });
   assert.equal(unstepped.status, 403, 'real AAL1 owner cannot import evidence');
   await establishOwnerAal2(page, fixture.siteOrigin);
+  await assertConnectedLayout(page, viewport, 'after owner MFA');
   const imports = () => fixture.controls.filingCalls.filter(call => call.path === '/api/v1/annual-accounts/tt02-evidence-imports');
   async function importEvidence(value, invalid = false) {
     await page.goto(fixture.siteOrigin + '/workspace');
     const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Importer TT02-evidens', exact: true }) });
-    await form.locator('input[type="file"]').setInputFiles({ name: 'synthetic-accounts-evidence.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(value)) });
+    await form.getByLabel('Verifisert årsregnskap-evidens fra TT02').setInputFiles({ name: 'synthetic-accounts-evidence.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(value)) });
     const before = imports().length;
-    await form.getByRole('button', { name: 'Importer TT02-evidens', exact: true }).click();
+    await activateConnectedButton(page, form.getByRole('button', { name: 'Importer TT02-evidens', exact: true }), viewport);
     await poll(() => imports().length === before + 1);
     await page.waitForURL(url => url.pathname === '/workspace' && url.searchParams.has('error') === invalid);
+    await assertConnectedLayout(page, viewport, invalid ? 'Accounts import error' : 'Accounts imported evidence');
   }
   await importEvidence({ ...evidence, companyOrgNumber: '000000153' }, true);
   assert.equal(imports().at(-1).status, 422);
@@ -57,7 +62,7 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   await accountsEvidence.getByText(`Siste testref: tt02:${evidence.instance.id} (Venter på klassifisering)`, { exact: true }).waitFor();
   const permission = page.locator('form').filter({ has: page.getByRole('button', { name: 'Bekreft innsendingsrett', exact: true }) });
   await permission.locator('select[name="obligation"]').selectOption('aarsregnskap');
-  await permission.getByRole('button', { name: 'Bekreft innsendingsrett', exact: true }).click();
+  await activateConnectedButton(page, permission.getByRole('button', { name: 'Bekreft innsendingsrett', exact: true }), viewport);
   await poll(() => fixture.controls.filingCalls.some(call => call.path === '/api/v1/annual-accounts/permissions'));
   assert.equal(fixture.controls.filingCalls.find(call => call.path === '/api/v1/annual-accounts/permissions').status, 200);
   await page.goto(fixture.siteOrigin + '/workspace');
@@ -66,9 +71,10 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   await manual.locator('select[name="environment"]').selectOption('manual_evidence');
   await manual.locator('input[name="testReference"]').fill('synthetic-accounts-browser');
   await manual.locator('textarea[name="feedbackSummary"]').fill('Synthetic manual evidence remains pending.');
-  await manual.getByRole('button', { name: 'Lagre test-evidens', exact: true }).click();
+  await activateConnectedButton(page, manual.getByRole('button', { name: 'Lagre test-evidens', exact: true }), viewport);
   await poll(() => fixture.controls.filingCalls.some(call => call.path === '/api/v1/annual-accounts/test-evidence'));
   assert.equal(fixture.controls.filingCalls.find(call => call.path === '/api/v1/annual-accounts/test-evidence').status, 200);
+  await accountsEvidence.getByText('Siste testref: synthetic-accounts-browser (Venter på klassifisering)', { exact: true }).waitFor();
   const sourcePath = `/api/v1/annual-accounts/source-facts?companyId=${fixture.companyId}&incomeYear=2025`;
   const response = await fixture.accountsRequest(sourcePath);
   assert.equal(response.status, 200);
@@ -86,13 +92,37 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
     assert.equal(await count('annual_accounts_filing.filing_submissions'), 0);
     assert.equal(await count('public.audit_events', "and action='annual_accounts_tt02_evidence_imported'"), 1);
   });
+  const referenceBeforeFailure = await accountsEvidence.getByText(/^Siste testref:/u).innerText();
+  const statusBeforeFailure = await accountsEvidence.getByText(/^Test-evidens:/u).innerText();
+  assert.notEqual(referenceBeforeFailure, 'Siste testref: Ingen');
+  assert.notEqual(statusBeforeFailure, 'Test-evidens: Test-evidens mangler');
+  const importsBeforeFailure = imports().length;
   fixture.controls.failAccountsReads = true;
   await page.goto(fixture.siteOrigin + '/workspace');
   assert.ok(fixture.controls.accountsReadFailures.some(call => call.status === 503 && call.path.includes(fixture.companyId)));
   await page.getByRole('complementary', { name: 'Status', exact: true }).getByText('Feil', { exact: true }).waitFor();
   await accountsEvidence.getByText('Test-evidens: Test-evidens mangler', { exact: true }).waitFor();
   await accountsEvidence.getByText('Siste testref: Ingen', { exact: true }).waitFor();
+  await assertConnectedLayout(page, viewport, 'Accounts failed read without stale evidence');
   fixture.controls.failAccountsReads = false;
+  await page.reload();
+  await accountsEvidence.getByText(statusBeforeFailure, { exact: true }).waitFor();
+  await accountsEvidence.getByText(referenceBeforeFailure, { exact: true }).waitFor();
+  assert.equal(imports().length, importsBeforeFailure, 'read recovery must not re-import evidence');
+  const recovered = await fixture.accountsRequest(sourcePath);
+  assert.equal(recovered.status, 200);
+  const recoveredSource = await recovered.json();
+  const { asOf: sourceAsOf, ...sourceCoverage } = source.historyCoverage;
+  const { asOf: recoveredAsOf, ...recoveredCoverage } = recoveredSource.historyCoverage;
+  assert.deepEqual(recoveredCoverage, sourceCoverage);
+  // Each source read has its own transaction timestamp; retained history stays identical.
+  assert.equal(typeof sourceAsOf, 'string');
+  assert.equal(typeof recoveredAsOf, 'string');
+  const sourceReadAt = Date.parse(sourceAsOf), recoveredReadAt = Date.parse(recoveredAsOf);
+  assert.ok(Number.isFinite(sourceReadAt) && Number.isFinite(recoveredReadAt), 'source read timestamps must be valid');
+  assert.ok(recoveredReadAt >= sourceReadAt, 'recovered source read must not predate the original read');
+  await assertConnectedLayout(page, viewport, 'Accounts restored evidence');
+  await assertConnectedReflow(page, viewport);
   await fixtureTableTransaction(fixture.db, ['public.company_memberships'], async () => {
     await fixture.db.query("update public.company_memberships set role='read_only' where company_id=$1 and user_id=$2", [fixture.companyId, fixture.owner.id]);
   });

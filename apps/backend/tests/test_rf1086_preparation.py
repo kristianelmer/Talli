@@ -120,6 +120,17 @@ def test_approval_uses_original_norwegian_payload_label_and_verified_actor():
     asyncio.run(Rf1086PreparationService(ApprovalStore()).approve_production(command))
 
 
+def test_source_review_projection_cannot_enter_legacy_approval():
+    class ApprovalStore:
+        async def load_approval_basis(self, command):
+            return Rf1086ApprovalBasis(replace(preview(), source='rf1086-full-year-v1'), '923456789', 'c'*64)
+        async def record_approval(self, *args):
+            raise AssertionError('Full-year projection must never reach legacy approval persistence')
+    command=ApproveRf1086ProductionCommand(PREVIEW,'50000000-0000-4000-8000-000000000005',True,ACTOR,CORRELATION)
+    with pytest.raises(ShareholderRegisterFilingError):
+        asyncio.run(Rf1086PreparationService(ApprovalStore()).approve_production(command))
+
+
 @pytest.mark.parametrize('method',['generate_preview','confirm_simulation','approve_production'])
 @pytest.mark.parametrize('misbinding',['company','year','type'])
 def test_prepared_write_receipt_must_match_verified_source_scope(method,misbinding):

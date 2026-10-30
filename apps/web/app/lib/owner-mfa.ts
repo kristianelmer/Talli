@@ -2,12 +2,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type OwnerMfaApi = SupabaseClient["auth"]["mfa"];
 
+/** A browser download leaves the verified MFA page open instead of navigating. */
+export function ownerMfaHistoryDownloadReturn(returnTo: string): string | null {
+  const match = /^\/companies\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/rf1086-test-history\/download$/u.exec(returnTo);
+  if (!match || match[1] === "00000000-0000-0000-0000-000000000000") return null;
+  return `/companies/${match[1]}/rf1086-test-history`;
+}
+
 export const ownerMfaCopy = {
   heading: "Beskytt kontoen før du fortsetter",
   intro:
-    "Selskapet er opprettet. Før du går videre må du bekrefte innloggingen med en autentiseringsapp.",
+    "Bekreft innloggingen med en autentiseringsapp før du fortsetter.",
   statusError:
-    "MFA-kontrollen kunne ikke fullføres. Arbeidsflaten er fortsatt stengt. Last siden på nytt og prøv igjen.",
+    "MFA-kontrollen kunne ikke fullføres. Arbeidsflaten er fortsatt stengt. Prøv kontrollen igjen.",
   enrollmentError:
     "Oppsettet kunne ikke startes. Arbeidsflaten er fortsatt stengt. Prøv igjen.",
   verificationError:
@@ -36,16 +43,17 @@ export function ownerMfaEnrollmentControl({
 
 export type OwnerMfaInspection =
   | { kind: "enrollment" }
-  | { kind: "challenge"; factorId: string }
+  | { kind: "challenge"; factorId: string; factors?: { id: string; label: string }[] }
   | { kind: "verified" }
   | { kind: "error"; message: string };
 
 export async function inspectOwnerMfa(
   mfa: OwnerMfaApi,
-  { requireFreshChallenge = false }: { requireFreshChallenge?: boolean } = {},
+  { requireFreshChallenge = false, accessToken }: { requireFreshChallenge?: boolean; accessToken?: string } = {},
 ): Promise<OwnerMfaInspection> {
+  if (!accessToken) return { kind: "error", message: ownerMfaCopy.statusError };
   try {
-    const assurance = await mfa.getAuthenticatorAssuranceLevel();
+    const assurance = await mfa.getAuthenticatorAssuranceLevel(accessToken);
     if (assurance.error || !assurance.data) {
       return { kind: "error", message: ownerMfaCopy.statusError };
     }
@@ -61,7 +69,10 @@ export async function inspectOwnerMfa(
     }
     const factor = factors.data.totp[0];
     return factor
-      ? { kind: "challenge", factorId: factor.id }
+      ? { kind: "challenge", factorId: factor.id,
+        ...(factors.data.totp.length > 1 ? { factors: factors.data.totp.map((item, index) => ({
+          id: item.id, label: `${item.friendly_name || "Autentiseringsapp"} (${index + 1})`,
+        })) } : {}) }
       : { kind: "enrollment" };
   } catch {
     return { kind: "error", message: ownerMfaCopy.statusError };
@@ -122,7 +133,8 @@ export async function verifyOwnerMfa(
     if (verification.error || !verification.data) {
       return { ok: false, message: ownerMfaCopy.verificationError };
     }
-    const assurance = await mfa.getAuthenticatorAssuranceLevel();
+    if (typeof verification.data.access_token !== "string") return { ok: false, message: ownerMfaCopy.verificationError };
+    const assurance = await mfa.getAuthenticatorAssuranceLevel(verification.data.access_token);
     if (
       assurance.error
       || !assurance.data

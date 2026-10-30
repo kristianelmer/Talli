@@ -1,0 +1,119 @@
+{
+  "schema": "rf-integration-ci-observation-v7",
+  "recordedAtUtc": "2026-10-11T10:59:24.683490+00:00",
+  "runId": 38130183649,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38130183649",
+  "headSha": "8324b90e3d40a668b5a45e7a5b8bb664ba313ce7",
+  "mergeSha": "1fb89a964a1efd864f63becdf4cc0d2ed113515d",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11522,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 691.88
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 254.88
+  },
+  "authority": {
+    "collected": 1630,
+    "observedPassed": 1630,
+    "completed": true,
+    "seconds": 1115.34,
+    "approvalExactObservedPassed": 36,
+    "claimExactObservedPassed": 20,
+    "retentionExactObservedPassed": 24,
+    "newBundleExactObservedPassed": 6
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 46,
+    "requiredParentPassed": 6,
+    "completed": true
+  },
+  "rfBrowser": {
+    "selectedTests": 38,
+    "passed": 37,
+    "failed": 1,
+    "scenarios": [
+      {
+        "name": "owner completes RF capture, correction and lost main response through the canonical backend",
+        "passed": true,
+        "durationMs": 125493.498331
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash at main response through the canonical backend",
+        "passed": true,
+        "durationMs": 126324.44687
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash before main provider mutation through the canonical backend",
+        "passed": true,
+        "durationMs": 129751.090953
+      },
+      {
+        "name": "owner completes RF capture, correction and lost child response through the canonical backend",
+        "passed": true,
+        "durationMs": 118328.369501
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash at child response through the canonical backend",
+        "passed": true,
+        "durationMs": 120435.154143
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash before child provider mutation through the canonical backend",
+        "passed": true,
+        "durationMs": 122332.148666
+      },
+      {
+        "name": "owner completes RF capture, correction and lost confirmation response through the canonical backend",
+        "passed": true,
+        "durationMs": 116156.264643
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash at confirmation response through the canonical backend",
+        "passed": true,
+        "durationMs": 119156.536795
+      },
+      {
+        "name": "owner completes RF capture, correction and process crash before confirmation provider mutation through the canonical backend",
+        "passed": true,
+        "durationMs": 116229.149528
+      },
+      {
+        "name": "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend",
+        "passed": false,
+        "durationMs": 48394.806322
+      }
+    ],
+    "fixedFailureDiagnostics": [
+      "stage=stateless-token fingerprint=unclassified"
+    ],
+    "suiteCompleted": true,
+    "owningInventoryAccepted": false,
+    "independentRecoveryAccepted": false
+  },
+  "failure": "Owning rejected-predecessor inventory browser failed at stateless-token stage before independent recovery. Exact signing/session failure unobserved; do not infer algorithm/key cause or a fingerprint causefix. Existing90-minute budget did not time out. Earlier independent-restore fingerprint failure remains unresolved.",
+  "limits": [
+    "Exact current checkout/all1630 Authority/all46 intent/all6 parents plus claim20/approval36/retention24/bundle6 passed narrowly. Whole owning inventory/independent Auth/Storage/roles recovery not accepted.",
+    "Nine base RF scenarios passed; owning tenth failed. Later Tax/Accounts/public acquisition browsers not observed; immutable evidence skipped and0 artifacts.",
+    "No captured rows, token/key values, actor IDs or raw exception output published; fixed labels/counts/timings/SHAs only.",
+    "Compatibility/intake/nominal/crossyear/immutableA/B/hosted/human/allthree readiness remain separate."
+  ],
+  "rawEvidenceSha256": {
+    "ci38130183649-db-direct-raw-v1.log": "63d7435d20cdfd5352549ccefd81a4da0b51f94bf4766965036f7a05e31c4953",
+    "ci38130183649-app-direct-raw-v1.log": "99a13f713b385ce6b199900742fb8f8219c11d800618d8a666dfc2cf2970c11b",
+    "ci38130183649-terminal-run-v1.json": "e614a52a436349cc6b82a93250636f39f512961e7fad335cf66df73d953768d5",
+    "ci38130183649-terminal-jobs-v1.json": "9861d755eda528726459c86103e52b58cfe62c561ba1836824db657903889647",
+    "ci38130183649-terminal-pr-v1.json": "b11c5ca004713a88f693dad430480b5c6338fb4604e0da4449d59387698d421d",
+    "ci38130183649-terminal-parents-v1.json": "b01bd19f176dc9254ac7ab4d919e231d7af304767d0f2655e4e538b2e714f95e",
+    "ci38130183649-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+  },
+  "wholePipelineCleared": false,
+  "allThreeReady": false
+}

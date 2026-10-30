@@ -1,0 +1,7 @@
+# Standards review: initial archive overlap finding
+
+Reviewed the uncommitted RF archive and year-source foundation against `56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd` on 2026-09-23. This preserves the original finding; it is not a final immutable revision review.
+
+**P2 — Preserve web-first deployment compatibility.** `apps/web/features/shareholder-register-filing/transport.ts` immediately dereferences the four new archive response arrays. Against the previous backend, these fields are absent and `rows.some` throws; the archive route returns 500 and existing archive downloads become unavailable. ADR-0012 requires additive contracts supporting either web/backend deployment order. Use an explicitly compatible endpoint/version overlap and verify both orders. Missing production evidence must not be represented as an authoritative empty list.
+
+Independent verification: architecture checker passed; 13 focused compatibility/frozen-inventory architecture tests passed; 104 archive/year-source domain tests passed; 70 archive/restore/source-inventory web tests passed. The two RF-specific architecture tests also passed when separately targeted. All six source hashes in the existing 34-test local database proof match the reviewed files; unchanged database tests were not repeated. No new role/RLS, evidence-overwrite, capability-boundary or later-filing implementation issue was identified. No provider or hosted actions were performed. Full issue acceptance remains pending.

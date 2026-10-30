@@ -1,0 +1,235 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T22:51:20.770247+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37998909844,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37998909844",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T22:23:03Z",
+    "updatedAt": "2026-10-09T22:49:49Z",
+    "durationSecondsFromCreatedToUpdated": 1606
+  },
+  "checkout": {
+    "revision": "94a59874d41a467f86f740412ddf3cee8fc0b7fa",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114051879911,
+        "revision": "94a59874d41a467f86f740412ddf3cee8fc0b7fa",
+        "headParent": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parents independently verified through GitHub Git commit API."
+      },
+      {
+        "jobId": 114051880125,
+        "revision": "94a59874d41a467f86f740412ddf3cee8fc0b7fa",
+        "headParent": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parents independently verified through GitHub Git commit API."
+      }
+    ],
+    "limit": "Run headSha is the PR head; both jobs tested this synthetic merge. Later local commits and uncommitted work are outside this observation."
+  },
+  "jobs": [
+    {
+      "id": 114051879911,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-09T22:23:06Z",
+      "completedAt": "2026-10-09T22:49:43Z",
+      "durationSeconds": 1597,
+      "failedSteps": []
+    },
+    {
+      "id": 114051880125,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T22:23:06Z",
+      "completedAt": "2026-10-09T22:38:49Z",
+      "durationSeconds": 943,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114051881226,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T22:23:04Z",
+      "completedAt": "2026-10-09T22:23:04Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114059706479,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T22:49:45Z",
+      "completedAt": "2026-10-09T22:49:49Z",
+      "durationSeconds": 4,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114051880125,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "test:authority-connections-database",
+      "file": "apps/backend/tests/test_rf1086_source_company_guard_database.py",
+      "test": "test_all_four_backstops_and_narrow_privileges_are_installed",
+      "assertionLine": 107,
+      "expectedTables": [
+        "register_observations",
+        "source_previews",
+        "year_source_heads",
+        "year_source_versions"
+      ],
+      "observedTables": [
+        "register_observation_withdrawals",
+        "register_observations",
+        "source_previews",
+        "year_source_heads",
+        "year_source_versions"
+      ],
+      "message": "Strict source_company_guard inventory assertion found an additional register_observation_withdrawals table.",
+      "supportedDiagnosis": "Pinned migration explicitly installs that trigger; pinned test still expects the four original tables. The stale exact inventory is the observed failure. Retain strict equality and guard shape/privilege checks when updating the expected installed set.",
+      "observationLimit": "This result does not establish that later withdrawal persistence, browser or restore tests pass. Those stages were not reached before pytest stopped.",
+      "sourceEvidence": [
+        {
+          "revision": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+          "path": "apps/backend/tests/test_rf1086_source_company_guard_database.py",
+          "lines": [
+            25,
+            100,
+            107,
+            108
+          ],
+          "sha256": "bba96d3425ef4c00bae589975e77edcc6d92437d002a60bf0dae7d0049744e3b"
+        },
+        {
+          "revision": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+          "path": "supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql",
+          "lines": [
+            109,
+            110,
+            111
+          ],
+          "sha256": "bbe6cb7fff945785ae31f66c71d8aa353399e7f2bf4121bba15339e628b1f77d"
+        }
+      ]
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "backendSuite": {
+        "passed": 8195,
+        "skipped": 2,
+        "deselected": 1499,
+        "durationSeconds": 652.44,
+        "scope": "Backend contract-boundary pytest selection; not the later authority_database suite."
+      },
+      "completed": [
+        "anonymous PostgreSQL fixture prefetch",
+        "pinned official tax schema fetch",
+        "credential scan",
+        "typecheck and architecture checks",
+        "legacy interface rejection",
+        "web-to-FastAPI contract boundary",
+        "production web and backend builds",
+        "production artifact smoke",
+        "complete launch rehearsal",
+        "production dependency audits",
+        "whitespace check"
+      ]
+    },
+    "database": {
+      "authorityRfSuite": {
+        "passed": 349,
+        "failed": 1,
+        "durationSeconds": 151.13,
+        "stoppedAfterFirstFailure": true
+      },
+      "selectedPassingFiles": {
+        "test_rf1086_database_runtime.py": 41,
+        "test_rf1086_durable_source_operation_database.py": 47,
+        "test_rf1086_year_source_database.py": 14,
+        "test_rf1086_retained_archive_generations.py": 2,
+        "test_rf1086_source_preview_database.py": 11,
+        "test_rf1086_source_review_bridge_database.py": 12,
+        "test_rf1086_source_approval_database.py": 49,
+        "test_rf1086_journal_company_guard_database.py": 17,
+        "test_rf1086_source_company_guard_database.py": 5
+      },
+      "completedPredecessors": [
+        "anonymous PostgreSQL 17, 17-alpine and 16-alpine prefetch",
+        "initial Supabase advisor check: zero blocking findings; 62 performance warnings",
+        "Ledger, Banking, Investments, Documents, Marketing, validation observation and predecessor lifecycle suites",
+        "RF workspace and owner browser (29 tests passed in owner-browser command)",
+        "hosted migration authority, Corporate Governance and Billing lifecycle predecessors"
+      ],
+      "notReached": [
+        "remainder of the Authority/RF database suite, including later observation-withdrawal database cases",
+        "Company Tax and Annual Accounts database successors",
+        "fresh RF filing browser scenarios, including the corrected v4 archive assertion",
+        "full-year source browser journey and lost-capture recovery",
+        "database/object-store and independent Auth restore",
+        "later Company Tax and Annual Accounts browser stages",
+        "separate public acquisition database-job step"
+      ],
+      "stageEvidence": "Completed command markers and PASSED lines in the database job; sequential rehearsal stopped at the first Authority/RF failure."
+    }
+  },
+  "sanitizedExcerpts": [
+    {
+      "jobId": 114051880125,
+      "path": "/private/tmp/talli-release-20261009/ci37998909844-database-failure-sanitized.log",
+      "sha256": "af9423e1570c0f4a5310dd0df6ae6cf79896cf10a90cbb5e8b3ba7aaca782df2",
+      "bytes": 3433,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114051880125,
+      "path": "/private/tmp/talli-release-20261009/ci37998909844-database-reached-stages-sanitized.log",
+      "sha256": "f8a7f0bbbc8e47f1ef2f331e9cc08d820645b5fe7917171962cccda00e825ac8",
+      "bytes": 17837,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114051879911,
+      "path": "/private/tmp/talli-release-20261009/ci37998909844-application-summary-sanitized.log",
+      "sha256": "2e8c0337e6cf67a94bd1cb8d6a2eb10d2a8f957511e4a8fd8b5797c30056845e",
+      "bytes": 9105,
+      "kind": "Bounded sanitized excerpt; not a full raw job log"
+    }
+  ],
+  "limits": [
+    "Entire workflow failed. Application success and bounded database passes do not complete any RF acceptance criterion.",
+    "The installed fifth guard is directly observed; broader withdrawal behavior remains unverified by this failed run. Local repairs and subsequent commits require their own immutable run.",
+    "Immutable evidence was skipped for this ordinary PR run; this receipt is neither an 11/11 canonical complete-gate artifact nor either of two linked immutable passes.",
+    "No independent Auth restore, hosted key recovery, genuine-company production acceptance, criterion promotion, provider activation, outreach or launch clearance is claimed.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Only this receipt was written in the repository; no index or product source changes."
+  ]
+}

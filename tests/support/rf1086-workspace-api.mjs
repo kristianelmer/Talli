@@ -38,7 +38,7 @@ export async function startWorkspaceRfApi(database, databaseConfig) {
     connection.password = databaseConfig.password;
     const rootDatabase = connection.href;
     const roleUrls = {};
-    for (const role of ["talli_company_access_backend", "talli_ledger_backend"]) {
+    for (const role of ["talli_company_access_backend", "talli_ledger_backend", "talli_banking_backend", "talli_marketing_measurement_backend"]) {
       const previous = (await database.query("select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname=$1", [role])).rows;
       assert.deepEqual(previous, [{ rolcanlogin: false, rolinherit: false, rolbypassrls: false }]);
       const password = randomUUID().replaceAll("-", "");
@@ -55,10 +55,12 @@ export async function startWorkspaceRfApi(database, databaseConfig) {
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
       DATABASE_URL: rootDatabase, TALLI_LEDGER_DATABASE_URL: roleUrls.talli_ledger_backend,
       TALLI_COMPANY_ACCESS_DATABASE_URL: roleUrls.talli_company_access_backend,
+      TALLI_MARKETING_MEASUREMENT_DATABASE_URL: roleUrls.talli_marketing_measurement_backend,
+      TALLI_BANKING_DATABASE_URL: roleUrls.talli_banking_backend,
       TALLI_BACKEND_PORT: String(port), TALLI_READINESS_NONCE: nonce };
     for (const key of ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL"]) if (process.env[key]) env[key] = process.env[key];
     server = startOwnedProcess({ command: process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
-      args: ["tests/fixtures/start_rf1086_workspace_backend.py"], cwd: process.cwd(), env,
+      args: ["tests/fixtures/start_rf1086_predecessor_backend.py"], cwd: process.cwd(), env,
       readinessProof: `TALLI_BACKEND_BOUND:${nonce}` });
     const baseUrl = `http://127.0.0.1:${port}`;
     await waitForOwnedReadiness({ process: server, url: baseUrl + "/health/ready" });

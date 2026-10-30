@@ -177,13 +177,14 @@
     },
     {
       "name": "corporate-governance",
-      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
+      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence and current independent RF capital observations at a point in time, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts. Cross-owner evidence freshness is not transactional.",
       "publicPackages": [
         "talli_backend.modules.banking.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.corporate_governance.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.ledger.public"
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.shareholder_register_filing.public"
       ],
       "routes": [
         "/api/v1/corporate-governance/decision-facts",
@@ -371,13 +372,16 @@
         "talli_backend.modules.billing.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.shareholder_register_filing.public"
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.corporate_governance.public"
       ],
       "routes": [
         "/api/v1/legacy-rf1086/production-filings",
         "/api/v1/legacy-rf1086/feedback-reconciliations",
         "/api/v1/shareholder-register-filings/workspace",
         "/api/v1/shareholder-register-filings/archive-source",
+        "/api/v1/shareholder-register-filings/archive-source/production",
+        "/api/v1/shareholder-register-filings/archive-source/production-stream",
         "/api/v1/shareholder-register-filings/previews/{previewId}",
         "/api/v1/shareholder-register-filings/previews",
         "/api/v1/shareholder-register-filings/overrides",
@@ -386,7 +390,23 @@
         "/api/v1/shareholder-register-filings/simulations",
         "/api/v1/shareholder-register-filings/filing-permissions",
         "/api/v1/shareholder-register-filings/test-evidence",
-        "/api/v1/shareholder-register-filings/production-approvals"
+        "/api/v1/shareholder-register-filings/production-approvals",
+        "/api/v1/shareholder-register-filings/register-observations",
+        "/api/v1/shareholder-register-filings/year-sources",
+        "/api/v1/shareholder-register-filings/source-previews",
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}",
+        "/api/v1/shareholder-register-filings/source-documents/{documentId}",
+        "/api/v1/shareholder-register-filings/current-year-source",
+        "/api/v1/shareholder-register-filings/source-intake-basis",
+        "/api/v1/shareholder-register-filings/source-production-filings",
+        "/api/v1/shareholder-register-filings/source-production-filings/{approvalId}",
+        "/api/v1/shareholder-register-filings/archive-source/production-v4",
+        "/api/v1/shareholder-register-filings/archive-source/production-v6",
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v4",
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v6",
+        "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        "/api/v1/shareholder-register-filings/register-observations/lifecycle"
       ]
     },
     {
@@ -513,7 +533,97 @@
         "talli_backend.modules.annual_accounts_filing.public"
       ],
       "routes": [
-        "/api/v1/annual-accounts/source-facts"
+        "/api/v1/annual-accounts/source-facts",
+        "/api/v1/annual-accounts/delivery-workspace",
+        "/api/v1/annual-accounts/delivery-original",
+        "/api/v1/annual-accounts/delivery-drafts",
+        "/api/v1/annual-accounts/delivery-reviews",
+        "/api/v1/annual-accounts/delivery-advances",
+        "/api/v1/annual-accounts/delivery-reconciliations",
+        "/api/v1/annual-accounts/delivery-corrections",
+        "/api/v1/annual-accounts/company-year-archive",
+        "/api/v1/annual-accounts/company-year-archive-verifications"
+      ]
+    },
+    {
+      "name": "shareholder-register-source-approval",
+      "purpose": "Binds an immutable full-year source review and persisted owner approval under one company/year admission transaction, reverifying retained predecessor receipt bytes for corrections; performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.documents.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/source-production-reviews",
+        "/api/v1/shareholder-register-filings/source-production-approvals"
+      ]
+    },
+    {
+      "name": "rf1086-company-test-retention-read",
+      "purpose": "Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit factory or validated opt-in postgres runtime; dedicated history DSN with no general fallback.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/company-test-retention"
+      ]
+    },
+    {
+      "name": "rf1086-company-test-retention-download",
+      "purpose": "Default-closed standalone company test download under current CompanyAccess Auth/member/fifteen-minute archive step-up before and after capture/stream priming. Exact RF originals; no full legal company-year export receipt, provider or filing authority.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.company_access.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/company-test-retention/stream-v1"
+      ]
+    },
+    {
+      "name": "company-tax-delivery-draft-archive",
+      "purpose": "Read exact retained Tax draft originals through current owner and canonical fresh MFA; positive source coverage and no provider outcome.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/archive-source/delivery-drafts-v1",
+        "/api/v1/company-tax/archive-source/delivery-journal-v1"
+      ]
+    },
+    {
+      "name": "company-tax-delivery-preparation",
+      "purpose": "Prepare immutable drafts from complete owning sources and inspected current-authority originals outside SQL; exact authorized replay before GET and source drift rejection; no filing approval or provider mutation.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public",
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.investments.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/delivery-drafts",
+        "/api/v1/company-tax/delivery-corrections"
+      ]
+    },
+    {
+      "name": "company-tax-finite-delivery",
+      "purpose": "Binds one finite loopback actor/company/year/draft/database admission; revalidates owner/MFA/source/current originals; commits submit-once review and guarded create/upload/validation/confirmation-preparation intents before fixed-path local authority I/O; retains bound results after revocation, resolves unknown uploads only through exact known-instance metadata/file reads, polls only retained known validation-job IDs, and proves owner-confirmation entry only through complete known-instance Clean/file originals. No submission transition; default composition is disabled.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/delivery-reviews",
+        "/api/v1/company-tax/delivery-advances",
+        "/api/v1/company-tax/delivery-reconciliations",
+        "/api/v1/company-tax/delivery-upload-advances",
+        "/api/v1/company-tax/delivery-upload-reconciliations",
+        "/api/v1/company-tax/delivery-validation-advances",
+        "/api/v1/company-tax/delivery-validation-reconciliations",
+        "/api/v1/company-tax/delivery-confirmation-advances",
+        "/api/v1/company-tax/delivery-confirmation-reconciliations",
+        "/api/v1/company-tax/delivery-owner-review",
+        "/api/v1/company-tax/delivery-submission-advances",
+        "/api/v1/company-tax/delivery-submission-reconciliations",
+        "/api/v1/company-tax/delivery-feedback-reconciliations",
+        "/api/v1/company-tax/delivery-workspace",
+        "/api/v1/company-tax/delivery-original"
       ]
     }
   ],
@@ -638,7 +748,38 @@
       "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
       "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
       "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
-      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"
+      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql",
+      "supabase/migrations/20260929094835_annual_interview_company_guard.sql",
+      "supabase/rollback/20260929094835_annual_interview_company_guard.sql",
+      "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",
+      "supabase/rollback/20260929144619_rf_annual_interview_read_admission.sql",
+      "supabase/migrations/20261026043538_company_tax_delivery_annual_read_admission.sql",
+      "supabase/rollback/20261026043538_company_tax_delivery_annual_read_admission.sql",
+      "supabase/migrations/20260929160247_rf_annual_ledger_read_admission.sql",
+      "supabase/rollback/20260929160247_rf_annual_ledger_read_admission.sql",
+      "supabase/migrations/20260929162030_rf_annual_document_read_admission.sql",
+      "supabase/rollback/20260929162030_rf_annual_document_read_admission.sql",
+      "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
+      "supabase/rollback/20260929173935_rf1086_annual_approval_binding.sql",
+      "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
+      "supabase/rollback/20260929182856_rf1086_durable_source_operation_intent.sql",
+      "supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql",
+      "supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql",
+      "supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql",
+      "supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql",
+      "supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql",
+      "supabase/rollback/20261026221935_annual_accounts_delivery_store_v1.sql",
+      "supabase/contract-migrations/20261026232554_annual_accounts_delivery_events_v1.sql",
+      "supabase/rollback/20261026232554_annual_accounts_delivery_events_v1.sql",
+      "supabase/contract-migrations/20261027010818_corporate_accounts_owning_read_admission.sql",
+      "supabase/rollback/20261027010818_corporate_accounts_owning_read_admission.sql",
+      "supabase/contract-migrations/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
+      "supabase/rollback/20261027011601_corporate_immutable_guarded_decision_reads_v1.sql",
+      "supabase/contract-migrations/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
+      "supabase/rollback/20261027012022_corporate_evidence_authoritative_income_year_v1.sql",
+      "supabase/contract-migrations/20261027004007_annual_accounts_delivery_corrections_v1.sql",
+      "supabase/rollback/20261027004007_annual_accounts_delivery_corrections_v1.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1003,6 +1144,132 @@
       "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
       "owner": "backend-system",
       "mode": "one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"
+    },
+    {
+      "port": "Rf1086YearSourcePersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086RegisterObservationPersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped immutable register observations with current-lineage checks"
+    },
+    {
+      "port": "DocumentEvidenceRetentionPersistence",
+      "adapter": "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention",
+      "owner": "backend-system",
+      "mode": "Documents-owned exact metadata lock and retained original reference in the RF capture transaction"
+    },
+    {
+      "port": "Rf1086SourcePreviewPreparation",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified RF owner, canonical full-year source preview, current-source lock at capture; historical source lineage preserved"
+    },
+    {
+      "port": "Rf1086SourceOperationJournal",
+      "adapter": "talli_backend.application.shareholder_register_source_dispatch._AdmittedJournal",
+      "owner": "backend-system",
+      "mode": "held company/year admission with current annual proof for main document, committed operation intents and exact outcomes outside provider I/O"
+    },
+    {
+      "port": "Rf1086SourceOperationJournal",
+      "adapter": "talli_backend.application.shareholder_register_source_dispatch_v3._OperationJournalV3",
+      "owner": "backend-system",
+      "mode": "default V3 retained recovery and fresh same-connection operation admission; original-byte preflight outside guards, committed intents before gated provider I/O"
+    },
+    {
+      "port": "TaxDeliverySchemaValidator",
+      "adapter": "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas",
+      "owner": "backend-system",
+      "mode": "offline pinned official 2025 XSD/code-list validation; exact source and document/envelope bindings; no provider authority"
+    },
+    {
+      "port": "TaxDeliveryDraftPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "immutable exact Tax draft bytes with scope/actor/key replay; owner recheck after company lock; versioned V2 positive store coverage; no approval or provider authority"
+    },
+    {
+      "port": "CompanyTaxCurrentDocumentReader",
+      "adapter": "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
+      "owner": "backend-system",
+      "mode": "fixed TT02 current-return GET only; strict UTF-8 and exact original bytes; preparation remains unconfigured in default composition"
+    },
+    {
+      "port": "TaxValidationResponseValidator",
+      "adapter": "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas",
+      "owner": "backend-system",
+      "mode": "offline separately pinned common V2 validation-response XSD; exact original and decoded calculated-document bytes; no job scope or filing authority"
+    },
+    {
+      "port": "TaxCalculatedDocumentValidator",
+      "adapter": "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas",
+      "owner": "backend-system",
+      "mode": "offline pinned supported 2025 calculated statutory and display XML; exact original/draft and intrinsic party/year checks; no owner confirmation or filing authority"
+    },
+    {
+      "port": "CompanyTaxCurrentDocumentIntake",
+      "adapter": "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake",
+      "owner": "backend-system",
+      "mode": "Separately finite read-only loopback current GET before a draft exists; exact actor/company/year/organization/restricted database scope, no placeholder draft hash, no dispatch authority."
+    },
+    {
+      "port": "CompanyTaxTerminalParentReader",
+      "adapter": "talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead",
+      "owner": "backend-system",
+      "mode": "Separate finite read-only known-parent metadata and exact receipt/file GETs; no dispatch capability or extension of the parent mutation grant."
+    },
+    {
+      "port": "AnnualAccountsSchemaValidator",
+      "adapter": "talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas",
+      "owner": "backend-system",
+      "mode": "Offline exact public RR0002 JSON models/BPMN/application metadata; derived strict XML constraints and supported AS/NOK profile, exact raw document hashes; no upstream XSD or runtime acceptance claim and no person-signing authority."
+    },
+    {
+      "port": "AnnualAccountsDeliveryDraftPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "Exact immutable Accounts drafts in a default-closed reader-first source-v2 store; current owner/MFA and published company guard, no dispatch or authority permission."
+    },
+    {
+      "port": "AnnualAccountsDeliveryJournalPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "Immutable bounded Accounts operation originals with complete Source v3 sequence/hash enumeration, staged finite admissions and submit-once intent slots; default closed, no provider or signature authority."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemPreparation",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsSystemPreparation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsSystemConfirmation",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsSystemConfirmation port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsPersonSigning",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsPersonSigning port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsDeliveryTransport",
+      "adapter": "talli_backend.adapters.loopback_annual_accounts_delivery.LoopbackAccountsKnownRead",
+      "owner": "backend-system",
+      "mode": "Distinct finite loopback Accounts LoopbackAccountsKnownRead port; fixed paths, bounded raw originals, no hosted/provider or other actor fallback."
+    },
+    {
+      "port": "AnnualAccountsSchemaValidator",
+      "adapter": "talli_backend.adapters.annual_accounts_schemas.DeferredAnnualAccountsSchemas",
+      "owner": "backend-system",
+      "mode": "Deferred exact pinned Accounts validation; archive composition/listing/download survives unavailable resources while mutation/frame validation remains closed."
     }
   ],
   "allowedDependencies": {
@@ -1012,6 +1279,7 @@
       "base64",
       "binascii",
       "collections",
+      "dataclasses",
       "datetime",
       "decimal",
       "fastapi",
@@ -1081,13 +1349,29 @@
       "talli_backend.adapters.postgres_annual_accounts",
       "talli_backend.application.annual_accounts_session",
       "talli_backend.modules.annual_accounts_filing.public",
-      "talli_backend.json_transport"
+      "talli_backend.json_transport",
+      "talli_backend.application.shareholder_register_source_workflow",
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.application.shareholder_register_source_capture_v2",
+      "talli_backend.application.shareholder_register_source_preview_v2",
+      "talli_backend.application.shareholder_register_source_approval_v3",
+      "talli_backend.application.shareholder_register_archive",
+      "talli_backend.application.shareholder_register_source_dispatch_v3",
+      "talli_backend.adapters.dependency_readiness",
+      "talli_backend.application.shareholder_register_company_test_retention_http",
+      "talli_backend.adapters.company_test_retention_runtime",
+      "talli_backend.application.company_tax_delivery_preparation",
+      "talli_backend.application.company_tax_delivery_submission",
+      "talli_backend.adapters.annual_accounts_schemas",
+      "talli_backend.application.annual_accounts_delivery_preparation",
+      "talli_backend.application.annual_accounts_delivery_workflow"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.authority_connections_session",
       "talli_backend.application.company_tax_filing_session",
+      "talli_backend.application.company_tax_delivery_source",
       "talli_backend.application.new_year_opening",
       "talli_backend.application.shareholder_register_filing_session",
       "talli_backend.modules.authority_connections.operations",
@@ -1105,7 +1389,12 @@
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.system_boundary.public",
       "talli_backend.modules.validation_observation.public",
-      "talli_backend.modules.audit.public"
+      "talli_backend.modules.audit.public",
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.application.shareholder_register_company_test_retention_http",
+      "talli_backend.application.company_tax_delivery_preparation",
+      "talli_backend.application.company_tax_delivery_submission",
+      "talli_backend.application.company_tax_delivery_rehearsal"
     ],
     "adapters": [
       "__future__",
@@ -1123,19 +1412,24 @@
       "httpx",
       "ipaddress",
       "json",
+      "lxml",
       "os",
       "psycopg",
       "psycopg.conninfo",
       "psycopg.rows",
       "re",
       "talli_backend.adapters.bank_provider_http",
+      "talli_backend.adapters.company_tax_xml",
       "talli_backend.adapters.maskinporten",
       "talli_backend.adapters.postgres_annual_notifications",
       "talli_backend.adapters.postgres_annual_observation",
+      "talli_backend.adapters.postgres_document_evidence",
+      "talli_backend.adapters.postgres_shareholder_register_filing",
       "talli_backend.adapters.rf1086_authority",
       "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_billing",
+      "talli_backend.adapters.supabase_documents",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.vipps_billing",
       "talli_backend.adapters.vipps_webhook",
@@ -1148,10 +1442,13 @@
       "talli_backend.application.banking_workflow",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.company_tax_delivery_rehearsal",
+      "talli_backend.application.company_tax_delivery_submission",
       "talli_backend.application.company_tax_filing_session",
       "talli_backend.application.company_tax_filing_workflow",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
+      "talli_backend.application.corporate_register_evidence",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
       "talli_backend.application.launch_signoffs",
@@ -1159,6 +1456,7 @@
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.new_year_opening",
       "talli_backend.application.shareholder_register_filing_session",
+      "talli_backend.modules.audit.public",
       "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
@@ -1178,7 +1476,9 @@
       "urllib.error",
       "urllib.parse",
       "urllib.request",
-      "talli_backend.modules.audit.public"
+      "talli_backend.adapters.company_tax_loopback_read",
+      "talli_backend.adapters.annual_accounts_schemas",
+      "talli_backend.adapters.loopback_annual_accounts_delivery"
     ]
   }
 }

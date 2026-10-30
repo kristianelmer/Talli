@@ -1499,6 +1499,19 @@ class ReversedLedgerEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class LedgerEntryAmendment:
+    """An original immutable reversal/correction receipt, including history."""
+    original_entry_id: LedgerEntryId
+    reversal_entry_id: LedgerEntryId
+    replacement_entry_id: LedgerEntryId | None
+    company_id: CompanyId
+    income_year: IncomeYear
+    reason: str
+    amended_by: ActorId
+    amended_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
 class PeriodLock:
     period_lock_id: PeriodLockId
     company_id: CompanyId
@@ -1842,6 +1855,10 @@ class LedgerPersistence(Protocol):
         correlation_id: CorrelationId,
     ) -> ReconstructionAssessment: ...
 
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]: ...
+
     async def list_entries(
         self,
         *,
@@ -2000,6 +2017,10 @@ class LedgerQueries(Protocol):
         correlation_id: CorrelationId,
     ) -> ReconstructionAssessment: ...
 
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]: ...
+
     async def list_entries(
         self,
         *,
@@ -2030,7 +2051,25 @@ def preview_tax_settlement_lines(
     return tax_settlement_preview_lines(settlement_kind, amount)
 
 
+@dataclass(frozen=True,slots=True)
+class LedgerReportingSnapshot:
+    """Exhaustive retained facts plus current-year entries after known amendments."""
+    company_id: CompanyId
+    income_year: IncomeYear
+    retained_entries: tuple[LedgerEntryView,...]
+    amendments: tuple[LedgerEntryAmendment,...]
+    effective_entries: tuple[LedgerEntryView,...]
+    reversal_sources: tuple[tuple[LedgerEntryId,LedgerEntryView],...]
+
+
+async def read_ledger_reporting_snapshot(queries: LedgerQueries,*,actor_id: ActorId,company_id: CompanyId,
+        income_year: IncomeYear,correlation_id: CorrelationId) -> LedgerReportingSnapshot:
+    from .reporting_snapshot import read
+    return await read(queries,actor_id=actor_id,company_id=company_id,income_year=income_year,correlation_id=correlation_id)
+
+
 __all__ = [
+    "LedgerReportingSnapshot","read_ledger_reporting_snapshot",
     "preview_tax_settlement_lines",
     "OpeningBankInput",
     "RecordOpeningBankInputCommand",
@@ -2085,6 +2124,7 @@ __all__ = [
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",
+    "LedgerEntryAmendment",
     "LedgerEntryKind",
     "LedgerEntryPage",
     "LedgerEntryView",

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "fba0ac6401d2e5f30afd74e6ad3cfa279b5cf358",
+  "status": "IMPLEMENTED_DATABASE_RUNTIME_PENDING",
+  "scope": "Company guards and same-transaction Governance register/original assertions; not full-year approval/send admission.",
+  "verification": {
+    "backend": {
+      "passed": 6755,
+      "skipped": 2,
+      "databaseDeselected": 1064,
+      "note": "Final edits were completed during this run; affected final source was rerun below."
+    },
+    "finalFocused": {
+      "passed": 125,
+      "failed": 0
+    },
+    "host": {
+      "passed": 82,
+      "failed": 0
+    },
+    "adapters": {
+      "newGuards": 7,
+      "existingAffected": 69
+    },
+    "newDatabaseCases": {
+      "collected": 56,
+      "executed": 0
+    },
+    "architecture": "PASS",
+    "independentStaticReview": "Migration authority/role issues found and repaired; final review found no remaining concrete blocker.",
+    "finalGovernanceLedgerFocused": {
+      "passed": 333,
+      "failed": 0
+    }
+  },
+  "logsSha256": {
+    "backend.log": "a46721fb75517d4e4e8b0159409ab4cb75c32fc7390a71845ec2008cd66ab2fd",
+    "focused.log": "75c23756e5371cc8d91c1ef1c38264cf03878914cd2a13a27f01111da7a29323",
+    "host.log": "e7596eb26e82fa730482dedd8b2ca6aa28986a34bb6572a0edd573f7173fa9ef",
+    "architecture.json": "2005537c71837b3275c3e7a1d400ed717c3c2239bcad6bc622ad57b4f614841a",
+    "database-collection.log": "6e1d8d178d8fa87b1c3ad43f4b6c9a21f1fbacd39d13e8b8839fa577fee4e8e3"
+  },
+  "limits": [
+    "No local or hosted database execution; concurrency, migration, ACL and replay behavior require CI.",
+    "Full-year RF approval/send composition, legacy readiness writer replacement, correction lineage and archive lifecycle integration remain pending.",
+    "All seven RF criteria remain pending; no real AS records or production pilot."
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "7b8ab240b3a8867ad08eb28acd05b54f32efe617b45bb9772d7da3a9c07c76ae",
+    "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py": "a31cd0380ca52d0ece52d59f5802757f93a1ae4ea00f55c8b886d55b09e66fc7",
+    "apps/backend/src/talli_backend/adapters/supabase_documents.py": "59647b2f20674dbe5f494fe4bd57d81a9c282995a931fc291b0f5c55ca640e15",
+    "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "e25c0f550803b77d402d48cc348eadc7fc931a384598bc7f4f679daaa68a5b34",
+    "apps/backend/src/talli_backend/application/corporate_governance_session.py": "fbe135bb63c5d75dbd9a7d484761ea97cf243a9357ceab84fbf6c1f232e96e1e",
+    "apps/backend/src/talli_backend/application/corporate_governance_workflow.py": "e6992939234e1f6617e7b0942d41bd5f2d0509ba0de4e3538d67f27d65f3b17f",
+    "apps/backend/src/talli_backend/application/corporate_register_evidence.py": "0964e5c425147023a609afd5d1bc36f8ded972d469d25d2a5fa19845b1a9b6f9",
+    "apps/backend/src/talli_backend/application/ledger_session.py": "2413ea6ad8e856adae39ea87787f3c95d6d87bd8ad60eedbd5b7d9cd6a5ca656",
+    "apps/backend/src/talli_backend/application/ledger_workflow.py": "5b87de30492d4a4cf67b873eaed3820c66e043714e292c238df4d35dba4a42fc",
+    "apps/backend/src/talli_backend/modules/company_access/MODULE.md": "efef2047b1625c1cb3a44e84b0c9cd78ba42e676088d53e502ddc03c8caaf8fd",
+    "apps/backend/src/talli_backend/modules/company_access/module.json": "c5dac2292717bb3415b5dfa3241de41a1ff4d5cf2ff6723af0550009a0d441d6",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "5606305bf58d9ab19e04af008f2111d7a01d16e5a63b33f509ae1a72ae8f42fe",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "90af0d4c5dc9c9ea4134b0ea548255ffb40e003cab9787ceb855dd4c4d707f96",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "e9bc5cbed54b1cda7c11d7007c2785809b41d2124c17af3fef1b6957cf635957",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "de487b7a56efb85a9603cc15620203053de1a61dda6d8eb333c0eaa7eaf7d82e",
+    "apps/backend/src/talli_backend/modules/ledger/MODULE.md": "e4ba2b6494331a40ca22e6bc86eb5387765a01fa797371ab93b014a4dca1ee7f",
+    "apps/backend/src/talli_backend/modules/ledger/module.json": "1f7fe3cbe806be439b4f86ed98887679d8727744c034da251ecdd88913ff6c5b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "20809833c9f24585bce1967f5d00d4822bccd1d51e4ef21885c4c8656f5248a8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "2c54f0cfaae6711ffdadef5efcc39d3c19a59db7c26c36c8a9777ba5ff19c002",
+    "apps/backend/tests/test_company_access_rf_admission_database.py": "db360e8087e112ced9490b1b0ade6123d2e8841a91731f1f108ee2f7e99d9725",
+    "apps/backend/tests/test_consequential_adapter_guards.py": "651f9b447f9d0c9a8383055c4b4af5b07b219688ee76526ce3e495bc70a7b1ae",
+    "apps/backend/tests/test_corporate_governance_workflow.py": "a11ad623dab0c3838a6f7568719c36bb94af3cc0ebaea3533a48bf09f6d7e55e",
+    "apps/backend/tests/test_corporate_register_evidence.py": "fe0e9b1027324901056522175ee83c8c05635524fc99da58a244404310899d24",
+    "apps/backend/tests/test_document_evidence_retention_database.py": "a9668a3bde59146d99699b1f71bf741c540d0664a229e4746a851f2dc0b3ac21",
+    "apps/backend/tests/test_document_originals_database.py": "8c048c3b1ec6d84a41e419152b6bbf605f802285e39162c25a5f3eaf5312b311",
+    "apps/backend/tests/test_documents_rf_company_guard_database.py": "b7379fa03b8b22ad76ea1860a340d68622e4f15e6530dc9d8d7bfe1d6307f74e",
+    "apps/backend/tests/test_governance_ledger_company_guard_database.py": "20325aab10dd361105b3e76a66f7d38d6a3417c1b94f2a4169554388728cedd9",
+    "apps/backend/tests/test_ledger_api.py": "4202cf9c6545427db392418f263d89a0871daf8edd3526e3265165fbd08f27f6",
+    "apps/backend/tests/test_ledger_workflow.py": "d0c951e2eceffecc83da851c799e6e044eae50f0e341bfe8f4e422ef6cda71f3",
+    "apps/backend/tests/test_supabase_corporate_governance.py": "0f5ed850cba297f4b4c797664c47fe37f3715ee3e5558e45b02b540e5412490f",
+    "scripts/rehearse-authority-topology.mjs": "d296847c0d289062c1db36b956b9e69d9d6611854f6e72e74ba917b21bfae81e",
+    "scripts/test-supabase-local.sh": "e87f9f75c2738f6ed0162280e2a317d46647afad068f794b7b24a08b7f9643e7",
+    "supabase/migrations/20260924080208_company_access_rf_admission_guard.sql": "00e216dda8be4b8b0cfc63eb9c1b973d0002ee203042885fa61f56823cf3e7a4",
+    "supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql": "12d838082ea994cac979fa4879ad7b2813bd266f28ad5f762293cd7f2fdcba0f",
+    "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql": "0af0710ef4f25dafb91acc0379de7db6aed381ffb8c618125397c63464ede7ed",
+    "supabase/rollback/20260924080208_company_access_rf_admission_guard.sql": "e10a076a01523f0a87d50c632ccd2f7c4391d9ed35cf342274ee4d18cbccff68",
+    "supabase/rollback/20260924080249_documents_rf_consequential_company_guards.sql": "724c4357a6f3c5c84b9f970b2f8d2ab9c238a92195e158ac866469f7f0ec2d1d",
+    "supabase/rollback/20260924080355_governance_ledger_company_write_guards.sql": "890f9a7457899f4b6bbdaba1106f25b4a1799de1d0b3b9c30392fc986719ac05"
+  },
+  "privateProofSha256": "79558438076ee61ecd89473472b97f15edc7500ff39799656c5fdecfe276b9b5"
+}

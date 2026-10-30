@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_COMPLETE_SOURCE_HISTORY_EXPORT",
+  "baseCommit": "e9bb5439c2bed25777cf9dc6557f4635e3e6692a",
+  "scope": "Export all RF company/year source versions and independent register observations, including unapproved history, original capture records, previews and review bridges, plus their exact retained document originals.",
+  "behavior": [
+    "All history tables are read on the same repeatable snapshot as filing approvals, claims and journals; no current admission or foreign-owner table queries are added.",
+    "V2 canonical records retain complete source/observation chains and heads, original snapshot text, actor-scoped idempotency keys, request hashes, preview payload text and creator/time, and bridges.",
+    "Validation rejects incomplete chains, correction forks, stale/missing heads, malformed captures, orphaned previews/bridges and conflicting approval lineage. Independent observation roots and blocked/unbridged historical previews are preserved.",
+    "Source originals include approved and unapproved source/observation metadata versions. Web verifies projected document requirements against canonical technical commitments and exact original bytes.",
+    "Existing v1 records round-trip byte-for-byte with source_history=None. --require-source-history rejects these older partial captures without relabeling them as complete.",
+    "The offline verifier separately reports history inclusion/counts, source-original byte verification and actual restoration. No restore or filing authority is granted."
+  ],
+  "verification": {
+    "rfSuite": "1231 passed, 153 database cases deselected.",
+    "finalHistoryDelta": "26 passed after the final timestamp/type guard.",
+    "archiveWeb": "112 passed, including unapproved-v2 transport and restore preservation and incomplete-byte rejection.",
+    "webBoundary": "573 passed (469 + 104).",
+    "contract": "95 passed.",
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "actualHttpAndCli": "Synthetic FastAPI export with zero approvals, two source versions, two observations and five exact originals verifies with both required-history and required-original flags.",
+    "database": "Expanded the restricted-role preview lifecycle test to read/export both unapproved source versions and previews; 11 cases collected, final-revision database execution remains pending."
+  },
+  "limits": [
+    "This exports retained RF source history; it does not perform database or object-store restoration.",
+    "Feedback and unrelated company-document byte bundles, retention generations, expiry/cancellation/deletion and larger streaming exports remain outstanding.",
+    "Canonical RF record limit remains 64 MiB and inline original source-byte limit remains 128 MiB.",
+    "Checksums are not independent signatures or provenance guarantees.",
+    "Previous e9bb5439 Application CI passed; its Database isolation run 36400398886 is still active. Complete final-revision CI remains pending.",
+    "All seven RF acceptance criteria remain PENDING."
+  ],
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false,
+    "filingAuthorityAdded": false
+  },
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-source-history-20260928-14d7",
+  "sha256": {
+    "talli-history-rf-suite.log": "6cb8b6426fb001cb01e1764b3167888aedf91f79cde860963b396253addb9f19",
+    "talli-history-final-delta.log": "c2a82a92b25e07882f4ad2b02fa1c3a8262f18eb2807c48f3d4634c6599b0163",
+    "talli-history-web.log": "d07867683b3b5195309ba7b53a3af20a3a77a77e65b3227d62db9b3c5cc1856b",
+    "talli-history-boundary-web.log": "0fef418dbb7e1fc59c9772562474d656903348b40c6409c98d810b90b0c6fd17",
+    "talli-history-contract.log": "13035f64a87c701e4b35af1ab64f335816dfe1be343acda13d46cab6a0f84e13",
+    "talli-history-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "talli-history-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-history-db-collection.log": "946e612b37f30f30ba32f5e27efbb045eeee14dc72d20777eb8b65726e18eec1",
+    "talli-history-cli.log": "29bbe2a22dd83884d88aa602db3244776e245697d405f6385155da7db5d3b298"
+  }
+}

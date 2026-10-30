@@ -1,9 +1,10 @@
-import type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest } from "@talli/talli-api-client";
+import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryDraftArchive,verifyCompanyTaxOwnerReviewArtifact} from "@talli/talli-api-client";
+import type { CompanyTaxAssessmentFactsRequest, CompanyTaxReadinessPreviewRequest, CompanyTaxSourceFactsWire, CompanyTaxDeliveryDraftArchiveWire, CompanyTaxDeliveryJournalArchiveWire } from "@talli/talli-api-client";
 import { createTalliApiClient, TalliApiError, type CompanyTaxOverrideRequest, type CompanyTaxReviewRequest, type CompanyTaxPermissionRequest, type CompanyTaxTestEvidenceRequest, type CompanyTaxEvidenceImportRequest, type LedgerTaxSettlementWire, type TaxSettlementPreviewInputWire } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
-  return createTalliApiClient({ baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` } });
+  return createTalliApiClient({ ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
 export function previewTaxSettlement(accessToken: string, input: TaxSettlementPreviewInputWire) {
@@ -39,6 +40,55 @@ export async function loadTaxSettlementArchiveSource(accessToken: string, compan
     return { data: result.settlements, error: null };
   } catch {
     return { data: [], error: { message: "Kunne ikke lese skatteoppgjørene." } };
+  }
+}
+
+export type TaxDeliveryDraftArchiveProjection = {
+  sourceFacts: CompanyTaxSourceFactsWire;
+  originals: CompanyTaxDeliveryDraftArchiveWire | null;
+  journal?: CompanyTaxDeliveryJournalArchiveWire;
+};
+
+const verifyTaxJournalOriginals=verifyCompanyTaxDeliveryJournalArchive;
+const verifyTaxDraftOriginals=verifyCompanyTaxDeliveryDraftArchive;
+
+export async function loadTaxDeliveryOwnerReview(accessToken: string,companyId: string,incomeYear: number,filingId: string,approvalSha256: string) {
+  const result=await client(accessToken).companyTaxGetDeliveryOwnerReview(companyId,incomeYear,filingId,approvalSha256,
+    {signal:AbortSignal.timeout(10_000)});
+  await verifyCompanyTaxOwnerReviewArtifact(result,approvalSha256);
+  return result;
+}
+
+export async function loadTaxDeliveryDraftArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const api = client(accessToken);
+    const request = { signal: AbortSignal.timeout(10_000) };
+    const source = await api.companyTaxGetSourceFacts(companyId,incomeYear,request);
+    // A complete V1 source positively proves the original seven-table extent,
+    // including absence of the new store. This supports frontend-first rollout.
+    if (/^company-tax-source-v1:[0-9a-f]{64}$/u.test(source.evidence.version)
+        && source.historyCoverage.status === "complete") {
+      return { data: { sourceFacts: source, originals: null } satisfies TaxDeliveryDraftArchiveProjection, error: null };
+    }
+    if (/^company-tax-source-v[3456789]:[0-9a-f]{64}$/u.test(source.evidence.version)
+        || (/^company-tax-source-v2:[0-9a-f]{64}$/u.test(source.evidence.version)
+          && source.historyCoverage.reasons.includes("declaredDeliveryExtentValid_unproven"))) {
+      // The nine-table successor supplies facts and originals from one guarded
+      // snapshot. No failed or incomplete successor read falls back to V2.
+      const journal = await api.companyTaxGetDeliveryJournalArchive(companyId,incomeYear,request);
+      const originals: CompanyTaxDeliveryDraftArchiveWire = {companyId,incomeYear,
+        codec:"company-tax-delivery-draft-archive-v1",coverage:"complete",sourceSha256:journal.sourceSha256,
+        observedAt:journal.observedAt,recordCount:journal.draftCount,records:journal.drafts};
+      await verifyTaxJournalOriginals(journal,companyId,incomeYear);
+      return {data:{sourceFacts:journal.sourceFacts,originals,journal} satisfies TaxDeliveryDraftArchiveProjection,error:null};
+    }
+    if (!/^company-tax-source-v2:[0-9a-f]{64}$/u.test(source.evidence.version)) throw new Error("Unknown Tax archive source.");
+    const originals = await api.companyTaxGetDeliveryDraftArchive(companyId,incomeYear,request);
+    if (originals.sourceSha256 !== source.evidence.digest) throw new Error("Tax archive source changed.");
+    await verifyTaxDraftOriginals(originals,companyId,incomeYear);
+    return { data: { sourceFacts: source, originals } satisfies TaxDeliveryDraftArchiveProjection, error: null };
+  } catch {
+    return { data: null, error: { message: "Kunne ikke lese komplette skattemeldingsutkast." } };
   }
 }
 
@@ -78,6 +128,10 @@ export async function acknowledgeOwnedCompanyTaxComment(accessToken: string, com
   }
 }
 
+export function taxDeliveryMfaRequired(error: unknown): boolean {
+  return error instanceof TalliApiError && error.problem?.code === "COMPANY_TAX_MFA_REQUIRED";
+}
+
 export function companyTaxActionErrorMessage(error: unknown): string {
   if (error instanceof TalliApiError) {
     if (error.problem?.code === "COMPANY_TAX_MFA_REQUIRED") return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
@@ -108,4 +162,38 @@ export function previewCompanyTaxReadiness(accessToken: string, facts: CompanyTa
 
 export function previewAnnualTaxEstimate(accessToken: string, facts: CompanyTaxAssessmentFactsRequest) {
   return client(accessToken).companyTaxPreviewAnnualEstimate(facts, { signal: AbortSignal.timeout(10_000) });
+}
+
+export function loadTaxDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
+  return client(accessToken).companyTaxGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function loadTaxDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {
+  return client(accessToken).companyTaxGetDeliveryOriginal(companyId,incomeYear,filingId,key,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function prepareTaxDeliveryDraft(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxPrepareDeliveryDraftRequest,key: string) {
+  return client(accessToken).companyTaxPrepareDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function prepareTaxDeliveryCorrection(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxPrepareDeliveryCorrectionRequest,key: string) {
+  return client(accessToken).companyTaxPrepareDeliveryCorrection(command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
+}
+
+export function approveTaxDeliveryDraft(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxApproveDeliveryDraftRequest,key: string) {
+  return client(accessToken).companyTaxApproveDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function confirmTaxDeliverySubmission(accessToken: string,command: import("@talli/talli-api-client").CompanyTaxConfirmSubmissionRequest,key: string) {
+  return client(accessToken).companyTaxConfirmDeliverySubmission(command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
+}
+
+export function advanceTaxDeliveryAction(accessToken: string,action: Exclude<import("@talli/talli-api-client").TaxDeliveryAction,"approve"|"submit"|"prepare_correction">,
+    command: import("@talli/talli-api-client").CompanyTaxAdvanceDeliveryRequest,key: string) {
+  const api=client(accessToken);
+  const methods={create:api.companyTaxAdvanceDelivery,upload:api.companyTaxAdvanceDeliveryUpload,reconcile_upload:api.companyTaxReconcileDeliveryUpload,
+    validate:api.companyTaxAdvanceDeliveryValidation,reconcile_validation:api.companyTaxReconcileDeliveryValidation,
+    prepare_confirmation:api.companyTaxAdvanceDeliveryConfirmation,reconcile_confirmation:api.companyTaxReconcileDeliveryConfirmation,
+    reconcile_submission:api.companyTaxReconcileDeliverySubmission,reconcile_feedback:api.companyTaxReconcileDeliveryFeedback};
+  return methods[action](command,{idempotencyKey:key,signal:AbortSignal.timeout(30_000)});
 }

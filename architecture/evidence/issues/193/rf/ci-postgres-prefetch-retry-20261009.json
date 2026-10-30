@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "observedDateUtc": "2026-10-09",
+  "slice": "Bounded anonymous PostgreSQL fixture image retry",
+  "baseRevision": "f095b0c2898c5e3166dba8c1120f112af82ec457",
+  "status": "IMPLEMENTED_REVIEWED_MOCKED_CHECKS_PASS_CURRENT_CI_PENDING",
+  "observedFailure": {
+    "runId": 37995838406,
+    "jobId": 114041565369,
+    "head": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+    "event": "Application downloaded postgres:17, then anonymous ECR pull reported toomanyrequests: Rate exceeded. Database prefetch succeeded. Whole workflow was still running when this record was prepared.",
+    "excerpt": {
+      "path": "/private/tmp/talli-release-20261009/ci37995838406-application-failure-sanitized.log",
+      "sha256": "7a7e5ebf8ea93c18c59d3b9333e5913cd358c363c70852ab46f9c3c713d1415f",
+      "bytes": 303
+    }
+  },
+  "behavior": [
+    "Three attempts per fixed image, with5s then10s waits only for an allowlist of throttle/temporary transport failures. Unknown errors, permanent diagnostics, termination and tag failures stop immediately.",
+    "Every attempt uses the same owned anonymous Docker config and default daemon. No credentials, account, alternate registry, mutable image override or authenticated fallback. Cleanup runs on exit.",
+    "No workflow gate is bypassed and no failed run is relabeled passing. A later actual CI run must prove the download repair."
+  ],
+  "checks": {
+    "focusedPrefetchCases": 16,
+    "fullHarnessCases": 103,
+    "fullHarnessResult": "PASS",
+    "fullHarnessLog": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-ci-registration.log",
+      "sha256": "b2bdc1c1ffb0a295988c875f39c673bd8332c59aa61af025275f45ded77fc2c4",
+      "bytes": 10761
+    },
+    "shellSyntax": "bash -n passed",
+    "independentReview": "Root inspected the bounded retry loop and mocked failure/cleanup/context cases; no remaining finding.",
+    "limit": "Tests use docker/sleep shims; no local live image pull or claim that ECR cannot throttle again."
+  },
+  "sourceFileSha256": {
+    "scripts/prefetch-postgres-fixture-images.sh": "fe731440a6c4f791a36422299cf8444357572090a88dd3528dc0dc93cc05074d",
+    "tests/ci_release_gate.test.mjs": "39e4abb884e91c5ed0b089ffa845a04c21cceaea823895a6f2bcd64f672a949f"
+  },
+  "limits": [
+    "Current database/browser/identity-restore and whole CI outcome are separate evidence.",
+    "All release and launch gates remain pending."
+  ]
+}

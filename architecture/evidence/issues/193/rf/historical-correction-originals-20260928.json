@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_HISTORICAL_CORRECTION_ORIGINALS",
+  "baseCommit": "7e7382c71b75707d716906fccaef110b817df90c",
+  "scope": "Exact bound historical feedback originals in RF correction approval and claim admission.",
+  "behavior": [
+    "Bound feedback reads the exact retained Documents snapshot and verifies bytes, complete metadata, original ID, source year, retention time and original submitter attribution before the company guard.",
+    "Admission compares the complete predecessor snapshot, then reasserts each historical receipt on its existing transaction. Current metadata cannot substitute a newer original.",
+    "The narrow Documents assertion requires READ COMMITTED, waits on the company guard and refreshes accepted ownership; mismatches abort the caller transaction. RF receives metadata-only assertion authority without original byte or table access.",
+    "Legacy unbound feedback retains its current-evidence verification. Fresh source admission and initial feedback binding continue requiring current document metadata.",
+    "Additive migration rollback/replay preserves retained originals and prior role authority; topology recutover reinstalls the new assertion."
+  ],
+  "verification": {
+    "focused": "213 passed: correction, full-year predecessor, claim, Documents and feedback archive cases.",
+    "broaderSelection": "1563 passed, 7097 deselected, 3 existing warnings; selected rf1086 or document_original outside database lanes.",
+    "architecture": "PASS",
+    "ciHarness": "69 passed after stable parametrized database test IDs.",
+    "boundedPostgres": "PASS: actual Documents retention/recovery/assertion migrations on an owned disposable PostgreSQL 17 container. Exact old receipt survives metadata/year change, current assertion still rejects it, five substitutions abort transactions, stale isolation is rejected, owner revocation during observed advisory-lock wait is denied, rollback/replay preserve bytes and role memberships, restricted RF role cannot read original bytes or table. Fixture supplies minimal company authorization and guard routines; not full-schema execution.",
+    "databaseCollection": "52 Documents original database cases collected, including 13 new assertion cases; full-schema execution pending.",
+    "previousCi": "Run 36415185712 at 7fe0e5d7: Application passed launch rehearsal, builds and dependency audits; Database failed at temporary PostgreSQL startup before RF. TCP readiness fix and confirmed full-year recovery pushed as 7e7382c7; run 36417395568 in progress."
+  },
+  "limits": [
+    "Final-revision CI and full-schema historical correction execution remain pending.",
+    "Earlier year-scoped archive SQL failure has not yet been reached after the other fixes.",
+    "No production provider dispatch, hosted migration, genuine AS data, legacy feedback backfill, actual database/object restoration or source-freshness authority added.",
+    "All seven RF acceptance criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-historical-correction-20260928-14d7",
+  "sha256": {
+    "talli-historical-correction-tests.log": "0cf31ae558d8de8c2a5b1a2de04cb629c4528df4e64ef1f31a5e77628262b204",
+    "talli-historical-rf-suite.log": "f885c7f3cef68c761b67f215d0934e319adec7863d39126e054aa4da5cb4f030",
+    "talli-historical-assertion-probe.log": "98eb5bf0b4ed3408893ca3e0274d279cb3d2a56ded6db1d60fc712d7f4d3dcc8",
+    "talli-historical-assertion-probe.py": "9c754b70c9007d141228f391231807e3630f681720f97769d1dde4acfc188e5d",
+    "talli-historical-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-historical-ci-harness.log": "15de6a330c250f0cb78cfc1277843de89ffca9718d698665030e6ae4e3773a6c",
+    "talli-historical-db-collection.log": "0a68388555f8da78120d3bfe75bff2549d4860f25bb3a69b4248fcae2561cee8",
+    "talli-7fe0-application.log": "1f4124ad064893a81586a30d4a6c61e186fa4c1700bffd010c1c8d99286752c7"
+  }
+}

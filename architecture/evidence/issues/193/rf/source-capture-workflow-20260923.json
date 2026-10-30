@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "issue": 193,
+  "date": "2026-09-23",
+  "status": "LOCAL_APPLICATION_TESTS_PASS_INTEGRATION_REVIEW_PENDING",
+  "checkpointBase": "6ca753dc",
+  "purpose": "Construct trusted RF year-source and independent register-observation context through public owner contracts, then retain immutable evidence through authenticated RF persistence.",
+  "application": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+  "publicOwnerDependencies": [
+    "company_access.public",
+    "documents.public",
+    "corporate_governance.public",
+    "shareholder_register_filing.public"
+  ],
+  "entryPoints": [
+    "ShareholderRegisterSourceWorkflow.capture_year_source",
+    "ShareholderRegisterSourceWorkflow.capture_register_observation"
+  ],
+  "verifiedBehavior": [
+    "Fresh token actor and accepted owner checks bind exact current company identity.",
+    "Every original document is verified through Documents, retaining actual source year, content-addressed version and the Documents-owned full metadata digest.",
+    "Callers cannot provide either internal trusted context.",
+    "No-activity, formation, transfer and ordinary dividend sources require complete explicit source evidence and complete Governance enumeration.",
+    "Dividend reporting year derives from the general-meeting date while its finalization proof preserves the original Governance source year and receipt.",
+    "Pending, rejected, superseded, reversed, corrected and omitted relevant Governance evidence blocks capture.",
+    "Independent register capture accepts attached workspace corporate/accounting originals with owner-confirmed complete before/after register and registration facts.",
+    "Cash issuance and loss-covering reduction bind the exact current independently persisted register ID, version and hash to event-time before/after states from RF's shared full-year replay.",
+    "An independent observation must exist no later than Governance finalization. Every observation original is independently reverified when capturing the year source.",
+    "Capital economics and original document hashes derive from retained Governance facts, not the caller's proposed event economics."
+  ],
+  "dateRule": {
+    "primarySource": "https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/",
+    "productInference": "Map the ordinary dividend general-meeting decision date to the RF reporting year; preserve, rather than rewrite, the original Governance accounting/source year."
+  },
+  "validation": {
+    "focusedTests": 216,
+    "result": "216 passed in 1.07s",
+    "applicationTests": 56,
+    "diffCheck": "PASS",
+    "privateProofSha256": "17853e618c44200c128ea1503ef5bd2591ed93f8516fd514e226e1f23718b50a"
+  },
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "da3634cf839d2991a787d886384181ae9450fba0c14d9534bafd208e88973fda",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "ef0427a30b30d4ecc24ffbd03946fdce2223ebd4af52dc89126461d994e5abdc",
+    "apps/backend/tests/test_shareholder_register_source_workflow.py": "0ea468919c37ac5a8dc54b52ac905e0edb24c197451352ee71d9788947e63305",
+    "apps/backend/tests/test_shareholder_register_capital_source_workflow.py": "544454c471c47aaf0d5a0433e5b7d8588b01f40b7b19115624cfb0071b17450f"
+  },
+  "limits": [
+    "No HTTP route, provider call, hosted change or production activation is added.",
+    "These application tests exercise owner contracts and pure persistence preparation; they are not end-to-end database or storage tests.",
+    "Documents verification proves exact bytes and metadata; owner confirmation supplies register content/provenance review. It does not automatically certify factual contents.",
+    "Cross-owner reads are point-in-time observations, not a production freshness lease. Atomic Documents retention and RF observation-currentness checks belong to the separately reviewed persistence integration.",
+    "Cash nominal increase remains explicitly blocked pending an authoritative Governance variant; the accepted full-year product scope is unchanged.",
+    "Historical fund-issued capital and post-loss distribution clearance remain separate documented gaps.",
+    "No private source contents, tokens, identities, document bytes or production company facts are included."
+  ]
+}

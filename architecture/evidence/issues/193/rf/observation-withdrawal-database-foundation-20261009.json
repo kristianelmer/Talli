@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086 staged observation-only withdrawal database foundation",
+  "observedDate": "2026-10-09",
+  "baseRevision": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+  "status": "STAGED_UNGRANTED_LOCAL_CHECKS_AND_ENCODER_PARITY_PASS_FULL_DATABASE_EXECUTION_PENDING",
+  "plan": "architecture/evidence/issues/193/rf/observation-withdrawal-plan-20261009.json",
+  "scopeProvenance": "Bounded RF-only engineering slice authorized in parent-agent assignment; no human acceptance, launch or runtime activation decision.",
+  "behavior": {
+    "storage": "Immutable FORCE-RLS RF-owned register_observation_withdrawals; exact target composite FK, unique target and actor/company/year/key, retained original receipt and historical actor identity.",
+    "commitments": "Typed SQL append accepts scope, target, exact reason and key only. SQL creates UUID/time/canonical UTF-8 JSON and both domain-separated SHA-256 commitments. Table CHECKs rebuild exact receipt from every row binding and compare both stored hashes; no caller receipt or hash is trusted.",
+    "authority": "Verified actor/current accepted owner checked before and after company lock, then established RF company/year lock. No commercial or current company-year gate is required for withdrawal. Fresh target must be exact, unsuperseded and unwithdrawn; time cannot predate capture.",
+    "replay": "Actor/company/year/key lookup compares exact original request before fresh-head validation; exact replay returns original bytes, mismatch conflicts, other actors cannot recover another actor's receipt.",
+    "oldEntryBackstops": [
+      "append_register_observation_v1: correction predecessor must remain active after company/year locking",
+      "assert_current_register_observation_v1: exact requested observation must remain active after company locking"
+    ],
+    "isolation": "The private active predicate requires READ COMMITTED so an old correction cannot use a pre-withdrawal REPEATABLE READ snapshot after waiting. Historical reads and capture-receipt lookup remain unchanged.",
+    "grantState": "No EXECUTE grant to PUBLIC, anon, authenticated, service_role, shareholder_register_filing_executor or corporate_governance_workflow_executor for the new append or private canonical/active helpers. No direct runtime table mutation. Tests use one unique NOLOGIN/NOBYPASSRLS fixture role with exact cleanup.",
+    "rollback": "Retained rows abort rollback atomically. Empty rollback leaves inert storage/guards and closed runtime grant intact; it does not remove invalidation checks. Existing full-schema teardown already refuses retained target observations.",
+    "overlap": "Only two old observation entry points are guarded, preserving their OIDs, signatures, ownership and ACLs. Successor registry reapplication restores these guards after historical migrations replay. No persistence port, adapter, HTTP route or command activation is added."
+  },
+  "checks": [
+    {
+      "name": "Staged database regression collection",
+      "result": "COLLECTED_NOT_EXECUTED",
+      "collected": 33,
+      "command": "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py --collect-only -q",
+      "log": "databaseCollection"
+    },
+    {
+      "name": "CI lane partition, successor ordering and fail-stop harness tests",
+      "result": "PASS",
+      "passed": 91,
+      "command": "node --test tests/ci_release_gate.test.mjs",
+      "log": "ciRegistration",
+      "limits": "Local unit/harness tests; synthetic migration execution is not live database evidence."
+    },
+    {
+      "name": "Architecture, ownership catalog and manifest",
+      "result": "PASS",
+      "exitCode": 0,
+      "command": "node scripts/check-architecture.mjs",
+      "log": "architecture"
+    },
+    {
+      "name": "SQL/Python canonical encoder parity",
+      "result": "PASS",
+      "executor": "parent root agent",
+      "postgresVersion": "17.11 Homebrew",
+      "canonicalReceiptCases": 27,
+      "invalidReasonCases": 4,
+      "method": "Parent ran the exact two immutable SQL canonical encoders extracted from the recorded migration in a private native PostgreSQL cluster. Compared RF public parser/preparation/serialization bytes across nine reason variants and three timestamps including offset, leap-date and year 9999 cases.",
+      "artifacts": [
+        "nativeParityResult",
+        "nativeParityLog",
+        "nativeParityScript"
+      ],
+      "tcpListening": false,
+      "ownedClusterStoppedAndRemoved": true,
+      "limits": "No complete migration, Supabase, RLS, owner admission, race or rollback execution."
+    },
+    {
+      "name": "Whitespace",
+      "result": "PASS",
+      "command": "git diff --check"
+    }
+  ],
+  "runtimeTestCoveragePending": [
+    "SQL-minted receipt canonical parity and exact replay through staged append",
+    "No runtime append/helper execution or direct table mutation grants; FORCE RLS and disposable role confinement",
+    "Exact target/scope/version/hash, Unicode blank/max reason and forged row commitment rejection",
+    "Actor-scoped key replay, current owner revocation and outsider concealment",
+    "Concurrent duplicate withdrawal, post-lock owner revocation and both old correction-versus-withdrawal race orders",
+    "Direct legacy correction rejects a REPEATABLE READ snapshot taken before committed withdrawal",
+    "Immutable evidence, historical reads, independent new capture and old current assertion invalidation",
+    "Migration replay preserves old function identity/ACLs and role memberships; retained rollback is atomic; empty rollback preserves guards"
+  ],
+  "independentReview": {
+    "reviewer": "override_standards_review",
+    "result": "No remaining material finding in staged SQL/rollback/test scope after isolation fix.",
+    "findingResolved": "Reviewer identified stale REPEATABLE READ legacy correction admission after company-lock wait. Narrow active predicate now rejects non-READ-COMMITTED calls and direct old-entry regression was added.",
+    "observation": "Reviewer independently collected 33 database cases and inspected current-owner, company-first/year-next lock order, replay-before-head, ungranted command and retained rollback.",
+    "followup": "Existing ACL test now checks append and all four private helpers, matching its stated scope.",
+    "evidenceKind": "Reviewer source inspection and tool observation; no retained independent review log.",
+    "limits": "No live full-migration/RLS/race claim."
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql": "bbe6cb7fff945785ae31f66c71d8aa353399e7f2bf4121bba15339e628b1f77d",
+    "supabase/rollback/20261009213032_rf1086_observation_withdrawal_foundation.sql": "f293be4e66e3d956b8067417994711d063daa918ed40eb03c944c8a2b49d4b9c",
+    "apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py": "d7b264a2974edbbb8dd69f2544e349ab373d3e06e9745c715c4e48bb8d767779",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation_withdrawal.py": "3582ae0742745ea7d41ae0e05a9fb56d6546966848f60e1db8d9972c9e8e4d0b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "185224f8d8394bf497c8e14a8ac67d9a7bd8cd51aacbf22386261cbb89f34f29",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "52c7f399553c2e9280b3294602ca70be6878a457a028c91125dc81621b67b230",
+    "architecture/database-catalog.json": "8e399cfff69a2c721b978e287f3a7bfa83d383b30dd1ef166697d62fedfa48ac",
+    "scripts/rf-consequential-successors.json": "47bf202c93384ea31eac1564066d59ff36fc30a4a6df9c4d8e2b2cc9c1ea9db1",
+    "tests/ci_release_gate.test.mjs": "9e4a700f5cacbf7034a4cbac7e5bfe47f84bb7d950d552d1db663d42724af95e",
+    "package.json": "2fc3267715532cd6ede27a99cc2be711d4586f2e2e45198554667f01f62eaf5a"
+  },
+  "privateLogs": {
+    "databaseCollection": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-database-collection.log",
+      "sha256": "7a28119f10e29194f2a7575aac18639d2a69064a4718d4eaf5715be3deab2076",
+      "bytes": 15887
+    },
+    "ciRegistration": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-ci-registration-tests.log",
+      "sha256": "e9c52cf5355947ee9f7f7ce490df5aa280f5b2778c6013e0f2353187737958e1",
+      "bytes": 9325
+    },
+    "architecture": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-database-architecture.log",
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    },
+    "nativeParityResult": {
+      "localPath": "/private/tmp/talli-release-20261009/withdrawal-sql-parity-native.json",
+      "sha256": "a21f2246ec1c1f5db7f2d72fc392fbb0b7ccae384535f5f4dd8408ef173c343b",
+      "bytes": 425
+    },
+    "nativeParityLog": {
+      "localPath": "/private/tmp/talli-release-20261009/withdrawal-sql-parity-native.log",
+      "sha256": "4e5e85fe321fca51500e5adfb92ad8988d4265a83030bed4c11232365dfb4be6",
+      "bytes": 972
+    },
+    "nativeParityScript": {
+      "localPath": "/private/tmp/talli-release-20261009/check-withdrawal-sql-parity.py",
+      "sha256": "4150d6c4a4f6ee971d84df578c5a7fd63e130403ff5080bc8c9972ac4893f90c",
+      "bytes": 4534
+    }
+  },
+  "notPerformed": [
+    "Complete migration on Supabase",
+    "33 database regression executions",
+    "Browser or immutable CI run for this candidate",
+    "Governance final SQL assertion or event repair",
+    "Company Archive coverage/completion fence",
+    "Runtime adapter, HTTP route or command execution grant",
+    "Commit or push by implementation owner",
+    "Requirements index or acceptance promotion"
+  ],
+  "limits": [
+    "Evidence is bound to these local source hashes; it is not a passing immutable CI revision.",
+    "Typed PostgreSQL arguments normalize lexical UUID spelling and integer input; a future HTTP DTO must preserve strict lexical validation. UTF-8/text excludes invalid UTF-8 and NUL. The exact reason is retained and capped at 1000 characters.",
+    "Encoder parity establishes canonical bytes only. Collection establishes import/discovery, not database semantics. All full migration/RLS/race/rollback assertions remain pending.",
+    "Source/preview/review/approval/new-claim/new-intent invalidation guards, truthful current-list behavior, authenticated persistence/recovery and complete archive enumeration remain incomplete.",
+    "Governance owns its final callable SQL admission and repair of immutable events bound to withdrawn evidence. Independent new capture does not provide that repair.",
+    "Company Archive owns the authoritative complete-withdrawal export fence. Registering this RF-owned table with the existing archive-generation protocol also remains required; it currently has no archive-generation trigger. Runtime withdrawal remains unavailable.",
+    "No complete withdrawal gap or A1/A2/A4 acceptance is closed; no production filing, current-law conformance or launch is authorized."
+  ]
+}

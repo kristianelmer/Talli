@@ -24,6 +24,7 @@ from talli_backend.adapters.supabase_ledger import (
     _money,
     _posted_entry,
     _timestamp,
+    _verified_snapshot_rows,
 )
 from talli_backend.application.investments_session import (
     InvestmentsAuthenticationError,
@@ -1037,6 +1038,30 @@ class SupabaseInvestmentsSession:
         except (InvestmentsError, LedgerError):
             raise
         except psycopg.OperationalError:
+            raise InvestmentsError.unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_investments_database_error(str(error)) from None
+
+
+class SupabaseInvestmentsSnapshotQueries(SupabaseInvestmentsSession):
+    """Owner queries on an existing verified, coherent application snapshot.
+
+    This connection is sequentially owned by the application. Each query borrows
+    the existing Investments executor membership and restores the caller's role;
+    a savepoint also restores it on SQL failure or cancellation. No new session,
+    privileged table grant, or independently timed read can enter the snapshot.
+    """
+    def __init__(self, verified: _VerifiedActor, connection: psycopg.AsyncConnection):
+        super().__init__('', verified)
+        self._snapshot_connection = connection
+
+    async def _query_rows(self, query, parameters):
+        try:
+            return await _verified_snapshot_rows(self._verified, self._snapshot_connection,
+                'investments_executor', query, parameters)
+        except InvestmentsError:
+            raise
+        except (ValueError, KeyError, TypeError, psycopg.OperationalError):
             raise InvestmentsError.unavailable() from None
         except psycopg.DatabaseError as error:
             raise _map_investments_database_error(str(error)) from None

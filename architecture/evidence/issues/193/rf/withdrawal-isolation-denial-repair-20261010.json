@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_WITHDRAWAL_ISOLATION_DENIAL_EXPECTATION_REPAIR",
+  "recordedAtUtc": "2026-10-10T01:56:25.252676+00:00",
+  "baseRevision": "bfe20888f0113b4cf6200dba2c55f756d212906d",
+  "scope": "Test expectation only: preserve rejection of snapshot-fixed transactions and name the actual earlier Company Access denial for the bridge. No production behavior changes.",
+  "ciFailure": {
+    "runId": 38013368830,
+    "runUrl": "https://github.com/kristianelmer/Talli/actions/runs/38013368830",
+    "headRevision": "90a488fa41cb5c06c5dcf63a9e6b1bbcecf2c9c2",
+    "actualDatabaseCheckout": "e14ceafae8e1feba2946c8539630b101248ff5a8",
+    "databaseResult": "FAILURE",
+    "authoritySelection": {
+      "collected": 1308,
+      "passed": 526,
+      "failed": 1,
+      "notExecuted": 781
+    },
+    "failure": "Repeatable-read bridge was denied with company_access_rf_read_committed_required before the later RF guard; the test expected rf1086_source_approval_guard_required for every stage.",
+    "reachedWithdrawalChecks": "57 cases passed: exact fixture ACL restoration, 13 stale admissions, 26 lock-order cases, 12 committed replays, 3 admitted outcomes, and repeatable-read source/preview.",
+    "wholeWorkflow": "Separate terminal receipt; no whole-run result inferred here."
+  },
+  "implementation": [
+    "For bridge only, expect company_access_rf_read_committed_required. For all other 12 stages, retain rf1086_source_approval_guard_required.",
+    "Compare PostgreSQL message_primary by exact equality. Keep both isolation levels, the pre-withdrawal fixed snapshot, withdrawal, actual operation and all existing test cases."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+      "sha256": "178b0fe3053d4283a050a9a05bd21d6666ce5fd33cb2f90cc8e1f8f11e0ecda0"
+    }
+  ],
+  "unchangedProduction": [
+    {
+      "path": "supabase/migrations/20260924080208_company_access_rf_admission_guard.sql",
+      "sha256": "00e216dda8be4b8b0cfc63eb9c1b973d0002ee203042885fa61f56823cf3e7a4"
+    },
+    {
+      "path": "supabase/migrations/20260924085227_rf1086_source_review_bridge.sql",
+      "sha256": "a449d369ee16adada7c4e58a73cd942b0bb2ca937d324a1554695f1e274d0740"
+    },
+    {
+      "path": "supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql",
+      "sha256": "311f01ac05cb90222eaa452be87f0f603ec8100c73406ca3d307ab73186caac5"
+    },
+    {
+      "path": "supabase/migrations/20261009215302_rf1086_withdrawal_source_admission_guards.sql",
+      "sha256": "21d4b2453084021736c0025c1d6ca293029792b8f1d4fe1be2957d08302a0b12"
+    }
+  ],
+  "checks": {
+    "nativeBefore": {
+      "mode": "before",
+      "scope": "Actual frozen Company Access admission, RF guard and bridge SQL bodies; minimal owned preview tables and identity stubs. No full business fixture, Supabase, RLS, fresh admission or race proof.",
+      "checks": [
+        {
+          "isolation": "repeatable read",
+          "entry": "actual bridge body",
+          "expected": "rf1086_source_approval_guard_required",
+          "actual": "company_access_rf_read_committed_required",
+          "passed": false
+        }
+      ],
+      "status": "FAIL",
+      "errorType": "AssertionError",
+      "error": "('company_access_rf_read_committed_required', 'rf1086_source_approval_guard_required')",
+      "clusterRemoved": true,
+      "bodies": {
+        "companyAccess": "987b03522463a45c94626866bce6e95a575f56d12cb991f7f17c6c3dee1276be",
+        "bridge": "d76761dafca2f89e967b536e719de52c137d6667d3fc258c4671162811417f27",
+        "rfGuard": "021ceb2891bc97907e95b174b6b9e739c23d501e82360592d247b9d60dd37cbb"
+      }
+    },
+    "nativeAfter": {
+      "mode": "after",
+      "scope": "Actual frozen Company Access admission, RF guard and bridge SQL bodies; minimal owned preview tables and identity stubs. No full business fixture, Supabase, RLS, fresh admission or race proof.",
+      "checks": [
+        {
+          "isolation": "repeatable read",
+          "entry": "actual bridge body",
+          "expected": "company_access_rf_read_committed_required",
+          "actual": "company_access_rf_read_committed_required",
+          "passed": true
+        },
+        {
+          "isolation": "repeatable read",
+          "entry": "actual RF guard body",
+          "expected": "rf1086_source_approval_guard_required",
+          "actual": "rf1086_source_approval_guard_required",
+          "passed": true
+        },
+        {
+          "isolation": "serializable",
+          "entry": "actual bridge body",
+          "expected": "company_access_rf_read_committed_required",
+          "actual": "company_access_rf_read_committed_required",
+          "passed": true
+        },
+        {
+          "isolation": "serializable",
+          "entry": "actual RF guard body",
+          "expected": "rf1086_source_approval_guard_required",
+          "actual": "rf1086_source_approval_guard_required",
+          "passed": true
+        }
+      ],
+      "status": "PASS",
+      "clusterRemoved": true,
+      "bodies": {
+        "companyAccess": "987b03522463a45c94626866bce6e95a575f56d12cb991f7f17c6c3dee1276be",
+        "bridge": "d76761dafca2f89e967b536e719de52c137d6667d3fc258c4671162811417f27",
+        "rfGuard": "021ceb2891bc97907e95b174b6b9e739c23d501e82360592d247b9d60dd37cbb"
+      }
+    },
+    "databaseTestsCollected": 103,
+    "fullDatabaseTestBodiesExecuted": 0,
+    "whitespace": "PASS",
+    "syntax": "AST parse PASS"
+  },
+  "commands": [
+    "python /private/tmp/talli-release-20261009/check-withdrawal-isolation-denial.py before",
+    "python /private/tmp/talli-release-20261009/check-withdrawal-isolation-denial.py after",
+    "python -m pytest tests/test_rf1086_withdrawal_admission_database.py --collect-only -q",
+    "git diff --check"
+  ],
+  "python": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python",
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-isolation-denial.py",
+      "sha256": "b92f75ac91a72c6c200be2a1cf53ec598d9640c5114720dd5395f3e1021ead50"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-before.json",
+      "sha256": "3db5c0c8a8a3bb7746cd4e8ddc0d3b25e98475c43349aaaf9bbf2b212d9fe69a"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-before-output.log",
+      "sha256": "ad54cb92e1d57c83b44050d476ab12d76d4aebdf0223655bd5d31bcef0cb3e3d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-before.log",
+      "sha256": "5c25990d733c3e22dd74b21d85e66f61bcde06fc5c84a47608108817cb2de924"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-after.json",
+      "sha256": "dfd5191277158b71ec78ab7b397e8bfd1a35e7f56e4c2e1763f995b6d39f4305"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-after-output.log",
+      "sha256": "2639bf957c0b77d5a0c5e1bf211e157c41400f2b1c76b492a50538a9638a3076"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-after.log",
+      "sha256": "ec5c1ce6acdcb64c1e2cd9907ca6673880b2192e4f75e6659021b76f91799674"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-collection.log",
+      "sha256": "da3d50e0208ba4dde72bc2459e87b3dbeb6ee4f4daf8dea43a6fc13b81dd8902"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38013368830-database-failure-context-sanitized.log",
+      "sha256": "cd9ea4415a598cab1a3d5d7b8d80a41d051ffe4a74a3604617e9d960badc407f"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial.patch",
+      "sha256": "3d57937d3b7192b79bc719f7e8b6422d1fda11bea07c5a3bcbee31994ae7b2a1"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-commit-source.py",
+      "sha256": "178b0fe3053d4283a050a9a05bd21d6666ce5fd33cb2f90cc8e1f8f11e0ecda0"
+    }
+  ],
+  "independentReviews": {
+    "standards": {
+      "reviewer": "/root/release_plan",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "sourceSha256": "178b0fe3053d4283a050a9a05bd21d6666ce5fd33cb2f90cc8e1f8f11e0ecda0",
+      "evidence": "Agent review message; all 11 artifact pins and isolated patch independently verified."
+    },
+    "spec": {
+      "reviewer": "/root/override_standards_review",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "sourceSha256": "178b0fe3053d4283a050a9a05bd21d6666ce5fd33cb2f90cc8e1f8f11e0ecda0",
+      "privateReceipt": "/private/tmp/talli-release-20261009/withdrawal-isolation-denial-spec-review.json",
+      "sha256": "80a393d0f0d34e32b231f65bc9990a1d31cdd0e995c7fe7a136a6e2856480216"
+    }
+  },
+  "limits": [
+    "Native tests execute the actual frozen bridge, Company Access admission and RF guard bodies with minimal tables and identity stubs. They prove exact isolation-denial ordering only, not accepted owner, MFA, full RLS, downstream admission or races.",
+    "The complete database test file must still run on a later exact revision. Collection and four native checks do not count as 103 passing database tests.",
+    "The shared worktree has separate uncommitted v2 suffix restoration additions in this test file. This bounded commit uses only the reviewed assertion patch; those additions are excluded and remain preserved.",
+    "All A1-A7 and immutable complete gates remain pending. No provider, real-company, filing, paid or container action."
+  ]
+}

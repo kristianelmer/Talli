@@ -277,6 +277,15 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  verifyCompanyYearArchive: ["/api/v1/annual-accounts/company-year-archive-verifications","post","annualAccountsVerifyCompanyYearArchive"],
+  companyYearArchive: ["/api/v1/annual-accounts/company-year-archive","get","annualAccountsGetCompanyYearArchive"],
+  deliveryWorkspace: ["/api/v1/annual-accounts/delivery-workspace","get","annualAccountsGetDeliveryWorkspace"],
+  deliveryOriginal: ["/api/v1/annual-accounts/delivery-original","get","annualAccountsGetDeliveryOriginal"],
+  prepareDelivery: ["/api/v1/annual-accounts/delivery-drafts","post","annualAccountsPrepareDeliveryDraft"],
+  prepareCorrection: ["/api/v1/annual-accounts/delivery-corrections","post","annualAccountsPrepareDeliveryCorrection"],
+  reviewDelivery: ["/api/v1/annual-accounts/delivery-reviews","post","annualAccountsReviewDelivery"],
+  advanceDelivery: ["/api/v1/annual-accounts/delivery-advances","post","annualAccountsAdvanceDelivery"],
+  reconcileDelivery: ["/api/v1/annual-accounts/delivery-reconciliations","post","annualAccountsReconcileDelivery"],
   sourceFacts: ["/api/v1/annual-accounts/source-facts", "get", "annualAccountsGetSourceFacts"],
   readinessPreview: ["/api/v1/annual-accounts/readiness-previews", "post", "annualAccountsPreviewReadiness"],
   getPreview: ["/api/v1/annual-accounts/previews/{preview_id}", "get", "annualAccountsGetPreview"],
@@ -290,6 +299,19 @@ const annualAccountsOperations = {
   workspace: ["/api/v1/annual-accounts/filing-workspace", "get", "annualAccountsGetFilingWorkspace"],
 };
 const companyTaxOperations = {
+  approveDeliveryDraft: ["/api/v1/company-tax/delivery-reviews", "post", "companyTaxApproveDeliveryDraft"],
+  advanceDelivery: ["/api/v1/company-tax/delivery-advances", "post", "companyTaxAdvanceDelivery"],
+  advanceDeliveryUpload: ["/api/v1/company-tax/delivery-upload-advances", "post", "companyTaxAdvanceDeliveryUpload"],
+  reconcileDeliveryUpload: ["/api/v1/company-tax/delivery-upload-reconciliations", "post", "companyTaxReconcileDeliveryUpload"],
+  advanceDeliveryValidation: ["/api/v1/company-tax/delivery-validation-advances", "post", "companyTaxAdvanceDeliveryValidation"],
+  reconcileDeliveryValidation: ["/api/v1/company-tax/delivery-validation-reconciliations", "post", "companyTaxReconcileDeliveryValidation"],
+  reconcileDelivery: ["/api/v1/company-tax/delivery-reconciliations", "post", "companyTaxReconcileDelivery"],
+  deliveryWorkspace: ["/api/v1/company-tax/delivery-workspace", "get", "companyTaxGetDeliveryWorkspace"],
+  deliveryOriginal: ["/api/v1/company-tax/delivery-original", "get", "companyTaxGetDeliveryOriginal"],
+  prepareDeliveryCorrection: ["/api/v1/company-tax/delivery-corrections", "post", "companyTaxPrepareDeliveryCorrection"],
+  prepareDeliveryDraft: ["/api/v1/company-tax/delivery-drafts", "post", "companyTaxPrepareDeliveryDraft"],
+  deliveryDraftArchive: ["/api/v1/company-tax/archive-source/delivery-drafts-v1", "get", "companyTaxGetDeliveryDraftArchive"],
+  deliveryJournalArchive: ["/api/v1/company-tax/archive-source/delivery-journal-v1", "get", "companyTaxGetDeliveryJournalArchive"],
   sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
   annualEstimatePreview: ["/api/v1/company-tax/annual-estimate-previews", "post", "companyTaxPreviewAnnualEstimate"],
@@ -306,7 +328,30 @@ const companyTaxOperations = {
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
 const shareholderRegisterFilingOperations = {
+  sourceIntakeBasis: ["/api/v1/shareholder-register-filings/source-intake-basis", "get", "rf1086ReadSourceIntakeBasis"],
+  currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
+  registerObservationLifecycle: ["/api/v1/shareholder-register-filings/register-observations/lifecycle", "get", "rf1086ReadRegisterObservationLifecycle"],
+  registerObservations: ["/api/v1/shareholder-register-filings/register-observations", "get", "rf1086ListRegisterObservations"],
+  sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
+  captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
+  captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
+  lookupYearSourceCapture: ["/api/v1/shareholder-register-filings/year-sources/receipt-lookup", "post", "rf1086LookupYearSourceCapture"],
+  lookupRegisterObservationCapture: ["/api/v1/shareholder-register-filings/register-observations/receipt-lookup", "post", "rf1086LookupRegisterObservationCapture"],
+  generateSourcePreview: ["/api/v1/shareholder-register-filings/source-previews", "post", "rf1086GenerateSourcePreview"],
+  sourceProductionReview: ["/api/v1/shareholder-register-filings/source-production-reviews", "post", "rf1086PrepareSourceProductionReview"],
+  sourceProductionApproval: ["/api/v1/shareholder-register-filings/source-production-approvals", "post", "rf1086ApproveSourceProduction"],
+  sourceProductionSend: ["/api/v1/shareholder-register-filings/source-production-filings", "post", "rf1086SendSourceProduction"],
+  sourceProductionPosition: ["/api/v1/shareholder-register-filings/source-production-filings/{approvalId}", "get", "rf1086ReadSourceProductionPosition"],
+  sourcePreview: ["/api/v1/shareholder-register-filings/source-previews/{previewId}", "get", "rf1086ReadSourcePreview"],
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
+  productionArchiveSourceV4: ["/api/v1/shareholder-register-filings/archive-source/production-v4", "get", "rf1086GetProductionArchiveSourceV4"],
+  productionArchiveSourceV6: ["/api/v1/shareholder-register-filings/archive-source/production-v6", "get", "rf1086GetProductionArchiveSourceV6"],
+  productionArchiveStreamV4: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v4", "get", "rf1086DownloadProductionArchiveV4"],
+  productionArchiveStreamV6: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v6", "get", "rf1086DownloadProductionArchiveV6"],
+  companyTestRetention: ["/api/v1/shareholder-register-filings/company-test-retention", "get", "rf1086ReadCompanyTestRetention"],
+  companyTestRetentionStream: ["/api/v1/shareholder-register-filings/company-test-retention/stream-v1", "get", "rf1086DownloadCompanyTestRetention"],
+  productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
+  productionArchiveStream: ["/api/v1/shareholder-register-filings/archive-source/production-stream", "get", "rf1086DownloadProductionArchive"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
   preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
   generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
@@ -877,6 +922,8 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsCorporateBlockerWire", "AnnualAccountsReadinessPreviewRequest", "AnnualAccountsReadinessIssueWire", "AnnualAccountsReadinessPreviewWire",
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
+  "AccountsPrepareDeliveryRequest","AccountsPrepareCorrectionRequest","AccountsDeliveryBoundRequest","AccountsReviewDeliveryRequest","AccountsAdvanceDeliveryRequest",
+  "AccountsArchiveVerificationWire","AccountsArchivedOriginalFactWire","AccountsCompanyArchiveWire","AccountsDeliveryProgressWire","AccountsDeliveryOriginalRefWire","AccountsDeliveryOriginalWire","AccountsDeliveryFieldWire","AccountsDeliveryWorkspaceRowWire","AccountsDeliveryWorkspaceWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -884,7 +931,18 @@ const companyTaxSchemas = Object.fromEntries([
   "AnnualAccountsSourceEvidenceWire", "AnnualAccountsHistoryCoverageWire", "AnnualAccountsSubmissionFactWire",
   "AnnualAccountsIncidentFactWire", "AnnualAccountsOutcomeFactWire", "AnnualAccountsCorrectionLinkWire", "AnnualAccountsSourceFactsWire",
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
-  "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxSourceFactsWire",
+  "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxDeliveryDraftFactWire", "CompanyTaxSourceFactsWire",
+  "CompanyTaxDeliveryDraftOriginalWire", "CompanyTaxDeliveryDraftArchiveWire",
+  "CompanyTaxDeliveryJournalOriginalWire", "CompanyTaxDeliveryJournalFactWire", "CompanyTaxDeliveryJournalArchiveWire",
+  "CompanyTaxReviewUuidValue", "CompanyTaxReviewYearValue", "CompanyTaxReviewActorValue", "CompanyTaxReviewApprovalValue",
+  "CompanyTaxCalculatedReviewContextValue", "CompanyTaxCalculatedReviewFieldValue", "CompanyTaxCalculatedReviewDocumentValue",
+  "CompanyTaxCalculatedReviewOriginalValue", "CompanyTaxResponseReviewInspectionValue", "CompanyTaxResponseReviewDeviationValue",
+  "CompanyTaxResponseReviewGuidanceValue", "CompanyTaxResponseReviewSubjectFlagValue", "CompanyTaxResponseReviewValue",
+  "CompanyTaxResponseReviewOriginalValue", "CompanyTaxOwnerReviewValue", "CompanyTaxOwnerReviewArtifactWire",
+  "CompanyTaxWorkspaceValidationWire","CompanyTaxDeliveryWorkspaceWire","CompanyTaxDeliveryWorkspaceRowWire","CompanyTaxDeliveryWorkspaceFieldWire",
+  "CompanyTaxDeliveryOriginalRefWire","CompanyTaxDeliveryOriginalWire","TaxDeliveryAction","TaxDeliveryWorkspaceState",
+  "CompanyTaxPrepareDeliveryDraftRequest", "CompanyTaxPrepareDeliveryCorrectionRequest", "CompanyTaxPreparedDeliveryDraftWire",
+  "CompanyTaxApproveDeliveryDraftRequest", "CompanyTaxAdvanceDeliveryRequest", "CompanyTaxConfirmSubmissionRequest", "CompanyTaxDeliveryProgressWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
   "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
   "CompanyTaxRecordedWire", "CompanyTaxOverrideRequest", "CompanyTaxReviewRequest", "CompanyTaxPermissionRequest", "CompanyTaxTestEvidenceRequest",
@@ -896,6 +954,63 @@ const companyTaxSchemas = Object.fromEntries([
   "TaxSettlementPreviewLineWire", "TaxSettlementPreviewWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const shareholderRegisterFilingSchemas = Object.fromEntries([
+  "RfSourceCompanyWire",
+  "RfSourceSharesWire",
+  "RfSourceShareholderWire",
+  "RfSourceShareholderSharesWire",
+  "RfSourceFormationAllocationWire",
+  "RfSourceFormationWire",
+  "RfSourceCashIssueWire",
+  "RfSourceNominalAllocationWire",
+  "RfSourceNominalIncreaseWire",
+  "RfSourceLossReductionWire",
+  "RfSourceShareSaleWire",
+  "RfSourceDividendAllocationWire",
+  "RfSourceDividendWire",
+  "RfSourceCaseWire",
+  "RfSourcePaidInWire",
+  "RfSourceDocumentWire",
+  "RfSourceEventEvidenceWire",
+  "RfYearSourceCaptureWire",
+  "RfYearSourceDraftWire",
+  "RfCurrentYearSourceRecordWire",
+  "RfCurrentYearSourceWire",
+  "RfSourceIntakeDocumentWire",
+  "RfSourceIntakeRegisterWire",
+  "RfSourceIntakeAllocationWire",
+  "RfSourceIntakeDividendEconomicsWire",
+  "RfSourceIntakeFinalizationWire",
+  "RfSourceIntakeDividendWire",
+  "RfSourceIntakeCapitalEconomicsWire",
+  "RfSourceIntakeCapitalEventWire",
+  "RfSourceIntakeCapitalWire",
+  "RfSourceIntakeAmendmentWire",
+  "RfSourceIntakeCompanyWire",
+  "RfSourceIntakeBasisWire",
+
+  "RfRegisterHoldingWire",
+  "RfRegisteredSharesWire",
+  "RfRegisterDocumentWire",
+  "RfRegisterObservationCaptureWire",
+  "RfSourceProductionReviewRequestWire",
+  "RfSourceProductionReviewWire",
+  "RfSourceProductionApprovalCommandWire",
+  "RfSourceProductionSendCommandWire",
+  "RfSourceProductionSendResultWire",
+  "RfSourceProductionPositionWire",
+  "RfSourceCorrectionPredecessorWire",
+  "RfSourcePreviewRequestWire",
+  "RfYearSourceReceiptWire",
+  "RfYearSourceCaptureLookupWire",
+  "RfRegisterObservationCaptureLookupWire",
+  "RfRegisterObservationReceiptWire",
+  "RfRegisterObservationDraftWire",
+  "RfRegisterObservationRecordWire",
+  "RfRegisterObservationsWire",
+  "RfRegisterObservationLifecycleWire",
+  "RfRegisterObservationLifecycleRecordWire",
+  "RfRegisterObservationWithdrawalWire",
+  "RfSourcePreviewWire",
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
   "Rf1086GeneratePreviewWire",
   "Rf1086OverrideCommandWire",
@@ -912,6 +1027,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ReviewCommentWire",
   "Rf1086PermissionWire",
   "Rf1086TestEvidenceWire",
+  "RfCompanyTestRetentionRecordWire",
+  "RfCompanyTestRetentionCompleteWire",
+  "RfCompanyTestRetentionUnavailableWire",
   "Rf1086SimulationCallWire",
   "Rf1086SimulationFeedbackWire",
   "Rf1086ReceiptMetadataWire",
@@ -924,6 +1042,17 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
   "Rf1086ArchiveSourceWire",
+  "Rf1086ArchiveSourceOriginalWire",
+  "Rf1086ArchivedYearSourceWire",
+  "Rf1086ArchiveSourceReviewBridgeWire",
+  "Rf1086ArchiveSourceApprovalLineageWire",
+  "Rf1086SourceSubmissionClaimWire",
+  "Rf1086SubmissionHeadWire",
+  "Rf1086ProductionArchiveSourceWire",
+  "Rf1086ProductionArchiveSourceV4Wire",
+  "Rf1086ProductionArchiveSourceV6Wire",
+  "Rf1086ArchiveProductionEventWire",
+  "Rf1086ArchiveFeedbackArtifactWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const authorityConnectionsSchemas = Object.fromEntries([
   "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
@@ -971,6 +1100,7 @@ const billingSchemas = Object.fromEntries([
   "BillingPaymentKind",
   "BillingPaymentEventWire",
   "BillingPaymentStatus",
+  "BillingPilotCaseProfile",
   "BillingPilotEntitlementCommandWire",
   "BillingPilotEntitlementWire",
   "BillingPlan",
@@ -994,6 +1124,9 @@ const problemSchema = resolveSchema(
 
 const source = `// Generated from contracts/openapi/talli-v1.json. Do not edit by hand.
 // Contract version: ${contract.info.version}
+import {verifyCompanyTaxDeliveryJournalArchive,verifyCompanyTaxDeliveryOriginal} from "../tax-delivery-evidence.ts";
+import {verifyAccountsDeliveryOriginal} from "../accounts-delivery-evidence.ts";
+import {verifyAccountsCompanyArchive} from "../accounts-company-archive.ts";
 
 ${renderInterface("SystemBoundaryStatus", successSchema)}
 
@@ -1020,6 +1153,8 @@ ${Object.entries(annualAccountsSchemas).map(([name, schema]) => renderSchema(nam
 ${Object.entries(companyTaxSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+export type RfCompanyTestRetentionWire = ${schemaType(contract.paths["/api/v1/shareholder-register-filings/company-test-retention"].get.responses["200"].content["application/json"].schema)};
 
 ${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -1176,6 +1311,16 @@ export interface TalliRequestOptions {
 
 export interface TalliMutationOptions extends TalliRequestOptions {
   idempotencyKey: string;
+}
+
+export interface RfSourcePreviewReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface RfCurrentYearSourceReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerListRequest extends TalliRequestOptions {
@@ -2679,6 +2824,72 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async annualAccountsGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-workspace?\${query}\`,"GET",request,undefined,isAccountsDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(item=>item.key)).size!==row.originals.length
+            || row.originals.some(item=>item.sourceFilingId!==row.filingId || !/^[a-f0-9]{64}$/u.test(item.sha256))
+            || (row.parentFilingId!=null && (row.parentFilingId===row.filingId || !result.rows.some(parent=>parent.filingId===row.parentFilingId)))
+            || !/^[a-f0-9]{64}$/u.test(row.draftSha256) || !/^[a-f0-9]{64}$/u.test(row.reviewSha256))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsVerifyCompanyYearArchive(archive: AccountsCompanyArchiveWire,request: TalliRequestOptions = {}): Promise<AccountsArchiveVerificationWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive-verifications",
+        "POST",request,archive,isAccountsArchiveVerificationWire);
+      if (result.companyId!==archive.companyId || result.incomeYear!==archive.incomeYear || result.archiveSha256!==archive.sha256
+          || result.sourceSha256!==archive.sourceSha256 || result.draftCount!==archive.draftCount || result.eventCount!==archive.eventCount
+          || result.originalCount!==archive.originalCount || result.originals.length!==result.originalCount) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsGetCompanyYearArchive(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<AccountsCompanyArchiveWire> {
+      const result = await executeJson(baseUrl + "/api/v1/annual-accounts/company-year-archive?" + new URLSearchParams({companyId,incomeYear:String(incomeYear)}),
+        "GET",request,undefined,isAccountsCompanyArchiveWire);
+      try { await verifyAccountsCompanyArchive(result,companyId,incomeYear); }
+      catch { throw new TalliApiError(502,undefined); }
+      return result;
+    },
+
+    async annualAccountsGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<AccountsDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-original?\${query}\`,"GET",request,undefined,isAccountsDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try {await verifyAccountsDeliveryOriginal(result);} catch {throw new TalliApiError(502,undefined);}
+      return result;
+    },
+
+    async annualAccountsPrepareDeliveryDraft(command: AccountsPrepareDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-drafts\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsPrepareDeliveryCorrection(command: AccountsPrepareCorrectionRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-corrections\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReviewDelivery(command: AccountsReviewDeliveryRequest,request: TalliMutationOptions): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-reviews\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsAdvanceDelivery(command: AccountsAdvanceDeliveryRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-advances\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async annualAccountsReconcileDelivery(command: AccountsDeliveryBoundRequest,request: TalliRequestOptions = {}): Promise<AccountsDeliveryProgressWire> {
+      const result=await executeJson(\`\${baseUrl}/api/v1/annual-accounts/delivery-reconciliations\`,"POST",request,command,isAccountsDeliveryProgressWire);
+      if (result.companyId!==command.companyId || result.incomeYear!==command.incomeYear || result.filingId!==command.filingId || result.draftSha256!==command.draftSha256) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
     async annualAccountsGetSourceFacts(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<AnnualAccountsSourceFactsWire> {
@@ -2805,16 +3016,278 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyTaxGetSourceFacts(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+      includeDeliveryDrafts = false,
     ): Promise<CompanyTaxSourceFactsWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      if (includeDeliveryDrafts) query.set("includeDeliveryDrafts", "true");
       const result = await executeJson(
         \`\${baseUrl}/api/v1/company-tax/source-facts?\${query}\`,
         "GET", request, undefined, isCompanyTaxSourceFactsWire,
       );
-      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+      if ((includeDeliveryDrafts && result.deliveryDrafts === undefined)
+          || result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
           || (result.historyCoverage.status === "complete"
             && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
         throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxApproveDeliveryDraft(command: CompanyTaxApproveDeliveryDraftRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-reviews\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.draftSha256 !== command.draftSha256 || result.reviewSha256 !== command.reviewSha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxAdvanceDelivery(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDelivery(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxAdvanceDeliveryUpload(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-upload-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "upload_envelope") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryUpload(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-upload-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "upload_envelope") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxAdvanceDeliveryValidation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-validation-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "start_validation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryValidation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-validation-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "start_validation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxAdvanceDeliveryConfirmation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-confirmation-advances\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryConfirmation(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-confirmation-reconciliations\`, "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "prepare_confirmation") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxConfirmDeliverySubmission(command: CompanyTaxConfirmSubmissionRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-submission-advances\`,
+        "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear || result.filingId !== command.filingId
+          || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "confirm_submission") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliverySubmission(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-submission-reconciliations\`,
+        "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear || result.filingId !== command.filingId
+          || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "confirm_submission") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxReconcileDeliveryFeedback(command: CompanyTaxAdvanceDeliveryRequest, request: TalliMutationOptions): Promise<CompanyTaxDeliveryProgressWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-feedback-reconciliations\`,
+        "POST", request, command, isCompanyTaxDeliveryProgressWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear || result.filingId !== command.filingId
+          || result.approvalSha256 !== command.approvalSha256 || result.mutationKind !== "confirm_submission") {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryOwnerReview(
+      companyId: string, incomeYear: number, filingId: string, approvalSha256: string, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxOwnerReviewArtifactWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), filingId, approvalSha256 });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-owner-review?\${query}\`,
+        "GET", request, undefined, isCompanyTaxOwnerReviewArtifactWire,
+      );
+      const approval = result.review.approval;
+      const context = result.review.calculated_context;
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear || result.filingId !== filingId
+          || result.approvalSha256 !== approvalSha256 || approval.company_id.value !== companyId
+          || approval.income_year.value !== incomeYear || approval.filing_id !== filingId
+          || context.company_id.value !== companyId || context.income_year.value !== incomeYear
+          || context.draft_sha256 !== approval.draft_sha256 || result.review.source_sha256 !== approval.source_sha256) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryWorkspace(companyId: string,incomeYear: number,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryWorkspaceWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear)});
+      const result=await executeJson(\`\${baseUrl}/api/v1/company-tax/delivery-workspace?\${query}\`,"GET",request,undefined,isCompanyTaxDeliveryWorkspaceWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || new Set(result.rows.map(row=>row.filingId)).size!==result.rows.length
+          || result.rows.some(row=>new Set(row.actions).size!==row.actions.length || new Set(row.originals.map(original=>original.key)).size!==row.originals.length)
+          || result.technicalMode==="unavailable" && (result.preparationAvailable || result.rows.some(row=>row.actions.length))) throw new TalliApiError(502,undefined);
+      return result;
+    },
+
+    async companyTaxGetDeliveryOriginal(companyId: string,incomeYear: number,filingId: string,key: string,request: TalliRequestOptions = {}): Promise<CompanyTaxDeliveryOriginalWire> {
+      const query=new URLSearchParams({companyId,incomeYear:String(incomeYear),filingId,key});
+      const result=await executeJson(\`\${baseUrl}/api/v1/company-tax/delivery-original?\${query}\`,"GET",request,undefined,isCompanyTaxDeliveryOriginalWire);
+      if (result.companyId!==companyId || result.incomeYear!==incomeYear || result.filingId!==filingId || result.key!==key) throw new TalliApiError(502,undefined);
+      try { await verifyCompanyTaxDeliveryOriginal(result); } catch { throw new TalliApiError(502,undefined); }
+      return result;
+    },
+
+    async companyTaxPrepareDeliveryDraft(
+      command: CompanyTaxPrepareDeliveryDraftRequest, request: TalliMutationOptions,
+    ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-drafts\`,
+        "POST", request, command, isCompanyTaxPreparedDeliveryDraftWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxPrepareDeliveryCorrection(
+      command: CompanyTaxPrepareDeliveryCorrectionRequest, request: TalliMutationOptions,
+    ): Promise<CompanyTaxPreparedDeliveryDraftWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/delivery-corrections\`,
+        "POST", request, command, isCompanyTaxPreparedDeliveryDraftWire,
+      );
+      if (result.companyId !== command.companyId || result.incomeYear !== command.incomeYear
+          || result.filingId !== command.filingId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryDraftArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryDraftArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-drafts-v1?\${query}\`,
+        "GET", request, undefined, isCompanyTaxDeliveryDraftArchiveWire,
+      );
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || result.recordCount !== result.records.length
+          || new Set(result.records.map(row => row.filingId)).size !== result.records.length) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetDeliveryJournalArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxDeliveryJournalArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear), readEvidence: "true", readEvidenceVersion: "2", validationEvidence: "true", confirmationEvidence: "true", submissionEvidence: "true", correctionEvidence: "true" });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/archive-source/delivery-journal-v1?\${query}\`,
+        "GET", request, undefined, isCompanyTaxDeliveryJournalArchiveWire,
+      );
+      const source = result.sourceFacts;
+      const draftIds = new Set(result.drafts.map(row => row.filingId));
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || source.evidence.companyId !== companyId || source.evidence.incomeYear !== incomeYear
+          || !["company-tax-source-v3:","company-tax-source-v4:","company-tax-source-v5:","company-tax-source-v6:","company-tax-source-v7:","company-tax-source-v8:","company-tax-source-v9:"].some(version => source.evidence.version === version + result.sourceSha256)
+          || source.evidence.digest !== result.sourceSha256
+          || source.evidence.evaluatedAt !== result.observedAt
+          || source.historyCoverage.evidenceReference !== source.evidence.reference
+          || source.historyCoverage.status === "unavailable"
+          || source.historyCoverage.reasons.some(reason => reason !== "production_journal_unavailable")
+          || result.draftCount !== result.drafts.length || draftIds.size !== result.drafts.length
+          || result.eventCount !== result.events.length
+          || new Set(result.events.map(row => row.filingId + ":" + row.slot)).size !== result.events.length
+          || result.events.some(row => !draftIds.has(row.filingId))
+          || new Set(result.journals.map(row => row.filingId)).size !== result.journals.length
+          || result.journals.some(row => !draftIds.has(row.filingId))
+          || source.deliveryDrafts === undefined || source.deliveryDrafts.length !== result.drafts.length
+          || new Set(source.deliveryDrafts.map(row => row.filingId)).size !== source.deliveryDrafts.length
+          || source.deliveryDrafts.some(row => !result.drafts.some(original =>
+            original.filingId === row.filingId && original.draftSha256 === row.draftSha256))) {
+        throw new TalliApiError(502, undefined);
+      }
+      // V9 explicitly requires complete correction-original verification. Older
+      // SDK wire contracts retain their released transport behavior.
+      const correctionOriginals=source.evidence.version.startsWith("company-tax-source-v9:") || result.drafts.some(row=>{
+        try { const value=JSON.parse(row.canonicalJson);return value?.version==="company-tax-delivery-draft-v3" || Object.hasOwn(value?.draft ?? {},"correction_parent"); }
+        catch { return true; }
+      });
+      if (correctionOriginals) {
+        try { await verifyCompanyTaxDeliveryJournalArchive(result,companyId,incomeYear); }
+        catch { throw new TalliApiError(502, undefined); }
       }
       return result;
     },
@@ -3070,12 +3543,259 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async rf1086ReadSourceIntakeBasis(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfSourceIntakeBasisWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-intake-basis?" + query,
+        "GET", request, undefined, isRfSourceIntakeBasisWire);
+    },
+
+    async rf1086ReadCurrentYearSource(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfCurrentYearSourceWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/current-year-source?" + query,
+        "GET", request, undefined, isRfCurrentYearSourceWire);
+    },
+
+    async rf1086ReadSourceDocument(
+      documentId: string, companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceDocumentWire> {
+      const query = new URLSearchParams({ companyId });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
+        "GET", request, undefined, isRfSourceDocumentWire);
+    },
+
+    async rf1086ListRegisterObservations(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationsWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
+        "GET", request, undefined, isRfRegisterObservationsWire);
+    },
+
+    async rf1086ReadRegisterObservationLifecycle(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationLifecycleWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/lifecycle?" + query,
+        "GET", request, undefined, isRfRegisterObservationLifecycleWire);
+    },
+
+    async rf1086CaptureRegisterObservation(
+      input: RfRegisterObservationCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfRegisterObservationReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations",
+        "POST", request, input, isRfRegisterObservationReceiptWire);
+    },
+
+    async rf1086GenerateSourcePreview(
+      input: RfSourcePreviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourcePreviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews",
+        "POST", request, input, isRfSourcePreviewWire);
+    },
+
+    async rf1086PrepareSourceProductionReview(
+      input: RfSourceProductionReviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionReviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-reviews",
+        "POST", request, input, isRfSourceProductionReviewWire);
+    },
+
+    async rf1086ApproveSourceProduction(
+      input: RfSourceProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-approvals",
+        "POST", request, input, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ReadSourceProductionPosition(
+      approvalId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionPositionWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-filings/" + encodeURIComponent(approvalId),
+        "GET", request, undefined, isRfSourceProductionPositionWire);
+    },
+
+    async rf1086SendSourceProduction(
+      input: RfSourceProductionSendCommandWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionSendResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-filings",
+        "POST", request, input, isRfSourceProductionSendResultWire);
+    },
+
+    async rf1086ReadSourcePreview(
+      previewId: string, request: RfSourcePreviewReadRequest,
+    ): Promise<RfSourcePreviewWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews/" + encodeURIComponent(previewId) + "?" + query,
+        "GET", request, undefined, isRfSourcePreviewWire);
+    },
+
+    async rf1086LookupYearSourceCapture(
+      input: RfYearSourceCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfYearSourceCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        "POST", request, input, isRfYearSourceCaptureLookupWire);
+    },
+    async rf1086LookupRegisterObservationCapture(
+      input: RfRegisterObservationCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfRegisterObservationCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        "POST", request, input, isRfRegisterObservationCaptureLookupWire);
+    },
+    async rf1086CaptureYearSource(
+      input: RfYearSourceCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfYearSourceReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources",
+        "POST", request, input, isRfYearSourceReceiptWire);
+    },
+
     async rf1086GetArchiveSource(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<Rf1086ArchiveSourceWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    // The caller must consume and verify the final NDJSON commitment. A 200
+    // response is only an opened stream; this method never buffers its body.
+    async rf1086DownloadProductionArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086GetProductionArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
+    },
+
+    async rf1086DownloadProductionArchiveV4(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream-v4?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086ReadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfCompanyTestRetentionWire> {
+      const query = new URLSearchParams({ companyId });
+      const value = await executeJson<RfCompanyTestRetentionWire>(
+        baseUrl + "/api/v1/shareholder-register-filings/company-test-retention?" + query,
+        "GET", request, undefined, (candidate): candidate is RfCompanyTestRetentionWire =>
+          isRfCompanyTestRetentionCompleteWire(candidate) || isRfCompanyTestRetentionUnavailableWire(candidate));
+      if (value.companyId !== companyId || (value.coverage === "complete" &&
+          (value.records.length !== value.recordCount || value.records.some((record) => record.company_id !== companyId)))) {
+        throw new TalliApiError(502, undefined);
+      }
+      return value;
+    },
+
+    async rf1086DownloadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/company-test-retention/stream-v1?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086DownloadProductionArchiveV6(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream-v6?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086GetProductionArchiveSourceV6(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceV6Wire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-v6?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceV6Wire);
+    },
+
+    async rf1086GetProductionArchiveSourceV4(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceV4Wire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-v4?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceV4Wire);
     },
 
     async rf1086Workspace(

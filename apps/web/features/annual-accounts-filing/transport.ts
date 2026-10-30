@@ -1,10 +1,10 @@
 import { createTalliApiClient, TalliApiError, type AnnualAccountsOverrideRequest, type AnnualAccountsReviewRequest,
   type AnnualAccountsPermissionRequest, type AnnualAccountsTestEvidenceRequest, type AnnualAccountsEvidenceImportRequest,
   type AnnualAccountsReadinessPreviewRequest } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
-  return createTalliApiClient({ baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` } });
+  return createTalliApiClient({ ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` } });
 }
 
 export function loadAnnualAccountsFilingWorkspace(accessToken: string, companyId: string, incomeYear: number | null = null) {
@@ -73,4 +73,55 @@ export function previewAnnualAccountsReadiness(accessToken: string, facts: Annua
 
 export function loadAnnualAccountsSourceFacts(accessToken: string, companyId: string, incomeYear: number) {
   return client(accessToken).annualAccountsGetSourceFacts(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });
+}
+
+export function loadAccountsDeliveryWorkspace(accessToken: string,companyId: string,incomeYear: number) {
+  return client(accessToken).annualAccountsGetDeliveryWorkspace(companyId,incomeYear,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function loadAccountsDeliveryOriginal(accessToken: string,companyId: string,incomeYear: number,filingId: string,key: string) {
+  return client(accessToken).annualAccountsGetDeliveryOriginal(companyId,incomeYear,filingId,key,{signal:AbortSignal.timeout(10_000)});
+}
+
+export function prepareAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsPrepareDeliveryRequest,key: string) {
+  return client(accessToken).annualAccountsPrepareDeliveryDraft(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function reviewAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsReviewDeliveryRequest,key: string) {
+  return client(accessToken).annualAccountsReviewDelivery(command,{idempotencyKey:key,signal:AbortSignal.timeout(20_000)});
+}
+
+export function advanceAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsAdvanceDeliveryRequest) {
+  return client(accessToken).annualAccountsAdvanceDelivery(command,{signal:AbortSignal.timeout(20_000)});
+}
+
+export function reconcileAccountsDelivery(accessToken: string,command: import("@talli/talli-api-client").AccountsDeliveryBoundRequest) {
+  return client(accessToken).annualAccountsReconcileDelivery(command,{signal:AbortSignal.timeout(60_000)});
+}
+
+export function accountsDeliveryMfaRequired(error: unknown) {
+  return error instanceof TalliApiError && error.problem?.code==="ANNUAL_ACCOUNTS_MFA_REQUIRED";
+}
+
+export function prepareAccountsCorrection(accessToken: string,command: import("@talli/talli-api-client").AccountsPrepareCorrectionRequest,key: string) {
+  return client(accessToken).annualAccountsPrepareDeliveryCorrection(command,{idempotencyKey:key,signal:AbortSignal.timeout(60_000)});
+}
+
+export async function loadAccountsCompanyArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
+  const api = client(accessToken);
+  try {
+    const data = await api.annualAccountsGetCompanyYearArchive(companyId, incomeYear, {signal: AbortSignal.timeout(60_000)});
+    return {data, legacyEmpty: null, error: null};
+  } catch (error) {
+    // The preceding owning workspace contract positively enumerates all retained
+    // drafts/events. Only an explicit empty history permits its older export;
+    // it cannot manufacture the new archive codec or a complete restore claim.
+    if (error instanceof TalliApiError && error.status === 404) {
+      try {
+        const workspace = await api.annualAccountsGetDeliveryWorkspace(companyId, incomeYear, {signal: AbortSignal.timeout(10_000)});
+        if (workspace.rows.length === 0) return {data: null, legacyEmpty: workspace, error: null};
+      } catch { /* An unavailable or unauthorized predecessor is not empty. */ }
+    }
+    return {data: null, legacyEmpty: null, error: new Error("Accounts company archive source unavailable.")};
+  }
 }

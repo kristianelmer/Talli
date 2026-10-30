@@ -7,7 +7,16 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
 
-from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, CorrelationId, DomainError, ErrorCategory, IdempotencyKey, IncomeYear, Timestamp
+from .delivery_documents import AnnualAccountsDocumentsInspection
+from .delivery import (AnnualAccountsDeliverySource, AnnualAccountsDeliveryDraft, StoredAnnualAccountsDeliveryDraft, annual_accounts_delivery_digest,
+    prepare_annual_accounts_delivery, decode_annual_accounts_delivery_draft)
+from .delivery_originals import (AnnualAccountsReadPurpose, AnnualAccountsDeliveryOriginal, AnnualAccountsDataElement,
+    AnnualAccountsInstanceInspection, inspect_annual_accounts_instance, inspect_annual_accounts_validation)
+from .delivery_events import (AnnualAccountsDeliveryStage, AnnualAccountsAuthorityPort, AnnualAccountsDeliveryAction,
+    AnnualAccountsDeliveryBinding, AnnualAccountsDeliveryReview, AnnualAccountsFiniteAdmission, AnnualAccountsDeliveryIntent, AnnualAccountsDeliveryCompletion, AnnualAccountsDeliveryObservation, AnnualAccountsFrameKind, AnnualAccountsDeliveryFrameRecord, decode_annual_accounts_delivery_record)
+from .delivery_frames import AnnualAccountsDeliveryFrameInspection, inspect_annual_accounts_delivery_frame
+from .delivery_journal import StoredAnnualAccountsDeliveryEvent, AnnualAccountsDeliveryJournalInspection, inspect_annual_accounts_delivery_journal
 
 
 def _freeze(value):
@@ -301,6 +310,10 @@ async def prepare_annual_accounts_for_signing(
 
 class AnnualAccountsError(DomainError):
     @classmethod
+    def draft_conflict(cls) -> AnnualAccountsError:
+        return cls(code='ANNUAL_ACCOUNTS_DELIVERY_DRAFT_CONFLICT',category=ErrorCategory.CONFLICT)
+
+    @classmethod
     def hard_review_block(cls) -> AnnualAccountsError:
         return cls(code="ANNUAL_ACCOUNTS_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
             message="Hard review-blokk kan ikke acknowledges som advisory.")
@@ -508,9 +521,16 @@ class AnnualAccountsSourceSnapshot:
     coverage: Mapping[str, object] | None
     as_of: Timestamp
     complete_enumeration: bool
+    contract_version: str = 'annual-accounts-source-v1'
+    delivery_drafts: tuple[StoredAnnualAccountsDeliveryDraft,...] = ()
+    delivery_events: tuple[StoredAnnualAccountsDeliveryEvent,...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coverage", _freeze(self.coverage))
+        if not isinstance(self.delivery_drafts,(list,tuple)):raise AnnualAccountsError.unavailable()
+        object.__setattr__(self, "delivery_drafts", tuple(self.delivery_drafts))
+        if not isinstance(self.delivery_events,(list,tuple)):raise AnnualAccountsError.unavailable()
+        object.__setattr__(self, "delivery_events", tuple(self.delivery_events))
 
 
 @dataclass(frozen=True, slots=True)
@@ -596,10 +616,58 @@ class AnnualAccountsSourceFacts:
     correction_links: tuple[AnnualAccountsCorrectionLink, ...]
     incidents: tuple[AnnualAccountsIncidentFact, ...]
     outcomes: tuple[AnnualAccountsOutcomeFact, ...]
+    delivery_drafts: tuple[AnnualAccountsDeliveryDraftFact,...] = ()
+
+
+@dataclass(frozen=True,slots=True)
+class AnnualAccountsDeliveryDraftFact:
+    filing_id: str
+    prepared_by: ActorId
+    draft_sha256: str
+    source_sha256: str
+    recorded_at: Timestamp
+    status: str = 'prepared_only'
+
+
+@dataclass(frozen=True,slots=True)
+class PrepareAnnualAccountsDeliveryDraft:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    filing_id: AnnualAccountsRecordId
+    command_key: IdempotencyKey
+    correlation_id: CorrelationId
+    contact_email: str
+    confirming_representative: str
+
+    def __post_init__(self):
+        if (type(self.company_id) is not CompanyId or type(self.income_year) is not IncomeYear
+                or type(self.income_year.value) is not int or int(self.income_year)!=2025
+                or type(self.actor_id) is not ActorId or self.actor_id.kind is not ActorKind.USER
+                or type(self.filing_id) is not AnnualAccountsRecordId or type(self.command_key) is not IdempotencyKey
+                or type(self.correlation_id) is not CorrelationId
+                or any(type(value) is not str or not value.strip() or len(value)>1000
+                       for value in (self.contact_email,self.confirming_representative))):raise AnnualAccountsError.invalid_input()
+
+
+class AnnualAccountsDeliveryDraftPersistence(Protocol):
+    async def delivery_draft_by_key(self,query: AnnualAccountsSourceQuery,key: IdempotencyKey) -> StoredAnnualAccountsDeliveryDraft | None: ...
+    async def lock_delivery_archive(self,query: AnnualAccountsSourceQuery) -> None: ...
+    async def store_delivery_draft(self,draft: AnnualAccountsDeliveryDraft) -> StoredAnnualAccountsDeliveryDraft: ...
+
+
+class AnnualAccountsDeliveryJournalPersistence(Protocol):
+    async def append_delivery_event(self,record: object) -> tuple[StoredAnnualAccountsDeliveryEvent,bool]: ...
+
+
+class AnnualAccountsDeliveryTransport(Protocol):
+    async def execute(self,request: AnnualAccountsDeliveryIntent,review: AnnualAccountsDeliveryReview,draft: AnnualAccountsDeliveryDraft) -> AnnualAccountsDeliveryCompletion: ...
+    async def read(self,*,purpose: AnnualAccountsReadPurpose,instance_id: str,data_id: str | None=None) -> AnnualAccountsDeliveryOriginal: ...
 
 
 class AnnualAccountsSourcePersistence(Protocol):
     async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot: ...
+    async def lock_company_year_archive(self, query: AnnualAccountsSourceQuery) -> None: ...
 
 
 def project_annual_accounts_source(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnapshot) -> AnnualAccountsSourceFacts:
@@ -614,7 +682,47 @@ def verify_annual_accounts_source(
     return verify(query, evidence, snapshot)
 
 
+class AnnualAccountsSchemaValidator(Protocol):
+    @property
+    def schema_sha256(self) -> str: ...
+    def validate_pair(self,main_form: bytes,company_accounts: bytes,*,organization_number: str,
+        income_year: int) -> AnnualAccountsDocumentsInspection: ...
+
+
+def annual_accounts_schema_adapter(contract: type[object]):
+    return annual_accounts_authority_adapter(contract)
+
+
+from .delivery_corrections import (
+    AnnualAccountsCorrectionReadGrant,AnnualAccountsCorrectionParentAdmission,AnnualAccountsCorrectionParentAttempt,AnnualAccountsCorrectionParentObservation,AnnualAccountsCorrectionParentFrame,
+    decode_annual_accounts_delivery_record_v2,assert_annual_accounts_correction_source,
+    inspect_annual_accounts_correction_parent,inspect_annual_accounts_delivery_history,
+)
+
+
+from .delivery_archive import (AnnualAccountsArchiveVerification, AccountsArchivedOriginalFact, verify_annual_accounts_company_archive, AnnualAccountsCompanyArchive, AccountsDeliveryOriginal, annual_accounts_delivery_originals,
+    build_annual_accounts_company_archive, serialize_annual_accounts_company_archive, parse_annual_accounts_company_archive)
+
 __all__ = [
+    "AnnualAccountsArchiveVerification", "AccountsArchivedOriginalFact", "verify_annual_accounts_company_archive",
+    "AnnualAccountsCompanyArchive", "AccountsDeliveryOriginal", "annual_accounts_delivery_originals",
+    "build_annual_accounts_company_archive", "serialize_annual_accounts_company_archive", "parse_annual_accounts_company_archive",
+    "AnnualAccountsCorrectionReadGrant",
+    "AnnualAccountsCorrectionParentAttempt",
+    "AnnualAccountsCorrectionParentAdmission","AnnualAccountsCorrectionParentObservation","AnnualAccountsCorrectionParentFrame",
+    "decode_annual_accounts_delivery_record_v2","assert_annual_accounts_correction_source",
+    "inspect_annual_accounts_correction_parent","inspect_annual_accounts_delivery_history",
+    "StoredAnnualAccountsDeliveryEvent","AnnualAccountsDeliveryJournalInspection","inspect_annual_accounts_delivery_journal",
+    "AnnualAccountsFrameKind","AnnualAccountsDeliveryFrameRecord","AnnualAccountsDeliveryFrameInspection","inspect_annual_accounts_delivery_frame",
+    "AnnualAccountsDeliveryObservation","decode_annual_accounts_delivery_record",
+    "AnnualAccountsDeliveryStage","AnnualAccountsAuthorityPort","AnnualAccountsDeliveryAction","AnnualAccountsDeliveryBinding",
+    "AnnualAccountsDeliveryReview","AnnualAccountsFiniteAdmission","AnnualAccountsDeliveryIntent","AnnualAccountsDeliveryCompletion",
+    "AnnualAccountsReadPurpose","AnnualAccountsDeliveryOriginal","AnnualAccountsDataElement","AnnualAccountsInstanceInspection",
+    "inspect_annual_accounts_instance","inspect_annual_accounts_validation",
+    "StoredAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftFact","PrepareAnnualAccountsDeliveryDraft","AnnualAccountsDeliveryDraftPersistence","AnnualAccountsDeliveryJournalPersistence","AnnualAccountsDeliveryTransport",
+    "AnnualAccountsDeliverySource", "AnnualAccountsDeliveryDraft", "annual_accounts_delivery_digest",
+    "prepare_annual_accounts_delivery", "decode_annual_accounts_delivery_draft",
+    "AnnualAccountsDocumentsInspection","AnnualAccountsSchemaValidator","annual_accounts_schema_adapter",
     "AnnualAccountsSourceQuery",
     "AnnualAccountsSourceSnapshot",
     "AnnualAccountsSourceEvidence",

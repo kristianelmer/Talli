@@ -1,0 +1,20 @@
+{
+  "schema": "talli-bounded-accounts-company-archive-composition-v1",
+  "baselineRevision": "d8523203e0eae4e30b67f54fc2fae5e5bb5d5bfc",
+  "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+  "operation": "GET",
+  "prior": {
+    "sourceDigest": "sha256:053f390fbc7a43671c3f6bbd9c3d4d505172410241ba4e6a5d68bb35efb7ad2c",
+    "occurrences": 0
+  },
+  "candidate": {
+    "sourceDigest": "sha256:4fbb7cfb9fa62f3071244119e9f2a5bf3d5d86917d7eb22c04b43c6f25be23b2",
+    "occurrences": 0
+  },
+  "exactAdditions": [
+    "  const accountsCompanyArchive = await loadAccountsCompanyArchiveSource(accessToken, companyId, incomeYear);\n  if (accountsCompanyArchive.error || (!accountsCompanyArchive.data && !accountsCompanyArchive.legacyEmpty)) return new Response(\"Kunne ikke lese komplett årsregnskapsarkiv\", {status: 503});\n",
+    "    accountsCompanyArchive: accountsCompanyArchive.data ?? undefined,\n    accountsLegacyEmpty: accountsCompanyArchive.legacyEmpty ?? undefined,\n",
+    " && (accountsCompanyArchive.data?.draftCount ?? 0) === 0"
+  ],
+  "scope": "Add owned Accounts history or an explicitly empty preceding owning workspace inside the existing export receipt. Legacy overlap preserves export only, never a full restore claim. Retained sibling SQL remains frozen; no compatibility retirement or provider authority."
+}

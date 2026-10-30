@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_FEEDBACK_ORIGINAL_BINDING",
+  "baseCommit": "85cae057b9110e357ebb4c729fa54a2f5b772b9e",
+  "scope": "Atomically bind newly persisted RF feedback artifacts to their exact retained Documents originals.",
+  "behavior": [
+    "The RF owner writer acquires the existing company/relationship guard, calls the Documents receipt assertion, and records artifact plus original identity in one transaction.",
+    "Original identity, metadata digest, source year and retention time are all present or all absent. Bound records reject mutation.",
+    "Existing canonical artifacts remain unchanged; legacy missing bindings are not inferred from current mutable metadata.",
+    "Rollback suspends the new writer and preserves records, bindings and original bytes."
+  ],
+  "verification": {
+    "isolatedPostgres": "PASS: actual Documents retention/assertion migrations and new RF binding migration reject wrong ID/hash/time; late write failure and transaction rollback leave no partial artifact; successful binding and replay preserve exact identity; rollback/replay twice preserve rows and role memberships; RF cannot read retained bytes. RF predecessor relationship/writer routines are minimal fixture implementations in this bounded probe.",
+    "focusedBackend": "334 passed",
+    "ciHarness": "68 passed",
+    "architecture": "PASS",
+    "databaseCollection": "39 RF runtime cases and 17 journal/company-guard cases collected, including four new mismatch/atomicity cases and the new writer lock-order case. Final schema-wide execution pending.",
+    "previousRevision": "Run 36411282456: Application passed. Database verified real feedback retention and recovery, then failed at year-scoped archive reading; underlying SQL diagnostic added to that disposable-fixture test.",
+    "previousLocalRf": "1779 passed, 217 database cases deselected at 85cae057.",
+    "rfSuite": "1779 passed, 221 database cases deselected; new writer guard case separately collected after this run started."
+  },
+  "limits": [
+    "Canonical archive DTO/codec and portable feedback-byte composition do not yet include the new binding fields.",
+    "No legacy backfill, database/object hydration or production provider operations performed.",
+    "Complete final-revision release checks and all seven RF acceptance criteria remain pending."
+  ],
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false,
+    "localProbeContainerRemoved": true,
+    "colimaRestoredStopped": true
+  },
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-feedback-binding-20260928-14d7",
+  "sha256": {
+    "talli-feedback-binding-probe.py": "1d525df9dceca2c693cc2445c8a0404a6b0771a473da60e333f2bc85ddee8b6a",
+    "talli-feedback-binding-probe.log": "fc9856a63ee0cb77d19dd3e59c594e631296553d4a1a45218654140da2c2df71",
+    "talli-feedback-binding-unit.log": "d118f9480e1eec24bcf250d17a85affbb607a65c559014d0fc563d3a797a0464",
+    "talli-feedback-binding-harness.log": "d0c3fcba3c97c71ce01408bd1712ba71b478d1dc23b4d1b95b9a66f3266a4dfd",
+    "talli-feedback-binding-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-feedback-binding-collection.log": "70425a353477156f7facb0fe64306917146091858d683c4e2ead8b3dcbca6468",
+    "talli-85ca-database.log": "39f1f0ff7a2c79713639d5d432f12787331c0035b6f4c406c249ae1ce5f9a232",
+    "talli-rf-complete-post-retention.log": "a6f18ed9e8916b0de5f812058ae208eeb23589e5734139e58beace59473854d2",
+    "talli-feedback-binding-rf-suite.log": "a625e394809f2bd307b4b6a26ff4a15adc5e66d24261ebbe187d2665dd474bcf",
+    "talli-feedback-binding-guard-collection.log": "d3603d619112b29aa87e8c5f758871d52915c60831eeddfd27365a1721c09aa1"
+  }
+}

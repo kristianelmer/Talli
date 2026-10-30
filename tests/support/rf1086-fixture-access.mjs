@@ -34,12 +34,16 @@ const allowed = new Set([
   "corporate_governance.shareholder_loans",
 
   "company_tax_filing.settlements",
+  "company_tax_filing.delivery_drafts",
+  "company_tax_filing.delivery_events",
   "annual_accounts_filing.filing_submissions",
   "annual_accounts_filing.filing_review_comments",
   "annual_accounts_filing.filing_overrides",
   "annual_accounts_filing.filing_previews",
   "annual_accounts_filing.authority_test_runs",
   "annual_accounts_filing.authority_permissions",
+  "annual_accounts_filing.delivery_events",
+  "annual_accounts_filing.delivery_drafts",
 
   "company_tax_filing.filing_submissions",
   "company_tax_filing.filing_review_comments",
@@ -52,6 +56,14 @@ const allowed = new Set([
   "public.support_operators",
   "public.launch_signoffs",
   "shareholder_register_filing.production_feedback_artifacts",
+  "shareholder_register_filing.submission_heads",
+  "shareholder_register_filing.source_submission_bindings",
+  "shareholder_register_filing.source_approval_bindings",
+  "shareholder_register_filing.source_review_bridges",
+  "shareholder_register_filing.source_previews",
+  "shareholder_register_filing.year_source_heads",
+  "shareholder_register_filing.year_source_versions",
+  "shareholder_register_filing.register_observations",
   "shareholder_register_filing.production_filing_events",
   "shareholder_register_filing.production_filing_submissions",
   "shareholder_register_filing.filing_approval_snapshots",
@@ -68,6 +80,7 @@ const allowed = new Set([
   "ledger.opening_bank_inputs",
   "billing.production_pilot_entitlements",
   "documents.evidence_references",
+  "documents.retained_originals",
   "authority_connections.authority_operations",
   "authority_connections.system_user_requests",
   "public.documents",
@@ -82,6 +95,11 @@ const allowed = new Set([
   "public.company_memberships",
   "public.companies",
   "public.company_archive_source_generations",
+  "public.company_cancellations",
+  "public.company_access_command_receipts",
+  "public.support_access_grants",
+  "public.support_access_operation_receipts",
+  "public.support_case_openings",
   "public.opening_balance_setups",
   "public.opening_shareholders",
   "public.company_year_acceptances",
@@ -229,6 +247,10 @@ export async function fixtureTableTransaction(database, relations, operation) {
       await database.query("reset role");
     }
     const result = await operation();
+    // Validate deferred references before ALTER restores USER triggers. Keeping
+    // internal FK triggers enabled can otherwise leave pending events on the
+    // touched parent tables; any invalid reference still rolls everything back.
+    await database.query("set constraints all immediate");
     for (const { relation, before, triggers } of snapshots) {
       await database.query(`set local role ${identifier(before.owner)}`);
       for (const trigger of triggers) await database.query(`alter table ${qualified(relation)} ${modes[trigger.mode]} trigger ${identifier(trigger.name)}`);

@@ -1,0 +1,201 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Closed Documents historical original metadata integrity assertion",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "5535e6e1569377071276d64b6b83762503a8d928",
+  "status": "LOCAL_REVIEWED_METADATA_NATIVE_AND_HARNESS_PASS_FULL_DATABASE_EXECUTION_PENDING",
+  "prerequisitePlan": "documents-original-integrity-prerequisite-20261009.json",
+  "contract": {
+    "publicSql": "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+    "returns": [
+      "document_text"
+    ],
+    "authority": "Verified subject, current accepted owner before and after shared company lock, READ COMMITTED, exact retained receipt identity and finite nonfuture cutoff with retained_at <= cutoff. Current owner may differ from retained actor; no Auth lookup.",
+    "proof": "Validate the known 23-field retained SQL snapshot, bind snapshot document/company/year/content hash/byte length to the retained row, reconstruct unchanged 16-field public DocumentRecord metadata bytes, and recompute its existing SHA256. Matching stored/caller labels alone cannot satisfy this assertion.",
+    "compatibility": "Preserves exact existing wrappers, UTF-8 strings, UTC datetime.isoformat, integer values, content_type null/empty default and empty removal_reason default. All DocumentStatus values and nullable removal times remain representable. No new creation-before-retention or future-consumer usability policy. Seven SQL-only fields are type-checked but outside the unchanged metadata digest.",
+    "activation": "All runtime/consumer EXECUTE closed, including reinstallation. No current mutable-document join, object-store access, returned bytes, old writer/hash/API change or new original evidence. Retentive no-op rollback."
+  },
+  "checks": {
+    "focused": {
+      "status": "PASS",
+      "count": 149,
+      "newCodecTests": 47
+    },
+    "native": {
+      "status": "PASS",
+      "groups": 8,
+      "checkedInVectors": 29,
+      "independentVectors": 89,
+      "excludedVectors": 0,
+      "malformedCases": 85,
+      "clusterStoppedAndRemoved": true,
+      "limits": "CompanyAccess/companylock explicitly STUBBED; actual native retained CHECK constraints, forced owner RLS/canonical decoder/migration catalog only. No fullSupabase/currentowner/advisoryconcurrency/objectstore proof."
+    },
+    "restrictedDatabase": {
+      "status": "COLLECTED_ONLY",
+      "count": 107,
+      "executed": 0
+    },
+    "databaseFixtureConstruction": {
+      "status": "PASS",
+      "count": 24,
+      "limits": "offline Python construction only; owner report in documents-original-integrity-db-checks.json"
+    },
+    "architecture": {
+      "status": "PASS"
+    },
+    "nodeManifestAndGuardRegression": {
+      "status": "PASS",
+      "count": 26
+    },
+    "ciRegistration": {
+      "status": "PASS",
+      "count": 110
+    },
+    "diffCheck": {
+      "status": "PASS"
+    }
+  },
+  "reviews": {
+    "standards": {
+      "unresolvedFindings": 0,
+      "scope": "Independent 11-file review under repository ownership/authority/serialization standards and smell baseline; all final source hashes verified."
+    },
+    "spec": {
+      "unresolvedFindings": 0,
+      "scope": "Independent selected-plan, strict snapshot/projection/hash/cutoff/history/authority/closed-grant review; all final source hashes verified."
+    },
+    "root": {
+      "unresolvedFindings": 0,
+      "scope": "Full SQL and real DB fixture source review; independently generated89 existing-Python projection vectors all matched native SQL without exclusions; verified11 source and16 artifact hashes."
+    }
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009232839_documents_historical_original_integrity.sql": "831d0c8f9d0ca8fbc217b5d8aae879096259ba5bb1c63530804c738b0f338478",
+    "supabase/rollback/20261009232839_documents_historical_original_integrity.sql": "eb2b2e94bd9fd1e2315f58f67c2f253333966b58f7d28c8ab7dbf9d3334b3eea",
+    "apps/backend/tests/test_documents_historical_original_integrity_codec.py": "f6697a0793c10a9f139dc9d7b5c17c8112bb77f94605b16d07a2e8b059564d16",
+    "apps/backend/tests/fixtures/documents_historical_original_integrity_v1.json": "369716163e4aadbdd8469aa9ce14a2d66dbac2f71287f74899dc7c769e7899c2",
+    "apps/backend/tests/test_documents_historical_original_integrity_database.py": "c7035adb9b9e7084ddcc9789c066e3121aa24d19b7f4fd3179c32300cc8c02f0",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "8584a8130e22d02116957b0e1f5c206296b1361f47a573786af95ca8444fe56f",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "befca585e47628ee15efbe7ab60028a5fad76613100c244933e0c43ad64d48d9",
+    "package.json": "8c6ff3deabb760b377e954a2fb0f82fab6bc459ba21e6745cdc2c906a7e3dbe5",
+    "scripts/rf-consequential-successors.json": "8982d39f4ed0e24eb357991bc4c558ecce124ddb4dcd0eb9b6b1949304ce96ea",
+    "tests/ci_release_gate.test.mjs": "263e570a11be2e62063cbc2f1daa70652571ed504c5e641d3dd2b73752ff955b",
+    "tests/corporate_governance_review_fixes.test.mjs": "0245d183b82eeff5ccf421a7f0c07dc9102453f30ed029c0f9873ea2f439ea16"
+  },
+  "privateArtifacts": {
+    "check-documents-historical-integrity-native.py": {
+      "path": "/private/tmp/talli-release-20261009/check-documents-historical-integrity-native.py",
+      "sha256": "bf23a286443f57912997883a23652ca92a89f630062544321a46d07245a32dd1",
+      "bytes": 13421
+    },
+    "documents-historical-integrity-native.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-native.json",
+      "sha256": "e183f3113a1ce6e7684fbc19b5ef3cddb63fdf765d6ca4b950d4916f26369754",
+      "bytes": 1819
+    },
+    "documents-historical-integrity-native.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-native.log",
+      "sha256": "6c09167613720bfb21dbc2cca62aec2d727db2e5f931cbe42380f66a4747f723",
+      "bytes": 981
+    },
+    "documents-historical-integrity-native-output.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-native-output.log",
+      "sha256": "2af3f876f45de2c3228205071df998d8a284261da256db6b5499ba7371177f56",
+      "bytes": 1765
+    },
+    "create-documents-integrity-goldens.py": {
+      "path": "/private/tmp/talli-release-20261009/create-documents-integrity-goldens.py",
+      "sha256": "c01aa8525cb23be6fa14392db3e5f08b55a1be162a7284d9790cb962553c90ed",
+      "bytes": 3032
+    },
+    "documents-independent-metadata-corpus.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-independent-metadata-corpus.json",
+      "sha256": "9d0976d9f56931283cadced471e9fcef33b08c0898b996b035a1d7b0dc9e4e94",
+      "bytes": 165661
+    },
+    "build-documents-independent-corpus.py": {
+      "path": "/private/tmp/talli-release-20261009/build-documents-independent-corpus.py",
+      "sha256": "3dfaa5bd77537ca88d7cdbc5ac1a294d31db9760dd0ff68d60b816cdce574198",
+      "bytes": 4275
+    },
+    "documents-historical-integrity-focused.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-focused.log",
+      "sha256": "b66d708dcb77875ccc4fa4c21bbe4cad92452ff3dfe9e7ed9875dcf3ef37876a",
+      "bytes": 260
+    },
+    "documents-historical-integrity-architecture.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-architecture.log",
+      "sha256": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69",
+      "bytes": 18484
+    },
+    "documents-historical-integrity-manifest-regression.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-manifest-regression.log",
+      "sha256": "0d922b2c33082410dd22b2b5fe920bccc7b65f06dd02652d893e728460adeee5",
+      "bytes": 2158
+    },
+    "documents-historical-integrity-ci-registration.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-ci-registration.log",
+      "sha256": "cc6c374ccf2f0446d9f6701de7346280d379e7d31e86c9af8c95155b4e922848",
+      "bytes": 11664
+    },
+    "documents-original-integrity-db-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-original-integrity-db-collection.log",
+      "sha256": "fccec1e963d7e434271d30cb76e01aa385056b098b2a656c0eac44c9c8e8baa4",
+      "bytes": 14850
+    },
+    "documents-original-integrity-db-checks.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-original-integrity-db-checks.json",
+      "sha256": "4dcbe04654641ff1f0bb48a8e77aa59d90b36c7e21193dbef15b8ace1d15d5c6",
+      "bytes": 1671
+    },
+    "check-documents-integrity-db-fixtures.py": {
+      "path": "/private/tmp/talli-release-20261009/check-documents-integrity-db-fixtures.py",
+      "sha256": "ebef018a7ab81b58c7873441104009fd311ce64f7ad48742fdd66edad6eae250",
+      "bytes": 3039
+    },
+    "documents-integrity-db-fixtures.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-integrity-db-fixtures.json",
+      "sha256": "6adf67c3cad2960e4860f977c1f24921e030c1836b9f3d6077523f3b6fa18dbd",
+      "bytes": 961
+    },
+    "documents-integrity-db-fixtures.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-integrity-db-fixtures.log",
+      "sha256": "656bd647c00b472466f9ea0336e20ccc8c80af8f17367936f4f6d663f6b94aa6",
+      "bytes": 851
+    }
+  },
+  "finalCheckInventory": {
+    "path": "/private/tmp/talli-release-20261009/documents-historical-integrity-freeze.json",
+    "sha256": "05075f6a7324891a84790278df56a5fe861c44644c845da170d4a71b0039652b",
+    "bytes": 8331
+  },
+  "separateFixtureConcernAudit": {
+    "status": "NOT_REPRODUCED_NO_CODE_CHANGE",
+    "scope": "Potential Ledger unique-role cleanup loss of ADMIN was disproved on native PostgreSQL17.11: bootstrap-granted ADMIN survives removal of the self-granted SET edge; exact DROP succeeds under all4 createrole_self_grant settings. This is real catalog proof only, not Ledger business/runtime proof.",
+    "source": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+    "sourceSha256": "aac17d0984bfb2a87c8dbb136a5bce9381a2d642e496ca03ff150cfdc8d4a082",
+    "officialReference": "https://www.postgresql.org/docs/17/sql-droprole.html",
+    "privateArtifacts": {
+      "check-created-role-teardown.py": {
+        "path": "/private/tmp/talli-release-20261009/check-created-role-teardown.py",
+        "sha256": "c7d71c8fd51b95e6628ad74dff984caba03aa1e91c0d9fdd2d9e5c64bf28f465"
+      },
+      "created-role-teardown-native.json": {
+        "path": "/private/tmp/talli-release-20261009/created-role-teardown-native.json",
+        "sha256": "39cfc837540ec91f5436f64713a92565ac8394c0402d49ce5819676e102ded12"
+      },
+      "created-role-teardown-native.log": {
+        "path": "/private/tmp/talli-release-20261009/created-role-teardown-native.log",
+        "sha256": "1e59f605ba3ce7e6d7396d5de364c9d2791473cb3e942c8435010394eae09a60"
+      }
+    }
+  },
+  "limits": [
+    "107 restricted database cases are collected only. Native8 groups use explicit CompanyAccess/company-lock stubs with real retained-byte constraints and minimal owner RLS; they do not prove full Supabase authorization or lock races.",
+    "Stored-byte SHA/length constraints and snapshot/metadata correspondence do not establish fresh independent object-store reads, original recording-time metadata, human provenance, signedness, truth or later consumer eligibility.",
+    "Future Governance must verify the complete distinct-document union, semantic revisions, allowed document states, RF economics/currentness/withdrawal and Ledger eligibility in its final transaction. No amendment writer/application or consumer grant is activated here.",
+    "Running CI38004460437 tests older c7d86cc1 and excludes this Documents slice. No complete CI pass, A1-A7 advancement, Archive exception, capability exit, charge, provider filing or launch is claimed."
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "06953f615715ce0311f58722477929c296878ff1",
+  "status": "PASS_BOUNDED_CURRENT_SOURCE_CORRECTION_DRAFT",
+  "scope": "Current accepted AS owner reads retained facts as typed editable correction draft with reset confirmations and exact predecessor",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "c22709b756316c77b1d9899ab353964b1899d76b9b7375234c9ec9cfe958892b",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "45ffb7932bd1e8f4adfbc6802051f83443802a9eb4b22cd61c83909fe2ac5687",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "b2812f67c30a9f239ef5cd7838d9fae248c34992aa5a11b628b0ffb8427f37c9",
+    "scripts/generate-api-client.mjs": "d7dacd9db6c4cff407f2aaa26d56c58e076185f45b7f64fc3ff8ccf0e2ea475f",
+    "scripts/check-openapi-contract.mjs": "2cd2b8679993e5c277d4c5309c47c3f30f6a27229b279dd8af7eb09765e9b014",
+    "tests/contract/openapi_oneof.test.mjs": "6291f00c96a630cebe177f9c53ddd85ae4cf64b86c5238d0bd7807333b053fa5",
+    "tests/contract/web_fastapi_boundary.test.mjs": "4ff5d255f87ea78ee065a8f0e6a1a72be41b51a162e9e5ef237a29956e628ce3",
+    "contracts/openapi/talli-v1.json": "5ff56e2d1dc41b49483fca09241a0bf10d11af5d9cc5876c5c37323876dd30fb",
+    "packages/talli-api-client/src/generated/client.ts": "1e2ac650de78938aba7f6e9c596825c6e3d03afe177d15eacbca5be899b6b773",
+    "architecture/backend-system.json": "ceb16790748e48859eebab31e80c83695be6aef2e9ae1385aa10c1fe7e3e7c75",
+    "architecture/BACKEND-SYSTEM.md": "a6ace25ccc7bba0caa31f7524ccbbc92c45e0b74e8e1aa53faa4b97e860fd268",
+    "package.json": "d5430bb3e9b908ef73bab2fa5c9e7a4fc12f0c0f50bdb97054a04e98e50187f0"
+  },
+  "verification": {
+    "sourceApiWorkflowsPassed": 215,
+    "backendResponseGeneratedClientCasesPassed": 8,
+    "boundaryContractsPassed": 93,
+    "ciContractsPassed": 63,
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "priorPathsUnchanged": 165,
+    "priorSchemasUnchanged": 472,
+    "rootReview": "Fixed rename/address recovery without weakening immutable organization/tenant checks; verified company correction proof and logs"
+  },
+  "logSha256": {
+    "company-correction-final.log": "1dbfa827b99b82cdde15bd9a4a9a70bd9bba50099f02fe71315a34fa075103f0",
+    "client-export.log": "4385e4bf7bac71ce1dd8d42a473900fde6290764449f7e8e0ae8593eca9ba449",
+    "client-cases.json": "7d4d87747afcd836de2abf72946bf7bff12273eeed987515a5156eaf27dd68e5",
+    "client-integration-final.log": "5fd621d4320fe3b6d935ccef12acf1f70cb81f06cf35fcad5090945073c1ac7d",
+    "verified-contract.log": "a0295e4126e1326b6944b10c9e9fdc5bcac8eb1169b1a9a0f6bd7f0443a98924",
+    "verified-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "verified-architecture.log": "2d5c3913df6b52bc58bb0b14ef57f05ea8e9d068627122c0e4b314062ea1dd10",
+    "ci-contract.log": "600df190aa11de79fee5191bcf0e1d0cc78d6ef33d0a3d09572ab557b95acd15",
+    "exported-compatibility.json": "34fa5ad3c5c8b6dffa4afcfec1038ef6b2c534fbf65f74894807e0b985053cb4",
+    "rf-manifest-review-oneof-focused.log": "84bc305b4905742a7f6b8cbc25e07dfc7d91d6f385a4b8ca29020bdccbb90a35",
+    "rf-manifest-review-oneof-tests.log": "9421ec7b33527e1defc6ad436382c6c7c8703aab3ceb06a81b0c56e26e34374f"
+  },
+  "agentProofSha256": "51c791d642d5e7d55e404ff52abc2050c95b14e303cac1d090836378c968eeb0",
+  "limits": [
+    "Retained reads deliberately do not certify current Documents/Governance evidence; recapture independently re-verifies.",
+    "A new correction requires fresh owner confirmations and reason; edited events must clear or update explicit digest assertions.",
+    "Contract checker supports only finite discriminated local-reference oneOf object variants; ambiguous general unions remain rejected.",
+    "No customer UI, production approval/send admission or hosted/provider action. All full RF criteria remain pending."
+  ],
+  "privateProofSha256": "fedb889851af033cca353dbefe6c7df12e56f4069ceafcc00a42c600db5a0b63"
+}

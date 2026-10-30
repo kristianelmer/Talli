@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-30",
+  "status": "PASS_LOCAL_SOURCE_SEND_API_AND_OWNER_UI",
+  "baseRevision": "cf0ae48d422b866267468b9a6320d782bdf63c99",
+  "changes": [
+    "Strict authenticated full-year send route accepts only approval ID, exact manifest hash and expected predecessor. Caller facts/proof/XML/actor/keys/grants are rejected.",
+    "Separate authenticated position read validates retained approval, claim and archive history without configuration, new claims, current originals or provider credentials. It includes the exact approved preview and approval time.",
+    "Generated client has no automatic send retry; unknown and blocked operation errors remain distinct. Existing routes/schemas are semantically unchanged.",
+    "Owner source screen lists retained approvals independently of current source reads. Explicit send follows status and confirmation; every attempt clears send controls until another status read.",
+    "Confirmed filings can retrieve feedback and download only their associated feedback documents. Source approval remains a separate action.",
+    "Rollback rehearsal now emulates ON COMMIT DROP for migration-declared temporary tables when stripping transaction boundaries. No production SQL/permissions weakened."
+  ],
+  "verification": {
+    "backendApiDomainWorkflowCases": 342,
+    "webTransportEditorContractCases": 285,
+    "affectedDatabaseLifecycleAndDurableCases": 110,
+    "typescript": "PASS",
+    "nextProductionBuild": "PASS",
+    "architecture": "PASS independently; generated dependency evidence unchanged",
+    "generatedContractChecks": "PASS; semantic comparison shows only two new paths and three new schemas",
+    "browser": "Actual SourceProduction component in isolated Chromium harness, synthetic actions and minimal styling: literal retained preview, lost response exactly one send action, no uncertain/blocked send control, explicit retry confirmation, confirmed feedback read without another send, selected-submission-only document link, mobile width.",
+    "browserScope": "Not the authenticated full-stack acceptance journey.",
+    "ciPredecessor": {
+      "revision": "cf0ae48d422b866267468b9a6320d782bdf63c99",
+      "run": "https://github.com/kristianelmer/Talli/actions/runs/36621719518",
+      "application": "PASS",
+      "authorityRfCases": 700,
+      "followingDatabaseLane": "496 passed then lifecycle setup failed on duplicate temporary table rf_source_operation_roles. Fixed rehearsal helper; 110 affected cases now pass locally.",
+      "immutableEvidence": "SKIPPED",
+      "currentRevision": "Exact-revision CI pending publication."
+    }
+  },
+  "diagnoses": [
+    "Browser inspection exposed a misleading default Sent feedback label on an uncertain operation. Feedback labels are now shown only for confirmed positions.",
+    "CI rollback rehearsal stripped COMMIT and kept ON COMMIT DROP tables between separate migrations. It now reproduces their actual lifetime.",
+    "Playwright CLI initially lacked default Chrome and later lost its browser handle. Final assertions used the repository Playwright library with an existing Chromium executable and a fresh owned browser; no external requests."
+  ],
+  "limits": [
+    "All seven RF acceptance criteria remain pending.",
+    "No actual provider credentials/operations, production setting, hosted database change or real AS data.",
+    "Uncertain-operation reconciliation, authenticated full-stack browser/security/recovery acceptance, legacy feedback backfill, actual database/object restore, retention generations, streaming archives and immutable acceptance gates remain.",
+    "Local database uses minimal Auth/Storage shims; full Supabase exact-revision CI remains required."
+  ],
+  "cleanup": "Removed only owned database bdc0de5a, restored42 previously dormant containers, restored Colima talli stopped, closed owned UI server/browser.",
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-send-api-20260929-14d7",
+  "sha256": {
+    "api-final.log": "e139f356f73c2fc9adb7e271f278b36677fc27005fa071349e65aa42596c76d2",
+    "web-final.log": "7109de602c2d3a781eb8bc9d4eeae5635063eeb0437ffb1947f08c1150f02f69",
+    "database-lifecycle.log": "6982946da20cea84b2c1177c67d1c3e09eede9bbe9ea067a7e602ce72a709660",
+    "typescript-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "next-build-final.log": "ca90a704e34d4c9c02a6b45e64c7dea9e2c9e062c5df28e3168d36be8a02d38f",
+    "architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "browser-verified.log": "c82c1267418bbf768018ff5ab5d772495a1289a46de5c1d2aaa93afca2510807",
+    "browser-verify.cjs": "ed1bca0707f5294c6b8903c6ee933517c1f557436ec38b7190858689de379f48",
+    "browser-harness/recovery-mobile.png": "e656f4001a93f08488a8d21a46d82dced70bb369e41e55ba2e5423bd62954e08",
+    "ci-cf0ae48d-failed.log": "bc925901d887190904e503109e9e6e9feb35686ea0539856f203952c38a7926c",
+    "cleanup.log": "fbe2a89ea53b522d2b460002bc3dd505e604356a7db2fa29ad2a6b6ae085c319"
+  }
+}

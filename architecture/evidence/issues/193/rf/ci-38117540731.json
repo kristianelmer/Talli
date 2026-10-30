@@ -1,0 +1,65 @@
+{
+  "schema": "rf-integration-ci-observation-v4",
+  "recordedAtUtc": "2026-10-11T07:22:49.861681+00:00",
+  "runId": 38117540731,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38117540731",
+  "headSha": "af5118eb071e03c6664e51684ec8bed461f851f0",
+  "mergeSha": "e7be55d9b5df101a53a430f97556625429db2a6c",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "cancelled",
+  "attempt": 1,
+  "application": {
+    "passed": 11502,
+    "skipped": 2,
+    "deselected": 2412,
+    "seconds": 1047.66
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 210.8
+  },
+  "authority": {
+    "collected": 1624,
+    "observedPassed": 1562,
+    "completed": false,
+    "approvalExactObservedPassed": 36,
+    "claimExactObservedPassed": 20,
+    "retentionExactObservedPassed": 0,
+    "newBundleExactObservedPassed": 0
+  },
+  "intent": {
+    "required": 40,
+    "observedPassed": 39,
+    "remainingCase": "original-owner-revoked postwait race",
+    "completed": false
+  },
+  "failure": "GitHub reports the database job exceeded its 1h maximum. Faulthandler shows its final intent case waiting in the fixture membership update while the fixture holds the shared company guard required by the membership trigger.",
+  "rfBrowser": {
+    "reached": false
+  },
+  "verification": {
+    "freshPrAndMergeParentsVerified": true,
+    "actualDatabaseCheckoutVerified": true,
+    "observedExactNodesAndSourceGitPinsVerified": true,
+    "artifacts": 0
+  },
+  "rawEvidenceSha256": {
+    "ci38117540731-db-direct-raw-v1.log": "e7de09a6f9ddf8454cc2623abca5300abf205c402d7693fa49ef7b1523d33a60",
+    "ci38117540731-app-direct-raw-v1.log": "a30dd750319707d15b23238b47c19ec71ea42bfd571e5f79fce453477d07d0df",
+    "ci38117540731-terminal-run-v1.json": "4d3b2fbdb94d765744b2085fe43c18eb3e5b85f55e750afc6aaaf3e7d07bc02d",
+    "ci38117540731-terminal-jobs-v1.json": "cbbb2a6adcf0d8bc54d8f9593b2917e45f46688ee3ee9e58c0af60793e5cc00c",
+    "ci38117540731-terminal-pr-v1.json": "8a36e6b6733f01bb0450b3c46436097ea3aa0f6ca389502d4e96cee4b5897a24",
+    "ci38117540731-terminal-parents-v1.json": "6b863d1909a3473a6ed26bc21f5f5f1978a16d428acf44625c1039d9778ee0c0",
+    "ci38117540731-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38117540731-db-check-annotations-v1.json": "358dfb7c43efe17213a77d5370e6fab8426d06e3236fd52e08b23e0de9ece986",
+    "ci38117540731-terminal-receipt-v1.json": "31d7bb0e969620f918702f29aa1f21d6f54460c90f1738d1ec49a803df6b5cee"
+  },
+  "limits": [
+    "No complete Authority or40-intent acceptance; later retention and owning inventory browser were unreached.",
+    "The reviewed claimed-correction repair and its six new parent-chain cases are excluded from this published run.",
+    "No independent restore stage/component diagnostic reached; earlier strict-fingerprint recovery failure remains unresolved.",
+    "Immutable evidence skipped, zero artifacts; whole release,RET002 and all-three remain uncleared.",
+    "Canonical raw logs remain private; public evidence contains counts and SHA metadata only."
+  ]
+}

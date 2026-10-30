@@ -4,7 +4,7 @@
   "name": "company_tax_filing",
   "path": "apps/backend/src/talli_backend/modules/company_tax_filing",
   "owner": "backend:company_tax_filing",
-  "purpose": "Own Tax settlement capture, deterministic company-tax readiness/calculation/XML, authorized filing preparation and sanitized TT02 receipts, the preserved human-confirmed local authority rehearsal, and positively covered recorded Tax source facts.",
+  "purpose": "Own Tax settlement capture, deterministic company-tax readiness/calculation/XML, authorized filing preparation and sanitized TT02 receipts, the preserved human-confirmed local authority rehearsal, and positively covered recorded Tax source facts. Own immutable durable-delivery source/review bindings and submit-once mutation policy; live provider activation remains separately gated.",
   "documentation": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
   "exports": {
@@ -16,7 +16,15 @@
       "ConfirmCompanyTaxPermission",
       "RecordCompanyTaxTestEvidence",
       "CompanyTaxRehearsalConfiguration",
-      "rehearse_company_tax_return"
+      "rehearse_company_tax_return",
+      "PrepareTaxDeliveryDraft",
+      "ApproveTaxDeliveryDraft",
+      "AdvanceTaxDelivery",
+      "ConfirmTaxDeliverySubmission",
+      "TaxDeliveryCorrectionParent",
+      "PrepareTaxDeliveryCorrection",
+      "tax_delivery_lineage",
+      "bind_tax_delivery_correction_parent"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -65,7 +73,105 @@
       "CompanyTaxCorrectionLink",
       "CompanyTaxSourceFacts",
       "project_company_tax_source",
-      "verify_company_tax_source"
+      "verify_company_tax_source",
+      "TaxDeliverySource",
+      "TaxDeliveryEnvelope",
+      "TaxMutationIntent",
+      "TaxMutationRecord",
+      "tax_delivery_digest",
+      "prepare_tax_delivery",
+      "plan_tax_mutation",
+      "verify_tax_review",
+      "TaxSchemaValidation",
+      "TaxDeliveryDraft",
+      "StoredTaxDeliveryDraft",
+      "TaxDeliveryDraftFact",
+      "decode_tax_delivery_draft",
+      "TaxDeliveryDraftArchive",
+      "archive_tax_delivery_drafts",
+      "TaxCurrentDocumentResponse",
+      "TaxCurrentDocument",
+      "TaxDeliveryReviewApproval",
+      "approve_tax_delivery_review",
+      "decode_tax_delivery_review_approval",
+      "TaxDeliveryMutationRequest",
+      "TaxDeliveryMutationCompletion",
+      "build_tax_delivery_mutation_request",
+      "complete_tax_delivery_mutation",
+      "decode_tax_delivery_mutation_request",
+      "decode_tax_delivery_mutation_completion",
+      "StoredTaxDeliveryEvent",
+      "TaxDeliveryEventAppend",
+      "TaxDeliveryJournal",
+      "decode_tax_delivery_event",
+      "TaxDeliveryJournalFact",
+      "TaxDeliveryJournalArchive",
+      "archive_tax_delivery_journal",
+      "TaxDeliveryProgress",
+      "assert_tax_delivery_attempt_history",
+      "TaxDeliveryReadOriginal",
+      "TaxDeliveryAdmissionEvidence",
+      "TaxDeliveryInstanceObservation",
+      "decode_tax_delivery_observation",
+      "TaxDeliveryEnvelopeObservation",
+      "decode_tax_delivery_envelope_observation",
+      "TaxDeliveryReadReference",
+      "TaxDeliveryUploadPrerequisite",
+      "bind_tax_delivery_upload_prerequisite",
+      "TaxDeliveryUploadReadEvidence",
+      "reconcile_tax_delivery_upload",
+      "TaxValidationResponseValidator",
+      "TaxValidationResultCode",
+      "TaxValidationCalculatedDocument",
+      "TaxValidationResponseInspection",
+      "TaxDeliveryValidationPrerequisite",
+      "bind_tax_delivery_validation_prerequisite",
+      "TaxValidationJobStatus",
+      "TaxValidationJobInspection",
+      "TaxDeliveryValidationJobObservation",
+      "decode_tax_delivery_validation_job_observation",
+      "TaxDeliveryValidationResultObservation",
+      "decode_tax_delivery_validation_result_observation",
+      "TaxCalculatedDocumentValidator",
+      "TaxCalculatedDocumentsInspection",
+      "TaxDeliveryConfirmationPrerequisite",
+      "bind_tax_delivery_confirmation_prerequisite",
+      "is_tax_delivery_owner_confirmation_instance",
+      "TaxDeliveryConfirmationReadEvidence",
+      "reconcile_tax_delivery_confirmation",
+      "TaxDeliveryProcessAcknowledgment",
+      "decode_tax_delivery_process_acknowledgment",
+      "TaxValidationDeviation",
+      "TaxValidationGuidance",
+      "TaxValidationSubjectFlag",
+      "TaxValidationResponseReview",
+      "TaxCalculatedReviewField",
+      "TaxCalculatedDocumentReview",
+      "TaxCalculatedDocumentsReview",
+      "TaxDeliveryOwnerReviewQuery",
+      "TaxDeliveryOwnerReview",
+      "build_tax_delivery_owner_review",
+      "TaxDeliveryOwnerConfirmation",
+      "confirm_tax_delivery_owner_review",
+      "TaxDeliverySubmissionPrerequisite",
+      "bind_tax_delivery_submission_prerequisite",
+      "TaxDeliverySubmissionReadEvidence",
+      "is_tax_delivery_submitted_instance",
+      "reconcile_tax_delivery_submission",
+      "TaxDeliveryFeedbackObservation",
+      "decode_tax_delivery_feedback_observation",
+      "tax_delivery_event_format",
+      "TaxCurrentDocumentIntakeQuery",
+      "TaxDeliveryWorkspaceState",
+      "TaxDeliveryAction",
+      "TaxDeliveryWorkspace",
+      "TaxDeliveryWorkspaceRow",
+      "TaxDeliveryWorkspaceField",
+      "TaxDeliveryWorkspaceOriginal",
+      "project_tax_delivery_workspace",
+      "tax_delivery_workspace_originals",
+      "tax_delivery_snapshot_journal",
+      "TaxDeliveryWorkspaceValidation"
     ],
     "events": [],
     "errors": [
@@ -92,7 +198,20 @@
       "CompanyTaxAuthority",
       "company_tax_authority_adapter",
       "CompanyTaxRehearsalIO",
-      "CompanyTaxSourcePersistence"
+      "CompanyTaxSourcePersistence",
+      "TaxMutationKind",
+      "TaxMutationDisposition",
+      "TaxDeliverySchemaValidator",
+      "tax_delivery_schema_adapter",
+      "TaxDeliveryDraftPersistence",
+      "TaxCurrentDocumentKind",
+      "CompanyTaxCurrentDocumentReader",
+      "TaxDeliveryAuthorityMode",
+      "TaxDeliveryCompletionOrigin",
+      "TaxDeliveryJournalPersistence",
+      "TaxDeliveryMutationAuthority",
+      "TaxDeliveryOriginalPurpose",
+      "TaxDeliveryEventFormat"
     ]
   },
   "owns": {
@@ -106,7 +225,9 @@
       "company_tax_filing.filing_overrides",
       "company_tax_filing.filing_review_comments",
       "company_tax_filing.authority_permissions",
-      "company_tax_filing.authority_test_runs"
+      "company_tax_filing.authority_test_runs",
+      "company_tax_filing.delivery_drafts",
+      "company_tax_filing.delivery_events"
     ],
     "storageBuckets": [],
     "projections": [],
@@ -184,6 +305,87 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "TaxDeliverySchemaValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliverySchemaValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_schemas.PinnedTax2025Schemas"
+      ]
+    },
+    {
+      "name": "TaxDeliveryDraftPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryDraftPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxCurrentDocumentReader",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxCurrentDocumentReader",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
+      ]
+    },
+    {
+      "name": "TaxDeliveryJournalPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryJournalPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "TaxDeliveryMutationAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxDeliveryMutationAuthority",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_delivery.LoopbackCompanyTaxDelivery"
+      ]
+    },
+    {
+      "name": "TaxValidationResponseValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxValidationResponseValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_response_schemas.PinnedTaxValidationResponseSchemas"
+      ]
+    },
+    {
+      "name": "TaxCalculatedDocumentValidator",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxCalculatedDocumentValidator",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_delivery_schema_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_calculated_schemas.PinnedTax2025CalculatedSchemas"
+      ]
+    },
+    {
+      "name": "CompanyTaxCurrentDocumentIntake",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxCurrentDocumentIntake",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_intake.LoopbackCompanyTaxIntake"
+      ]
+    },
+    {
+      "name": "CompanyTaxTerminalParentReader",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxTerminalParentReader",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.loopback_company_tax_parent_read.LoopbackCompanyTaxParentRead"
+      ]
     }
   ],
   "dependencies": [],
@@ -207,7 +409,8 @@
     "typing",
     "uuid",
     "datetime",
-    "json"
+    "json",
+    "urllib.parse"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",
@@ -218,7 +421,69 @@
   "tests": {
     "policy": "apps/backend/tests/test_company_tax_filing.py",
     "architecture": "tests/architecture_foundation.test.mjs",
-    "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py"
+    "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py",
+    "deliveryPolicy": "apps/backend/tests/test_company_tax_delivery.py",
+    "deliverySource": "apps/backend/tests/test_company_tax_delivery_source.py",
+    "deliveryDatabase": "apps/backend/tests/test_company_tax_delivery_database.py",
+    "schemas": "apps/backend/tests/test_company_tax_schemas.py",
+    "deliveryDraft": "apps/backend/tests/test_company_tax_delivery_draft.py",
+    "deliveryDraftDatabase": "apps/backend/tests/test_postgres_tax_delivery_draft.py",
+    "currentDocument": "apps/backend/tests/test_company_tax_current_document.py",
+    "deliveryPreparation": "apps/backend/tests/test_company_tax_delivery_preparation.py",
+    "currentDraftDatabase": "apps/backend/tests/test_postgres_tax_current_draft.py",
+    "currentPreparationDatabase": "apps/backend/tests/test_company_tax_current_preparation_database.py",
+    "deliveryApproval": "apps/backend/tests/test_company_tax_delivery_approval.py",
+    "deliveryJournal": "apps/backend/tests/test_company_tax_delivery_journal.py",
+    "deliveryEventDatabase": "apps/backend/tests/test_postgres_tax_delivery_events.py",
+    "deliveryJournalArchive": "apps/backend/tests/test_company_tax_delivery_journal_archive.py",
+    "deliveryEventsTopology": "apps/backend/tests/test_company_tax_delivery_events_database.py",
+    "deliveryRehearsal": "apps/backend/tests/test_company_tax_delivery_rehearsal.py",
+    "deliverySubmission": "apps/backend/tests/test_company_tax_delivery_submission.py",
+    "deliverySubmissionApi": "apps/backend/tests/test_company_tax_delivery_submission_api.py",
+    "deliverySubmissionDatabase": "apps/backend/tests/test_postgres_tax_delivery_submission.py",
+    "deliveryObservation": "apps/backend/tests/test_company_tax_delivery_observation.py",
+    "deliveryObservationWorkflow": "apps/backend/tests/test_company_tax_delivery_observation_workflow.py",
+    "deliveryObservationDatabase": "apps/backend/tests/test_postgres_tax_delivery_observations.py",
+    "deliveryObservationsTopology": "apps/backend/tests/test_company_tax_delivery_observations_database.py",
+    "deliveryEnvelopeObservation": "apps/backend/tests/test_company_tax_delivery_envelope_observation.py",
+    "uploadPrerequisite": "apps/backend/tests/test_company_tax_upload_prerequisite.py",
+    "uploadReconciliation": "apps/backend/tests/test_company_tax_upload_reconciliation.py",
+    "guardedUploadJournal": "apps/backend/tests/test_company_tax_guarded_upload_journal.py",
+    "guardedUploadWorkflow": "apps/backend/tests/test_company_tax_delivery_upload_workflow.py",
+    "guardedUploadDatabase": "apps/backend/tests/test_postgres_tax_guarded_upload.py",
+    "uploadSubmissionDatabase": "apps/backend/tests/test_postgres_tax_upload_submission.py",
+    "guardedUploadTopology": "apps/backend/tests/test_company_tax_guarded_upload_database.py",
+    "validationResponseSchemas": "apps/backend/tests/test_company_tax_validation_response_schemas.py",
+    "validationPrerequisite": "apps/backend/tests/test_company_tax_validation_prerequisite.py",
+    "validationObservations": "apps/backend/tests/test_company_tax_validation_observations.py",
+    "validationTransport": "apps/backend/tests/test_company_tax_validation_transport.py",
+    "validationEvidenceDatabase": "apps/backend/tests/test_postgres_tax_validation_evidence.py",
+    "validationWorkflow": "apps/backend/tests/test_company_tax_delivery_validation_workflow.py",
+    "validationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_validation_submission.py",
+    "validationApi": "apps/backend/tests/test_company_tax_delivery_validation_api.py",
+    "validationTopology": "apps/backend/tests/test_company_tax_validation_database.py",
+    "calculatedDocumentSchemas": "apps/backend/tests/test_company_tax_calculated_schemas.py",
+    "confirmationPrerequisite": "apps/backend/tests/test_company_tax_confirmation_prerequisite.py",
+    "confirmationWorkflow": "apps/backend/tests/test_company_tax_delivery_confirmation_workflow.py",
+    "confirmationApi": "apps/backend/tests/test_company_tax_delivery_confirmation_api.py",
+    "confirmationEvidenceDatabase": "apps/backend/tests/test_postgres_tax_confirmation_evidence.py",
+    "confirmationSubmissionDatabase": "apps/backend/tests/test_postgres_tax_confirmation_submission.py",
+    "confirmationTopology": "apps/backend/tests/test_company_tax_confirmation_database.py",
+    "ownerReview": "apps/backend/tests/test_company_tax_delivery_owner_review.py",
+    "validationReview": "apps/backend/tests/test_company_tax_validation_review.py",
+    "ownerReviewApi": "apps/backend/tests/test_company_tax_delivery_owner_review_api.py",
+    "submissionPrerequisite": "apps/backend/tests/test_company_tax_submission_prerequisite.py",
+    "finalSubmissionWorkflow": "apps/backend/tests/test_company_tax_delivery_final_submission_workflow.py",
+    "finalSubmissionApi": "apps/backend/tests/test_company_tax_delivery_final_submission_api.py",
+    "submissionEvidenceDatabase": "apps/backend/tests/test_postgres_tax_submission_evidence.py",
+    "finalSubmissionHttpDatabase": "apps/backend/tests/test_postgres_tax_final_submission.py",
+    "finalSubmissionTopology": "apps/backend/tests/test_company_tax_final_submission_database.py",
+    "currentIntake": "apps/backend/tests/test_company_tax_current_intake.py",
+    "currentIntakeTopology": "apps/backend/tests/test_company_tax_current_intake_database.py",
+    "correction": "apps/backend/tests/test_company_tax_correction.py",
+    "correctionDatabase": "apps/backend/tests/test_postgres_tax_correction.py",
+    "correctionTopology": "apps/backend/tests/test_company_tax_correction_database.py",
+    "deliveryWorkspace": "apps/backend/tests/test_company_tax_delivery_workspace.py"
   },
   "compatibilityExceptions": []
 }

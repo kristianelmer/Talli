@@ -1,0 +1,63 @@
+{
+  "schema": "rf-integration-ci-observation-v3",
+  "recordedAtUtc": "2026-10-11T05:03:39.338910+00:00",
+  "runId": 38109965694,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38109965694",
+  "headSha": "3d2465f458c4b984a39b08c35ed767a875972e8e",
+  "mergeSha": "2e80e659060af12685e83ad66a8e313a62647bea",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11352,
+    "skipped": 2,
+    "deselected": 2372,
+    "seconds": 1028.9
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 307.17
+  },
+  "authority": {
+    "passed": 1584,
+    "seconds": 1074.12,
+    "approvalExactPassed": 36,
+    "claimExactPassed": 20,
+    "retentionExactPassed": 24,
+    "newBundleExactPassed": 6
+  },
+  "rfBrowser": {
+    "selected": 38,
+    "passed": 37,
+    "failed": 1,
+    "owningCase": "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend"
+  },
+  "failure": "New company inventory fixture adds a test-run link to an existing simulation filing; unchanged filing_submissions_authority_mode_shape_check rejects that shape. New history UI/download/runner/independent restoration is unreached.",
+  "verification": {
+    "freshPrAndMergeParentsVerified": true,
+    "actualDatabaseCheckoutVerified": true,
+    "requiredPassOnlyNodesAndSourceGitPinsVerified": true,
+    "artifacts": 0
+  },
+  "rawEvidenceSha256": {
+    "ci38109965694-db-direct-raw-v1.log": "6bd16ffb4c3cdcbbe085d328cde9576cc156c03150f6d7030b997ad8c1ab7a74",
+    "ci38109965694-app-direct-raw-v1.log": "57ff684e61c9cb43684bebc5f7f2702590c93e53aee974a5305ec0a3d296f0f4",
+    "ci38109965694-terminal-run-v1.json": "174130dc0ff30f8e16beaec62e57401ebd7ef710bf7b52fa16c7e4b86c79e30d",
+    "ci38109965694-terminal-jobs-v1.json": "aacb15ca0844a0cf8459996bda78b7c56830391f3817823e2b6ad585ecdd37e5",
+    "ci38109965694-terminal-pr-v1.json": "c14f497a72d860ffb7189e2a98c8815442b7f5af3d6daafed2118a53c5ec5276",
+    "ci38109965694-terminal-parents-v1.json": "c176bc8408c6eee9208de59eaa267e11a160f2b0a9c68c62be746eebab059cff",
+    "ci38109965694-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38109965694-claim-actual-prerequisite-v1.json": "c78a3bdece7de6f317bc764f3802c4cc0b792a73d15df14dae88c797d1466481",
+    "ci38109965694-retention-actual-prerequisite-v1.json": "1f79785ff4c42479c8c67ce376658d44263d307a7fa198fc7874074d676978bb",
+    "ci38109965694-approval-actual-prerequisite-v1.json": "8efc93425662c03305c94d45bf29901f3ea39dd3d830bb9c2ecc59f5e045e4a4",
+    "ci38109965694-inventory-actual-prerequisite-v1.json": "bc8e2708a8a462222d5ee9cc78c8bceb72e387ab37019d3458782df35035e125"
+  },
+  "limits": [
+    "Database/bundle passes are individual prerequisites; owning browser case and full inventory pipeline failed, no partial pipeline acceptance.",
+    "Prior strict restored-fingerprint mismatch remains unresolved and was unreached in this run; no component diagnosis or Auth/successor recovery acceptance.",
+    "Closed V3 intent write/workflow WIP is excluded from this published run.",
+    "Immutable evidence skipped, zero artifacts; whole release, RET002 and all-three remain uncleared.",
+    "Canonical direct job logs remain private; only counts and SHA metadata are public."
+  ]
+}

@@ -1,0 +1,200 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "observedDate": "2026-10-09",
+  "status": "BOUNDED_RULE_MAPPING_REVIEWED_SPECIFIC_BOUNDARIES_UNRESOLVED",
+  "baseRevision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+  "scope": "Planning for prior-year loss-reduction dividend restrictions; no code, criterion promotion or authority action.",
+  "primaryLawEvidence": {
+    "path": "architecture/evidence/issues/193/rf/capital-law-source-20261009.json",
+    "sha256": "a79356ae72da8d21011a27d2cfb94bbd1b2e04a97f0289cf8cb5b6de2922f2fd",
+    "normalizedSectionHashesIndependentlyVerified": [
+      "12-5",
+      "12-6",
+      "18-4"
+    ],
+    "retrievalLimitResolved": true,
+    "headerLimit": "The full-law last-change/effective-date metadata is not evidence that each inspected section changed on that date, or a complete rule-version history for earlier decisions."
+  },
+  "additionalPrimaryReview": [
+    {
+      "url": "https://www.brreg.no/aksjeselskap/aksjekapital/nedsettelse-av-aksjekapital/",
+      "retrievedAtUtc": "2026-10-09T21:17:59.085478+00:00",
+      "sha256": "482c752537b8ccd4660abd5be32d24dc450ee02a7d71648c46ec184f45271e39",
+      "byteLength": 64369,
+      "method": "Unauthenticated public HTTPS GET; hash covers response bytes.",
+      "finding": "Confirms no-notice loss coverage, three-year restriction and creditor procedure. Its shorter distribution wording does not displace the statute's dividend-decision test."
+    },
+    {
+      "url": "https://www.regjeringen.no/no/dokumenter/otprp-nr-23-1996-97-/id158438/?ch=15",
+      "method": "Public web-tool document read, October 9; direct Python fetch returned403, no raw-response hash asserted.",
+      "sections": [
+        "Merknader til §12-5",
+        "Merknader til §18-4"
+      ],
+      "finding": "Historical legislative commentary ties the no-notice loss route to the restriction and refers date computation to NOU1996:3 §16-12; it does not state an exact anniversary-day example."
+    },
+    {
+      "url": "https://www.regjeringen.no/no/dokumenter/nou-1996-3/id140477/?ch=5",
+      "method": "Public web-tool document read, October 9.",
+      "sections": [
+        "Til §16-12"
+      ],
+      "finding": "Historical commentary cross-refers earlier date provisions; no independently decisive anniversary-day or waiting-period/weekend explanation found in this inspected passage."
+    }
+  ],
+  "directLaw": [
+    {
+      "id": "trigger",
+      "sections": [
+        "12-5(1)"
+      ],
+      "rule": "Whole reduction for qualifying loss coverage under the no-creditor-notice route takes effect upon registration. The dividend decision is restricted for three years from that registration unless a stated exception has been fulfilled."
+    },
+    {
+      "id": "restoration",
+      "sections": [
+        "12-5(1)"
+      ],
+      "rule": "Share capital again increased by at least the reduction amount is an express exception. This text does not supply a multi-reduction allocation algorithm."
+    },
+    {
+      "id": "creditors",
+      "sections": [
+        "12-5(1)",
+        "12-6"
+      ],
+      "rule": "Following the applicable creditor procedure is an express exception. Publication, notice period, resolved objections and registered completion cannot be replaced with elapsed six weeks alone."
+    },
+    {
+      "id": "calendar",
+      "sections": [
+        "18-4(2)"
+      ],
+      "rule": "A period in years ends on the corresponding calendar date; if absent in that month, the final day of that month."
+    },
+    {
+      "id": "working_day",
+      "sections": [
+        "18-4(3)"
+      ],
+      "rule": "The next-working-day extension is expressly worded for a handlingsfrist."
+    },
+    {
+      "id": "simultaneous_route",
+      "sections": [
+        "12-5(2)"
+      ],
+      "rule": "Separate simultaneous notification route requires new shares against contributions and restoration of restricted equity. Do not silently map this to every later nominal increase."
+    }
+  ],
+  "engineeringMapping": {
+    "basis": "Implementation inferences and supported-domain choices, not additional statutory rules.",
+    "ownedBy": "Corporate Governance owns reduction history, clearance evidence and the as-of dividend-decision result. Documents owns originals; application composes public evidence; RF consumes immutable results and binds them into source/approval.",
+    "requiredRecord": [
+      "companyId",
+      "reductionIdentity and correction/supersession lineage",
+      "registeredAmount",
+      "registrationDate and official registration evidence",
+      "no-notice qualifying-loss route",
+      "decision/original document hashes",
+      "history completeness and covered interval",
+      "clearance kind, effective date/order, evidence and linked reduction(s)",
+      "rule version and evidence revision"
+    ],
+    "dateRule": "calendarEnd = add three calendar years(registrationDate), clamping a missing final-month day. Use authoritative Norwegian civil dates; no 1095-day duration, income-year reset, browser time zone or UTC-derived date.",
+    "decisionRule": "Evaluate the legal dividend decision date. A later payment, filing, elapsed time at approval read, or later clearance cannot retrospectively cure a decision made while restricted.",
+    "supportedTimeStates": {
+      "beforeRegistration": "This reduction has not yet taken effect; other reductions and all ordinary dividend guards still apply. Same-date ordering needs evidence.",
+      "beforeCalendarEnd": "restricted unless an independently verified exception was already effective before the decision.",
+      "boundaryInterval": "unknown for a decision on calendarEnd. Where calendarEnd is non-working, retain unknown through any potentially applicable next working day until waiting-period applicability is settled. This is a bounded support limitation, not an assertion that the law adds a day or shifts this waiting period.",
+      "safelyAfterBoundary": "elapsed for this restriction only, with complete relevant history; this does not certify distributable equity, solvency, liquidity or other decision requirements."
+    },
+    "earlyClearance": {
+      "initialRestorationCase": "One unambiguously linked qualifying reduction and ordinary cash capital increase, no intervening unresolved reductions, legally effective registered increase at least equal to reduction, proved before the dividend decision. Premium or a bank deposit is not registered share capital. A dated same-day registration/decision without order remains unknown.",
+      "creditorCase": "Require evidence that the applicable §12-6 route was completed and legally effective before the decision, including registration; no automated legal determination of a disputed creditor claim.",
+      "unknownException": "Do not accept a caller's cleared flag, assign one increase to several reductions, invent FIFO/netting, or count unsupported noncash/fund/simultaneous events as established clearance."
+    },
+    "multipleReductions": "Evaluate every applicable reduction independently. A new event neither resets nor removes old history. Return a set of restriction/evidence results; any unresolved applicable restriction prevents this gate being clear. Independently elapsed reductions need no speculative capital-restoration allocation.",
+    "absenceRule": "An empty current reporting year is not absence of prior reductions. Carry verified opening history/completeness, retain corrections, and require relevant event enumeration before a clear result. Do not turn historical dividend restrictions into an unsupported ban on recording capital events.",
+    "approvalBinding": "Bind actual decision date, complete evidence revision/hash, all applicable reductions and clearance bases. Recheck at approval/dispatch; changed history invalidates dependent admission while preserving original records."
+  },
+  "narrowUnresolvedCases": [
+    "Exact earliest decision on the calendar period's end date; inspected primary sources determine the date but do not expressly resolve this admission comparison.",
+    "Whether §18-4(3) extends this waiting restriction when the calendar end is non-working; keep the potentially affected dates explicit.",
+    "Multiple overlapping reductions/restorations, reuse/allocation of one increase, interleaved later reductions, and partial restoration.",
+    "Noncash/fund-origin restoration and §12-5(2) simultaneous route; these need their own supported evidence/rule contract.",
+    "Contested registration/effective dates, same-day ordering without proof, disputed creditor objections and governing law/version for materially different historical facts."
+  ],
+  "testVectors": [
+    {
+      "registration": "2023-10-06",
+      "calendarEnd": "2026-10-06",
+      "decision": "2026-10-05",
+      "expected": "restricted absent prior verified exception"
+    },
+    {
+      "registration": "2023-10-06",
+      "calendarEnd": "2026-10-06",
+      "decision": "2026-10-06",
+      "expected": "unknown exact end-day boundary"
+    },
+    {
+      "registration": "2023-10-06",
+      "calendarEnd": "2026-10-06",
+      "decision": "2026-10-07",
+      "expected": "elapsed for this restriction only"
+    },
+    {
+      "registration": "2024-02-29",
+      "calendarEnd": "2027-02-28",
+      "decision": "2027-02-27",
+      "expected": "restricted absent prior verified exception"
+    },
+    {
+      "registration": "2024-02-29",
+      "calendarEnd": "2027-02-28",
+      "decision": "2027-02-28",
+      "expected": "unknown exact end-day boundary"
+    },
+    {
+      "registration": "2024-02-29",
+      "calendarEnd": "2027-02-28",
+      "decision": "2027-03-01",
+      "expected": "unknown only while waiting-period/weekend extension remains unresolved"
+    },
+    {
+      "registration": "2024-02-29",
+      "calendarEnd": "2027-02-28",
+      "decision": "2027-03-02",
+      "expected": "elapsed for this restriction only"
+    },
+    {
+      "reductions": [
+        "2022-01-10",
+        "2025-01-10"
+      ],
+      "decision": "2026-10-09",
+      "expected": "first elapsed, second restricted; never clear the whole company from the first alone"
+    },
+    {
+      "registration": "2023-10-06",
+      "decision": "2026-10-05",
+      "payment": "2026-10-07",
+      "expected": "decision remains restricted despite later payment"
+    }
+  ],
+  "verificationRequired": [
+    "Deterministic boundary, leap-day, year-crossing and multiple-reduction tests against the chosen reviewed policy.",
+    "Current-owner/RLS, cross-company evidence rejection, immutable correction/restart retention and complete opening history.",
+    "Stale-clearance and stale-evidence approval refusal; original registered amount separate from tax paid-in continuity.",
+    "Built owner workflow and archive preservation after the public contracts and persistence are implemented."
+  ],
+  "validation": {
+    "implementationChanged": false,
+    "indexesChanged": false,
+    "acceptancePromoted": false,
+    "codeTestsRun": false,
+    "lawTextHashesChecked": true
+  }
+}

@@ -133,7 +133,7 @@ export async function loadWorkspaceData() {
     user_id: entitlement.userId,
     income_year: entitlement.incomeYear,
     obligation: entitlement.obligation as "aksjonaerregisteroppgaven",
-    case_profile: entitlement.caseProfile as "rf1086_no_activity_v1",
+    case_profile: entitlement.caseProfile as "rf1086_no_activity_v1" | "rf1086_full_year_v1",
     status: entitlement.status,
     billing_exempt: entitlement.billingExempt,
     system_user_request_id: entitlement.systemUserRequestId,
@@ -265,9 +265,15 @@ export async function loadWorkspaceData() {
   const primaryFilingReady = primaryReadinessSnapshots.some(
     (snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven" && snapshot.ready,
   );
-  const primaryBillingEntitlements = accessToken && primaryCompanyId
-    ? await loadAnnualBillingEntitlements(accessToken, primaryCompanyId, primaryIncomeYear)
-    : {};
+  let billingEntitlementsError: string | null = null;
+  let primaryBillingEntitlements: Partial<Awaited<ReturnType<typeof loadAnnualBillingEntitlements>>> = {};
+  if (accessToken && primaryCompanyId) {
+    try {
+      primaryBillingEntitlements = await loadAnnualBillingEntitlements(accessToken, primaryCompanyId, primaryIncomeYear);
+    } catch {
+      billingEntitlementsError = "Billing entitlement is temporarily unavailable.";
+    }
+  }
   const primaryBillingGate = primaryBillingEntitlements.aksjonaerregisteroppgaven ?? null;
   const primaryAuthorityPermissions = authorityPermissions.filter((permission) => permission.company_id === primaryCompanyId);
   const primaryAuthorityTestRuns = authorityTestRuns.filter((run) => run.company_id === primaryCompanyId);
@@ -297,7 +303,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? accountsSource.error ?? taxAssessment.error ?? accountsAssessment.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? accountsSource.error ?? taxAssessment.error ?? accountsAssessment.error ?? companyAccessAdministrationError ?? cancellationLifecycleError ?? billingEntitlementsError,
     cancellationLifecycleError,
     companies,
     documents,

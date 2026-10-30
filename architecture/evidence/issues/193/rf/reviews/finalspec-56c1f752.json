@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "reviewAxis": "spec",
+  "reviewedHead": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "base": "7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e",
+  "diffCommand": "git diff 7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e...56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "fixDiffCommand": "git diff 81a37a3365d9de4bcaad16417dc0beaf444f8292...56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "commits": [
+    "81a37a3365d9de4bcaad16417dc0beaf444f8292",
+    "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd"
+  ],
+  "status": "PASS_PARTIAL_RF_SCOPE",
+  "findings": [],
+  "priorFindings": [
+    {
+      "id": "SPEC-01",
+      "status": "RESOLVED",
+      "evidence": "All six immutable public event classes use _ImmutableRf1086Event, rejecting a discriminator that differs from their field default. Six direct-value regression cases pass."
+    },
+    {
+      "id": "SPEC-02",
+      "status": "RESOLVED",
+      "evidence": "Reconciliation requires >= NOK 30000 after every event and at closing, plus nonempty holders and positive share count. Golden loss case is NOK40000 to NOK30000. Below-minimum regression passes."
+    },
+    {
+      "id": "SPEC-03",
+      "status": "RESOLVED_FOR_REVIEWED_CURRENT_YEAR_SEQUENCE",
+      "evidence": "A current-case loss-cover event sets a flag that blocks subsequent dividends pending verified clearance. Regression passes. Historical restrictions/clearance sources remain expressly documented gaps, and no complete-pattern production readiness is claimed."
+    }
+  ],
+  "originalReview": {
+    "path": "architecture/evidence/issues/193/rf/reviews/spec-81a37a33.json",
+    "sha256": "bf587ca1d4efab703fe401c903ad590fd63db9a190119397a88ce67f52697476",
+    "preservedUnchanged": true
+  },
+  "verification": {
+    "command": "PYTHONPATH=apps/backend/src apps/backend/.venv/bin/python -m pytest apps/backend/tests/test_rf1086_capital_events.py apps/backend/tests/test_rf1086_current_mapping.py apps/backend/tests/test_authority_tool_rf1086.py apps/backend/tests/test_rf1086_rule_equivalence.py apps/backend/tests/test_shareholder_register_filing_production.py -q",
+    "result": "274 passed in 10.46s",
+    "providerCalls": 0
+  },
+  "limitations": [
+    "Full #193 criteria remain pending; this passes only the declared partial RF implementation delta.",
+    "Hosted source integration, previous-year loss/distribution restrictions and verified clearance facts remain pending.",
+    "Expanded TT02 conformance, genuine-company production evidence and two complete immutable gates were not established by this review.",
+    "No tax or annual-accounts stage approval."
+  ],
+  "immutable": true
+}

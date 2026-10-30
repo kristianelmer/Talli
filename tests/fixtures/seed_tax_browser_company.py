@@ -22,5 +22,15 @@ with psycopg.connect(os.environ['DATABASE_URL']) as db:
         insert(db,'public.customer_agreement_acceptances',id=uuid4(),company_id=cid,accepted_by=owner,
             accepted_at=db.execute('select now()').fetchone()[0],customer_legal_name=name,
             customer_org_number=org,**legal_fields())
+    if value.get('delivery') is True:
+        assert year==2025
+        from psycopg.types.json import Jsonb
+        now=db.execute('select clock_timestamp()').fetchone()[0]
+        answers={'company_tax_additional_attachments':'none','shareholder_loans':False,
+            'declared_owner_dividends':False,'bought_or_sold_shares':False}
+        if value.get('accountsDelivery') is True:answers['general_meeting_approved']=True
+        insert(db,'public.annual_data',id=uuid4(),company_id=cid,income_year=2025,
+            answers=Jsonb(answers),confirmations=Jsonb([]),
+            no_activity_confirmed=True,annual_full_time_equivalents=0,completed_by=owner,completed_at=now,updated_by=owner,updated_at=now)
     org=db.execute('select org_number from public.companies where id=%s',(cid,)).fetchone()[0]
 print(json.dumps({'companyId':str(cid),'orgNumber':org}))

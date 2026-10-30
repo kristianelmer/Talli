@@ -326,3 +326,93 @@ amount fails. The backend new-year transaction binds this write to the RF
 snapshot and existing opening posting, so a later failure rolls all effects back.
 
 `preview_tax_settlement_lines` exposes the same private account mapping used by posting. This pure query permits a zero preview; posting still requires a strictly positive amount and balanced lines.
+
+### Original amendment receipts
+
+`LedgerEntryAmendment` and `LedgerQueries.list_entry_amendments` expose the original
+append-only standalone reversals and replacement corrections for one accepted
+company member. The restricted owner RPC `ledger.list_entry_amendments_v1`
+combines `entry_reversals` and `entry_corrections`; it preserves original,
+reversal and optional replacement identities, reason, actor and timestamp.
+It does not filter by reporting year or hide historical receipts, so named
+application workflows can follow complete correction chains. Only the existing
+Ledger and Corporate Governance executors receive this read function; neither
+receives table grants. No writer, business row, RLS policy or capability dependency
+changes. Migration replay preserves pre-existing schema ACLs and role memberships.
+
+### Company guard for source mutations
+
+Migration `20260924080355_governance_ledger_company_write_guards.sql` places the
+shared company guard before the original bodies of Ledger mutation RPCs and
+local entry/year/receipt locks. READ COMMITTED writer transactions recheck the
+current accepted owner after a guard wait. Row backstops cover company-scoped
+Ledger tables, including immutable correction/reversal receipts and technical
+command receipts. Pure Governance/Tax bridge functions delegate to these guarded
+posting APIs without earlier table reads or locks; their narrow grants remain.
+The private row-trigger helper runs as the Ledger store owner solely to acquire
+the company lock. The overlap insert writer stays an invoker and retains table
+RLS; authenticated callers cannot call the shared lock RPC directly.
+
+The guard does not replace eligibility, posting, idempotency, or reconciliation
+checks. Safe rollback suspends guarded APIs and retains historical rows and
+backstops. Reapply preserves routine identity, owners and ACLs; temporary schema
+CREATE and role SET privileges are restored to their prior effective state.
+
+### Staged original Governance entry assertion
+
+`ledger.assert_unamended_governance_entry_v1(entry uuid, company uuid, year integer,
+original_actor uuid, event uuid, event_date date, entry_kind text,
+original_recorded_at timestamptz, original_sources jsonb, subject text) -> void`
+is a Ledger-owned public SQL prerequisite, staged without consumer EXECUTE grants.
+It accepts only CAPITAL_INCREASE/CAPITAL_REDUCTION and the frozen
+`ledger-supported-patterns-2026.1` storage rule. Verified subject, current accepted
+owner, READ COMMITTED, shared company lock and then admitted year/year lock use
+existing Ledger contracts. The current owner may differ from the original actor;
+the latter is compared with retained `entries.created_by`, never current Auth
+existence or a caller-supplied verification flag.
+
+The entry, context and ordered source rows must match the exact original actor,
+company/year, Governance event, date, kind and five-field source array. The primary
+source is CORPORATE_GOVERNANCE/event/revision 1 and binds the original facts hash.
+The assertion reconstructs the actual stored source array, checks contiguous
+ordinals and compares its PostgreSQL JSONB-text SHA-256 with the stored context
+digest. This is the exact encoding used by `post_supported_entry_storage_v1`, not
+a caller hash or a Python JSON encoding. Omitted, extra, reordered or changed
+sources fail. Strict malformed expectations raise `ledger_governance_evidence_invalid`;
+stored identity/context/source disagreement raises `ledger_governance_entry_mismatch`.
+
+All three stored entry/context timestamps must be finite and no later than the
+finite, nonfuture original recording cutoff; otherwise
+`ledger_governance_entry_after_cutoff`. Existing workflows post Ledger first and
+then record Governance with the completion statement timestamp, so this is an
+upper bound, not timestamp equality. Any retained reversal or correction raises
+`ledger_governance_entry_amended`. The shared lock remains held until transaction
+end, serializing both orders with existing Ledger writers. The assertion writes
+no Ledger rows, receipts or archive generations. A future consumer must derive
+all expectations and this cutoff from its immutable original event, perform
+committed receipt recovery before fresh mutable checks, and call the assertion
+in the same transaction as its new write.
+
+This proves stored provenance and present unamended status only. It does not
+recompute accounting economics, validate a capital phase/reference chain, prove
+original document bytes, validate RF facts or assert future consumer completeness.
+The released capital reversal RPC is exercised by race tests; capital correction
+rows are explicitly labelled owned legacy/future fixtures because the existing
+correction RPC accepts only administrative costs.
+
+Migration `20261009225857_ledger_governance_entry_assertion.sql` preserves existing
+routines, table/RLS/schema state and role memberships. Reapplication closes all
+consumer grants, including test-only grants; a future activating owner migration
+must reapply its narrow grant after this staged predecessor. Only PostgreSQL's
+inherent sealed function-owner authority remains. Retentive rollback preserves
+this contract for later explicit dependencies without altering historical facts.
+
+## Complete reporting snapshot
+
+`read_ledger_reporting_snapshot` returns the immutable `LedgerReportingSnapshot`
+through `LedgerQueries`. It enumerates every bounded page and all amendments,
+retains original entries across years, and identifies current-year effective
+entries. Missing references, duplicate identities, forks or cycles, orphan
+reversals, wrong scope, and reversals that do not cancel exact per-account and
+currency debit/credit totals are unavailable. Filing capabilities own the
+projection of these facts into their supported reporting models.

@@ -1,0 +1,123 @@
+{
+  "schema": "rf-company-test-inventory-owned-pipeline-local-v1",
+  "recordedAtUtc": "2026-10-11T03:45:50.505948+00:00",
+  "baselineHead": "e86d6ac3ead0f6a2f382ef16aa52f369cdda6623",
+  "status": "REVIEWED_LOCAL_PASS_ACTUAL_SUCCESSOR_CI_REQUIRED",
+  "change": "Strict two-entry stored bundle reuses RF complete inventory grammar; one owned current-Auth source/independent target runner; dedicated synthetic company browser writer/oracle/query/UI/whole stream and six mandatory installed-schema cases. Production factory default remains closed.",
+  "sourcePins": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "99f8668838b4f045641141975acd56635648df4affa9bd624cd946d9b14e7486",
+      "bytes": 142138
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "a410d1b641138153c3e3e0a6323c4a601b4dab7698069a44bee7fe340eaae554",
+      "bytes": 32855
+    },
+    {
+      "path": "package.json",
+      "sha256": "aeca12742ef2a9cc29582e5731f9f615b7e0eece0f9099449f6291b4ce9344df",
+      "bytes": 35072
+    },
+    {
+      "path": "tests/browser_shareholder_register_filing.mjs",
+      "sha256": "89466d1f820967062cc00998a6c7599481254935ad320f6129e8b725b7382539",
+      "bytes": 58417
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "fc04818d9ad98b375de80cd6fc205ca94415ed9e0469758731fbad91d0d7079e",
+      "bytes": 57730
+    },
+    {
+      "path": "tests/fixtures/start_shareholder_register_filing_backend.py",
+      "sha256": "b0960f99d92c3cd368065e3c21d41017efce23cbd5f0d6252749c8c84f4498fe",
+      "bytes": 14090
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_company_test_retention_bundle.py",
+      "sha256": "70421a05e3c4a7a2fc417b803e5f5bbcc3ae55f86ebffe4281f68a965ed35081",
+      "bytes": 6032
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_inventory_identity_boundary.py",
+      "sha256": "acd9ec64dfc0564cdc182be060e29920da01cae35fa5791ec97f63a12e481198",
+      "bytes": 5182
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_retention_bundle.py",
+      "sha256": "e225f19852f40720eb683c33eeb5cac6ba04ae83f8620a1d08330c5925c3d12b",
+      "bytes": 11862
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_retention_bundle_database.py",
+      "sha256": "716467eb23db7a96e3f91e7e33f40b47745565e5ef04192fa98f8a9a798d0375",
+      "bytes": 2671
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_retention_restore_runner.py",
+      "sha256": "c0e74976d307ad81ec45a47400d96c77a6c02d58b540921e5d719909a050c606",
+      "bytes": 13125
+    },
+    {
+      "path": "scripts/rehearse-rf1086-company-test-retention-restore.py",
+      "sha256": "b6cb60ccc1bc98187b50c2360aed5918111225b68b2b8e640f5766731e454e95",
+      "bytes": 9432
+    },
+    {
+      "path": "scripts/rf1086_company_test_inventory_identity_restore.py",
+      "sha256": "d0124056a9120bb2192dfbe4edda43e0df8537eaf16515a0636fb0c4fe4b6048",
+      "bytes": 10870
+    },
+    {
+      "path": "tests/fixtures/rf1086-company-test-retention-browser-journey.mjs",
+      "sha256": "7997aac3a3863016fd6f8f450438f71f2aec4561d32a913929a40856b1035d1d",
+      "bytes": 9608
+    }
+  ],
+  "checks": {
+    "finalCurrentUnit": {
+      "passed": 400,
+      "new": 105,
+      "protected": 295
+    },
+    "changedRunnerCases": 25,
+    "actualSubprocessSigtermCases": 4,
+    "newTotalCases": 105,
+    "fullSchemaCollectedNotExecuted": 6,
+    "selectorAndProtectedBrowserFixture": 158,
+    "architecture": "PASS",
+    "nodeSyntax": "PASS",
+    "priorSelectorAndFixtureCases": 164,
+    "failedSelectorV1": "Wrong local default venv lacks httpx; repeated with existing designated runtime, no dependency/source change"
+  },
+  "finalReview": {
+    "spec": {
+      "findings": 0,
+      "sha256": "1ee40e4a7ee2777881c9bbbcdcd1b69acd2c4b1689006fda59a7a7bcf59291cc",
+      "rootVerifiedPins": 151
+    },
+    "standards": {
+      "findings": 0,
+      "sha256": "fb328bb908e5342617f2bbda7a2fb62484638e8327cc87c306b9bcdd32ae0b0c",
+      "rootVerifiedPins": 148
+    }
+  },
+  "rawEvidenceSha256": {
+    "rf-company-test-inventory-owned-pipeline-implementation-freeze-v3.json": "dbe45dd4bea321f2d946fa31b474640c4ad976e77b70dc5bf81c90e85ca4c47f",
+    "rf-company-test-inventory-pipeline-final-root-verification-v2.json": "73cbbaf5f0b1f346dc4f8b985019320d13f310c29e840e45e7235a7e009167ad",
+    "rf-company-inventory-sigterm-red-proof-v1.json": "c4a58b1835c67155e40ba82b6006beceef90460af40dbac563ac3a447ebf25e0",
+    "rf-company-inventory-sigterm-regression-v1.log": "8439b50bf08aaadc4ddbae450d171926851c80ad048a0297f939ce6e35cd81df",
+    "rf-company-inventory-pipeline-protected-unit-v2.log": "c3e70dfb22ff0923dfa57f1dcffdb084e532af9c6e20244a8b6ca9c0a468eab2",
+    "rf-company-inventory-sigterm-selector-v2.log": "7a9d96206727bd26dd146b8b01e48a124a66456c0456eb08f3951038846ed3e6"
+  },
+  "limits": [
+    "Portable hashes/bundle prove shape and integrity; source origin needs current owning capture and independent writer expectation. No signatures or legal annual archive receipt.",
+    "Browser links are explicit synthetic setup on normal simulation rows, not genuine authority receipts.",
+    "105 new ordinary cases; six Authority cases collected only. Browser/actual GoTrue/independent target pipeline unexecuted.",
+    "SIGTERM tests use real subprocesses with resource-free doubles; cooperative acquisition/cleanup may exceed180seconds. No SIGKILL, machine-loss or real resource cleanup acceptance.",
+    "At frozen pipeline review,81 protected files matched e86. Subsequent separately reviewed fingerprint diagnostic changes only two owned-rehearsal files; no production/Auth policy change.",
+    "Published e86 CI is failed and excludes this code. Full RET002/wholeapp RPO/RTO/hosted activation/all-three remain pending."
+  ]
+}

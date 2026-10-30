@@ -8,11 +8,13 @@ test("direct annual workspace routes preserve the current agreement gate", async
     "utf8",
   );
 
-  assert.match(source, /listCustomerAgreementAcceptances/u);
-  assert.match(source, /companiesRequiringCurrentCustomerAgreement/u);
+  assert.match(source, /listCompanyAccessContexts\(\{ companyId: context\.companyId \}\)/u);
+  assert.match(source, /if \(companyError\) throw new Error/u);
+  assert.match(source, /if \(!company\) notFound\(\)/u);
+  assert.match(source, /if \(!company\.currentAgreementAccepted\)/u);
   assert.match(
     source,
-    /membership\.role\s*===\s*"owner"\s*\?\s*"\/dashboard"\s*:\s*"\/dashboard\?agreement=required"/u,
+    /company\.role\s*===\s*"owner"\s*\?\s*"\/dashboard"\s*:\s*"\/dashboard\?agreement=required"/u,
   );
 });
 

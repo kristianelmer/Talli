@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_RETAINED_CORRECTION_APPLICATION_INTEGRATION",
+  "recordedAtUtc": "2026-10-10T09:07:07.514562+00:00",
+  "productionFixedPoint": "5cf628868f0999717fa486726abf98dbe2744d59",
+  "sources": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_correction.py",
+      "sha256": "c374e6f1a5e2929d338b3c8100c602fe8b075921d3338347b30322b79e95e717",
+      "bytes": 9632
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "37be96015bd2e05021240e07fd4bf9ff55586507d2b84408a95744dcba7e16cf",
+      "bytes": 118845
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "559167af972de6a5de5464aff21d0f471514746659a5a9190b796add3ec13862",
+      "bytes": 29166
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_correction.py",
+      "sha256": "44c0a229c3cd7fb5c4f782bff74bf1179f6950e9976d147aac016d782dd50405",
+      "bytes": 19036
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_full_year_correction.py",
+      "sha256": "bb86f6ccdd6ca93f4788816860953cfec107c7b9b1178142538f92a13963af91",
+      "bytes": 12443
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_claim.py",
+      "sha256": "a871c628603ef7a3d0cf815bd89faabd2a72a08957995d496a324d124bed3be1",
+      "bytes": 12139
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_submission_history.py",
+      "sha256": "4469c45bf80de5cca673d1fb6503516f7d4e1a1c4fa6581b438015f3e7926a81",
+      "bytes": 5652
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_approval_api.py",
+      "sha256": "8a0185ac29f2428fb391326ab690c7f260c3fc6ade2e57aaa5029db0e4753ca5",
+      "bytes": 16171
+    },
+    {
+      "path": "apps/backend/tests/rf1086_retained_correction_fixture.py",
+      "sha256": "f5eaddb296dca56a34e8a4045305cca7d0eb9cff0d1aa376a963cfb886b888b2",
+      "bytes": 25239
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_correction_workflow.py",
+      "sha256": "60bd7f45e69bae5b5a94643a2b8176f3fc1ad4a3b927d916cebc6c1ed38f9b0a",
+      "bytes": 11692
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_correction_workflow_adversarial.py",
+      "sha256": "9999c078a7fb59fcdfb1738b399db34ebf001becd7f6cf3295b145616e63f76c",
+      "bytes": 12467
+    }
+  ],
+  "behavior": [
+    "Both correction reads use the complete retained archive and public owner projector, including mandatory override and withdrawal sections for legacy and newer profiles.",
+    "Preflight selects exact predecessor ancestry and verifies historical originals; the held read compares selected source/preview wire bytes and their source/preview capture records alongside the existing compact predecessor.",
+    "Historical feedback text, original submitter checks, returned draft, lock cleanup and outer approval/claim/admission/dispatch APIs remain covered by exact frozen comparisons.",
+    "Unrelated owner-valid archive evolution and a new unapproved source do not invalidate selected ancestry; selected capture/Decimal/text mutation and invalid history fail before writes."
+  ],
+  "localVerification": {
+    "application": {
+      "passed": 404,
+      "seconds": 48.43,
+      "authorCasesIncluded": 61,
+      "independentAdversarialCasesIncluded": 52
+    },
+    "pureAndAdapter": {
+      "passed": 187,
+      "seconds": 13.64
+    },
+    "disjointTotal": 591,
+    "architecture": "Declared checker passed with generated evidence exactly equal to committed architecture/dependency-evidence.json",
+    "whitespace": "PASS",
+    "exactComparisons": {
+      "unaffectedRecoveryCorrectionExact": 133,
+      "unaffectedClaimDispatchExact": 117,
+      "coherentLegacyExact": 75,
+      "coherentV3IntendedPositive": 12,
+      "coherentInputVectorsExact": 87,
+      "downstreamExact": 7,
+      "annualPolicyExact": 217,
+      "legacyApprovalExact": 181,
+      "legacyArchiveExact": 59,
+      "protectedPureAndOldAdapterDefinitionsExact": 11,
+      "outerProductionBodiesAndPublicApiExact": 5
+    },
+    "partitionQualification": "Original mixed 189/119 goldens are immutable. Only the 133/117 unaffected partitions remain unchanged after activation; the 58 affected candidates have individually mapped coherent ancestry and call deltas. No blanket normalization.",
+    "actualV3Red": "Twelve pre-change old-validator v3 failures become intended retained-helper positives. Test harness adaptation failures are not product RED."
+  },
+  "reviews": {
+    "standards": {
+      "hardViolations": 0,
+      "openBlockers": 0,
+      "optionalJudgement": "Test-only claim harness wiring duplication retained to isolate the frozen coherent oracle from the adapted old application harness; reviewer accepted."
+    },
+    "spec": {
+      "openFindings": 0
+    },
+    "reports": [
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-final-standards-review-v1.json",
+        "sha256": "1b3e6dcce982cf7a641e83fec117f2f7b58990ff3c05fd6e676675f97295530f",
+        "bytes": 8805
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/final-standards-addendum-v2.json",
+        "sha256": "1bf587015ab00b195822cade118b3488da12f09420915fdf523dc91c189c4f0b",
+        "bytes": 6519
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/final-standards-addendum-v3.json",
+        "sha256": "d53b4f10de2bddab5fdaffb11cb8fe3d018888cf47eba8d739b78b10c944628f",
+        "bytes": 6451
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-final-spec-review-v1.json",
+        "sha256": "98488678b7af4b02631a5dba84ca212b24a8135be6c8d7a8ecd55d6cb87cf6da",
+        "bytes": 12890
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-final-spec-addendum-v3.json",
+        "sha256": "a0e303cb12546f14ee7838ac0d2b9e819c50ab661a7389d0d3a8aedcdc21b1b0",
+        "bytes": 7370
+      }
+    ]
+  },
+  "privateRootReceipts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-root-final-checks-v3.json",
+      "sha256": "11c7a5fc728a637125ea25687c44dd74169b492db7cb612ca848a782e1fc76a1",
+      "bytes": 3922
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-root-checks-v1.json",
+      "sha256": "bcadc893bae3124b9118bf1ede5047ae88b49185e1ac90003676976d618cd514",
+      "bytes": 9041
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-retained-correction-application-root-source-freeze-v3.json",
+      "sha256": "bec1bf244911fdc9fc5fe06ba042f87a970c3f16a1f4cae309474496ddea149a",
+      "bytes": 4847
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-coherent-correction-application-baseline-checks-v1.json",
+      "sha256": "0fc7eaf479398857064b5d1c25de96570e52225dcd91df4e2076898bd68686a2",
+      "bytes": 5000
+    }
+  ],
+  "limits": [
+    "Tests use synthetic authority, persistence and locks with actual immutable bytes. They do not establish SQL/RLS/Auth/provider/genuine-company/hosted restore behavior.",
+    "CI38036526105 at fbc286e0 excludes this implementation and failed. All 31 actual retained correction reader DB cases remained unexecuted. Combined successor CI is required.",
+    "Fresh v2 source writer, retained approval/claim/dispatch activation and final held Governance proof remain separate unfinished work. No v1 child after a v2 predecessor is authorized.",
+    "All A1\u2013A7 remain pending. No activation, filing, real-data admission, spending or outreach."
+  ]
+}

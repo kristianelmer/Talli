@@ -3,10 +3,16 @@
 Status: deterministic XML accepted through TT02 signing, receipt, and archive; production adapters remain disabled
 
 Research date: 2026-06-16  
-Last updated: 2026-07-14
+Last updated: 2026-10-26
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
 Target issue: #86 (payload + validation, closed) / #87 (test-environment submission flow)  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
+
+Current delivery resource pin (verified 2026-10-26): tag `v1.62.126`, commit
+`74d9c7dd020aa4701034194630c1b16609154986`. All ten packaged resources, including the current-return response XSD, were
+compared at that immutable commit. Relative to the historical snapshot above,
+the sole changed 2025 catalog entry is other operating income `3890`, outside
+the supported holding-company projection; no codes were added or removed.
 
 ## Official Sources
 
@@ -75,7 +81,7 @@ Skatteetaten validation service and completed the TT02 submission flow on
 | Bank balance | Næringsspesifikasjon | `balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi[*]`, code `1920` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
 | Share capital / retained earnings | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital[*]`, codes `2000` and `2050` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
 | Other short-term debt | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld[*]`, code `2990` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate; related-party cases remain escalation |
-| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[*]` with exact supported codes such as `6700`, `6420`, `7770`, `7790` | v6 XSD + 2025 result/balance code list | Candidate; narrow supported categories only |
+| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[*]` with authority codes `6400`, `6700`, `7700` | v6 XSD + 2025 result/balance code list | Delivery v1 groups Ledger software lease, outside services, and other supported costs under these codes; Ledger account numbers remain source references. |
 | Deposit interest | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8050` (`Annen renteinntekt`) | v6 XSD + 2025 result/balance code list | Ordinary taxable income candidate |
 | Dividend income | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8090` | v6 XSD + 2025 result/balance code list | Candidate |
 | Share-sale gain/loss | Næringsspesifikasjon | finance occurrences using codes `8074` and `8174` | v6 XSD + 2025 result/balance code list | Candidate only for action rows explicitly classified `fritaksmetoden` |
@@ -87,6 +93,51 @@ Skatteetaten validation service and completed the TT02 submission flow on
 | No-activity AS | Skattemelding + Næringsspesifikasjon | Minimal valid documents with party/year, required `virksomhet`, `skalBekreftesAvRevisor=false`, zero result/balance where valid | XSD roots, validation service, and TT02 receipt/archive evidence | Accepted for the supported 2025 TT02 fixture; production still gated |
 
 ## Unsupported/Escalation Decisions
+
+### Complete-source corrections and receivables (2026-10-26)
+
+The owned delivery source includes recognition before cash settlement and full
+Ledger reversal/replacement history. Statutory cost and share-loss aggregation
+therefore uses net debits less credits. Annual estimates retain their separate
+entry-based scope and consume Ledger's published amendment references when
+netting an administrative-cost reversal.
+
+Ledger accounts `1530` (investment income receivable) and `1570` (investment sale
+or tax receivable) map to business balance code `1570`, **Andre kortsiktige
+fordringer**. The authority's code `1530` describes accrued operating revenue,
+so matching the Ledger account number would misclassify investment income.
+Evidence: the pinned [2025 result/balance code list](https://github.com/Skatteetaten/skattemeldingen/blob/7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba/src/resources/kodeliste/2025/2025_resultatregnskapOgBalanse.xml).
+These are local schema/mapping decisions; provider conformance and activation
+remain separate gates.
+
+The offline delivery validator also checks code-list membership within the
+correct result/balance family. This exposed the historical assumption that
+Ledger accounts `6420`, `6720`, `7770` and `7790` were themselves authority codes.
+The new `company-tax-delivery-2025-v1` projection groups supported costs under
+`6400` (cost-expensed lease), `6700` (outside services) and `7700` (other costs).
+The characterized predecessor projection remains a historical byte reference;
+it is not code-list validation for new delivery. One shared calculator retains
+the amount rules and a versioned authority-code projection; bookkeeping is
+unchanged.
+
+The packaged resource manifest binds all three XSDs, the five consumed code
+lists, the upstream Apache license and commit
+`74d9c7dd020aa4701034194630c1b16609154986`. Runtime validation is offline,
+denies DTD/external resources, and binds the exact source and two enclosed
+document bytes to the company/year/current authority document reference.
+
+`npm run check:company-tax-schemas` is mandatory in the launch rehearsal. It
+reads the official repository's current branch reference once, then compares
+every approved 2025 resource at that immutable reference. Changes to unrelated
+years do not invalidate matching resources. A changed resource blocks with a
+drift verdict; an incomplete or unavailable read cannot return current. The
+probe uses fixed public GitHub endpoints, refuses redirects and caller arguments,
+has a 45-second process deadline and uses no filing or GitHub credentials.
+Runtime validation makes no network requests. XML comments and processing
+instructions are excluded from the validation tree while proof hashes preserve
+the exact original bytes, including those constructs.
+
+### Unsupported launch scope
 
 Block before tax-return payload generation:
 
@@ -151,3 +202,17 @@ prove production authorization or deployed runtime integration. Deployed
 evidence import, structured final feedback/state, production permission and
 credentials, security/restore approval, and the approved
 `tax_return_authority` signoff keep `buildFilingReleaseGates` fail-closed.
+
+### Exact current-return intake (2026-10-26)
+
+The pinned `skattemeldingognaeringsspesifikasjonforespoerselresponse_v2_kompakt.xsd`
+validates the current-return envelope before extracting its reference, type,
+encoding and base64 Tax document. The 2025 AS Tax XSD validates that original;
+its year must match the server-owned request. The adapter retains exact response
+bytes, including an initial UTF-8 BOM, and rejects malformed UTF-8 without
+replacement. Locked fields, extended guidance and an existing business document
+are explicit unsupported prerequisites until their facts can be preserved.
+Unrepresented tax fields, including carryforwards, also block. Existing share
+facts must resolve unchanged in the generated return; a new complete return may
+not silently discard or alter them. Preparation's configured
+reader is absent by default and no live authority call is established here.

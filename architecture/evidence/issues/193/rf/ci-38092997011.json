@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "TERMINAL_PR_CI_CLOSED_CLAIM_9PASS_1INVALIDATION_PAIR_CHECK_SETUPFAIL_10UNEXECUTED",
+  "recordedAtUtc": "2026-10-10T23:27:08.029204+00:00",
+  "run": {
+    "id": 38092997011,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38092997011",
+    "head": "b5495d433e04fe49de911f73cead583a1478cbb4",
+    "merge": "f56531a996f5e395220e1e9409f9a840e4865eca",
+    "mergeParents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "b5495d433e04fe49de911f73cead583a1478cbb4"
+    ],
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T22:52:04Z",
+    "updatedAt": "2026-10-10T23:21:24Z",
+    "exactCheckoutInBothRawLogsVerified": true,
+    "currentPrHeadAndMergeFreshlyVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114333088349,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T22:52:07Z",
+      "completedAt": "2026-10-10T23:21:18Z"
+    },
+    {
+      "id": 114333088521,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T22:52:07Z",
+      "completedAt": "2026-10-10T23:18:18Z"
+    },
+    {
+      "id": 114333089276,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T22:52:05Z",
+      "completedAt": "2026-10-10T22:52:05Z"
+    },
+    {
+      "id": 114338194029,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T23:21:21Z",
+      "completedAt": "2026-10-10T23:21:23Z"
+    }
+  ],
+  "application": {
+    "passed": 11000,
+    "skipped": 2,
+    "deselected": 2342,
+    "durationSeconds": 775.23,
+    "allStepsSuccess": true,
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38092997011-app-raw-v1.log",
+      "sha256": "a8953d59952492f6d5ff28b7fcd890b34ed6718e554db321e04f93b1ee727277",
+      "bytes": 468416
+    }
+  },
+  "database": {
+    "initialHarness": {
+      "passed": 17,
+      "skipped": 1,
+      "durationSeconds": 0.28
+    },
+    "billing": {
+      "passed": 700,
+      "durationSeconds": 304.68
+    },
+    "authority": {
+      "selected": 1554,
+      "passed": 1512,
+      "failed": 1,
+      "unexecuted": 41,
+      "durationSeconds": 975.14,
+      "approvalPassOnly": 36,
+      "closedClaim": {
+        "requiredPassOnly": 20,
+        "passed": 9,
+        "failed": 1,
+        "unexecuted": 10,
+        "cleared": false,
+        "nodes": [
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[0-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[0-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[1-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[1-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[2-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[2-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[annual]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[mfa]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[pilot]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[invalidated]",
+            "outcome": "FAILED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[annual]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[mfa]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[invalidated]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_revoked_or_unavailable_original_actor_cannot_recover[read_only]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_revoked_or_unavailable_original_actor_cannot_recover[banned]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_commit_during_documents_denial_recovers_exact_claim",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_company_wait_recovers_uncommitted_competing_claim_after_mfa_expires",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_closed_acl_and_retentive_populated_rollback_preserve_legacy_and_history",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_claim_write_rolls_back_when_application_fails_before_scope_exit[cancellation]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_claim_write_rolls_back_when_application_fails_before_scope_exit[late_application_failure]",
+            "outcome": "UNEXECUTED"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[invalidated]",
+      "sqlstate": "23514",
+      "diagnostic": "filing_approval_snapshots_check1",
+      "location": "Scoped invalidation fixture UPDATE before replay",
+      "cause": "Published table requires invalidated_at and invalidation_reason to be both null or both nonnull; fixture set only timestamp. Existing retained-reader fixture supplies both.",
+      "qualification": "Earlier verified-owner context repair now passes trigger. This second setup failure is not an observed replay/product failure."
+    },
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38092997011-db-raw-v1.log",
+      "sha256": "a16d5f09a58311cbbd8dd6749a1bdcbe81f5f17f3ecdbe6359da11f2cd8a4ef4",
+      "bytes": 633655
+    },
+    "rfBrowserAndIdentityDiagnostic": "UNREACHED"
+  },
+  "artifactCount": 0,
+  "limits": [
+    "Whole release gate failed; all20 actual claim prerequisite remains uncleared.",
+    "Native prior trigger/RLS probe omitted this table constraint; projection success did not replace full-schema setup/claim proof.",
+    "Unwired retention foundation was not published/executed in this run; its24 full-schema cases remain collection only.",
+    "Earlier cancellation/deletion receipts belong to CI38086791422; this run did not reach browser/independent identity diagnostic.",
+    "Canonical A/B, hosted/live Auth, A1-A7, genuine validation and RF\u2192Tax\u2192Accounts handoffs remain pending. No route/grant/provider/spend activated."
+  ]
+}

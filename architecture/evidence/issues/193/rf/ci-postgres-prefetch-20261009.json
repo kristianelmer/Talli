@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "relatedCriteria": [
+    "GH-193-RF-A6"
+  ],
+  "baseRevision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+  "observedAtUtc": "2026-10-09T21:18:21.227893+00:00",
+  "status": "REVIEWED_PREFETCH_CHECKS_PASS_ACTUAL_CI_PULL_PENDING",
+  "trigger": {
+    "runId": 37991232137,
+    "jobId": 114025622024,
+    "observedFailure": "Both Database ledger rehearsal and Application investments rehearsal hit Docker Hub anonymous postgres:17 pull limits before RF stages; see ci-37991232137.json."
+  },
+  "change": {
+    "scope": "Application, Database isolation and Immutable evidence workflow jobs.",
+    "images": [
+      "postgres:17",
+      "postgres:17-alpine",
+      "postgres:16-alpine"
+    ],
+    "source": "Docker Official Images at public.ecr.aws/docker/library/postgres; aliases preserve the existing test references.",
+    "identity": "Pull and tag share explicit default runner daemon and temporary empty registry configuration. Caller Docker context, host and auth environment are removed; caller credential files are untouched.",
+    "failure": "Any pull/tag failure stops immediately; owned credential configuration is removed on all exits. No authenticated fallback or caller-selected image reference."
+  },
+  "costAndProvenance": {
+    "authentication": "Anonymous only; no AWS account/login/resources or registry push.",
+    "cost": "AWS documents500GB/month free anonymous public-image transfer, limited by sourceIP when no AWS account is used. Exhaustion can fail; the helper does not authenticate to obtain paid capacity.",
+    "sources": [
+      "https://www.docker.com/press-release/docker-official-images-available-amazon-elastic-container-registry/",
+      "https://aws.amazon.com/ecr/pricing/",
+      "https://docs.aws.amazon.com/AmazonECR/latest/public/public-gallery.html"
+    ]
+  },
+  "checks": [
+    {
+      "name": "Release-gate suite",
+      "result": "PASS",
+      "passed": 90,
+      "seconds": 40.849384083,
+      "evidence": "Root reran all90checks after wiring all3jobs; includes5executable shim/workflow tests."
+    },
+    {
+      "name": "Shell/Node syntax and whitespace",
+      "result": "PASS"
+    },
+    {
+      "name": "Independent root review",
+      "result": "PASS",
+      "finding": "0 material findings after pull/tag daemon and config isolation were made identical."
+    },
+    {
+      "name": "Anonymous remote metadata",
+      "result": "PASS",
+      "evidence": "OCI image index and linux/amd64 entry observed for all3fixedtags; no image layers downloaded locally."
+    }
+  ],
+  "manifestObservations": [
+    {
+      "reference": "public.ecr.aws/docker/library/postgres:17",
+      "registryDigest": null,
+      "manifestSha256": "2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "linuxAmd64Digest": "sha256:3cec7eb015ba8adb28139fa5c83b8489cdf0e666e53dfdf20f598ae0cc8739e3"
+    },
+    {
+      "reference": "public.ecr.aws/docker/library/postgres:17-alpine",
+      "registryDigest": null,
+      "manifestSha256": "b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "linuxAmd64Digest": "sha256:aa90e97ee862e558111d34cfb8b2c4bec768c2b039fb791341686928560263b3"
+    },
+    {
+      "reference": "public.ecr.aws/docker/library/postgres:16-alpine",
+      "registryDigest": null,
+      "manifestSha256": "721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "linuxAmd64Digest": "sha256:1a66d744c1b459e13b05a8fca341da84cb63383e99ce262210efee5a319d4551"
+    }
+  ],
+  "sourceFileSha256": {
+    ".github/workflows/release-gate.yml": "841d345cea700df3d5a1f492d077c0d1fd7bf470eec5171e7fcc1ce6883557bc",
+    "scripts/prefetch-postgres-fixture-images.sh": "d59e43d9743699f5bd05f195bb22b426cae34fcc46f8b63979f95aa073727f2a",
+    "tests/ci_release_gate.test.mjs": "23e75d29d2d7bdaa69f1f6d11788f0bb73ec4dd29cb4e38cce863445eedfabab"
+  },
+  "privateEvidenceSha256": {
+    "/private/tmp/talli-postgres-prefetch-tests.log": "d0aab600bf4086a82833047d6589b1e664bf98b2290a529556fd16c13a1cd4fa",
+    "/private/tmp/talli-postgres-mirror-manifests-20261009.json": "bf311800a22c7213b1f9ca3cced21c6b95eaeee4a0aeb35d474ff657f041e199",
+    "/private/tmp/talli-release-20261009/postgres-prefetch-three-jobs-full.log": "d6d18de0440ab31a3f2b5bb5a00f8c86b8387f1c65a0d341f676543031a2c7e0"
+  },
+  "limits": [
+    "Actual image pulls and complete aggregate execution require nextCI.",
+    "Tags retain their existing mutable-version semantics. This is official-mirror provenance plus observed metadata, not a claim of simultaneous DockerHub/ECR byte equality.",
+    "Anonymous public mirrors have availability/rate limits; no guaranteed uptime or paid capacity is claimed.",
+    "No local image pull or change to pre-existing containers, production image configuration, application behavior, acceptance status or launch authority."
+  ]
+}

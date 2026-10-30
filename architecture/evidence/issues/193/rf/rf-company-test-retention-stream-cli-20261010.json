@@ -1,0 +1,134 @@
+{
+  "schema": "rf-company-test-retention-stream-cli-local-v1",
+  "recordedAtUtc": "2026-10-10T23:53:38.247181+00:00",
+  "publishedBaseline": "95838c3c2e5d4afc5dc67635149e18980a674834",
+  "status": "CLOSED_UNWIRED_REVIEWED_SPEC0_STANDARDS0_LOCAL_ONLY",
+  "format": {
+    "codec": "rf1086-company-test-retention-stream-v1",
+    "artifactCodec": "rf1086-company-test-retention-v1",
+    "scope": "company_no_intrinsic_income_year",
+    "recordFields": 13,
+    "sourceObservationAndOpaqueOriginalsPreserved": true,
+    "headerKeys": 8,
+    "recordWrapperKeys": 2,
+    "footerKeys": 3,
+    "footerHashDomain": "exact header+record frames, excludes footer",
+    "mandatoryFinalLfAndExactEof": true,
+    "recordWrapperBytes": 28,
+    "conservativeMaximumBytes": 69913984,
+    "fixedTotalCapBytes": 75497472,
+    "headerCapBytes": 4096,
+    "recordFrameCapBytes": 262208,
+    "footerCapBytes": 1024
+  },
+  "cli": {
+    "boundedPrefixBytes": 4096,
+    "regularLocalFilesOnly": true,
+    "acceptedFixedCodecs": 2,
+    "defaultStatus": "STRUCTURAL_INTEGRITY_ONLY",
+    "sourceOrigin": "UNVERIFIED",
+    "expectedCaptureStatus": "EXPECTED_CAPTURE_MATCH",
+    "expectedCaptureQualification": "Exact supplied-file SOURCE consistency, never authenticated ownership/origin/completeness or read/restore authority. TARGET comparison reserved independent restore flow.",
+    "unavailable": "No stream header; direct artifact retains unavailable coverage without invented count/time.",
+    "sideEffects": "No extraction/network/database/Auth/provider/restore writes. Actual subprocess success with Python audit hook rejecting network and filesystem writes."
+  },
+  "checks": {
+    "localTests": {
+      "passed": 178,
+      "newStreamAndCli": 78,
+      "protectedFoundationAndClaim": 100,
+      "seconds": 12.15,
+      "rawSha256": "a420df5aa408d72e081cf47167e691ea82d381c08183cbda93c4c4ae7fdcef7f"
+    },
+    "ciSelectors": {
+      "passed": 129,
+      "seconds": 48.993746959,
+      "rawSha256": "cbc2c18a711d14bb45129bdd828d3074551a01e4fbb0064592db7c9170670a8f",
+      "selection": "Both new unmarked backend test files explicitly present in mandatory ordinary lane; complete lane union still exact."
+    },
+    "architecture": {
+      "status": "PASS",
+      "derivedDependencyEvidenceEqualsTracked": true,
+      "rawSha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d"
+    },
+    "protectedExistingPython": {
+      "wholeFilesExact": 105,
+      "resultSha256": "f25c57f35f72508a27d92423e6f1957dad03b75dbdea979c4a0b7964071dbf70"
+    },
+    "whitespace": "PASS"
+  },
+  "plan": {
+    "version": 4,
+    "sha256": "e8fd783d8ae62224834976b80cdcb1ac2659c002c9a198a8227d976b4dc187fb",
+    "SpecFindings": 0,
+    "StandardsFindings": 0,
+    "reviewSha256": [
+      "16aba8a87f164b62a6633652d9dad829666c2f9ad834871410223905e4470f74",
+      "42403874b2de18144df61257632bcd1da97dc93c9099a1d7eb62bd374cee3a94"
+    ]
+  },
+  "earlierObservations": {
+    "unitV1": "69PASS; later meaningful bound/side-effect additions produced78new+100protected final cases.",
+    "selectorV1": "128PASS/1FAIL: new assertion used repository node prefix; pytest returns tests/... IDs. Corrected only assertion prefix;129PASS V2.",
+    "historicalArtifactsPreserved": true
+  },
+  "sourcePins": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_company_test_retention_stream.py",
+      "sha256": "1fa67e044684858efa7fac5dcd970cda937daeb07efafede0b6245a67c74301a",
+      "bytes": 5175
+    },
+    {
+      "path": "scripts/verify_rf1086_company_test_retention.py",
+      "sha256": "30d23b9530b03ad133d13f101c48e3abdfcb48d25557cfabcfe731fd51a9afaf",
+      "bytes": 3273
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
+      "sha256": "2963bb01e65797899036d075819246456a7be1542bc32437c1489e51d3582850",
+      "bytes": 10188
+    },
+    {
+      "path": "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
+      "sha256": "591d04de16b2045be67716b91b77b266e7f138c5183e8c49100509d96ccb1509",
+      "bytes": 8096
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "9aa6289d22e942734e153626136799d6d9565f343ae5498acd91ea551dc5d919",
+      "bytes": 32301
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "e01ab18792939ad20b96df611a7cc0bbcab72c366b39ccb0f49f22fa6f4ff38a",
+      "bytes": 136183
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "42d1a22f95cb394136199d93436a3089b1fe058161d22ded1778ca6b74e7fd27",
+      "bytes": 56687
+    }
+  ],
+  "limits": [
+    "No route/UI/old CLI dispatcher or grants activated. Old year archive/stream/CLI whole source files exact.",
+    "Current CI38095454400 targets published958 only; no unpublished stream/CLI execution attributed to it. All20claim/all24retention/full1578Authority current actual acceptance remains pending.",
+    "Structural integrity and recomputed omissions can be internally consistent; independent trusted SOURCE expectation remains necessary.",
+    "Serialized and transferred byte limits are not totalRSS/CPU/load evidence.",
+    "HTTP/current member/action MFA/generated client/standalone UI/download/bundle/independent Auth target restore remain mandatory for RET002.",
+    "No RET002/003/004/005, legal company export, canonical A1-A7/all-three/readiness clearance.",
+    "CLI audit subprocess disables Python bytecode writes; no arbitrary interpreter import-cache neutrality is claimed."
+  ],
+  "implementationReviews": {
+    "Spec": {
+      "findings": 0,
+      "sha256": "bb0a68cd80bc2b0ea703366608ec68093a2428feef8862ede3bf3446adeeb41f",
+      "rootVerifiedPins": 128
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "03a9d20c206656e1e00cfba2dc970a6fb0607ba05ff0f3cb05f89dd611abf4ce",
+      "rootVerifiedPins": 130
+    },
+    "codeAndTestBytesUnchangedAfterReview": true
+  }
+}

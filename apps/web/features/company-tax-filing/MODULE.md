@@ -35,3 +35,85 @@ The readiness and annual-estimate transports send caller facts to the canonical 
 <!-- architecture-inventory
 {"apiOperations":["companyTaxPreviewReadiness","companyTaxPreviewAnnualEstimate"]}
 -->
+
+`loadTaxDeliveryDraftArchiveSource` and `TaxDeliveryDraftArchiveProjection` compose
+`companyTaxGetSourceFacts` and `companyTaxGetDeliveryDraftArchive`. A complete V1
+source positively proves the old seven-table extent and permits frontend-first
+rollout without inventing a missing archive response. V2 requires the exact
+originals, unchanged source digest, per-record UTF-8 SHA-256, and matching
+company/year/filing identity. Unknown versions, missing originals and changed
+bytes remain unavailable. Company export retains the source facts and exact
+canonical draft strings inside its existing generation boundary. Drafts remain
+prepared-only; these reads decide no filing readiness or authority outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetSourceFacts","companyTaxGetDeliveryDraftArchive"]}
+-->
+
+`companyTaxGetDeliveryJournalArchive` supplies Source V3 facts, immutable draft
+and event originals, and finite-rehearsal journal summaries from one guarded
+repeatable read. `loadTaxDeliveryDraftArchiveSource` requests it when the older
+exact-extent proof detects the event store, checks original digests/scope and
+review/request links, and includes it in company export. A successor read failure
+never falls back to an older incomplete source. Positively complete seven/eight
+table sources retain their prior read behavior. `TaxDeliveryDraftArchiveProjection`
+carries the optional journal bundle; export publishes `companyTaxDeliveryJournal`
+without interpreting it as a live provider outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetDeliveryJournalArchive"]}
+-->
+
+
+`loadTaxDeliveryOwnerReview` reads the complete prepared review through generated
+authenticated transport. It verifies scope, initial approval and artifact
+commitments, fixed schema pins, detail counts, unique fields and decoded
+calculated-original hashes, plus the exact enclosing validation-response hash.
+Missing or malformed data fails the read; there is
+no empty-review fallback. The artifact retains backend-owned projections and
+all calculated originals. The browser decides no XML validity, readiness,
+confirmation or submission outcome.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetDeliveryOwnerReview"]}
+-->
+
+
+The journal reader accepts positively covered Source V8. It checks the V5
+submission request's explicit owner choices, preparation prefix and exact
+fresh known-validation/Task_2 file references. It verifies V2 acknowledgments
+without treating them as effects, and V4 submission completions through exact
+known Task_3 or terminal archived metadata/file/receipt originals. Separate later
+feedback originals retain arbitrary original bytes, metadata scope and identity;
+they are never decoded with a guessed receipt schema or classified as Tax
+acceptance. Old codecs retain their checks and byte contracts. Unknown/partial
+successor reads remain unavailable.
+
+Correction originals use the shared public API-client evidence checker. It
+hashes every original, verifies one terminal-parent lineage and parses the
+retained current XML with the existing pinned saxes parser. Current statutory
+bytes, company/year/party/reference, and complete request reference must match;
+DTD, processing instructions, locked or unknown guidance cannot disappear. The
+SDK invokes this checker for the positive V9 contract, including direct callers.
+Web transport invokes the same checker for all supported journal generations.
+No receipt is classified as tax-assessment acceptance or amendment eligibility.
+
+The owner page `/filing/skattemelding` renders server-advertised delivery actions
+through authenticated server forms. `companyTaxGetDeliveryWorkspace` owns stage
+selection; `companyTaxGetDeliveryOriginal` supplies hash-verified bytes through
+`/api/company-tax/delivery-original`. Paginated fields show every retained value;
+all calculated documents, flags and review notes precede two explicit owner
+choices. The final action rereads the full artifact and checks its commitment.
+Mechanical transport delegates preparation, correction, review, dispatch and
+known read recovery to the generated SDK; no browser sequencing policy or
+caller-ready assertion is introduced.
+
+<!-- architecture-inventory
+{"routes": ["/filing/skattemelding", "/api/company-tax/delivery-original"], "apiOperations": ["companyTaxGetDeliveryWorkspace", "companyTaxGetDeliveryOriginal", "companyTaxPrepareDeliveryDraft", "companyTaxPrepareDeliveryCorrection", "companyTaxApproveDeliveryDraft", "companyTaxAdvanceDelivery", "companyTaxAdvanceDeliveryUpload", "companyTaxReconcileDeliveryUpload", "companyTaxAdvanceDeliveryValidation", "companyTaxReconcileDeliveryValidation", "companyTaxAdvanceDeliveryConfirmation", "companyTaxReconcileDeliveryConfirmation", "companyTaxConfirmDeliverySubmission", "companyTaxReconcileDeliverySubmission", "companyTaxReconcileDeliveryFeedback"]}
+-->
+
+Blocked validation displays all response findings and every supported parsed
+document even if the statutory pair is incomplete. Its download fallback selects
+the displayed response's exact original digest. Receipt possession before archive
+has its own state and archive-check label; only terminal archive evidence produces
+the final technical receipt state. Neither state classifies Tax acceptance.

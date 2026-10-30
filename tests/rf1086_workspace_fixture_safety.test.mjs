@@ -8,9 +8,9 @@ import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
 import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
 
 const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
-const fixture = "tests/fixtures/start_rf1086_workspace_backend.py";
 const local = {
   DATABASE_URL: "postgresql://localhost/fixture", TALLI_LEDGER_DATABASE_URL: "postgresql://localhost/fixture",
+  TALLI_BANKING_DATABASE_URL: "postgresql://localhost/fixture", TALLI_MARKETING_MEASUREMENT_DATABASE_URL: "postgresql://localhost/fixture",
   TALLI_COMPANY_ACCESS_DATABASE_URL: "postgresql://localhost/fixture", SUPABASE_URL: "http://127.0.0.1:45001",
   TALLI_AUTHORITY_OPS_ENABLED: "false", TALLI_RF1086_PRODUCTION_ENABLED: "false",
 };
@@ -58,14 +58,14 @@ for (const [name, options] of [["partial retirement", { partial: true }], ["miss
   assert.ok(!statements.includes("begin"));
 });
 
-for (const [name, additions, failure] of [
+for (const fixture of ["tests/fixtures/start_rf1086_workspace_backend.py", "tests/fixtures/start_rf1086_predecessor_backend.py"]) for (const [name, additions, failure] of [
   ["hosted database", { DATABASE_URL: "postgresql://hosted.invalid/fixture" }, "authority_browser_fixture_requires_loopback"],
   ["hosted Supabase", { SUPABASE_URL: "https://hosted.invalid" }, "authority_browser_fixture_requires_loopback"],
   ["global RF activation", { TALLI_RF1086_PRODUCTION_ENABLED: "true" }, "workspace_fixture_provider_activation_forbidden"],
   ["global operator activation", { TALLI_AUTHORITY_OPS_ENABLED: "true" }, "workspace_fixture_provider_activation_forbidden"],
   ["ambient credential", { TALLI_PROD_MASKINPORTEN_CLIENT_ID: "synthetic-forbidden" }, "workspace_fixture_provider_credentials_forbidden"],
 ]) {
-  test(`workspace RF backend refuses ${name} before opening a listener`, () => {
+  test(`${fixture} refuses ${name} before opening a listener`, () => {
     const result = spawnSync(python, [fixture], { env: { PATH: process.env.PATH, ...local, ...additions }, encoding: "utf8", timeout: 10_000 });
     assert.notEqual(result.status, 0);
     assert.ok(result.stderr.includes(failure));
@@ -151,6 +151,7 @@ test("fixture access refuses external databases and undeclared relations before 
 for (const fails of [false, true]) test(`fixture restores exact USER trigger modes on ${fails ? "rollback" : "success"} without disabling foreign keys`, async () => {
   const original = [{ name: 'quoted"trigger', mode: "O" }, { name: "disabled", mode: "D" }, { name: "replica", mode: "R" }, { name: "always", mode: "A" }];
   let current = structuredClone(original);
+  let deferredChecks = false;
   const statements = [];
   const database = { connectionParameters: { host: "127.0.0.1" }, query: async statement => {
     statements.push(statement);
@@ -161,13 +162,16 @@ for (const fails of [false, true]) test(`fixture restores exact USER trigger mod
     if (statement.includes("select relacl::text acl")) return { rows: [{ acl: "original-table-acl", forced: true }] };
     if (statement.includes("from pg_trigger")) { assert.ok(statement.includes("not tgisinternal")); return { rows: structuredClone(current) }; }
     const alteration = /^alter table "public"\."audit_events" (enable replica|enable always|enable|disable) trigger "((?:[^"]|"")+)"$/u.exec(statement);
+    if (alteration && deferredChecks) throw new Error('cannot ALTER TABLE because it has pending trigger events');
     if (alteration) current.find(row => row.name === alteration[2].replaceAll('""', '"')).mode = { enable: "O", disable: "D", "enable replica": "R", "enable always": "A" }[alteration[1]];
+    if (statement === "set constraints all immediate") deferredChecks = false;
     if (statement === "rollback") current = structuredClone(original);
     return { rows: [] };
   } };
   const failure = new Error("fixture operation failed");
   const action = fixtureTableTransaction(database, ["public.audit_events"], async () => {
     assert.ok(current.every(trigger => trigger.mode === "D"));
+    deferredChecks = true;
     if (fails) throw failure;
     return "fixture-result";
   });

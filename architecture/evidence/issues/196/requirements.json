@@ -236,5 +236,6 @@
     "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
     "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
   },
-  "closeState": "open-sensitive-target-rewire-commercial-hosting-backup-restore-transfer-legal-security-and-production-launch-clearance-pending"
+  "closeState": "open-sensitive-target-rewire-commercial-hosting-backup-restore-transfer-legal-security-and-production-launch-clearance-pending",
+  "dependencyReadiness20261009": "dependency-readiness-20261009.json"
 }

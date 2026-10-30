@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
 import test from "node:test";
 import pg from "pg";
+import { emptyDocumentsRetentionTeardown } from "./support/documents_retention_rehearsal.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -173,6 +174,44 @@ test(
         [documentId, 9, "a".repeat(64), actorId],
       );
       assert.deepEqual(finalizedReplay.rows, finalized.rows);
+
+      // A captured RF original must survive the disposable lifecycle teardown.
+      // Keep this fixture in a savepoint: later runtime cases use an unlinked doc.
+      await client.query("savepoint retained_rf_original");
+      await client.query("reset role");
+      await client.query(`do $grant$ begin
+        execute format('grant shareholder_register_filing_executor to %I', current_user);
+      end $grant$`);
+      await client.query("set local role shareholder_register_filing_executor");
+      const sourceId = randomUUID();
+      await client.query(`select * from documents.retain_verified_rf_evidence_v1(
+        'rf1086_year_source',$1,$2,$3,2026,'attached',$4,9,$5,$6)`,
+        [sourceId, documentId, companyId, "a".repeat(64), "b".repeat(64), actorId]);
+      await client.query("reset role");
+      const retainedBefore = await client.query(
+        "select to_jsonb(r) as evidence from documents.evidence_references r where capture_source_id=$1",
+        [sourceId]);
+      assert.equal(retainedBefore.rows.length, 1);
+      await expectDatabaseError(client, emptyDocumentsRetentionTeardown,
+        /documents_retained_evidence_blocks_rehearsal_teardown/iu);
+      const retainedAfter = await client.query(
+        "select to_jsonb(r) as evidence from documents.evidence_references r where capture_source_id=$1",
+        [sourceId]);
+      assert.deepEqual(retainedAfter.rows, retainedBefore.rows);
+      const retainedHelpers = await client.query(`select
+        to_regprocedure('documents.retain_verified_rf_evidence_v1(text,uuid,uuid,uuid,integer,text,text,bigint,text,uuid)') is not null as capture,
+        to_regprocedure('documents.assert_retained_metadata_v1(text,text)') is not null as metadata`);
+      assert.deepEqual(retainedHelpers.rows[0], { capture: true, metadata: true });
+      await client.query("set local role documents_executor");
+      await expectDatabaseError(client, {
+        text: "select * from documents.mark_removed_v1($1,$2,$3)",
+        values: [documentId, "must remain retained", actorId],
+      }, /documents_evidence_linked/iu);
+      const retainedOriginal = await client.query(
+        "select status,content_sha256,byte_length from documents.get_document_v1($1,$2)",
+        [documentId, actorId]);
+      assert.deepEqual(retainedOriginal.rows, finalized.rows);
+      await client.query("rollback to savepoint retained_rf_original");
 
       const listed = await client.query(
         "select id from documents.list_documents_v1($1::uuid[],$2)",

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "recordedAtUtc": "2026-10-10T16:18:15.208842+00:00",
+  "status": "EXACT_TRACE_REPLAY_AND_TWO_AXIS_REVIEW_PASS_SUCCESSOR_BROWSER_PENDING",
+  "baseRevision": "48b428507975ec65a602a847d709d149d0eb5001",
+  "problem": "After native archive downloads and common CLI verification pass, stale fixture requires v4 GET while actual page calls v6. All ten CI variants stop before later distinct full-year source flow.",
+  "change": "One v4\u2192v6 endpoint expectation; every other byte exact.",
+  "checks": {
+    "baselineReproduction": "Actual assertion rejects completed CI traces with missing v4; ten actual v6 GET200 observations and zero v4.",
+    "after": "Actual assertion passes same raw synthetic CI trace; removing any of six required request signatures still fails.",
+    "syntax": "PASS",
+    "otherBytesExact": true
+  },
+  "reviews": [
+    {
+      "axis": "spec",
+      "path": "/private/tmp/talli-release-20261009/rf-browser-archive-route-expectation-spec-review-v1.json",
+      "sha256": "4ebf26eecd1fcde2da8e092de20636b0a9ff472d1ac31f92a37dfd1fd1069f89",
+      "bytes": 7734
+    },
+    {
+      "axis": "standards",
+      "path": "/private/tmp/talli-release-20261009/rf-browser-archive-route-expectation-standards-review-v1.json",
+      "sha256": "d44f83b3dbccc718f705e1045917fe95f60a4112e16bb269eb78c000eaa25a04",
+      "bytes": 5573
+    }
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-browser-archive-route-expectation-freeze-v1.json",
+    "sha256": "8c8f4b13d3bf33fbc29c1ab3c3f34d303bf824784834be1751b7965a89270f52",
+    "bytes": 2209
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-db-raw.log",
+      "sha256": "3f00797f608762d21ee18bc5e348a301885504cccbf9527afb72076fae74f107",
+      "bytes": 762679
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-browser-route-expectation-before-v1.json",
+      "sha256": "a3f608f49676a8aebdad85a9d5a985ac236fdcb0ce5c0a054340be674cbd98f4",
+      "bytes": 500
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-browser-route-expectation-after-v1.json",
+      "sha256": "1c94ad69872489d9ba15d835e4d8203de9a773e3f0260e7f2da316bdbe177f3f",
+      "bytes": 354
+    }
+  ],
+  "limits": [
+    "Whole48bCI38064459586 terminal failure: Application10889PASS/2SKIP, Billing700PASS, Authority1498PASS, RFbrowser28PASS10FAIL. No canonical gate or launch acceptance.",
+    "Actual replay checks trace assertions only; later native full-year/correction/crash browser flow remains pending.",
+    "No product/route/provider/SQL/grant changes or approval-v3 activation."
+  ]
+}

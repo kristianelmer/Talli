@@ -1,0 +1,111 @@
+{
+  "schema": "rf-integration-ci-observation-v11",
+  "recordedAtUtc": "2026-10-11T17:34:26.793606+00:00",
+  "runId": 38153273823,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38153273823",
+  "headSha": "8d95abf42d331a9a8c10c45db87df686588a97e6",
+  "mergeSha": "d9abd4e38f76ba2e6ce005b62518167ca041cbd5",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11695,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 648.61
+  },
+  "billing": {
+    "pythonPassed": 700,
+    "pythonSeconds": 293.54,
+    "migrationLifecyclePassed": true,
+    "causalDeadlockFixEstablished": false,
+    "lockDiagnosticEmitted": false
+  },
+  "authority": {
+    "required": 1630,
+    "observedPassed": 1630,
+    "exactSourceNodeSetVerified": true,
+    "seconds": 1345.0
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 46,
+    "requiredParent": 6,
+    "requiredParentPassed": 6
+  },
+  "narrowPrerequisites": {
+    "claim": 20,
+    "approval": 36,
+    "retention": 24,
+    "inventoryAuthority": 6,
+    "intent": 46,
+    "inventoryPipelineCleared": false
+  },
+  "rfBrowser": {
+    "selected": 38,
+    "passed": 37,
+    "failed": 1,
+    "durationMs": 1418900.04277,
+    "owningInventoryAccepted": false,
+    "independentRecoveryAccepted": false
+  },
+  "failure": {
+    "stage": "independent-recovery",
+    "fingerprintComponents": [
+      "catalog"
+    ],
+    "exactCatalogDifferenceAndCauseKnown": false,
+    "targetAuthCreationUnreached": true,
+    "catalogDifference": {
+      "sourceRecords": 2158,
+      "targetRecords": 2158,
+      "counts": {
+        "changed": 153,
+        "source-only": 0,
+        "target-only": 0
+      },
+      "truncated": true,
+      "retainedDetails": 32,
+      "retainedDetailKindCounts": {
+        "default_acl": 23,
+        "function": 3,
+        "relation": 6
+      },
+      "allRetainedIdentitiesMapped": true,
+      "omittedRecords": 121
+    }
+  },
+  "signedStatelessFixtureCompleted": true,
+  "currentSigningAlgorithmObserved": false,
+  "es256ActualAcceptance": false,
+  "limits": [
+    "Current Billing lifecycle success does not establish an intermittent deadlock causefix. Local29 diagnostic tests were not added to the CI selector.",
+    "Current1,630-node set and mandatory46/six-parent cases are exact; narrow passes do not clear the failed owning inventory pipeline.",
+    "The signed stateless fixture completed before the recovered catalog mismatch. Current token algorithm is not emitted; ES256-specific and current target Auth acceptance remain unproved.",
+    "Catalog comparison fails before target Auth creation. All32 retained identities mapped:23 defaultACLs, auth.jwt(), net.http_get/http_post, six annual_accounts_filing tables. The121 omitted records and actual ACL values remain uncharacterized. Native synthetic mechanisms do not prove fullCI causation; strict roles/catalog/Auth/company-membership criteria unchanged.",
+    "Later Tax/Accounts/public acquisition browsers unreached; immutable evidence skipped, zero artifacts; linked complete gates/hosted/human/all-three readiness remain pending.",
+    "No raw queries, tokens, keys, Auth/customer rows, actor IDs, PID/transaction detail or raw exception text published."
+  ],
+  "artifactCount": 0,
+  "jobTimedOut": false,
+  "wholePipelineCleared": false,
+  "allThreeReady": false,
+  "rawEvidenceSha256": {
+    "ci38153273823-terminal-run-v1.json": "034deb46ee9e0a1d8c2739eeb2f011e0b0532bb48b0511f64eecb1ff854ab6a3",
+    "ci38153273823-terminal-jobs-v1.json": "7489ec75ddff9aa87d7d4040a3c78190b5d67303f60f9ab1153c240476b77a3c",
+    "ci38153273823-terminal-pr-v1.json": "a33cb7158d0f06b70a3f91261a9be111b4558eadb13cc88497b8bf9ea3dd308c",
+    "ci38153273823-terminal-parents-v1.json": "60474c4dbf8fdc45bf777d7f649082adfbe3a63464a63f12b861dc3f35b352a7",
+    "ci38153273823-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38153273823-app-direct-raw-v1.log": "0bfc7af2eff14f6b43bc1324a0a9236e7d3b4404daa43927e1893cb70661c121",
+    "ci38153273823-db-direct-raw-v1.log": "453fdb2ab0cc00febeec0efd441bf02afed03664a19c61bcd8b7c7a05f9aae6f",
+    "ci38153273823-terminal-inspection-candidate-v1.json": "b375e5d2cf5046120e0fceeb3cc79428dd34bcddcc42e9d459e09340ac474b87",
+    "ci38153273823-terminal-verifier-root-preparation-verification-v1.json": "fe963dbb783cfc98570b2cb6a1cf6b37d31a7cd58963fccb06480978b511ac2a",
+    "ci38153273823-terminal-receipt-v1.json": "723abd08497035d1abf275b7333cbe6afaa6da3526ef33695550c0c40478a9aa",
+    "ci38153273823-terminal-root-acceptance-v1.json": "71aef66484af099d2758d00810cfc9f7134fddcf7d64dedc5aada42bf9d0ffe5",
+    "ci38153273823-catalog-difference-actual-v1.json": "96506550dbd314a81616b2196d8e8b100999e9f80fffbae106821fb322b74702",
+    "ci38153273823-catalog-root-identity-mapping-v1.json": "e6a17cca0cb78157938353c50ff3db8e14abe74c9b96c85c8a4f61071d672cd1",
+    "ci38153273823-catalog-default-acl-identity-mapping-v1.json": "e61dc804a6af5b9cc4b19274d6408a0d5efd50e6192c7fc438107cafa4c10dc0"
+  },
+  "databaseDurationSeconds": 3731.0
+}

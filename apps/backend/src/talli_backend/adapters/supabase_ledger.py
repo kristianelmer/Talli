@@ -7,16 +7,18 @@ import base64
 import ipaddress
 import json
 import os
+import re
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, replace
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import psycopg
+from psycopg import sql
 from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
@@ -57,6 +59,7 @@ from talli_backend.modules.ledger.public import (
     LedgerCursor,
     LedgerEntryId,
     LedgerEntryKind,
+    LedgerEntryAmendment,
     LedgerEntryPage,
     LedgerEntryView,
     LedgerError,
@@ -160,6 +163,56 @@ def _validated_origin(raw: str) -> str:
 class _RejectRedirects(HTTPRedirectHandler):
     def redirect_request(self, *_args: object, **_kwargs: object) -> None:
         return None
+
+
+class _CurrentAuthUser(dict[str, object]):
+    """Retain only the root decoder's repeated-ban signal, outside payload keys."""
+
+    __slots__ = ("_duplicate_ban",)
+
+    def __init__(self, pairs: list[tuple[str, object]]) -> None:
+        super().__init__()
+        self._duplicate_ban = False
+        for key, value in pairs:
+            if key == "banned_until" and key in self:
+                self._duplicate_ban = True
+            self[key] = value
+
+
+def _require_current_user_unbanned(identity: Mapping[str, object], now: datetime) -> None:
+    if isinstance(identity, _CurrentAuthUser) and identity._duplicate_ban:
+        raise LedgerAuthenticationError from None
+    value = identity.get("banned_until")
+    if value is None:
+        return
+    if type(value) is not str or not 20 <= len(value) <= 35 or not value.isascii():
+        raise LedgerAuthenticationError from None
+    match = re.fullmatch(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+        r"(?:\.([0-9]{1,9}))?(Z|[+-][0-9]{2}:[0-9]{2})", value,
+    )
+    if match is None:
+        raise LedgerAuthenticationError from None
+    try:
+        local = datetime(*(int(match[i]) for i in range(1, 7)))
+        zone = match[8]
+        offset = 0
+        if zone != "Z":
+            hours, minutes = int(zone[1:3]), int(zone[4:6])
+            if zone == "-00:00" or hours > 23 or minutes > 59:
+                raise ValueError()
+            offset = (hours * 60 + minutes) * 60 * (1 if zone[0] == "+" else -1)
+        seconds = ((local.toordinal() - 1) * 86400 + local.hour * 3600
+                   + local.minute * 60 + local.second - offset)
+        expiry_ns = seconds * 1_000_000_000 + int((match[7] or "").ljust(9, "0"))
+        if not 0 <= expiry_ns < date.max.toordinal() * 86400 * 1_000_000_000:
+            raise ValueError()
+    except (ValueError, TypeError, OverflowError):
+        raise LedgerAuthenticationError from None
+    now_ns = (((now.toordinal() - 1) * 86400 + now.hour * 3600
+               + now.minute * 60 + now.second) * 1_000_000_000 + now.microsecond * 1000)
+    if expiry_ns > now_ns:
+        raise LedgerAuthenticationError from None
 
 
 def _timestamp(value: object) -> Timestamp:
@@ -559,8 +612,9 @@ def _map_database_error(message: str) -> LedgerError:
 class SupabaseLedgerAdapter:
     """Authenticate one bearer and return a request-bound RLS persistence session."""
 
-    def __init__(self, configuration: LedgerSupabaseConfiguration) -> None:
+    def __init__(self, configuration: LedgerSupabaseConfiguration, *, connect=None) -> None:
         self._configuration = configuration
+        self._connect = connect
         self._origin = _validated_origin(configuration.url)
         self._anon_key = configuration.anon_key
         self._opener = build_opener(_RejectRedirects)
@@ -599,7 +653,7 @@ class SupabaseLedgerAdapter:
                     body = response.read(65_537)
                     if len(body) > 65_536:
                         raise self._unavailable()
-                    decoded = json.loads(body.decode("utf-8"))
+                    decoded = json.loads(body.decode("utf-8"), object_pairs_hook=_CurrentAuthUser)
             except HTTPError as error:
                 if error.code in {401, 403}:
                     raise LedgerAuthenticationError from None
@@ -626,6 +680,7 @@ class SupabaseLedgerAdapter:
             raise LedgerAuthenticationError from None
         if not isinstance(decoded, Mapping) or decoded.get("sub") != identity_id:
             raise LedgerAuthenticationError
+        _require_current_user_unbanned(identity, datetime.now(timezone.utc))
         claims: dict[str, object] = {
             "sub": identity_id,
             "email": identity_email.strip().lower(),
@@ -641,14 +696,16 @@ class SupabaseLedgerAdapter:
 
     async def session(self, access_token: str) -> SupabaseLedgerSession:
         verified = await self._verified_actor(access_token)
-        return SupabaseLedgerSession(self._configuration.database_url, verified)
+        return SupabaseLedgerSession(self._configuration.database_url, verified,
+            **({'connect': self._connect} if self._connect is not None else {}))
 
 
 @ledger_persistence_adapter(LedgerPersistence)
 class SupabaseLedgerSession:
-    def __init__(self, database_url: str, verified: _VerifiedActor) -> None:
+    def __init__(self, database_url: str, verified: _VerifiedActor, *, connect=None) -> None:
         self._database_url = database_url
         self._verified = verified
+        self._connect = connect
 
     @property
     def actor_id(self) -> ActorId:
@@ -713,7 +770,7 @@ class SupabaseLedgerSession:
         return LedgerError.unavailable()
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[SupabaseLedgerWorkflowTransaction]:
+    async def transaction(self, *, guarded_company_id: CompanyId | None = None) -> AsyncIterator[SupabaseLedgerWorkflowTransaction]:
         if not self._database_url:
             raise self._unavailable()
         try:
@@ -722,6 +779,8 @@ class SupabaseLedgerSession:
                 connect_timeout=5,
                 row_factory=dict_row,
             ) as connection, connection.transaction():
+                if guarded_company_id is not None:
+                    await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role ledger_workflow_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
@@ -731,6 +790,9 @@ class SupabaseLedgerSession:
                     "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
                     (self._verified.claims_json,),
                 )
+                if guarded_company_id is not None:
+                    await connection.execute("select ledger.acquire_company_write_guard_v1(%s::uuid,%s)",
+                        (str(guarded_company_id), str(self.actor_id.subject)))
                 yield SupabaseLedgerWorkflowTransaction(
                     self._database_url,
                     self._verified,
@@ -753,7 +815,7 @@ class SupabaseLedgerSession:
 
         def execute() -> list[Mapping[str, object]]:
             try:
-                with psycopg.connect(
+                with (self._connect or psycopg.connect)(
                     self._database_url,
                     connect_timeout=5,
                     row_factory=dict_row,
@@ -1844,6 +1906,28 @@ class SupabaseLedgerSession:
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        rows = await self._database_rows(
+            "select * from ledger.list_entry_amendments_v1(%s::uuid,%s::text)",
+            (str(company_id), str(actor_id.subject)),
+        )
+        try:
+            result = tuple(LedgerEntryAmendment(
+                LedgerEntryId(str(row['original_entry_id'])), LedgerEntryId(str(row['reversal_entry_id'])),
+                LedgerEntryId(str(row['replacement_entry_id'])) if row['replacement_entry_id'] is not None else None,
+                CompanyId(str(row['company_id'])), IncomeYear(row['income_year']), str(row['reason']),
+                _actor(row['amended_by']), _timestamp(row['amended_at']),
+            ) for row in rows)
+            if any(item.company_id != company_id for item in result):
+                raise ValueError('amendment scope mismatch')
+            return result
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
     async def list_entries(
         self,
         *,
@@ -2164,6 +2248,33 @@ class SupabaseLedgerSession:
         )
 
 
+async def _verified_snapshot_rows(verified, connection, executor_role, query, parameters):
+    """Borrow an existing read role on one verified repeatable snapshot.
+
+    A savepoint restores transaction-local role state even on cancellation or a
+    failed query. The supplied connection must have one sequential owner.
+    """
+    if executor_role not in ('ledger_executor', 'investments_executor', 'corporate_governance_workflow_executor'):
+        raise ValueError('Unsupported snapshot read role.')
+    async with connection.transaction():
+        cursor = await connection.execute("""
+            select current_user as caller_role,
+              current_setting('transaction_isolation') as isolation,
+              current_setting('talli.verified_actor_id', true) as subject,
+              current_setting('talli.verified_actor_claims', true) as claims
+        """)
+        context = await cursor.fetchone()
+        if (context is None or context['isolation'] not in ('repeatable read', 'serializable')
+                or context['subject'] != str(verified.actor_id.subject)
+                or json.loads(context['claims'] or '{}') != json.loads(verified.claims_json)):
+            raise ValueError('Snapshot identity/isolation does not match its binding.')
+        await connection.execute(sql.SQL('set local role {}').format(sql.Identifier(executor_role)))
+        cursor = await connection.execute(query, parameters)
+        rows = list(await cursor.fetchall())
+        await connection.execute(sql.SQL('set local role {}').format(sql.Identifier(context['caller_role'])))
+        return rows
+
+
 @rf1086_adapter(OpeningSnapshotPersistence)
 class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
     """Owned capability operations bound to one PostgreSQL transaction."""
@@ -2381,6 +2492,19 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             posted_entry,
             prepared,
         )
+
+
+class SupabaseLedgerSnapshotQueries(SupabaseLedgerWorkflowTransaction):
+    """Ledger queries bound to a verified application's repeatable snapshot."""
+
+    async def _database_rows(self, query, parameters=()):
+        try:
+            return await _verified_snapshot_rows(self._verified, self._connection,
+                'ledger_executor', query, parameters)
+        except (ValueError, KeyError, TypeError, psycopg.OperationalError):
+            raise self._unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_database_error(str(error)) from None
 
 
 def compose_ledger_application(

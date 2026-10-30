@@ -248,3 +248,223 @@ contract does not certify missing Corporate close or signed-artifact prerequisit
 and a stored permission or TT02 receipt cannot lift it. Billing alone applies
 commercial classification, charges and refunds. Raw caller-supplied readiness
 previews are separate from this durable snapshot and never certify history.
+
+
+## Pinned durable-delivery document boundary
+
+`AnnualAccountsDocumentsInspection` binds exact raw main/company XML hashes,
+organization, year and a content-pinned resource generation. It carries no filing
+readiness, signature, submission or acceptance assertion.
+`AnnualAccountsSchemaValidator` and `annual_accounts_schema_adapter` declare the
+offline `talli_backend.adapters.annual_accounts_schemas.PinnedAnnualAccountsSchemas`
+implementation. Its four exact public resources were fetched from the RR0002
+TT02 app on 2026-10-26: application metadata, BPMN and both JSON model schemas.
+The two task identifiers are `Utfylling` and `Signering`; the public process
+separates confirm from sign, and system-user authority cannot perform person
+signing.
+
+The local validator derives a strict XML subset from the pinned JSON models'
+XSD annotations, internal definitions, required/occurrence constraints, fixed
+attributes, scalar bounds and enums. Unknown schema constructs, external
+references, extra XML, DTD/entities, processing instructions, non-UTF8, oversized
+or over-deep documents fail. The local profile additionally restricts the packet
+to 2025, AS/small-enterprise, NOK/whole kroner, standalone unaudited statements.
+It rejects upstream wildcard attributes rather than ignoring them. This is not
+an upstream XSD and does not certify the authority's custom validation. The
+existing renderer and its frozen byte contract remain unchanged.
+
+<!-- architecture-inventory
+{"ports":["AnnualAccountsSchemaValidator"]}
+-->
+
+## Complete local preparation
+
+`AnnualAccountsDeliverySource` retains complete owning Annual history, Ledger
+reporting history including amendments and effective entries, and Corporate
+current-source readiness plus lifecycle evidence from one verified repeatable
+snapshot. `annual_accounts_delivery_digest` binds immutable canonical facts.
+Accounts does not reproduce Annual's common readiness or Corporate's lifecycle
+policy. Corporate reuses its owner-authorized current-source query on the same
+connection; the adapter borrows only the existing restricted read roles and
+restores them through savepoints. No session or provider HTTP occurs in that read.
+
+`prepare_annual_accounts_delivery` derives the approval date from the current
+finalized signed annual-close decision and renders the unchanged RR0002 pair.
+Its narrow projection rejects unknown accounts, missing workforce, unsupported
+regimes or attachments, unreviewed warnings, fractional net account balances,
+contra expenses and amounts outside its declared precision bound. Ledger owns
+which amended entries remain effective; Accounts nets these effective account
+movements before using the frozen calculator, retaining every original.
+
+`AnnualAccountsDeliveryDraft` binds exact rendered XML, source, owner command and
+local schema inspection. `decode_annual_accounts_delivery_draft` rejects changed
+bytes, duplicate or unknown keys/versions, noncanonical JSON, wrong scope, invalid
+actors and mismatched source/document hashes. A draft is prepared evidence only.
+It grants no common readiness, runtime admission, signature or filing permission.
+Correction lineage and actual signed-session desktop/touch verification remain
+required before this capability's delivery journey is complete.
+
+## Reader-first delivery retention
+
+`PrepareAnnualAccountsDeliveryDraft`, `StoredAnnualAccountsDeliveryDraft` and
+`AnnualAccountsDeliveryDraftPersistence` bind a command to one exact draft. The
+`AnnualAccountsDeliveryDraftFact` source projection says `prepared_only`.
+`annual_accounts_filing.delivery_drafts` and the reserved
+`annual_accounts_filing.delivery_events` extent are immutable, RLS protected and
+archive tracked. Source v2 requires positive exact eight-table coverage, retained
+counts and hashes, unchanged retention guards/keys, and an empty event journal.
+Nonempty events require a successor codec; they are never silently omitted.
+Source v1 keeps its bytes and cannot cover the added stores.
+
+The deferred CLI-created contract
+`supabase/contract-migrations/20261026221935_annual_accounts_delivery_store_v1.sql`
+starts draft writes closed. Its same-named rollback closes writes while preserving
+all originals, immutable guards and readers. Preparation performs authorized exact
+replay first, then reads current owning source in a repeatable snapshot while the
+published company write guard is held, and rechecks current owner/MFA before
+storage. There is no provider I/O, event append, signature or dispatch in this
+stage; no runtime API is wired by default.
+
+<!-- architecture-inventory
+{"ownedTables":["annual_accounts_filing.delivery_drafts","annual_accounts_filing.delivery_events"],"ports":["AnnualAccountsDeliveryDraftPersistence"]}
+-->
+
+## Exact delivery read originals
+
+`AnnualAccountsReadPurpose` and `AnnualAccountsDeliveryOriginal` retain bounded
+exact base64 bytes with the known instance/data identity, media type, HTTP status
+and observation time. `AnnualAccountsDataElement` and
+`AnnualAccountsInstanceInspection` describe the strict standalone instance subset
+from `inspect_annual_accounts_instance`. Only known owner/app scope, supported
+Utfylling/data or Signering/signing tasks, coherent end/archive times, exactly one
+Hovedskjema and Underskjema, and bounded generated PDF/signature references are
+admitted. Attachments, duplicate/unknown data and contradictory process metadata
+block the supported path. Pinned XML/PDF/signature scan-disabled types admit absent
+scan results; explicit pending, unsafe or unknown results do not prove progress.
+`inspect_annual_accounts_validation` requires a recognized complete validation
+array or sole validationIssues wrapper; unknown controlling flags, duplicate JSON
+keys and unrecognized severities fail. Raw originals remain separate from these
+interpretations. No signature authenticity, registry acceptance or dispatch is
+asserted by an original or inspection.
+
+`AnnualAccountsDeliveryBinding`, `AnnualAccountsDeliveryReview`,
+`AnnualAccountsFiniteAdmission`, `AnnualAccountsDeliveryIntent` and
+`AnnualAccountsDeliveryCompletion` describe exact immutable local operation
+records. `AnnualAccountsDeliveryStage` separates prepare, confirmation review and
+person signing review. `AnnualAccountsAuthorityPort` separates system user,
+person and known-read admission; `AnnualAccountsDeliveryAction` fixes the five
+allowed POST/PUT operations. Admissions are exact loopback, actor/company/year/
+draft/database/credential bound, at most 300 seconds with bounded budgets. The
+system port cannot sign, the person port is fixed to its retained review and
+known instance, and known-read admission carries no mutation authority. Intents
+bind exact fixed paths and reviewed XML or confirm/sign JSON. Completion retains
+response bytes or an explicit uncertainty, without effect/acceptance claims.
+These record contracts alone neither persist nor execute an operation.
+
+`AnnualAccountsDeliveryObservation` links an exact known-instance read to its
+retained draft, finite admission and intent. `decode_annual_accounts_delivery_record`
+restores the known review/admission/intent/completion/observation/frame
+generations, enforcing exact canonical bytes, complete keys and typed scope. It
+retains opaque HTTP responses separately from observed effects.
+
+`AnnualAccountsFrameKind` and `AnnualAccountsDeliveryFrameRecord` bind a bounded
+ordered set of retained observations. `inspect_annual_accounts_delivery_frame`
+returns `AnnualAccountsDeliveryFrameInspection` only for complete known-instance
+reads: metadata brackets files without changing, byte lengths/media/data IDs
+match metadata, both structured files match the exact prepared pair, and local
+pinned validation still agrees. Confirmation and signing frames retain all
+recognized validation issues; errors block their process action. Signing review
+requires every generated PDF and the unsigned Signering task. Technical archive
+inspection requires observed process end/archive, the exact structured pair and
+all generated PDF/signature originals. Signature content stays unclassified.
+Stable review hashes omit local observation times; prerequisite hashes bind the
+exact retained frame. Consequential callers separately enforce the 60-second
+freshness window, current source/owner/MFA, finite admission and committed intent.
+
+`StoredAnnualAccountsDeliveryEvent` and
+`inspect_annual_accounts_delivery_journal` validate retained sequence/slot identity,
+review/admission/intent/response links, known instance/data references, finite
+budgets and fresh action-specific frames. `AnnualAccountsDeliveryJournalInspection`
+is a historical technical frontier; current source/owner/MFA and live finite
+admission must still be checked before use. A received process acknowledgment is
+never a terminal effect. Missing creation identity blocks mutation and lookup; a
+positive scoped creation identity permits only known reads until a complete
+metadata frame exists. Unknown uploads/confirm/sign outcomes progress only through
+known reads. Archive requires observed process end plus exact original coverage,
+and makes no authenticity or regulatory-acceptance claim. Each mutation grant is
+issued after its specific committed review; prepare and confirm have separate
+budgets/deadlines, while person signing remains a distinct port.
+
+Journal inspection requires the positive stored event-ID/hash enumeration
+commitment, in addition to ordered dependency and commit times. PG identities are
+global and may have gaps across filings/aborts; contiguous IDs are not a coverage
+proof. Every file observation must reference a previously retained positive
+metadata ID/type, even if no frame later uses it. Historical known references
+remain usable for retaining in-flight read results after metadata changes.
+Received headerless or opaque HTTP bodies remain exact, without invented media;
+interpretation checks normalized known media separately. Request-start and
+response-observation times are distinct: finite admission applies at request
+start, and a valid in-flight response remains retainable after expiry. Frames
+require files to be requested and observed within the metadata bracket, and
+process end/archive timestamps cannot lie after their observation.
+
+`AnnualAccountsDeliveryJournalPersistence` retains exact canonical operation records through restricted RPCs. Source v3 positively enumerates every sequence/hash and pins executable helpers, checks and retention policies; v2 remains incomplete for nonempty events. Complete enumeration does not validate the effect graph: callers inspect the full typed journal and pinned frame originals before HTTP. Staged finite system preparation/confirmation and separately reviewed person signing remain distinct; only known GET frames establish byte effects. Opaque acknowledgments, signatures and PDFs prove no regulatory acceptance or authenticity. Containment rollback preserves bound late results and originals.
+
+<!-- architecture-inventory
+{"ports":["AnnualAccountsDeliveryJournalPersistence"]}
+-->
+
+`AnnualAccountsDeliveryTransport` binds four separate finite loopback adapters for system preparation, system confirmation, person signing, and known reads. Each role has a distinct credential, a staged immutable admission and an atomic request budget. Trusted composition alone can supply them; default composition has no runtime grant. The application commits and elects an intent before HTTP, closes every SQL context, then retains exact responses. Workspace reads consume no authority budget; original downloads require current owner/MFA independently of source changes or grant expiry.
+
+<!-- architecture-inventory
+{"ports":["AnnualAccountsDeliveryTransport"]}
+-->
+
+
+The local correction successor adds `AnnualAccountsCorrectionReadGrant`,
+`AnnualAccountsCorrectionParentAdmission`, `AnnualAccountsCorrectionParentAttempt`, `AnnualAccountsCorrectionParentObservation`
+and `AnnualAccountsCorrectionParentFrame`. `decode_annual_accounts_delivery_record_v2`
+preserves all predecessor record bytes. `assert_annual_accounts_correction_source`
+requires changed owning source and a new finalized signed Corporate decision.
+`inspect_annual_accounts_correction_parent` checks fresh exact archive originals;
+`inspect_annual_accounts_delivery_history` checks the complete unforked chain.
+A child receives separate mutation reviews, credentials and budgets. Parent reads
+use one five-minute grant, at most 27 GETs and three explicitly requested proof
+frames. Each read attempt commits before HTTP and immediately closes child creation until a complete frame covers that latest attempt. Failed and late originals remain independent records; older-attempt responses cannot invalidate a later successful proof or an already-created child. Containment closes
+new work while retaining known responses and access-controlled originals.
+
+
+## Company-year archive and isolated copy
+
+The owner-scoped `company-year-archive` query holds the current company archive
+lock across a repeatable Accounts snapshot, then rechecks current ownership/MFA.
+Its dedicated `lock_company_year_archive_v1` guard admits the existing archive
+storage range, 2000–2100. The separate delivery guard and all preparation/mutation
+contracts retain their 2025-only scope. Historical RF company exports therefore
+do not depend on eligibility to prepare a new Accounts delivery.
+It exports `annual-accounts-company-year-archive-v1`: exact legacy rows, declared
+eight-table coverage, original draft/event JSON and recorded times, including
+Corporate-backed source facts, correction-parent reads and opaque PDF/signature
+bytes. `build_annual_accounts_company_archive` and
+`parse_annual_accounts_company_archive` are the owning serialization/copy
+contracts. The parser checks the external archive digest, original company/year,
+strict codecs, enumeration commitments, exact prepared byte pairs and complete finite
+history, retaining historical schema pins without reloading schema files. It rejects missing parents, events, changed originals and unsupported
+extents; an unresolved predecessor effect alone does not erase retained evidence.
+
+The shared company archive consumes this projection under its existing export
+generation receipt. Its manifest retains the Accounts digest and draft/event/
+original counts. Isolated copies preserve original company/user/filing identities;
+changing fixture target metadata never rewrites evidence or grants access.
+Missing Accounts coverage fails restore integrity. The standalone copy checker
+reconstructs through the same owning parser in another process. This contract
+and fixture do not authorize a runtime database import, new provider operation,
+production activation or a whole-service recovery claim.
+
+Shared copy acceptance requires `verify_annual_accounts_company_archive`, exposed
+by the read-only `company-year-archive-verifications` query under the current
+owner/MFA guard. Its exact archive/source digests, original catalog and counts
+must match. TypeScript checks only portable scope/bytes/enumeration; they never
+replace owning journal interpretation. Raw restored fixtures remain unverified.
+The preceding workspace may support an explicitly empty delivery overlap on an
+older backend; this preserves export availability, not complete restore coverage.

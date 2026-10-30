@@ -4,7 +4,7 @@ import {
   type OpenSupportCaseRequest,
   type RevokeSupportAccessRequest,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 export {
   BackendConfigurationError,
@@ -18,7 +18,7 @@ export async function loadCompanyAccessContext(
   options: { companyId?: string } = {},
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -35,7 +35,7 @@ export async function loadCompanyAccessRecord(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessGetCompanyRecord(companyId, {
@@ -49,7 +49,7 @@ export async function loadOperatorContext(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessGetOperatorContext({
@@ -64,7 +64,7 @@ export async function grantOperatorSupportAccess(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessGrantSupportAccess(command, {
@@ -80,7 +80,7 @@ export async function revokeOperatorSupportAccess(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessRevokeSupportAccess(caseId, command, {
@@ -96,7 +96,7 @@ export async function openOperatorSupportCase(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessOpenSupportCase(caseId, command, {
@@ -111,7 +111,7 @@ export async function readOperatorSupportCase(
   requestId?: string,
 ) {
   const client = createTalliApiClient({
-    baseUrl: backendBaseUrl(),
+    ...backendClientOptions(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   return client.companyAccessReadSupportCase(caseId, {

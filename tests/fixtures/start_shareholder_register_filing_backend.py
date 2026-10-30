@@ -3,13 +3,16 @@
 This launcher is test-only. It refuses non-loopback databases, Supabase, and mock
 addresses, and its process-wide socket guard denies all external connections.
 Global production flags remain disabled. This separately selected fresh-send
-fixture admits exactly five RF method templates, mapped to a loopback mock.
+fixture admits five RF method templates and the exact Dialogporten discovery GET,
+all mapped to a loopback mock.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
+import json
 import os
 import re
 import socket
@@ -40,6 +43,10 @@ def provider_mock_url(original: str, mock_origin: str, method: str = "GET") -> s
     elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no"
           and provider.path.startswith("/authentication/api/v1/systemuser/")):
         path = "/altinn" + provider.path + ("?" + provider.query if provider.query else "")
+    elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no" and method == "GET"
+          and re.fullmatch(r"/dialogporten/api/v1/enduser/dialogs/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", provider.path)
+          and not provider.query):
+        path = "/dialogporten/dialogs/" + provider.path.rsplit("/", 1)[1]
     elif (provider.scheme == "https" and provider.netloc == "api.skatteetaten.no"
           and rf1086_fixture_template(method, provider.path, provider.query)):
         path = "/skatte" + provider.path.removeprefix("/api/aksjonaerregister/v1") + ("?" + provider.query if provider.query else "")
@@ -74,10 +81,95 @@ def guard_socket(event: str, arguments: tuple[object, ...]) -> None:
             raise PermissionError("authority_browser_fixture_blocked_external_connection")
 
 
+def install_prepared_stop(journal_type, raw_path: str, nonce: str) -> None:
+    """Test-only barrier after the real admission context has committed."""
+    path = Path(raw_path).resolve()
+    if (path.name != 'stop-after-prepare' or not path.parent.name.startswith('talli-rf-prepared-crash-')
+            or not path.parent.is_dir() or not re.fullmatch(r'[A-Za-z0-9-]{1,80}', nonce)):
+        raise ValueError('prepared_crash_control_path_invalid')
+    original = journal_type.prepare
+
+    async def prepare(self, **kwargs):
+        result = await original(self, **kwargs)
+        operation = kwargs['name'].split(':', 1)[0]
+        if result.newly_prepared and operation in ('post_hovedskjema', 'post_underskjema', 'confirm'):
+            try:
+                with path.open() as control:
+                    armed = control.read(256)
+            except FileNotFoundError:
+                armed = None
+            if armed == f'{nonce}:{operation}':
+                path.unlink()
+                print(f'TALLI_RF_PREPARED_STOP:{nonce}:{operation}', flush=True)
+                await asyncio.Event().wait()
+        return result
+
+    journal_type.prepare = prepare
+
+
+def install_source_capture_response_loss(application, environment) -> None:
+    """Lose one committed capture response in an explicitly selected local test."""
+    selected = environment.get("TALLI_TEST_RF1086_LOST_SOURCE_CAPTURE_RESPONSE")
+    if selected in (None, "false"):
+        return
+    if (selected != "true" or environment.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true"
+            or any(environment.get(key) != "false" for key in
+                ("TALLI_AUTHORITY_OPS_ENABLED", "TALLI_RF1086_PRODUCTION_ENABLED"))
+            or not re.fullmatch(r"[A-Za-z0-9-]{1,80}", environment.get("TALLI_READINESS_NONCE", ""))):
+        raise ValueError("source_capture_loss_fixture_not_selected")
+    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL",
+                "TALLI_BANKING_DATABASE_URL", "TALLI_MARKETING_MEASUREMENT_DATABASE_URL"):
+        loopback_url(environment.get(key, ""), ("postgres", "postgresql"))
+    for key in ("SUPABASE_URL", "TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL"):
+        loopback_url(environment.get(key, ""), ("http",))
+    from starlette.responses import JSONResponse, Response
+    capture_path = "/api/v1/shareholder-register-filings/year-sources"
+    lookup_path = capture_path + "/receipt-lookup"
+    consumed = False
+
+    @application.middleware("http")
+    async def lose_committed_response(request, call_next):
+        nonlocal consumed
+        if request.method != "POST" or request.url.path not in (capture_path, lookup_path):
+            return await call_next(request)
+        original_request = await request.body()
+        response = await call_next(request)
+        receipt_sha = None
+        lose = response.status_code == 200 and request.url.path == capture_path and not consumed
+        if lose:
+            consumed = True
+        if response.status_code == 200:
+            # Consume only the small real receipt, after the handler's database
+            # transaction has completed. No source write or receipt is fabricated.
+            chunks = []
+            size = 0
+            async for chunk in response.body_iterator:
+                size += len(chunk)
+                if size > 16_384:
+                    raise ValueError("source_capture_loss_fixture_response_too_large")
+                chunks.append(chunk)
+            body = b"".join(chunks)
+            result = json.loads(body)
+            receipt = result if request.url.path == capture_path else result.get("receipt")
+            if receipt is not None:
+                receipt_sha = hashlib.sha256(json.dumps(receipt, sort_keys=True,
+                    separators=(",", ":")).encode()).hexdigest()
+            response = Response(body, status_code=response.status_code, headers=dict(response.headers))
+        print("TALLI_RF_SOURCE_CAPTURE_TEST:" + json.dumps({
+            "path": request.url.path, "requestSha256": hashlib.sha256(original_request).hexdigest(),
+            "keySha256": hashlib.sha256(request.headers.get("Idempotency-Key", "").encode()).hexdigest(),
+            "receiptSha256": receipt_sha, "lostResponse": lose,
+        }, separators=(",", ":")), flush=True)
+        if lose:
+            return JSONResponse({"detail": "Temporarily unavailable."}, status_code=503,
+                headers={"Cache-Control": "no-store"})
+        return response
+
+
 def main() -> None:
     if os.environ.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true":
         raise SystemExit("rf1086_fresh_send_fixture_not_selected")
-    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL", "TALLI_BANKING_DATABASE_URL"):
+    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL", "TALLI_BANKING_DATABASE_URL", "TALLI_MARKETING_MEASUREMENT_DATABASE_URL"):
         loopback_url(os.environ[key], ("postgres", "postgresql"))
     loopback_url(os.environ["SUPABASE_URL"], ("http",))
     mock_origin = loopback_url(os.environ["TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL"], ("http",))
@@ -92,6 +184,10 @@ def main() -> None:
     from talli_backend.adapters.altinn_system_user import AltinnSystemUserAdapter
     from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration
     from talli_backend.main import create_app
+    prepared_stop = os.environ.get('TALLI_RF_STOP_AFTER_PREPARE_FILE')
+    if prepared_stop:
+        from talli_backend.application.shareholder_register_source_dispatch_v3 import _OperationJournalV3
+        install_prepared_stop(_OperationJournalV3, prepared_stop, nonce)
 
     async def mock_transport(request: httpx.Request) -> httpx.Response:
         target = provider_mock_url(str(request.url), mock_origin, request.method)
@@ -103,7 +199,8 @@ def main() -> None:
     transport = httpx.MockTransport(mock_transport)
     maskinporten = MaskinportenClient(MaskinportenConfiguration.production(os.environ), transport=transport)
     from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
-    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
+    from talli_backend.adapters.postgres_shareholder_register_filing import (
+        PostgresShareholderRegisterSourceDispatchV3Adapter, PostgresCompanyTestRetentionSessionFactory)
     from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
     from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
     from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
@@ -115,7 +212,7 @@ def main() -> None:
     documents = SupabaseDocumentsAdapter.from_environment()
     async def billing_queries(access_token):
         return BillingWorkflow(await billing.session(access_token), SimulationBillingProvider())
-    rf = PostgresShareholderRegisterFilingAdapter(
+    rf = PostgresShareholderRegisterSourceDispatchV3Adapter(
         LedgerSupabaseConfiguration(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"], os.environ["TALLI_LEDGER_DATABASE_URL"]),
         billing_queries_factory=billing_queries, documents_session_factory=documents,
         company_access_service=CompanyAccessService(SupabaseCompanyAccessAdapter.from_environment(), BrregCompanyRegistryAdapter.from_environment()),
@@ -123,9 +220,13 @@ def main() -> None:
         maskinporten=maskinporten, rf_transport=transport,
     )
     application = create_app(shareholder_register_filing_session_factory=rf, documents_session_factory=documents,
+        company_test_retention_session_factory=PostgresCompanyTestRetentionSessionFactory(
+            LedgerSupabaseConfiguration(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"],
+                os.environ["TALLI_LEDGER_DATABASE_URL"])),
         system_user_authority_provider=AltinnSystemUserAdapter(
         maskinporten, environment="production", transport=transport,
     ))
+    install_source_capture_response_loss(application, os.environ)
 
     @application.middleware("http")
     async def observed_transport(request, call_next):

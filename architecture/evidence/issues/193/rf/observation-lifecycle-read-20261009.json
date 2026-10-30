@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF observation lifecycle read API and UI",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+  "status": "IMPLEMENTED_REVIEWED_FOCUSED_CHECKS_PASS_FULL_DATABASE_BROWSER_PENDING",
+  "behavior": [
+    "Accepted-owner observation and canonical withdrawal history are enumerated on one repeatable-read connection with independent scoped family counts, exact stored identity/digest checks and pure lifecycle validation.",
+    "Additive GET register-observations/lifecycle returns scope, observation time, original receipt/draft, active/superseded/withdrawn status and withdrawal metadata. It exposes no idempotency key or mutation authority; draft confirmations reset.",
+    "Legacy list keeps its path/schema/projection with no withdrawals. Any withdrawal in scope gives safe409 lifecycle_upgrade_required; malformed, missing or partial storage gives503 instead of captured-empty.",
+    "Generated transport validates scoped identities, complete lineage and exact microsecond receipt chronology. New UI requires lifecycle support, shows retained withdrawn facts, disables historical correction and selects only active references for corporate-event presentation/transport.",
+    "Current source preview, guarded source readiness, annual readiness and review reject an unavailable active observation before downstream work. Historical capture receipts remain distinct from currentness."
+  ],
+  "review": {
+    "reviewer": "root",
+    "result": "No remaining material findings after source/API/adapter/transport/UI and focused-test inspection. Existing civil effectiveAt stays canonical naive whole-seconds; aware receipt times retain microseconds.",
+    "changesDuringReview": [
+      "Transport now rejects equal capture instants and incomplete predecessor graphs while preserving valid microsecond-only order.",
+      "Legacy withdrawal check explicitly inspects metadata; pure lifecycle already rejected a withdrawn ancestor, so that was not a reachable bug."
+    ]
+  },
+  "checks": {
+    "scope": "RF lifecycle read slice only; no live database/browser proof, writer activation, Governance or Archive-owner policy",
+    "results": {
+      "backend": {
+        "passed": 301
+      },
+      "web": {
+        "passed": 268
+      },
+      "contract": {
+        "passed": 64
+      },
+      "typecheck": "passed",
+      "database": {
+        "collected": 3,
+        "executed": 0
+      },
+      "openapi": {
+        "oldPathsUnchanged": 176,
+        "oldSchemasUnchanged": 507,
+        "newPaths": 1,
+        "newSchemas": 3
+      },
+      "generators": "both --check passed"
+    },
+    "commands": {
+      "backend": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_rf1086_register_observation_lifecycle.py apps/backend/tests/test_shareholder_register_observation_read.py apps/backend/tests/test_shareholder_register_source_api.py apps/backend/tests/test_rf1086_source_readiness.py apps/backend/tests/test_rf1086_source_approval.py apps/backend/tests/test_shareholder_register_source_preview_workflow.py apps/backend/tests/test_rf1086_capture_receipt_lookup.py",
+      "web": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --experimental-strip-types --test apps/web/tests/shareholder-register-lifecycle-transport.test.mjs apps/web/tests/corporate-register-observation.test.mjs apps/web/tests/shareholder-register-source-transport.test.mjs apps/web/tests/shareholder-register-observation-editor.test.mjs",
+      "contract": "UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH node --test tests/contract/web_fastapi_boundary.test.mjs tests/contract/openapi_oneof.test.mjs",
+      "typecheck": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "database": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest --collect-only -q apps/backend/tests/test_rf1086_register_observation_lifecycle_database.py"
+    },
+    "logs": {
+      "backend": {
+        "path": "/private/tmp/talli-lifecycle-backend.log",
+        "sha256": "ac78c4fbd9cbf498c1a7da7e112df8a9c80ebf73a9b8eeff5f64c2a60148e425"
+      },
+      "web": {
+        "path": "/private/tmp/talli-lifecycle-web.log",
+        "sha256": "aa878fd0813508e8b795ae87cc0ecbb9f6406f09ce0271008b355183b3b44135"
+      },
+      "contract": {
+        "path": "/private/tmp/talli-lifecycle-contract.log",
+        "sha256": "b78c11714d866deb2172077e738555add51b09d11f76664e4d0e66c4f1fd7e88"
+      },
+      "typecheck": {
+        "path": "/private/tmp/talli-lifecycle-typecheck.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "database-collection": {
+        "path": "/private/tmp/talli-lifecycle-database-collection.log",
+        "sha256": "971378ee60a1c738afb62ddd81feb5dae06d6aceb568a1f6d61198b7218033c0"
+      }
+    }
+  },
+  "centralChecks": {
+    "ciHarnessPassed": 105,
+    "finalDatabasePartitionPassed": 2,
+    "architecture": "PASS"
+  },
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "11628cf015a51d9e2daec1ce002e048af44c269a73ce3161315eb8899beaa3d6",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "4568bedac5aa24bc97ff69535f63281d732ad89b91b0f1fa082412c02b86ec43",
+    "apps/backend/src/talli_backend/main.py": "ae25bc84fc8127db4ca7e782e4578d721956ce67baa0fcc9fd29327e99e6b331",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "b867778e6d0f2c78a925d464618722be883881ced4410db9970248481693afc2",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "f88b227b95de7f33dbb8564876c4759ab65ee3e154c902644700b7b892144bae",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "0716c8fbe25a37e0a25bf42de728718cfa001ad0d5daafe23b7200f0b8b3da7f",
+    "apps/backend/tests/test_rf1086_register_observation_lifecycle.py": "fb9526bd648a3afa2caf5fe489cb9909fcd99ef80be8632bb74919df6ce8cd07",
+    "apps/backend/tests/test_rf1086_register_observation_lifecycle_database.py": "2f0aee7f4d3daad3db050cb662dea948c2b957f4f23d9a4964c77eb16b63b7f7",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "ca6ef0094ddb2ddae8ad5c1fdac8b85b413bdbfe3b628297ff335ae2c8cc3c5f",
+    "apps/web/app/(owner)/actions/[type]/page.tsx": "bb7be001c87ce70c7e410541958390905f7838c8db8f69cd75ce9b64d5a094dd",
+    "apps/web/app/(owner)/actions/_components/SupportedCorporateEventWizard.tsx": "d7da6630893aa689b6eaf1d40f1deaa8f5c7622ed7e4c492678bc24180cdc39d",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/RegisterEditor.tsx": "0b67efe89c38e19e72f5948d4423da923aa30490c1b9b1c980f350495fb87690",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/page.tsx": "23c63127f8b27a05bcb95d087376f590bcb9ff934444417a03360b8c928007e6",
+    "apps/web/app/actions.ts": "5882fbbbf6f0a5efb921ee246d70c9ec8962793a4b001d0e913f5f90667b7d76",
+    "apps/web/app/lib/corporate-register-observation.ts": "ddeb6b9fb60f3d629c25ae1c37808c229e07e3ab5cf3dfbc0013665c2e787555",
+    "apps/web/features/shareholder-register-filing/MODULE.md": "c67a7cf7140f36afd9a569ab5c8532a30c28ccb98f5d49141644a0ef56fbb6f8",
+    "apps/web/features/shareholder-register-filing/index.ts": "979bf1e73b27128c5b25dd40faeaeac8cc427541baaaec1240ab7760b378e502",
+    "apps/web/features/shareholder-register-filing/module.json": "9d3d940e9283d486df5cbae4e5a180ad6edcf1aafcd357f6a23ed5a893a4c098",
+    "apps/web/features/shareholder-register-filing/transport.ts": "3000c511e8317d219201725665ecb78cecacd68b41ddc41330073c655127f694",
+    "apps/web/tests/corporate-register-observation.test.mjs": "a551eb46eb95e57cc5391931ee4361f8330b4990d1e5ee6e96a7c9bdf8784f5b",
+    "apps/web/tests/shareholder-register-lifecycle-transport.test.mjs": "db322d9d4b83eedd482a406bbbd02090c4d9e3aa4ff73b3a754fb628de36e686",
+    "apps/web/tests/shareholder-register-observation-editor.test.mjs": "c6530cb258da8e1e6dc17ab0acecf47514cce07e49acdd8c49e5ddbdfde24bdc",
+    "apps/web/tests/shareholder-register-source-transport.test.mjs": "727e84d3049d78d2527b9a577a35848ed0c3bafb49b394bf86bdafa37a6e5a19",
+    "architecture/BACKEND-SYSTEM.md": "354064bd3a753ee4bd7ef5941325cbaf506c7feab6644ae578191d86f1d8d51b",
+    "architecture/backend-system.json": "7f8fc214c7509e62aebb488ed47715ca7e506c69b1fdc10340a5614134ec23a0",
+    "contracts/openapi/talli-v1.json": "ad3db2af0e4a92b42820662bf0249fbf041419ba623219518bf2d57c4a212d59",
+    "packages/talli-api-client/src/generated/client.ts": "2a2fe2719aa7bd0335e4a9f35ca9d6c0c3214bdd760072f5533c6599d94577af",
+    "scripts/generate-api-client.mjs": "acdd1d186e1f6760e0e93e4e4bc7cda31a98b40506c8d1f741fe3d0591314f81"
+  },
+  "privateArtifacts": {
+    "lifecycle-read-slice-checks.json": {
+      "path": "/private/tmp/talli-release-20261009/lifecycle-read-slice-checks.json",
+      "sha256": "e3529f0f34edb646be7e1a54c91a723cf6a17a8b23454b443b429d7fc9af4ca1",
+      "bytes": 3151
+    },
+    "talli-rf-withdrawal-generation-architecture-final.log": {
+      "path": "/private/tmp/talli-rf-withdrawal-generation-architecture-final.log",
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    },
+    "talli-rf-withdrawal-generation-ci-final.log": {
+      "path": "/private/tmp/talli-rf-withdrawal-generation-ci-final.log",
+      "sha256": "f639c15129f8162d836ccbeeae07ff35116820bfa71e42371ebde706696fa4bf",
+      "bytes": 11021
+    },
+    "talli-rf-withdrawal-lifecycle-partition.log": {
+      "path": "/private/tmp/talli-rf-withdrawal-lifecycle-partition.log",
+      "sha256": "ff3ed3d2ab3a44d4fa3a4376553a71ad6a389aa14fab2a2e6d603147a52cf64f",
+      "bytes": 324
+    }
+  },
+  "limits": [
+    "Three actual restricted-role lifecycle database cases were collected only: complete lifecycle/scope/history/capture replay, outsider concealment, and a withdrawal committed between two enumerations. They require execution in full CI.",
+    "Editor rendering was tested with React SSR; actual browser behavior over live lifecycle storage remains pending. Existing capture loss/browser/independent restore also still awaits completed CI.",
+    "Rollout is ordered: withdrawal schema before new backend, lifecycle backend endpoint before new web. New web on old backend remains visibly unavailable and never treats legacy currentness as authoritative. This does not establish both deployment orders are usable.",
+    "Before any withdrawal activation, old binaries and rollback targets must be drained/fenced. New-backend legacy409 cannot protect an old direct SQL/list reader.",
+    "Archive completion isolation/verified coverage, Company Access receipt eligibility and Governance evidence repair remain separate unresolved dependencies. Writer execution stays ungranted; all A1-A7 and immutable complete gates remain pending."
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e4e5bc9b30acd3d581d30faa47774da65755fc68",
+  "problem": "Owned Storage recovery rejected distinct retained originals sharing one document ID",
+  "change": "Group immutable retained originals by document and metadata identity; select the ordinary object generation using its exact current Documents metadata hash",
+  "assertions": [
+    "Conflicting retained content for one metadata identity is rejected",
+    "Current metadata must match exactly one generation; missing, ambiguous and foreign-document matches are rejected",
+    "A unit regression chooses the older generation even when a newer retained version appears first",
+    "An exact Documents metadata fixture renames the original after the first rejected filing without changing its ID or bytes",
+    "The actual owner UI re-verifies that original before approving and submitting the correction; metadata digest changes while content digest stays equal",
+    "Strict downloaded archive verification includes both retained generations and preserves prior approval/submission history",
+    "Two actual pg_dump/pg_restore and separate Storage volume/API restorations preserve five source originals plus four feedback originals across eight ordinary objects",
+    "One document has two retained generations; current downloads select by metadata hash and all historical generations are separately compared through Documents",
+    "Existing expiry denial, cancellation, independent deletion review, MFA, tenant isolation, direct Storage denial and unchanged-source assertions pass"
+  ],
+  "validation": {
+    "browserPassed": 1,
+    "browserDurationMilliseconds": 159471.982834,
+    "fixtureChecksPassed": 38,
+    "restoreBoundaryChecksPassed": 43,
+    "architecture": "passed",
+    "whitespace": "passed",
+    "finalRevisionCi": "pending",
+    "cleanup": "passed; all 42 recorded preexisting containers restored and Colima stopped"
+  },
+  "limitations": [
+    "The rename is a bounded disposable metadata fixture, not a new public edit API; it does not establish metadata-writer concurrency behavior",
+    "Synthetic quiescent local restoration; original Auth still verifies sessions",
+    "Complete retention inventory/policy, legacy feedback backfill, independent Auth/cluster-role and hosted Storage recovery remain",
+    "No genuine AS data, real provider operation, hosted mutation, production enablement or RF acceptance promotion"
+  ],
+  "sha256": {
+    "scripts/rf1086_storage_restore.py": "3d1a09453451eb6574564e030e1aac2d79a73917bfc7b0e810abe815beaac6dc",
+    "scripts/rehearse-rf1086-owned-restore.py": "29e7a4c48318ce35da9d0f918528ac1fe4a06b1c23ba34cdada2b4b0f20bfc6a",
+    "apps/backend/tests/test_rf1086_storage_restore_runner.py": "5e222b8ee74a5cad2b18aec991cd8d08ea2ff85f8eec97d0a99016e8d3beace5",
+    "tests/browser_shareholder_register_filing.mjs": "12b6cea6021c3b83f7c5e16d043d1f1d095d3fc3b6db9021f82f3b48e6fd6056",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "644a024db1f6a45732a693e2bfed8ce58723e3f1122463f33210d453972292d7",
+    "docs/security/backup-restore-runbook.md": "836fd407bea54af4eab3cb2901105c1370927160afa5c18a5a838683fe662f4f"
+  }
+}

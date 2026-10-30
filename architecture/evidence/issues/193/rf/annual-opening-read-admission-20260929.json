@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_OPENING_INPUT",
+  "baseCommit": "b68c3c86",
+  "change": "RF reads the existing exact-year opening and shareholder owner queries inside source admission. A versioned immutable digest commits every original row field, including precise Decimal amounts, lock/creation timestamps, attribution and complete holder extent. No no-activity case is rendered and onboarding capital is not equated with statutory start-of-year capital.",
+  "authority": "No new SQL grant, migration or writer. Existing owner queries preserve accepted membership and quarantine checks; source admission supplies current accepted ownership and the held company guard. Existing company-archive triggers serialize opening/holder writes.",
+  "verification": {
+    "unit": "114 opening/Documents/Ledger/admission cases pass, including22 focused opening cases for exact scope, empty versus unavailable, duplicate/orphan/foreign holders, lock timestamps, finite precise capital, allocation totals and changed evidence digests.",
+    "database": "30 combined opening/Documents/Ledger/interview/company-guard cases pass. Four new opening cases cover prior-year exclusion, exact current identity, same-count metadata changes, quarantine refusal, expired scope, committed facts after waiting, and a real holder writer blocked until admission ends.",
+    "architecture": "Architecture check and79 CI/rehearsal harness cases pass.",
+    "cleanup": "Owned local PostgreSQL container removed; Colima talli restored to stopped.",
+    "ci": "Full Supabase CI for these opening changes remains pending. The run at afe0ce36 covers the earlier Ledger change only."
+  },
+  "limits": [
+    "This is an annual input, not a ready or send decision. The stored-ready SQL prerequisite has not been replaced.",
+    "The annual input digest is independently versioned and does not change the legacy opening-rendering digest.",
+    "Guarded annual composition, warning acknowledgements, remaining release prerequisites and full-year dispatch/recovery remain open.",
+    "All seven RF acceptance criteria remain pending. No real company or provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-opening-20260929-14d7",
+  "sha256": {
+    "unit.log": "9c79133ef1ce480e5509858f6c0660c9c51d23205d68bd15b156a29ea3520674",
+    "database-combined.log": "ef209323aacd2b7da74745a1d1d8aab8bfb19496dc2706b3a6ba312fac76ee8c",
+    "architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "ci-harness.log": "9a6bc73db9bffd7b46d7b36600829d5ca28fdbab82274cd36213a801de9085dd",
+    "cleanup.log": "6216a9bb8c81974c99b3cfbb2d53e6c193b69e6c91efef3d0f3a83166948a907"
+  }
+}

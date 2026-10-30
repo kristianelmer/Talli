@@ -8,11 +8,13 @@ from talli_backend.modules.company_tax_filing.public import TaxSettlementPersist
 from talli_backend.modules.documents.public import DocumentBindingPersistence
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
+from talli_backend.application.company_tax_delivery_source import TaxDeliverySourceInputs
+from talli_backend.modules.company_tax_filing.public import TaxDeliveryDraftPersistence, TaxDeliveryJournalPersistence
 
 
 class CompanyTaxTransaction(
     TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence, CompanyTaxSourcePersistence, AuditInclusion, LedgerPersistence, TaxSettlementBankingPersistence,
-    DocumentBindingPersistence, Protocol,
+    DocumentBindingPersistence, TaxDeliverySourceInputs, TaxDeliveryDraftPersistence, TaxDeliveryJournalPersistence, Protocol,
 ):
     @property
     def actor_id(self) -> ActorId: ...
@@ -21,6 +23,9 @@ class CompanyTaxTransaction(
 class CompanyTaxSession(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
+
+    @property
+    def delivery_rehearsal_target(self) -> str | None: ...
 
     def transaction(self, *, snapshot: bool = False) -> AbstractAsyncContextManager[CompanyTaxTransaction]: ...
 

@@ -1,0 +1,87 @@
+{
+  "version": "tax-owner-review-artifact-proof-v1",
+  "baselineRevision": "d1a595ccfdc6f49aed5045cb202c7baea90f3250",
+  "status": "LOCAL_ENGINEERING_PROOF_ONLY",
+  "scope": [
+    "Read-only complete owner-review artifact after known V4 preparation and V3 confirmation-stage proof; initial approval, preparation originals and current owning source remain bound.",
+    "Every validation deviation, changed value, guidance text, failure reason and company subject flag is preserved. Every calculated document retains exact bytes and all scalar leaves, attributes and meaningful mixed text in indexed paths.",
+    "The exact enclosing validation-response original, including BOM and whitespace, is included and hash-checked; XML character normalization affects only presentation.",
+    "Stable sorted UTF-8 content commitment, unchanged after reload or dispatch-admission expiry; whole-artifact 24 MiB limit and an early aggregate field bound prevent path amplification.",
+    "Current owner/MFA and complete Annual/Ledger/Investments source are independently rechecked after XML parsing. Default composition remains closed; this read makes no provider request or business write.",
+    "One additive GET route and typed generated SDK response. Web checks content/approval commitments, fixed pins, complete counts, unique paths and decoded original hashes; failures remain unavailable.",
+    "Frozen V4 request bytes, all existing OpenAPI paths/schemas, source/journal versions, SQL stores and company export bytes remain unchanged. No final confirmation, submission, receipt or Tax-acceptance authority is granted."
+  ],
+  "validation": {
+    "focusedBackendAndApi": {
+      "passed": 161,
+      "privateLog": "owner-review-regression-v2.log"
+    },
+    "actualSignedMfaFullOwningTopology": {
+      "passed": 3,
+      "privateLog": "owner-review-signed-topology-v2.log",
+      "includes": "Real signed AAL2/AAL1, restricted runtime, owning Annual/Ledger/Investments, real loopback HTTP, actual API artifact through SDK/web; successful and lost preparation ACK cases."
+    },
+    "browserNegativeCasesPerArtifact": 19,
+    "webTransport": {
+      "passed": 31,
+      "privateLog": "owner-review-web-regression-v1.log"
+    },
+    "typecheck": "PASS",
+    "architecture": "PASS; dependency evidence unchanged",
+    "generatedArtifacts": "PASS",
+    "whitespace": "PASS",
+    "ownedStackCleanup": {
+      "status": "cleaned",
+      "stopReturncode": 0,
+      "existingContainersUnchanged": true,
+      "newRunningContainers": []
+    },
+    "secretEnvironmentRemoved": true,
+    "mandatoryPartition": {
+      "status": "PASS",
+      "markerParity": true,
+      "minimumTaxCases": 162,
+      "privateLog": "owner-review-partition-v2.log"
+    }
+  },
+  "review": {
+    "standardsFindings": 0,
+    "initialSpecFindings": 1,
+    "fixed": "Included exact enclosing validation response and browser raw-hash check.",
+    "followupSpecFindings": 0,
+    "allReviewAgentsClosed": true
+  },
+  "closedGates": [
+    "Real provider activation",
+    "Live filing",
+    "Production release",
+    "Billing and paid operations",
+    "Original Model3/P-H compatibility"
+  ],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/adapters/company_tax_calculated_schemas.py": "19cbe6e4eb03c2860aa8fd612c1be37bbd9a6e0a7f5e3a8127a44cdb748bff34",
+    "apps/backend/src/talli_backend/adapters/company_tax_response_schemas.py": "59b252a5230e04c8b3011629b390695727b9e4d7e126212db49de790c2254beb",
+    "apps/backend/src/talli_backend/application/company_tax_delivery_submission.py": "e26c01cddd546080b428ceb4774acd503e48e06f1e092cfcdd7aa7dd9aa10dbf",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "86f6a6467ad5415402523278fcb06cb01da5a0b4c1f37407eb11af916f477d56",
+    "apps/backend/src/talli_backend/main.py": "3b1a0bb28086260919891aef057ee4b0d9afde787221543e8ee8797e4b7fb308",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "9bdaafa212cbd7d09965e49cc93702bcf65fd485e6aa8f089f46a78ec9f4733e",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_owner_review.py": "94ef90f9646c373f06d64e25e6636b6f84cad524235322bb91a87aa36522e56f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/delivery_validation_review.py": "624c247f1e42323d34462bd083419b51c05f5474e47c535fe8ef27b0a5accf43",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "52cda6d931bff37b57fde4219dfd8a5bf5873c629fa285f0a9b5c78950e01938",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "dc6a52960fa45ca442b14bdd4ecbe7541381fec677cfdd318f0f77d01b689e26",
+    "apps/backend/tests/test_company_tax_confirmation_database.py": "56dc61f03036182e4a831ac62e4724694f55eb0ef9eb62acf31ab2b01a525783",
+    "apps/backend/tests/test_company_tax_delivery_owner_review.py": "389cc32654db539116e904e9141d9f41c18b10caa07ede24bda5f1ca0562aeb2",
+    "apps/backend/tests/test_company_tax_delivery_owner_review_api.py": "d6ede2a649a2a6a99db70c8d6538d32d6f81f8eb0f2065d619c7363b51f7e8b5",
+    "apps/backend/tests/test_company_tax_validation_review.py": "150717aa1d6df44396d9a2ff980dd9288e7286a9c2b8f5dccbf8ad61d4815481",
+    "apps/web/features/company-tax-filing/MODULE.md": "fe2a73be14d93c646a2ec8c3f154593b951a8b151d1391d0ec87d5193c731b56",
+    "apps/web/features/company-tax-filing/index.ts": "3703e6b4e6c87063c57285b9ec1acb1e2d3f53b32619112701621613d6dd05e7",
+    "apps/web/features/company-tax-filing/module.json": "583723becebcdf40f6183be3325058c719aa3ea215b65b13e635e52d6905e9ab",
+    "apps/web/features/company-tax-filing/transport.ts": "16327cdb6100aa81ab0a46e2efa99b1949e5e1793d655f6ce1791b21cfdc339b",
+    "architecture/BACKEND-SYSTEM.md": "f77223e127f4be8d3727ae0935ec03b6298ee186058ce2c05813048300bf936d",
+    "architecture/backend-system.json": "61f7988dc4c0ed7489babeb645ebccf2f603e50bedfc3ea3faece2ea50a62af6",
+    "contracts/openapi/talli-v1.json": "7dd350920340af71f91e8b0a717eeb0bfa58faa7b6a699402136907ea942f8fd",
+    "packages/talli-api-client/src/generated/client.ts": "f983336e6b63c6af6136b10fc85ad0036caafe521c520575eea0ab3bc0914ed2",
+    "scripts/generate-api-client.mjs": "d0e01bd59788a9ca85de68e4e32ef4c985f06201ba7e5ae99008505033ab961b",
+    "tests/support/check-tax-owner-review-client.mjs": "2f5f39e0ffa19665c089d239f61f10ec6adfbfa739c4e78fda62a6a2ac01ffeb"
+  }
+}

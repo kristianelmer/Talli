@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_RECUTOVER_VALIDATOR_FIX",
+  "baseCommit": "8dc089e7bf1f621f4f347a23749b14236ae9dd7f",
+  "problem": "CI run 36398579593 failed replacing backend_system.lock_ledger_writer_year_v1 inside the Governance/Ledger guard migration. PostgreSQL language validation requires EXECUTE even when the replacing role owns the function; historical retirement can revoke that permission.",
+  "behavior": [
+    "Temporarily borrow EXECUTE for the exact function owner only when missing, replace the body as that owner, then revoke the temporary permission before existing exact ACL/owner checks.",
+    "Preserve the company-first wrapper, routine OID, owner, security-definer setting, configuration, schema ACLs and role memberships.",
+    "Archive composition tests import the actual RF receipt verifier, fixing their mock loader omission of its new source-original dependency."
+  ],
+  "verification": {
+    "postgres": "Cached disposable PostgreSQL 17: reproduced owner validation denial; actual complete migration, repeated replay, fail-closed rollback and replay preserve exact privileges. The tracked isolated-overload regression also executed successfully against this database.",
+    "webBoundary": "573 passed (469 + 104).",
+    "archiveComposition": "67 passed.",
+    "migrationContracts": "79 passed for replay scope and CI harness checks.",
+    "databaseCollection": "18 tests collected; full hosted CI still required.",
+    "architecture": "PASS"
+  },
+  "limits": [
+    "A minimal local owner/actor fixture is not a complete Supabase rehearsal.",
+    "Final-revision CI is pending.",
+    "All seven RF acceptance criteria remain PENDING; real AS pilot, full history/object restore and other documented pre-AS work remain outstanding."
+  ],
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false,
+    "filingAuthorityAdded": false
+  },
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-recutover-validator-20260928-14d7",
+  "sha256": {
+    "talli-owner-validator-probe.py": "7d0e473bfb5b9d48afc659a5c5f368333e81cc129a797c329d62f33a5414660a",
+    "talli-validator-migration-probe.py": "caa23f2d6f452ae25295701186aff1c3da89cef2c218901253dcb26260619745",
+    "talli-validator-migration-probe.log": "08f4e7cdd734884996c7079b96e905295d96ae5846380aa5e92626cc3e170621",
+    "talli-validator-contract.log": "cf9963b4eae0ce00ed7cd41f401b56244c85bb3218f1dcfec147ec37bfd9e83a",
+    "talli-validator-db-collection.log": "1a6a2f685fca750e9be4a0ac95d8e881e0287a2048b288524b28cbb58f863e6f",
+    "talli-validator-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-archive-composition-fix.log": "fbe879e07348a3bccefb49cbcebaea00bf6540b98a8c328340d2cd649601b458",
+    "talli-archive-boundary-web.log": "e0c2b3088c4ed8664ee7801b006e3c257272b8b8c1b1fdf4a3107e5c9f83b0e8",
+    "talli-8dc-database.log": "3d0594d618576b76e2b83a86011ebc3bbdba51cef33c293bbf51db28b8be57b8",
+    "talli-8dc-application.log": "eef9a1604551af18f0fe27432d36bf73010214fd9f574ef2c458f8fd05cd45e0"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "rf-claim-read-only-denial-oracle-repair-v1",
+  "recordedAtUtc": "2026-10-11T00:13:48.205932+00:00",
+  "baseline": "dc9a6c71e4b8c8a1afd1aca1ec689be1a1029b58",
+  "status": "FIXTURE_ONLY_REVIEWED_SPEC0_STANDARDS0_ACTUAL_GATE_PENDING",
+  "actualCi": {
+    "run": 38095454400,
+    "head": "95838c3c2e5d4afc5dc67635149e18980a674834",
+    "claim": "13PASS/1FAIL/6UNEXECUTED",
+    "retention": "24UNEXECUTED",
+    "fullAuthority": "1516PASS/1FAIL/61UNEXECUTED of1578"
+  },
+  "diagnosis": "Published FORCE RLS source_claim_owner filters source_submission_bindings in SECDEFINER reader by current accepted ownership. Read-only membership preserves member read permission but hides binding from function owner; actual adapter sees null composite and preflight header is unavailable. Application raises basis_unavailable before the test expected later SQL guard.",
+  "repair": "Expect exact typed basis_unavailable for read_only only. Capture nonempty one binding/submission/head before demotion; restore only fixture owner observer visibility in finally, then assert all three retained tables unchanged. Banned oracle exactFORBIDDEN unchanged. No product SQL/function/policy/ACL/route/grant changes.",
+  "feedback": {
+    "red": {
+      "failed": 1,
+      "seconds": 0.72,
+      "rawSha256": "14e6457677f8e9a896f4e927317b64f5c2f7881f36175fdd04dd528fd79bf108",
+      "qualification": "Real application/adapter over a post-filter connection double; reproduces wrong exception-type oracle, no DB/Auth proof."
+    },
+    "native": {
+      "checks": 9,
+      "status": "PASS_PROJECTED_NATIVE",
+      "rawSha256": "56bcd1e774bade10888e21032f074c618f3e0eeb6dfcd88a9983f6cddb8cca39",
+      "qualification": "Published reader function/owner FORCE RLS expressions plus actual adapter/application. Minimal schemas, verified actor/member/owner/can_read_submission projected. Samekey ownerpositive/read-onlymiss; retained binding unchanged/reobserverpositive. No fullschema/SQLguard/Auth/production writer proof. OwnedPG16MB Unixsocket stopped/deleted."
+    },
+    "local": {
+      "passed": 179,
+      "seconds": 12.02,
+      "includes": "178protected sourceclaim/foundation/stream/CLI cases plus private corrected-denial loop",
+      "rawSha256": "6dffd537353552f917809f7ea3043a998be9254d34f01b58a686bdf1521fc301"
+    },
+    "dbCollection": {
+      "nodes": 20,
+      "execution": false,
+      "rawSha256": "af5f989391cd234c43dbbc361c0c024191cb9f1062de189a7d5cd283abf1b51c"
+    },
+    "protected": {
+      "status": "PASS",
+      "unchangedOtherTopLevelFunctionSpans": 12,
+      "onlyChangedFunction": "test_actual_revoked_or_unavailable_original_actor_cannot_recover",
+      "baseline": "dc9a6c71e4b8c8a1afd1aca1ec689be1a1029b58",
+      "productionFunctionsPoliciesGrantsUnchanged": true
+    }
+  },
+  "limits": [
+    "Actual current20/all24/fullAuthority rerun pending; local projection/unit/collection does not clear these.",
+    "No browser/identity/restore/fullpipeline/RET002/A1-A7/all-three/launch claim."
+  ],
+  "reviews": {
+    "Spec": {
+      "findings": 0,
+      "sha256": "1b26ba287201bc58f0d50186c1e3dab6264eb32887900a038d1b19ebf68a3d03",
+      "rootVerifiedPins": 27
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "2287944486143f22fdd2250ce8e27f5302aeb79b21cbb475e3130d38a3522da1",
+      "rootVerifiedPins": 33
+    },
+    "fixtureBytesUnchangedAfterReview": true
+  }
+}

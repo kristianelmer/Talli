@@ -1,0 +1,219 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T15:29:43.863963+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38060484198,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "1d57470681c8de1fb50389a525e588d22e94015f",
+    "runStartedAt": "2026-10-10T14:39:31Z",
+    "updatedAt": "2026-10-10T15:14:17Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38060484198"
+  },
+  "checkout": {
+    "revision": "5080ec31ff08eec706195bd31d0a10dfbd5eab4a",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "1d57470681c8de1fb50389a525e588d22e94015f"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114237570632,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T14:39:34Z",
+      "completed_at": "2026-10-10T15:05:44Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38060484198/job/114237570632"
+    },
+    {
+      "id": 114237570807,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T14:39:34Z",
+      "completed_at": "2026-10-10T15:14:11Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38060484198/job/114237570807"
+    },
+    {
+      "id": 114237571527,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T14:39:32Z",
+      "completed_at": "2026-10-10T14:39:32Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38060484198/job/114237571527"
+    },
+    {
+      "id": 114244264210,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T15:14:14Z",
+      "completed_at": "2026-10-10T15:14:16Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38060484198/job/114244264210"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10848,
+        "skipped": 2,
+        "deselected": 2286,
+        "seconds": 736.37
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.27
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 281.29
+      },
+      "authority": {
+        "passed": 1498,
+        "failed": 0,
+        "collected": 1498,
+        "notExecuted": 0,
+        "seconds": 721.12
+      },
+      "sourceV2DatabasePassed": 109,
+      "closedCaptureV2DatabasePassed": 19,
+      "savedAdmissionV2DatabasePassed": 12,
+      "sourcePreviewV2DatabasePassed": 18,
+      "retainedCorrectionReaderDatabasePassed": 31,
+      "laterPythonSummaries": [
+        {
+          "passed": 15,
+          "seconds": 2.07
+        },
+        {
+          "passed": 22,
+          "seconds": 16.88
+        },
+        {
+          "passed": 3,
+          "seconds": 7.55
+        },
+        {
+          "passed": 7,
+          "seconds": 2.36
+        },
+        {
+          "passed": 41,
+          "seconds": 32.05
+        }
+      ],
+      "laterNodeSummaries": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "milliseconds": 66331.97789
+        },
+        {
+          "passed": 13,
+          "failed": 0,
+          "milliseconds": 5689.899154
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "milliseconds": 38715.515263
+        }
+      ],
+      "rfBrowser": {
+        "tests": 38,
+        "passed": 28,
+        "failed": 10,
+        "milliseconds": 450464.823604
+      }
+    }
+  },
+  "failure": {
+    "cases": [
+      "owner completes RF capture, correction and lost main response through the canonical backend",
+      "owner completes RF capture, correction and process crash at main response through the canonical backend",
+      "owner completes RF capture, correction and process crash before main provider mutation through the canonical backend",
+      "owner completes RF capture, correction and lost child response through the canonical backend",
+      "owner completes RF capture, correction and process crash at child response through the canonical backend",
+      "owner completes RF capture, correction and process crash before child provider mutation through the canonical backend",
+      "owner completes RF capture, correction and lost confirmation response through the canonical backend",
+      "owner completes RF capture, correction and process crash at confirmation response through the canonical backend",
+      "owner completes RF capture, correction and process crash before confirmation provider mutation through the canonical backend",
+      "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend"
+    ],
+    "boundary": "tests/browser_shareholder_register_filing.mjs:351 offline verification of actual native browser archive download",
+    "exception": "CLI exited1 with rf1086_archive_verification_failed",
+    "diagnosis": "Actual download emits stream-v2/archive-v6; common browser CLI calls only legacy stream-v1 verifier. Controlled actual-producer stream fails common CLI and passes dedicated retained verifier with strict feedback checks. CI download bytes unavailable; no assertion that later correction/unknown-outcome browser steps ran.",
+    "repair": "Explicit bounded codec dispatch to unchanged legacy/retained owner verifiers; regression and whole successor CI pending."
+  },
+  "notReached": [
+    "Later correction and unknown-outcome assertions in ten failing browser cases",
+    "Rendered public acquisition journey job step",
+    "Independent identity/project/object recovery",
+    "Tax and Accounts readiness lanes"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-app-raw.log",
+      "sha256": "7ed29a434134a0581ffc4fe0738670a41c76f0e035a02ea5d657cff7915ed82d",
+      "bytes": 466959
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-database-job-full-private.log",
+      "sha256": "a63583092cc9c055c2b79f61ff9aa2f64ecf774b7f4847bcd0f9535bbd643e51",
+      "bytes": 1169357
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-db-raw.log",
+      "sha256": "c2a17889de44a9117beeef9a88d16a232c97ae4b0499b2cdc4c5185cd997fd64",
+      "bytes": 759393
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-merge-parents.json",
+      "sha256": "2f1b3fa46e55e955c17a75af78c97203986d9a03419e1db9100ce0bbb6b39663",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-terminal-api.json",
+      "sha256": "28d7ed7b8babc786c3cdab04855939c8b41901a916ea1e3bc8e1a81b162a2da3",
+      "bytes": 12743
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38060484198-terminal-jobs.json",
+      "sha256": "3cb2e74d1e30940f3e0b06cab408fac24291009b30336aaf378fd42046f68d84",
+      "bytes": 9999
+    }
+  ],
+  "limits": [
+    "Whole run failed; no passing release or canonical immutable gate receipt.",
+    "Python full-schema fixture passes do not establish independent Auth/project/object recovery.",
+    "Earlier Billing migration deadlock remains unresolved despite subsequent700-case passes.",
+    "Closed approval-v3 WIP excluded from pinned head; all A1-A7 pending."
+  ]
+}

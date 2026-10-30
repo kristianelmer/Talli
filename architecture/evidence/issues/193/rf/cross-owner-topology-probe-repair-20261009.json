@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Cross-owner topology observation without foreign-schema access",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "7a16c34006fa46977fbc311a1f508a225adb1599",
+  "status": "LOCAL_REPAIR_REVIEWED_NATIVE_CATALOG_AND_HARNESS_PASS_WHOLE_CURRENT_CI_PENDING",
+  "observedFailure": {
+    "run": 38001797771,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38001797771",
+    "headSha": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+    "checkout": "39cbc95e144401b8dc82f86c75454a06144ab880",
+    "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "headParent": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+    "databaseJobConclusion": "failure",
+    "authorityRfPassed": 16,
+    "authorityRfSetupErrors": 1,
+    "authorityRfDurationSeconds": 7.45,
+    "message": "InsufficientPrivilege: permission denied for schema corporate_governance while rf193_consequential_topology executes its Governance presence query.",
+    "roleContext": "Source inspection of rf193_successor_topology shows SET LOCAL ROLE shareholder_register_filing_store_owner before this query. The exception text alone does not report current_role.",
+    "notReached": [
+      "later withdrawal database cases",
+      "fresh RF browser",
+      "full-year capture recovery",
+      "independent Auth/object restore"
+    ],
+    "wholeWorkflowAtRepair": "Application remains active; no whole-run terminal result claimed."
+  },
+  "change": "Replace the new Governance and Ledger signature-name resolvers with exact pg_proc/pg_namespace schema/name/function-kind/argument-identity queries. Preserve both Governance body markers and narrow RF public-contract privilege checks through catalog OIDs. No runtime or fixture privileges broadened.",
+  "checks": {
+    "existingCiHarnessPassed": 108,
+    "nativeCatalogGroupsPassed": 6,
+    "nativeScope": "Exact old/new registry probes with minimal routine fixtures under RF owner role, no Governance/Ledger USAGE; no business body/RLS/full migration proof.",
+    "independentReview": "Zero material findings.",
+    "rootReview": "Exact overload identities, two body markers and narrow consumer schema/function privileges retained; missing states fail closed.",
+    "nativeNegativeStates": [
+      "old queries raise42501",
+      "missing consumer schema USAGE or function EXECUTE",
+      "missing either Governance body marker",
+      "wrong Governance overload",
+      "missing/wrong Ledger overload",
+      "missing exact RFv2 overload"
+    ],
+    "catalogAndAclUnchangedByObservation": true,
+    "ownedClusterRemoved": true
+  },
+  "sourceFileSha256": {
+    "scripts/rf-consequential-successors.json": "00581d1f34c6752ac47a9a23d03c0c6a7b92b65d4601feb84dd7baf37f8de37b"
+  },
+  "privateArtifacts": {
+    "ci38001797771-database-failure-context-sanitized.log": {
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-database-failure-context-sanitized.log",
+      "sha256": "1815e1c83dd08feb2d888ac95fc54213331634edf527ab1a45fc81fc59710eeb",
+      "bytes": 4171
+    },
+    "ci38001797771-database-failure-sanitized.log": {
+      "path": "/private/tmp/talli-release-20261009/ci38001797771-database-failure-sanitized.log",
+      "sha256": "a11b8f8e3f3fbf447bb46baf26e890c1f29e14d477e7711d587a0751cec0c39d",
+      "bytes": 1680
+    },
+    "presence-probe-schema-denied-native.json": {
+      "path": "/private/tmp/talli-release-20261009/presence-probe-schema-denied-native.json",
+      "sha256": "2ab54c498dec11af526f7f0c92a60ffa036e8d9b92efaf4cfe0c5d1acf6c18b1",
+      "bytes": 1124
+    },
+    "presence-probe-schema-denied-native.log": {
+      "path": "/private/tmp/talli-release-20261009/presence-probe-schema-denied-native.log",
+      "sha256": "ba84c3befa71afd8a25a3901e184199018c26c3e30a266fa57e8e89b4b6f9f04",
+      "bytes": 976
+    },
+    "check-presence-probe-schema-denied-native.py": {
+      "path": "/private/tmp/talli-release-20261009/check-presence-probe-schema-denied-native.py",
+      "sha256": "675b57f24b2468386c1b57a8e7c409830b26027cdcc472a41328fa6026ffb755",
+      "bytes": 9133
+    },
+    "cross-owner-topology-ci-gate.log": {
+      "path": "/private/tmp/talli-release-20261009/cross-owner-topology-ci-gate.log",
+      "sha256": "97eed3da4c6ffce4b39c2b37ab356a64666133a5cbad3871fba43bb31d4bdd75",
+      "bytes": 11399
+    }
+  },
+  "limits": [
+    "Current run tests the older1dcc revision and cannot prove this local repair. Full CI must rerun at a later pushed revision.",
+    "Native checks establish catalog observation and privilege preservation only. All A1-A7 and release gates remain pending."
+  ]
+}

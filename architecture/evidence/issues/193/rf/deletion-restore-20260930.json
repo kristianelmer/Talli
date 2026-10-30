@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e39dbd940a6fa89de9c3599b1a2c077c12e23ce3",
+  "scope": "Two actual restorations: retention_hold, then final deletion after independent case-bound review",
+  "browserAssertions": [
+    "Actual scoped grant to a separate synthetic admin reviewer with fresh MFA",
+    "Unopened case cannot approve deletion",
+    "Opened case independently approves deletion; exact review replay is identical",
+    "Finalization rejects the export made before support/review audit changes",
+    "Owner downloads a fresh complete company archive; finalization and replay return deleted",
+    "RF production review rejects the deleted company",
+    "RF history and filing provider journal unchanged through all lifecycle operations"
+  ],
+  "restorationAssertions": [
+    "Retention_hold restoration remains required before finalization",
+    "A second pg_dump/pg_restore plus separate Storage volume/API restores the finalized state",
+    "Real authenticated Company Access reads compare complete cancellation before, within and after restoration",
+    "Independent reviewer reads the complete scoped support case from restored Company Access",
+    "Approved review identity, case binding, cancellation binding and deleted_retention_record marker are preserved",
+    "Each restoration preserves four source versions, three approvals/submissions and eight ordinary source/feedback objects",
+    "Owner downloads, outsider/pre-MFA denial, direct Storage denial and Linux extended attributes are checked in both restorations",
+    "Source RF, cancellation, support-case, document and cluster authority state stays unchanged"
+  ],
+  "validation": {
+    "unpatchedBrowserPassed": 1,
+    "unpatchedBrowserDurationMilliseconds": 153441.092042,
+    "patchedNextVersion": "16.3.8",
+    "patchedBrowserPassed": 1,
+    "patchedBrowserDurationMilliseconds": 164009.159208,
+    "fixtureChecksPassed": 38,
+    "restoreBoundaryChecksPassed": 14,
+    "architecture": "passed",
+    "finalRevisionCi": "pending"
+  },
+  "limitations": [
+    "Synthetic local lifecycle marker; no business-data purge",
+    "Expiry, retained-original generations and full retention inventory/policy remain",
+    "Original local Auth verifies sessions; independent Auth/cluster-role/hosted storage recovery remains",
+    "All seven RF acceptance criteria pending; no real AS data, hosted mutation or genuine provider operation"
+  ],
+  "sha256": {
+    "tests/fixtures/rf1086-cancellation-browser-journey.mjs": "92d4a87a03d8504d0379013ec596c2d2361531ae2be90258c17efaf02facf259",
+    "tests/browser_shareholder_register_filing.mjs": "c93952b3bff78c46e48e716d3765c5983e2fe2c9385b3398eb65b2a5c682e9e6",
+    "tests/support/rf1086-fixture-access.mjs": "696e11dde5979bfcf17286eb370bdfa24d36599755cabbed440354f13e797370",
+    "scripts/rehearse-rf1086-owned-restore.py": "cdf4f481da538fcbf47b1d494982be004a5f19cf2cb01284e30683bce58f9af1",
+    "docs/security/backup-restore-runbook.md": "c91fb36fba8bf39450656023d61dcf13f00fb9f16123de0869a1c3a91cabc03c"
+  }
+}

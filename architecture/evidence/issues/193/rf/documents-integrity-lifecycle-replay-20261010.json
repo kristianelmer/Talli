@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Restore closed Documents integrity successor in empty predecessor lifecycle rehearsal",
+  "observedDateUtc": "2026-10-10",
+  "baseRevision": "649fd94408b2a36046fff233b0a0058c48d6b3c4",
+  "status": "LOCAL_FIX_NATIVE_REPRODUCED_AND_REPAIRED_FULL_DATABASE_EXECUTION_PENDING",
+  "observedFailure": {
+    "run": 38006694049,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38006694049",
+    "headSha": "649fd94408b2a36046fff233b0a0058c48d6b3c4",
+    "checkout": "8894ecf43502362b6be1c91e5f367228301cfa6a",
+    "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "databaseJob": 114077006646,
+    "databaseJobConclusion": "failure",
+    "message": "SQLSTATE2BP01 at predecessor Documents schema drop: five retentive integrity functions remain after earlier empty-table rollbacks. New integrity migration installed successfully.",
+    "documentsLifecyclePassed": 14,
+    "documentsLifecycleFailed": 1,
+    "wholeWorkflowAtRepair": "Application still running; this record does not claim a whole-workflow conclusion.",
+    "notReached": [
+      "owner browser",
+      "Billing lifecycle",
+      "Authority/RF and new Documents database cases",
+      "RF browser/full-year capture recovery",
+      "independent Auth/object restore"
+    ]
+  },
+  "change": "Test-only teardown requires both a registry proven empty while FORCE RLS is temporarily removed transactionally and absence of retained_originals after its production empty-only rollback. Remove only the exact five closed integrity functions, with no CASCADE. Capture absent-or-complete installed successor before mutation and replay its unchanged whole migration on each recutover. Assert exact definitions, owners and existing authenticated/service-role denials. Production migrations and retentive rollback remain unchanged.",
+  "checks": {
+    "nativeGroupsPassed": 4,
+    "nativeScope": "Whole Documents integrity migration plus exact test-only teardown on native PostgreSQL17 with minimal forced-RLS retained/registry tables and explicit CompanyAccess/company-lock stubs. Not full Supabase lifecycle, production migration chain or original-byte integrity proof.",
+    "nativeResults": [
+      "Exact teardown refuses hidden populated registry and any retained-original table before dropping functions; all function bodies/ACLs, FORCE RLS and role edges unchanged",
+      "Production retentive rollback leaves populated original table and all5 functions unchanged",
+      "Reproduced SQLSTATE2BP01 predecessor schema-drop failure from retained integrity functions after empty table removal",
+      "Two empty teardown/schema-drop/whole-successor recutovers restore exact5 function definitions, owners, ACLs and role memberships"
+    ],
+    "nodeReplayScopePassed": 12,
+    "realDatabaseLifecycleSkipped": 1,
+    "realDatabaseSkipReason": "DATABASE_URL unavailable in this local bounded run; full lifecycle requires later CI.",
+    "diffCheck": "PASS",
+    "ownedNativeClusterRemoved": true,
+    "independentReview": "Zero actionable findings on exact frozen two-file source hashes; no independent runtime claim."
+  },
+  "sourceFileSha256": {
+    "tests/documents_migration_lifecycle.test.mjs": "e8bfd5622148aa5443fe249262ac443dd85b331db5e248fbfbc45d807877f400",
+    "tests/support/documents_retention_rehearsal.mjs": "2977d8ca7e0864fbc625e4c5af7d7c01e96af3f4525b0b9849d8aa478c40fa7a",
+    "supabase/migrations/20261009232839_documents_historical_original_integrity.sql": "831d0c8f9d0ca8fbc217b5d8aae879096259ba5bb1c63530804c738b0f338478",
+    "supabase/rollback/20261009232839_documents_historical_original_integrity.sql": "eb2b2e94bd9fd1e2315f58f67c2f253333966b58f7d28c8ab7dbf9d3334b3eea"
+  },
+  "privateArtifacts": {
+    "check-documents-integrity-lifecycle.py": {
+      "path": "/private/tmp/talli-release-20261009/check-documents-integrity-lifecycle.py",
+      "sha256": "9fe69c786387ca29f0a16df3aaaa15195cae6ed25f6d47f9e4a873861c1113d1",
+      "bytes": 6820
+    },
+    "documents-integrity-lifecycle-native.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-integrity-lifecycle-native.json",
+      "sha256": "f99da4914042e71223047229b6f91d0e5c566530a5a05927f3e042189fe84002",
+      "bytes": 1249
+    },
+    "documents-integrity-lifecycle-native.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-integrity-lifecycle-native.log",
+      "sha256": "df77ecf59cda4cd87c70b67fd4ec8db3a0046408104dfb756b4279c8cb9cd964",
+      "bytes": 981
+    },
+    "ci38006694049-database-failure-context-sanitized.log": {
+      "path": "/private/tmp/talli-release-20261009/ci38006694049-database-failure-context-sanitized.log",
+      "sha256": "78669bc266c6c50ad90523263cc4e1aec8d42d0b99cc3cf63ce9bfc7d280b654",
+      "bytes": 2264
+    }
+  },
+  "limits": [
+    "The native harness uses minimal retained/registry tables and explicit CompanyAccess/company-lock stubs. It does not execute the whole predecessor migration lifecycle or prove live admission, races, actual retained-original bytes or object storage.",
+    "The running649 workflow excludes this repair and Governance persistence work. A later complete workflow is required. All A1-A7 and release gates remain pending."
+  ]
+}

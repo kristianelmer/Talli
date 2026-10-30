@@ -1,0 +1,56 @@
+{
+  "version": "tax-delivery-journal-foundation-v1",
+  "status": "LOCAL_FOUNDATION_NOT_PRODUCT_COMPLETE",
+  "baseRevision": "758854549b0651ccf30629a3ed4433a4b8843120",
+  "artifacts": {
+    "supabase/contract-migrations/20261026100000_company_tax_delivery_events.sql": "fab5e30ff843f41add835a363815c47cb9fad1bff68c087b7af89b29eb040013",
+    "supabase/rollback/20261026100000_company_tax_delivery_events.sql": "9eeb7965227ad23d27a1f625aebd2a7fc7613988b6f3e4c2d234de194746d0db"
+  },
+  "validation": {
+    "focusedPythonPassed": 213,
+    "legacyApiWorkflowPassed": 35,
+    "nativePostgresIncludedInFocused": 8,
+    "ciContractPassed": 181,
+    "architecture": "passed",
+    "openapiUnchanged": "passed",
+    "whitespace": "passed"
+  },
+  "review": {
+    "standards": {
+      "findings": 0,
+      "method": "static"
+    },
+    "spec": {
+      "findings": 0,
+      "independentFocusedPassed": 104,
+      "independentNativePostgresPassed": 8
+    }
+  },
+  "implemented": [
+    "immutable exact review/request/completion originals",
+    "single insertion election under company lock",
+    "uncertain intent remains reconciliation-only",
+    "bound late completion after owner/MFA changes",
+    "post-lock containment of new reviews/intents",
+    "positive SourceV3 nine-table coverage and linked journals",
+    "V1/V2 refuse complete coverage after event table appears"
+  ],
+  "defaults": {
+    "newReviewAndIntentWrites": false,
+    "runtimeDispatcher": false,
+    "hostedMigrationApplied": false,
+    "providerActivation": false
+  },
+  "remaining": [
+    "full Company Access topology proof",
+    "V3 company-export/archive composition and reader-first rollout",
+    "finite loopback runtime admission",
+    "approval/dispatch/reconciliation workflows",
+    "clean-scan and validation observations",
+    "feedback/final receipt/correction originals",
+    "connected desktop/touch Tax flow",
+    "Accounts completion",
+    "operational launch gates"
+  ],
+  "compatibility": "V1/V2 retain their exact prior hash inputs and fail closed on the new table. New event originals are decoded strictly by version. No hosted expansion until V3 readers and archive composition are ready."
+}

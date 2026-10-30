@@ -45,7 +45,7 @@ end; $borrow$;
 create schema annual_accounts_filing authorization annual_accounts_filing_store_owner;
 revoke all on schema annual_accounts_filing from public,anon,authenticated,service_role;
 grant usage on schema annual_accounts_filing to annual_accounts_filing_workflow_executor;
-grant usage on schema public,auth,extensions,backend_system to annual_accounts_filing_store_owner;
+grant usage on schema public,extensions,backend_system to annual_accounts_filing_store_owner;
 grant execute on function public.company_access_auth_uid_v1(),public.company_access_auth_jwt_v1(),
  public.company_access_is_accepted_member_v1(uuid),public.company_access_is_accepted_owner_v1(uuid)
  to annual_accounts_filing_store_owner;

@@ -1,3 +1,5 @@
+import { mockLegacyRfBackend } from "./fixtures/rf1086-legacy-backend.mjs";
+import { retainedArchiveSource } from "./fixtures/rf1086-retained-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -8,6 +10,7 @@ import ts from "typescript";
 import { presentOpeningSnapshots } from "../features/ledger/presentation.ts";
 import * as rfPresentation from "../features/shareholder-register-filing/presentation.ts";
 import { loadRf1086ArchiveSource } from "../features/shareholder-register-filing/transport.ts";
+import { rf1086ArchiveReceiptsMatch } from "../app/lib/archive.ts";
 
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url), "utf8");
@@ -46,11 +49,25 @@ const workspace = () => ({ companyId, incomeYear: null,
   reviewComments: [{ id: uid(6), previewId: uid(2024 + 300), companyId, target: "rf1086_preview", severity: "hard_block",
     body: "Retained older-year comment", createdBy: uid(1), acknowledgedBy: uid(1), acknowledgedAt: at, createdAt: at }],
   testEvidence: [evidence(uid(4)), evidence(uid(44))], overrides: [], approvals: [],
-  productionSubmissions: [{ id: uid(8), companyId, incomeYear: 2025, status: "accepted" }], feedbackArtifacts: [], actions: [],
+  productionSubmissions: [], productionEvents: [], feedbackArtifacts: [], actions: [],
 });
 
-function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {} } = {}) {
+function emptyTaxDeliveryArchive(company, year) {
+  const reference = `company-tax:${company}:${year}`;
+  return { sourceFacts: {
+    evidence: { companyId: company, incomeYear: year, obligation: "skattemelding", scope: "talli_recorded_company_tax",
+      reference, version: "company-tax-source-v1:" + "0".repeat(64), digest: "0".repeat(64), evaluatedAt: at },
+    readinessStatus: "blocked", hardBlocks: ["company_tax_production_disabled"],
+    historyCoverage: { status: "complete", reasons: [], evidenceReference: reference,
+      asOf: at, submissionCount: 0, scope: "talli_recorded_company_tax" },
+    recordedSubmissions: [], productionAttempts: [], correctionLinks: [], incidents: [], outcomes: [],
+  }, originals: null };
+}
+
+function route({ companyId: selectedCompany = companyId, generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {},
+  taxDeliveryDrafts, documentObjects = [] } = {}) {
+  const companyId = selectedCompany;
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
@@ -102,7 +119,21 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
       },
       presentOpeningSnapshots, loadLedgerEntriesForArchive: empty, presentLedgerEntriesForArchive: value => value,
     },
+    "../../../../../features/annual-accounts-filing": {
+      loadAccountsCompanyArchiveSource: async (access, company, year) => {
+        calls.push("read:accounts-archive-api");
+        assert.equal(access, "verified-owner"); assert.equal(company, companyId);
+        return {data: {companyId: company, incomeYear: year, draftCount: 0}, error: failures.accountsArchive ?? null};
+      },
+    },
     "../../../../../features/company-tax-filing": {
+      loadTaxDeliveryDraftArchiveSource: async (access, company, year) => {
+        calls.push("read:tax-delivery-api");
+        assert.equal(access, "verified-owner"); assert.equal(company, companyId);
+        assert.equal(Number.isInteger(year), true);
+        return { data: taxDeliveryDrafts === undefined ? emptyTaxDeliveryArchive(company, year) : taxDeliveryDrafts,
+          error: failures.taxDeliveryDrafts ?? null };
+      },
       loadTaxSettlementArchiveSource: async (access, company, year) => {
         calls.push("read:tax-api");
         assert.equal(access, "verified-owner"); assert.equal(company, companyId);
@@ -122,6 +153,8 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
         return { companyId: company, incomeYear: year, simulations,
           previews: rf.previews.filter(row => row.incomeYear === year),
           reviewComments: rf.reviewComments, permissions: rf.permissions,
+          approvals: rf.approvals, productionSubmissions: rf.productionSubmissions,
+          productionEvents: rf.productionEvents, feedbackArtifacts: rf.feedbackArtifacts,
           testEvidence: rf.testEvidence.filter(row => evidenceIds.has(row.id)) };
       },
     },
@@ -129,10 +162,11 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
       ...["loadInvestmentAcquisitionLots", "loadInvestmentActivity", "loadInvestmentPositions", "loadInvestmentShareSaleAllocations", "loadInvestmentCorrections"].map(key => [key, empty]),
       ...["effectiveInvestmentActivity", "presentAcquisitionLots", "presentInvestmentActivity", "presentInvestmentPositions", "presentShareSaleAllocations", "presentInvestmentCorrections"].map(key => [key, value => value]),
     ]),
-    "../../../../../features/documents": { loadDocumentBackupProjection: async (_access, _company, incomeYear) => ({ companyId, incomeYear, objects: [] }) },
+    "../../../../../features/documents": { loadDocumentBackupProjection: async (_access, _company, incomeYear) => ({ companyId, incomeYear, objects: documentObjects }) },
     "../../../../../features/corporate-governance": { listCorporateDecisionLifecycle: async () => ({ corporateDecisions: [], corporateDocumentSets: [], corporateDocumentArtifacts: [], corporateDocumentEvents: [], corporateDecisionFinalizations: [] }), listSupportedCorporateEvents: empty },
     "../../../../../features/billing": { loadBillingSnapshot: async () => ({ accounts: [] }), presentBillingAccount: value => value },
     "../../../../lib/archive": { firstArchiveSourceError: results => results.find(result => result.error)?.error ?? null,
+      rf1086ArchiveReceiptsMatch,
       buildPersistedCompanyArchive: value => { calls.push("build"); captures.push(value); return { originalArchiveInput: value }; } },
     "../../../../lib/company-access-context": { loadAcceptedMembershipCompany: async () => ({ id: companyId, org_number: "923456789", name: "Synthetic AS" }) },
     "../../../../lib/security": { requireStepUpForAction: async () => { calls.push("mfa"); if (!mfa) throw Error("step-up"); } },
@@ -149,6 +183,53 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   return { calls, captures, readTables, openingYears, rfYears,
     run: (incomeYear = 2025) => exports.GET(new Request("https://talli.example/archive"), { params: Promise.resolve({ companyId, incomeYear: String(incomeYear) }) }) };
 }
+
+test("company export forwards the complete owned Tax draft projection before recording its receipt", async () => {
+  const taxDeliveryDrafts = emptyTaxDeliveryArchive(companyId, 2025);
+  const raw = '\uFEFF{"original_key":"æ\\r\\n","nested":{"B":2,"a":1}}\r\n';
+  taxDeliveryDrafts.originals = { companyId, incomeYear: 2025, codec: "company-tax-delivery-draft-archive-v1",
+    coverage: "complete", sourceSha256: "0".repeat(64), observedAt: at, recordCount: 1,
+    records: [{ filingId: uid(90), recordedAt: at, canonicalJson: raw,
+      draftSha256: createHash("sha256").update(raw).digest("hex") }] };
+  const fixture = route({ taxDeliveryDrafts });
+  assert.equal((await fixture.run()).status, 200);
+  assert.equal(fixture.captures[0].taxDeliveryDrafts, taxDeliveryDrafts);
+  assert.equal(fixture.captures[0].taxDeliveryDrafts.originals.records[0].canonicalJson, raw);
+  assert.ok(fixture.calls.indexOf("read:tax-delivery-api") > fixture.calls.indexOf("read:tax-filing-api"));
+  assert.ok(fixture.calls.indexOf("build") > fixture.calls.indexOf("read:tax-delivery-api"));
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+for (const options of [
+  { failures: { taxDeliveryDrafts: Error("owned Tax archive unavailable") } },
+  { taxDeliveryDrafts: null },
+]) test("unavailable owned Tax draft source cannot build or complete a company export", async () => {
+  const fixture = route(options);
+  assert.equal((await fixture.run()).status, 503);
+  assert.equal(fixture.captures.length, 0);
+  assert.equal(fixture.calls.includes("company_archive_complete_export"), false);
+  assert.equal(fixture.calls.includes("read:opening-api"), false);
+});
+
+test("company export completes with actual V2-source V6 JSON and every portable original", async t => {
+  const value = retainedArchiveSource();
+  const previous = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  t.after(() => { if (previous === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = previous; });
+  const paths = [];
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    paths.push(new URL(url).pathname);
+    assert.equal(request.headers.Authorization, "Bearer verified-owner");
+    return Response.json(value);
+  });
+  const fixture = route({ companyId: value.companyId, rf: value, openings: [], rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await fixture.run(value.incomeYear)).status, 200);
+  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production-v6"]);
+  const production = fixture.captures[0].rf1086Production;
+  for (const key of ["canonicalArchive", "sourceOriginals", "feedbackOriginals", "sourceHistoryDocuments"])
+    assert.deepEqual(production[key], value[key], key);
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
 
 // Captured original query chains at 91b before removing the two wholly owned opening reads.
 const ORIGINAL_MIXED_CHAINS = [
@@ -259,9 +340,10 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
     else process.env.TALLI_BACKEND_URL = previousUrl;
   });
   const queries = [];
-  t.mock.method(globalThis, "fetch", async (url, request) => {
+  mockLegacyRfBackend(t, async (url, request) => {
     const parsed = new URL(url), year = Number(parsed.searchParams.get("incomeYear"));
-    assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source");
+    if (parsed.pathname.endsWith('/production-v4')) return new Response(null, { status: 404 });
+    assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source/production");
     assert.deepEqual([...parsed.searchParams.entries()].sort(), [["companyId", companyId], ["incomeYear", String(year)]]);
     assert.equal(new Headers(request.headers).get("Authorization"), "Bearer verified-owner");
     assert.equal(request.cache, "no-store");
@@ -271,7 +353,8 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
     return Response.json({ companyId, incomeYear: year, previews: [row],
       simulations: [{ ...simulation(year), calls: [], feedbackItems: [], receiptMetadata: null,
         submittedPayloadRef: null, submittedPayload: null }],
-      reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [] });
+      reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [],
+      approvals: [], productionSubmissions: [], productionEvents: [], feedbackArtifacts: [] });
   });
   const valid = route({ rfLoader: loadRf1086ArchiveSource });
   assert.equal((await valid.run(2025)).status, 200);
@@ -395,4 +478,154 @@ test("owned Accounts archive retains requested-year rows, company-wide comments,
   assert.deepEqual(fixture.readTables, ["audit_events", "bank_suggestion_acceptances"]);
   assert.ok(fixture.calls.indexOf("read:accounts-filing-api") > fixture.calls.indexOf("company_archive_begin_export"));
   assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+function productionArchiveFixture() {
+  const rf = workspace(); rf.simulations = [];
+  const approval = { id: uid(201), companyId, incomeYear: 2025, previewId: preview(2025).id,
+    payloadHash: "a".repeat(64), entitlementId: uid(202), manifest: { exact: "retained" } };
+  const submission = { id: uid(203), companyId, incomeYear: 2025, approvalId: approval.id,
+    payloadHash: approval.payloadHash, entitlementId: approval.entitlementId, supersedesSubmissionId: null,
+    status: "accepted", feedbackState: "accepted", feedbackArtifactCount: 1 };
+  const event = { id: uid(204), companyId, incomeYear: 2025, submissionId: submission.id,
+    operationName: "feedback_reconcile", operationState: "succeeded", resultingStatus: "accepted" };
+  const receipt = { id: uid(205), companyId, submissionId: submission.id, documentId: uid(206),
+    sha256: "b".repeat(64), byteLength: 123, contentType: "application/xml", authorityReference: "immutable-receipt" };
+  const object = { documentId: receipt.documentId, contentSha256: receipt.sha256, byteLength: receipt.byteLength,
+    contentType: receipt.contentType, storageKey: "company/year/receipt.xml", status: "stored", removedAt: null };
+  Object.assign(rf, { approvals: [approval], productionSubmissions: [submission], productionEvents: [event], feedbackArtifacts: [receipt] });
+  return { rf, documentObjects: [object] };
+}
+
+test("production-only RF history exports exact canonical lineage with its verified receipt object", async () => {
+  const input = productionArchiveFixture(), fixture = route(input);
+  assert.equal((await fixture.run()).status, 200);
+  assert.deepEqual(plain(fixture.captures[0].rf1086Production), {
+    companyId, incomeYear: 2025, approvals: input.rf.approvals,
+    productionSubmissions: input.rf.productionSubmissions, productionEvents: input.rf.productionEvents,
+    feedbackArtifacts: input.rf.feedbackArtifacts,
+  });
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+for (const change of [null, { contentSha256: "c".repeat(64) }, { byteLength: 124 },
+  { contentType: "text/plain" }, { status: "removed" }, { storageKey: "" }, { removedAt: at }]) {
+  test(`receipt object mismatch cannot create a completed archive: ${JSON.stringify(change)}`, async () => {
+    const input = productionArchiveFixture();
+    input.documentObjects = change ? [{ ...input.documentObjects[0], ...change }] : [];
+    const fixture = route(input);
+    assert.equal((await fixture.run()).status, 500);
+    assert.equal(fixture.captures.length, 0);
+    assert.equal(fixture.calls.includes("company_archive_complete_export"), false);
+  });
+}
+
+function legacyArchiveResponse(year) {
+  return { companyId, incomeYear: year, previews: [preview(year)],
+    simulations: [{ ...simulation(year), calls: [], feedbackItems: [], receiptMetadata: null,
+      submittedPayloadRef: null, submittedPayload: null }],
+    reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [] };
+}
+
+for (const status of [404, 500, 403]) {
+  test(`archive rollout handles unavailable production endpoint HTTP ${status} explicitly`, async (t) => {
+    const previousUrl = process.env.TALLI_BACKEND_URL;
+    process.env.TALLI_BACKEND_URL = "https://backend.example";
+    t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+      else process.env.TALLI_BACKEND_URL = previousUrl; });
+    const paths = [];
+    mockLegacyRfBackend(t, async url => {
+      const parsed = new URL(url); paths.push(parsed.pathname);
+      if (parsed.pathname.endsWith("/production") || parsed.pathname.endsWith("/production-v4")) return Response.json({ detail: "Unavailable" }, { status });
+      return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
+    });
+    const fixture = route({ rfLoader: loadRf1086ArchiveSource });
+    assert.equal((await fixture.run()).status, status === 404 ? 200 : 500);
+    if (status === 404) {
+      assert.equal(paths.length, 3);
+      assert.equal(paths[2], "/api/v1/shareholder-register-filings/archive-source");
+      assert.equal(fixture.captures[0].rf1086Production, undefined, "unknown production history must not become empty arrays");
+    } else {
+      assert.equal(paths.length, 1);
+      assert.equal(fixture.captures.length, 0);
+    }
+  });
+}
+
+test("successful production archive endpoint cannot omit productionSubmissions", async (t) => {
+  const previousUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = previousUrl; });
+  const paths = [];
+  mockLegacyRfBackend(t, async url => {
+    const parsed = new URL(url); paths.push(parsed.pathname);
+    return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
+  });
+  const fixture = route({ rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await fixture.run()).status, 500);
+  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production-v4"]);
+  assert.equal(fixture.captures.length, 0);
+});
+
+test('full-year archive requires exact retained source versions independently of current-year objects', () => {
+  const filing = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-submission-archive.json', import.meta.url), 'utf8'));
+  const documents = { companyId: filing.companyId, incomeYear: filing.incomeYear, objects: [] };
+  assert.equal(rf1086ArchiveReceiptsMatch(filing, documents), true);
+  assert.equal(filing.sourceOriginals[0].sourceIncomeYear, 2024);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: [] }, documents), false);
+  for (const mutation of [{ contentSha256: 'f'.repeat(64) }, { byteLength: 1 }, { sourceIncomeYear: 2025 },
+    { metadataSha256: 'f'.repeat(64) }, { canonicalOriginal: '{}' }]) {
+    assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: [{ ...filing.sourceOriginals[0], ...mutation }] }, documents), false);
+  }
+});
+
+test('download forwards canonical evidence and retained feedback without current bucket metadata', async () => {
+  const rf = JSON.parse(readFileSync(new URL('./fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+  const fixture = route({ rfLoader: async () => rf, documentObjects: [] });
+  assert.equal((await fixture.run()).status, 200);
+  for (const key of ['sourceApprovalLineage', 'sourceSubmissionClaims', 'submissionHead', 'canonicalArchive',
+    'sourceOriginals', 'feedbackOriginals', 'sourceHistoryDocuments']) {
+    assert.deepEqual(plain(fixture.captures[0].rf1086Production[key]), rf[key]);
+  }
+});
+
+for (const [name, change] of [
+  ['missing originals', rf => { rf.feedbackOriginals = []; }],
+  ['duplicate originals', rf => { rf.feedbackOriginals.push(rf.feedbackOriginals[0]); }],
+  ['deleted bindings and originals', rf => { rf.feedbackArtifacts = []; rf.feedbackOriginals = []; }],
+  ['missing binding', rf => { delete rf.feedbackArtifacts[0].originalId; }],
+  ['changed metadata', rf => { rf.feedbackArtifacts[0].originalMetadataSha256 = 'f'.repeat(64); }],
+  ['changed timestamp below millisecond precision', rf => { rf.feedbackArtifacts[0].originalRetainedAt = rf.feedbackArtifacts[0].originalRetainedAt.replace('.123', '.123001'); }],
+  ['changed bytes', rf => {
+    const original = JSON.parse(rf.feedbackOriginals[0].canonicalOriginal);
+    original.contentBase64 = 'AA=='; rf.feedbackOriginals[0].canonicalOriginal = JSON.stringify(original);
+  }],
+]) {
+  test(`download refuses retained feedback corruption: ${name}`, async () => {
+    const rf = JSON.parse(readFileSync(new URL('./fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+    change(rf);
+    const fixture = route({ rfLoader: async () => rf });
+    assert.equal((await fixture.run()).status, 500);
+    assert.equal(fixture.captures.length, 0);
+  });
+}
+
+test('unapproved source history requires all retained metadata versions and independent register originals', async (t) => {
+  const filing = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
+  assert.equal(filing.approvals.length, 0);
+  const documents = { companyId: filing.companyId, incomeYear: filing.incomeYear, objects: [] };
+  assert.equal(rf1086ArchiveReceiptsMatch(filing, documents), true);
+  assert.equal(filing.sourceOriginals.length, 5);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: [], sourceOriginals: [] }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: filing.sourceOriginals.slice(1) }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: [] }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: null }, documents), false);
+  const priorUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = 'https://backend.example';
+  t.after(() => { if (priorUrl === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = priorUrl; });
+  mockLegacyRfBackend(t, async url => new URL(url).pathname.endsWith('/production-v4')
+    ? new Response(null, { status: 404 }) : Response.json(filing));
+  const loaded = await loadRf1086ArchiveSource('token', filing.companyId, filing.incomeYear);
+  assert.deepEqual(loaded, filing);
 });

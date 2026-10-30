@@ -8,21 +8,33 @@ from datetime import datetime
 import os
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 from talli_backend.adapters.supabase_ledger import (
     LedgerSupabaseConfiguration, SupabaseLedgerAdapter,
     _VerifiedActor, _line_payload, _map_database_error, _posted_entry,
+    SupabaseLedgerSnapshotQueries,
 )
+from talli_backend.adapters.supabase_investments import SupabaseInvestmentsSnapshotQueries
+from talli_backend.application.annual_data_compatibility import decode_annual_interview_history
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
+from talli_backend.application.company_tax_delivery_preparation import CompanyTaxDeliveryPreparation
+from talli_backend.application.company_tax_delivery_submission import CompanyTaxDeliverySubmission
+from talli_backend.application.company_tax_delivery_rehearsal import loopback_tax_database_scope
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, Timestamp, UserId
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
+    TaxDeliveryDraft, StoredTaxDeliveryDraft, TaxDeliveryDraftPersistence, decode_tax_delivery_draft,
+    TaxDeliveryJournalPersistence, StoredTaxDeliveryEvent, TaxDeliveryEventAppend, TaxDeliveryJournal,
+    TaxDeliveryReviewApproval, TaxDeliveryMutationRequest, TaxDeliveryMutationCompletion, decode_tax_delivery_event,
+    TaxDeliveryAdmissionEvidence, TaxDeliveryInstanceObservation,
+    TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryProcessAcknowledgment,TaxDeliveryFeedbackObservation,TaxDeliveryEventFormat,tax_delivery_event_format,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
     AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
@@ -50,6 +62,7 @@ def _company_tax_database_error(error: psycopg.DatabaseError):
         'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
         'company_tax_return_hard_review_block': CompanyTaxError.hard_review_block,
         'company_tax_return_unavailable': CompanyTaxError.unavailable,
+        'company_tax_delivery_draft_conflict': CompanyTaxError.draft_conflict,
     }
     message = error.diag.message_primary or ''
     if message == 'company_tax_evidence_mfa_required':
@@ -120,6 +133,19 @@ class PostgresCompanyTaxSession:
     def actor_id(self):
         return self._verified.actor_id
 
+    @property
+    def delivery_rehearsal_target(self):
+        try:
+            values=conninfo_to_dict(self._database_url)
+            if (values.get('service') or values.get('servicefile') or os.environ.get('PGSERVICE')
+                    or values.get('hostaddr','127.0.0.1')!='127.0.0.1'
+                    or os.environ.get('PGHOSTADDR','127.0.0.1')!='127.0.0.1'):
+                return None
+            return loopback_tax_database_scope(values.get('host'),int(values.get('port','0')),
+                values.get('dbname'),values.get('user'))
+        except (ValueError,TypeError,psycopg.ProgrammingError):
+            return None
+
     @asynccontextmanager
     async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[PostgresCompanyTaxTransaction]:
         if not self._database_url:
@@ -143,6 +169,8 @@ class PostgresCompanyTaxSession:
             raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(TaxDeliveryDraftPersistence)
+@tax_settlement_persistence_adapter(TaxDeliveryJournalPersistence)
 @tax_settlement_persistence_adapter(CompanyTaxSourcePersistence)
 @tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
 @audit_inclusion_adapter(AuditInclusion)
@@ -162,6 +190,161 @@ class PostgresCompanyTaxTransaction:
     @property
     def actor_id(self):
         return self._verified.actor_id
+
+    def _delivery_draft(self, value):
+        try:
+            draft = decode_tax_delivery_draft(value['canonical_json'], value['draft_sha256'])
+            source = draft.envelope.source
+            if (value['id'] != draft.filing_id or value['company_id'] != str(source.company_id)
+                    or type(value['income_year']) is not int or value['income_year'] != int(source.income_year)
+                    or value['prepared_by'] != str(draft.prepared_by.subject)
+                    or value['command_key'] != str(draft.command_key)):
+                raise ValueError()
+            return StoredTaxDeliveryDraft(draft, Timestamp(datetime.fromisoformat(value['recorded_at'])))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def _delivery_row(self, query, parameters):
+        try:
+            return await self._one_idempotent_row(query, parameters)
+        except LedgerError:
+            raise CompanyTaxError.unavailable() from None
+
+    async def store_delivery_draft(self, draft: TaxDeliveryDraft) -> StoredTaxDeliveryDraft:
+        if draft.prepared_by != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._delivery_row(
+            ('select company_tax_filing.store_delivery_draft_v3(%s::text,%s::text,%s::text) as result' if draft.correction_parent is not None else
+             'select company_tax_filing.store_delivery_draft_v2(%s::text,%s::text,%s::text) as result' if draft.current_document is not None else
+             'select company_tax_filing.store_delivery_draft_v1(%s::text,%s::text,%s::text) as result'),
+            (draft.canonical_json, draft.sha256, str(self.actor_id.subject)))
+        stored = self._delivery_draft(row['result'])
+        if stored.draft != draft:
+            raise CompanyTaxError.unavailable()
+        return stored
+
+    def _delivery_event(self, value,*,guarded_upload=False,validation_evidence=False,confirmation_evidence=False,submission_evidence=False):
+        try:
+            event=decode_tax_delivery_event(value['canonical_json'],value['event_sha256'],
+                Timestamp(datetime.fromisoformat(value['recorded_at'])),ActorId(ActorKind.USER,UserId(value['recorded_by'])),
+                guarded_upload=guarded_upload,validation_evidence=validation_evidence,confirmation_evidence=confirmation_evidence,submission_evidence=submission_evidence)
+            binding=event.binding
+            if (value['filing_id']!=binding.filing_id or value['company_id']!=str(binding.company_id)
+                    or type(value['income_year']) is not int or value['income_year']!=int(binding.income_year)
+                    or value['slot']!=event.slot or type(value['sequence']) is not int or value['sequence']<1):
+                raise ValueError()
+            if type(event.value) is not TaxDeliveryMutationRequest and value['recorded_by']!=str(binding.approved_by.subject):
+                raise ValueError()
+            return event
+        except (ValueError,KeyError,TypeError,AttributeError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def append_delivery_event(self, value) -> TaxDeliveryEventAppend:
+        try:format=tax_delivery_event_format(value)
+        except ValueError:raise CompanyTaxError.invalid_input() from None
+        submission=format is TaxDeliveryEventFormat.SUBMISSION
+        confirmation=submission or format is TaxDeliveryEventFormat.CONFIRMATION
+        validation=confirmation or format is TaxDeliveryEventFormat.VALIDATION
+        guarded=validation or format is TaxDeliveryEventFormat.GUARDED_UPLOAD
+        rpc={
+            TaxDeliveryEventFormat.SUBMISSION:'append_delivery_submission_event_v1',
+            TaxDeliveryEventFormat.CONFIRMATION:'append_delivery_confirmation_event_v1',
+            TaxDeliveryEventFormat.VALIDATION:'append_delivery_validation_event_v1',
+            TaxDeliveryEventFormat.GUARDED_UPLOAD:'append_delivery_guarded_event_v2',
+            TaxDeliveryEventFormat.OBSERVATION:'append_delivery_observation_v1',
+            TaxDeliveryEventFormat.JOURNAL:'append_delivery_event_v1',
+        }[format]
+        if type(value) is TaxDeliveryReviewApproval:
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.append_delivery_correction_review_v1(text,text,text)') is not null as installed",())
+            if installed['installed'] is True:rpc='append_delivery_correction_review_v1'
+        binding=value.intent if type(value) is TaxDeliveryMutationCompletion else value
+        if type(value) is not TaxDeliveryMutationRequest and binding.approved_by!=self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row=await self._delivery_row('select company_tax_filing.'+rpc+'(%s::text,%s::text,%s::text) as result',
+            (value.canonical_json,value.sha256,str(self.actor_id.subject)))
+        try:
+            result=row['result'];event=self._delivery_event(result['event'],guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation,submission_evidence=submission)
+            same=(event.value==value or (type(value) in (TaxDeliveryInstanceObservation,TaxDeliveryEnvelopeObservation,TaxDeliveryValidationJobObservation,TaxDeliveryValidationResultObservation,TaxDeliveryFeedbackObservation)
+                and type(event.value) is type(value) and result['inserted'] is False
+                and event.value.evidence_sha256==value.evidence_sha256 and event.value.original==value.original))
+            if not same or result['event']['recorded_by']!=str(self.actor_id.subject):raise ValueError()
+            return TaxDeliveryEventAppend(event,result['inserted'])
+        except (KeyError,TypeError,ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def delivery_journal(self, query: CompanyTaxSourceQuery, filing_id: str) -> TaxDeliveryJournal:
+        if query.actor_id!=self.actor_id:raise CompanyTaxError.forbidden()
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v7(uuid,integer,uuid,text)') is not null as installed",())
+        correction=installed['installed'] is True
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v6(uuid,integer,uuid,text)') is not null as installed",())
+        submission=correction or installed['installed'] is True
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v5(uuid,integer,uuid,text)') is not null as installed",())
+        confirmation=submission or installed['installed'] is True
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v4(uuid,integer,uuid,text)') is not null as installed",())
+        validation=confirmation or installed['installed'] is True
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v3(uuid,integer,uuid,text)') is not null as installed",())
+        guarded=validation or installed['installed'] is True
+        installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_delivery_journal_v2(uuid,integer,uuid,text)') is not null as installed",())
+        successor=guarded or installed['installed'] is True
+        row=await self._delivery_row(('select company_tax_filing.read_delivery_journal_v7(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if correction else
+            'select company_tax_filing.read_delivery_journal_v6(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if submission else
+            'select company_tax_filing.read_delivery_journal_v5(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if confirmation else
+            'select company_tax_filing.read_delivery_journal_v4(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if validation else
+            'select company_tax_filing.read_delivery_journal_v3(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if guarded else
+            'select company_tax_filing.read_delivery_journal_v2(%s::uuid,%s::integer,%s::uuid,%s::text) as result' if successor else
+            'select company_tax_filing.read_delivery_journal_v1(%s::uuid,%s::integer,%s::uuid,%s::text) as result'),
+            (str(query.company_id),int(query.income_year),filing_id,str(self.actor_id.subject)))
+        try:
+            result=row['result'];draft=self._delivery_draft(result['draft']).draft
+            if correction and result['correctionCodecVersion']!='tax-correction-lineage-v1':raise ValueError()
+            if successor and result['observationCodecVersion']!='tax-read-evidence-v1':raise ValueError()
+            if guarded and result['guardedUploadCodecVersion']!='tax-guarded-upload-v1':raise ValueError()
+            if validation and result['validationCodecVersion']!='tax-validation-evidence-v1':raise ValueError()
+            if confirmation and result['confirmationCodecVersion']!='tax-confirmation-evidence-v1':raise ValueError()
+            if submission and result['submissionCodecVersion']!='tax-submission-evidence-v1':raise ValueError()
+            if (result['completeEnumeration'] is not True or draft.filing_id!=filing_id
+                    or draft.envelope.source.company_id!=query.company_id or draft.envelope.source.income_year!=query.income_year):
+                raise ValueError()
+            events=tuple(self._delivery_event(value,guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation,submission_evidence=submission) for value in result['events'])
+            journal=TaxDeliveryJournal(draft,events,successor,guarded,validation,confirmation,submission,correction)
+            if any(value['recorded_by']!=str(journal.approval.approved_by.subject) for value in result['events']):raise ValueError()
+            return journal
+        except (KeyError,TypeError,ValueError,AttributeError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def delivery_draft_by_key(self, query: CompanyTaxSourceQuery, command_key) -> StoredTaxDeliveryDraft | None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._delivery_row(
+            'select company_tax_filing.read_delivery_draft_v1(%s::uuid,%s::integer,%s::text,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(command_key), str(self.actor_id.subject)))
+        if row['result'] is None:
+            return None
+        stored = self._delivery_draft(row['result'])
+        if (stored.draft.envelope.source.company_id != query.company_id
+                or stored.draft.envelope.source.income_year != query.income_year
+                or stored.draft.prepared_by != query.actor_id or stored.draft.command_key != command_key):
+            raise CompanyTaxError.unavailable()
+        return stored
+
+    @property
+    def delivery_ledger_queries(self):
+        return SupabaseLedgerSnapshotQueries('', self._verified, self._connection)
+
+    @property
+    def delivery_investments_queries(self):
+        return SupabaseInvestmentsSnapshotQueries(self._verified, self._connection)
+
+    async def delivery_annual_interview(self, query):
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select backend_system.list_annual_data_legacy_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(query.actor_id.subject)))
+        try:
+            return decode_annual_interview_history(row['result'], query.company_id, query.income_year)
+        except (ValueError, TypeError, KeyError, OverflowError):
+            raise CompanyTaxError.unavailable() from None
 
     async def _database_rows(self, query: str, parameters: tuple[object, ...] = ()):
         try:
@@ -310,14 +493,65 @@ class PostgresCompanyTaxTransaction:
             raise CompanyTaxError.unavailable() from None
 
     async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        # Prefer the installed versioned successor. A missing successor never
+        # hides an added store: the unchanged V1 exact-extent proof fails closed.
+        row = await self._delivery_row(
+            "select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v3(uuid,integer,text)') is not null as installed", ())
+        if row['installed'] is True:
+            return await self.journal_history_snapshot(query)
+        row = await self._delivery_row(
+            "select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v2(uuid,integer,text)') is not null as installed", ())
+        return await self._filing_source_snapshot(query, delivery=row['installed'])
+
+    async def delivery_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query, delivery=True)
+
+    async def journal_history_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query,delivery=True,journal=True)
+
+    async def delivery_draft_archive_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        return await self._filing_source_snapshot(query, delivery=True, archive=True)
+
+    async def lock_delivery_draft_archive(self, query: CompanyTaxSourceQuery) -> None:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
-        row = await self._one_idempotent_row(
-            'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+        await self._delivery_row(
+            'select company_tax_filing.lock_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text)',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)))
+
+    async def _filing_source_snapshot(self, query: CompanyTaxSourceQuery, *, delivery: bool, archive: bool = False, journal: bool = False) -> CompanyTaxSourceSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        successor=False;guarded=False;validation=False;confirmation=False;submission=False;correction=False
+        if journal:
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v9(uuid,integer,text)') is not null as installed",())
+            correction=installed['installed'] is True
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v8(uuid,integer,text)') is not null as installed",())
+            submission=correction or installed['installed'] is True
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v7(uuid,integer,text)') is not null as installed",())
+            confirmation=submission or installed['installed'] is True
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v6(uuid,integer,text)') is not null as installed",())
+            validation=confirmation or installed['installed'] is True
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v5(uuid,integer,text)') is not null as installed",())
+            guarded=validation or installed['installed'] is True
+            installed=await self._delivery_row("select pg_catalog.to_regprocedure('company_tax_filing.read_source_snapshot_v4(uuid,integer,text)') is not null as installed",())
+            successor=guarded or installed['installed'] is True
+        row = await (self._delivery_row if delivery else self._one_idempotent_row)(
+            ('select company_tax_filing.read_source_snapshot_v9(%s::uuid,%s::integer,%s::text) as result' if correction else
+             'select company_tax_filing.read_source_snapshot_v8(%s::uuid,%s::integer,%s::text) as result' if submission else
+             'select company_tax_filing.read_source_snapshot_v7(%s::uuid,%s::integer,%s::text) as result' if confirmation else
+             'select company_tax_filing.read_source_snapshot_v6(%s::uuid,%s::integer,%s::text) as result' if validation else
+             'select company_tax_filing.read_source_snapshot_v5(%s::uuid,%s::integer,%s::text) as result' if guarded else
+             'select company_tax_filing.read_source_snapshot_v4(%s::uuid,%s::integer,%s::text) as result' if successor else
+             'select company_tax_filing.read_source_snapshot_v3(%s::uuid,%s::integer,%s::text) as result' if journal else
+             'select company_tax_filing.read_delivery_draft_archive_v1(%s::uuid,%s::integer,%s::text) as result' if archive else
+             'select company_tax_filing.read_source_snapshot_v2(%s::uuid,%s::integer,%s::text) as result' if delivery else
+             'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result'),
             (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
         )
         value = row.get('result')
         try:
+            if journal and value['contractVersion']!=('company-tax-source-v9' if correction else 'company-tax-source-v8' if submission else 'company-tax-source-v7' if confirmation else 'company-tax-source-v6' if validation else 'company-tax-source-v5' if guarded else 'company-tax-source-v4' if successor else 'company-tax-source-v3'):raise ValueError()
             if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
                     or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
                     or type(value['completeEnumeration']) is not bool):
@@ -326,7 +560,10 @@ class PostgresCompanyTaxTransaction:
                 **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
                     'review_comments', 'permissions', 'test_evidence')})
             return CompanyTaxSourceSnapshot(rows, value['coverage'],
-                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'],
+                value['contractVersion'] if delivery else 'company-tax-source-v1',
+                tuple(self._delivery_draft(row) for row in value['deliveryDrafts']) if delivery else (),
+                tuple(self._delivery_event(row,guarded_upload=guarded,validation_evidence=validation,confirmation_evidence=confirmation,submission_evidence=submission) for row in value['deliveryEvents']) if journal else ())
         except (KeyError, TypeError, ValueError, AttributeError):
             raise CompanyTaxError.unavailable() from None
 
@@ -397,5 +634,8 @@ class PostgresCompanyTaxTransaction:
         return _posted_entry(row)
 
 
-def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None) -> CompanyTaxApplication:
-    return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService)
+def compose_company_tax_application(sessions: CompanyTaxSessionFactory | None = None,
+                                   *, preparation: CompanyTaxDeliveryPreparation | None = None,
+                                   submission: CompanyTaxDeliverySubmission | None = None) -> CompanyTaxApplication:
+    return CompanyTaxApplication(sessions or PostgresCompanyTaxAdapter.from_environment(), LedgerService,
+                                 preparation=preparation,submission=submission)

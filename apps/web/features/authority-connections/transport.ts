@@ -5,11 +5,11 @@ import {
   type SystemUserCommandWire,
   type SystemUserResultWire,
 } from "@talli/talli-api-client";
-import { backendBaseUrl } from "#backend-configuration";
+import { backendClientOptions } from "#backend-configuration";
 
 function client(accessToken: string) {
   return createTalliApiClient({
-    baseUrl: backendBaseUrl(), headers: { Authorization: `Bearer ${accessToken}` },
+    ...backendClientOptions(), headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
 

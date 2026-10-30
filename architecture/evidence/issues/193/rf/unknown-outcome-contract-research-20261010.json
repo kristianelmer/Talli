@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PUBLIC_PRIMARY_UNKNOWN_OUTCOME_CONTRACT_RESEARCH",
+  "recordedAtUtc": "2026-10-10T18:26:51.064334+00:00",
+  "baseRevision": "ee8b3bd7f83008116c95eb58e4455fb483d9bb0f",
+  "status": "RESEARCH_ONLY_EXTERNAL_CORRELATION_SEMANTICS_UNPROVED",
+  "note": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/docs/launch/evidence/rf1086-unknown-outcome-contract-2026-10-10.md",
+    "sha256": "8092bf345ccad0c0fb92e34c24ea89757c3e0ff247206b84bff3f30d5997a4fd",
+    "bytes": 12345
+  },
+  "primaryIndex": {
+    "path": "/private/tmp/talli-release-20261009/rf-unknown-contract-research/primary-source-index-v1.json",
+    "sha256": "1bcf243db72cd1ed03527d9f24aa47f6c1a6eaa891e7797c972356661c62d0b7",
+    "bytes": 8001
+  },
+  "rootVerification": {
+    "path": "/private/tmp/talli-release-20261009/rf-unknown-contract-research/root-pin-verification-v1.json",
+    "sha256": "862f565da6b7094d10178e1a985db35e276a834cf6d6133b4d7dbabfcdb83d5c",
+    "bytes": 929
+  },
+  "findings": [
+    "Published/default RF1.2 has six operations; no documented read keyed by main/idempotency key or staged-child identity/status. Unpublished1.3 adds no recovery operation. Absence of documentation does not prove provider recovery impossible.",
+    "Production Dialogporten v1 offers candidate dialog search, transmission list/get and known Altinn instance/correspondence/dialog URN lookup. Reviewed RF contract supplies no authoritative main/key to generic externalReference mapping. Missing/filtered results do not prove non-delivery.",
+    "Dialog aggregate GET may write seen-log metadata/events; search/list do not. Excluded transmissions/attachments require explicit completeness checks. Generic completion/content/time similarity cannot prove exact RF acceptance.",
+    "Exact-body/key replay is a possible documented POST alternative; it is not a non-mutating lookup or permission to bypass Talli unknown stop. Confirmation deduplication/correlation remains an external semantic gate.",
+    "Existing confirmed-only feedback recovery and original keys/bytes/no-auto-resend behavior remain unchanged. Prepare candidate evidence separately, never infer success or retry authority."
+  ],
+  "limits": [
+    "Twelve exact newly downloaded first-party bodies plus three existing RF JSONs verified,0700directory/0600files; prose commit date checked via official repository. Source code repository revision is not a verified deployed binary.",
+    "No authenticated API/provider requests, tokens, POSTs, tests/DB/resources/activation/spending/filings/genuine data/outreach.",
+    "No complete current provider/service conformance or unknown main/child/confirmation recovery proof; allA1-A7 and all-three technical handoffs pending."
+  ]
+}

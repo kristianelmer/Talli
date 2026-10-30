@@ -1,0 +1,239 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_GOVERNANCE_AMENDMENT_COMPANY_GUARD_REPAIR",
+  "recordedAtUtc": "2026-10-10T00:53:08.372095+00:00",
+  "baseRevision": "c94a7c81a670e0230db0afeef801dbe0cc8703fb",
+  "status": "LOCAL_REPAIR_VERIFIED_FULL_DATABASE_EXECUTION_PENDING",
+  "observedFailure": {
+    "run": 38009121217,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38009121217",
+    "headSha": "9c0d800143cf65887e1f04934bcb03278c85d827",
+    "databaseCheckout": "6450bdc8778c6eefa8694eec3e558fd5312a8ed3",
+    "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "databaseConclusion": "failure",
+    "test": "apps/backend/tests/test_governance_ledger_company_guard_database.py::test_backstops_cover_every_company_owned_source_table_and_keep_private_acls",
+    "symptom": "corporate_governance.register_evidence_amendments has no aa_company_write_guard; expected tgtype31 and enabled O, received no row.",
+    "authorityRfCollected": 1249,
+    "authorityRfPassed": 365,
+    "authorityRfFailed": 1,
+    "authorityRfUnexecuted": 883,
+    "cause": "The immutable amendment table was created after the released explicit company-table trigger inventory. Fresh native installation reproduces the omission without any predecessor replay.",
+    "wholeWorkflow": "This repair record binds the terminal DB failure only; the separate run receipt records the eventual whole-workflow result."
+  },
+  "change": [
+    "Add one unconditional BEFORE ROW INSERT/UPDATE/DELETE trigger to the amendment table using the unchanged released private Governance company-lock function; explicitly enable it.",
+    "Validate exact table/helper ownership through catalog joins without requiring foreign-schema USAGE. Temporarily borrow only missing owner-role SET and restore prior self-grant flags; no runtime grant or helper body changes.",
+    "Retentive rollback keeps the required backstop and immutable history. Replay preserves trigger identity and table/function/schema/role authority.",
+    "Register a catalog-only successor probe and six final-topology DB cases; leave the original all-table invariant assertion and frozen persistence/application migrations unchanged."
+  ],
+  "checks": {
+    "centralAndManifestPassed": 127,
+    "centralSkipped": 0,
+    "databaseCollected": 6,
+    "databaseExecuted": 0,
+    "nativeExtensionGroupedChecks": 8,
+    "rootNativeGroupedChecks": 5,
+    "nativeClustersRemoved": true,
+    "architecture": "PASS; dependency-evidence unchanged",
+    "diffCheck": "PASS",
+    "frozenSourceCompatibility": "Prior migration/rollback files and original all-table assertion unchanged"
+  },
+  "nativeEvidence": {
+    "root": {
+      "scope": "Actual frozen amendment table/RLS/immutable-trigger SQL plus unchanged production company-lock and Governance trigger bodies on native PostgreSQL17. Minimal original-event table and accepted-owner/immutability stubs; no complete Supabase or business receipt proof.",
+      "repair": "supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql",
+      "checks": [
+        "Fresh actual table lacks aa_company_write_guard and permits raw owner insert at REPEATABLE READ before repair; no lifecycle replay occurred.",
+        "Whole repair installs exact BEFORE ROW INSERT/UPDATE/DELETE trigger; prior function definitions/ACLs, table RLS/ACLs and role edges unchanged.",
+        "Actual trigger rejects REPEATABLE READ insert before row retention.",
+        "Actual production company guard serializes same-company raw insertion while unrelated company proceeds; both rows rolled back.",
+        "Repair replay and retentive rollback preserve trigger catalog and exact original authority; no fixture row retained."
+      ],
+      "freshCatalog": [
+        [
+          "register_evidence_amendments_immutable",
+          27,
+          "O",
+          "corporate_governance.prevent_corporate_governance_mutation()"
+        ],
+        [
+          "register_evidence_amendments_no_truncate",
+          34,
+          "O",
+          "corporate_governance.prevent_corporate_governance_mutation()"
+        ]
+      ],
+      "status": "PASS",
+      "repairSha256": "355868018c9b6fe4e46d18237bf8f7ce6f460b70905eaed36276259a4424f615",
+      "rollbackSha256": "a83c49ecd4d4f46753fcbcf56f6eea074131c06abb11b0176128f96cff469151",
+      "clusterRemoved": true,
+      "sourceTableSqlSha256": "54c876a41d69c355b4057a4dde6a3b03401cba686b06dd68be7e039371041a1a",
+      "checksCount": 5
+    },
+    "author": {
+      "scope": "Native PostgreSQL17: whole guard repair on exact frozen amendment table/RLS/immutable trigger definitions and exact released company-lock/trigger bodies. CompanyAccess accepted-owner predicate and immutable-error body are explicit minimal stubs, supported-events table is minimal. Raw retained fixture text is not a canonical business receipt; no full Supabase/current-owner/application/receipt proof.",
+      "checks": [
+        "Whole migration restores exact role edges/grantors/schema/table/function ACLs: no_self_edge",
+        "Whole migration restores exact role edges/grantors/schema/table/function ACLs: self_edge_set_false",
+        "Whole migration restores exact role edges/grantors/schema/table/function ACLs: existing_set",
+        "Direct owner inserts with another company or actor are denied by unchanged FORCE RLS; trigger does not grant row authority",
+        "Exact incomplete direct-owner INSERT(company_id) fails FORCE RLS after trigger, before NOT NULL constraints",
+        "Actual trigger locks UPDATE/DELETE row company before unchanged immutable guard; retained row survives both waits",
+        "Populated rollback/reapply preserves retained raw row, every trigger OID/body, authority and RLS",
+        "Exact catalog-only registry probe succeeds without foreign-schema USAGE"
+      ],
+      "serverVersion": "17.11 (Homebrew)",
+      "incompleteRowError": {
+        "class": "InsufficientPrivilege",
+        "sqlstate": "42501"
+      },
+      "status": "PASS",
+      "migrationSha256": "355868018c9b6fe4e46d18237bf8f7ce6f460b70905eaed36276259a4424f615",
+      "rollbackSha256": "a83c49ecd4d4f46753fcbcf56f6eea074131c06abb11b0176128f96cff469151",
+      "clusterRemoved": true,
+      "checksCount": 8
+    }
+  },
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "cf0174cb7d6b39ebb2c739688f8bdd9b824e8b590749432e077d9a8aef4b4337"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "8960e98e855436520a0709c81102b526cd84ffb93bf1377b0bbb8c044f64316e"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_evidence_company_guard_database.py",
+      "sha256": "9476724173a64b440559d1d7f4efd629d345c553e21c546918f17f7e2eba5fc0"
+    },
+    {
+      "path": "package.json",
+      "sha256": "5f2f600a659542998b3c0f41b09d43206763f62df39c6a3c912ee0988477a2b5"
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "bf180d595fab0fccec78b01229c5b6ecf5bc88c034cc7c487231c722c5ec8476"
+    },
+    {
+      "path": "supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql",
+      "sha256": "355868018c9b6fe4e46d18237bf8f7ce6f460b70905eaed36276259a4424f615"
+    },
+    {
+      "path": "supabase/rollback/20261010004653_governance_register_evidence_company_guard.sql",
+      "sha256": "a83c49ecd4d4f46753fcbcf56f6eea074131c06abb11b0176128f96cff469151"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "f396c32383ab675b7217ddee798ed4011099b34016cf0e8483ed4d67a5ef4bdd"
+    },
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "f40e619c988500beaa7475fbd9caf4dd956544b901c8b4c72d5a10714a4877ae"
+    }
+  ],
+  "frozenCompatibility": [
+    {
+      "path": "supabase/migrations/20261009234529_governance_register_evidence_amendments.sql",
+      "sha256": "a592388697cb64aeee183fdb849d39d6eac63b385f7615c5143c6abb8306132c"
+    },
+    {
+      "path": "supabase/rollback/20261009234529_governance_register_evidence_amendments.sql",
+      "sha256": "bedf373770156b7c8448915e42d8e168b0249eff909ae5693e34cd8d03e56399"
+    },
+    {
+      "path": "supabase/migrations/20261010001936_governance_register_evidence_application.sql",
+      "sha256": "9abe61bd3a04af484eea44421166bcfe7a63af98707d5938e4fc0324271b8090"
+    },
+    {
+      "path": "supabase/rollback/20261010001936_governance_register_evidence_application.sql",
+      "sha256": "d856a68fcca82792f280177823ca54ea412dc26a310808fe79e844749471ed7d"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_ledger_company_guard_database.py",
+      "sha256": "18cec4a27dc2559d915cd7042762929031e78463c52e7a744694fed1b53b66c7"
+    }
+  ],
+  "independentReviews": {
+    "standards": {
+      "reviewer": "/root/override_integration",
+      "remainingFindings": 0,
+      "resolvedFindings": 1,
+      "freezeSha256": "44155daadbc1716f87c0393210cb2f1e422b510c9bf5057d81abb327b391e792"
+    },
+    "spec": {
+      "reviewer": "/root/rf_reader_spec_review",
+      "remainingFindings": 0,
+      "freezeSha256": "44155daadbc1716f87c0393210cb2f1e422b510c9bf5057d81abb327b391e792"
+    },
+    "root": {
+      "sourceAndArtifactHashesVerified": true,
+      "redGreenReproduction": "PASS"
+    }
+  },
+  "reviewRepairs": [
+    "Pre-borrow to_regclass/to_regprocedure required unavailable schema USAGE for a restricted migrator; catalog joins preserve least privilege and pass the exact native replay.",
+    "The blocked incomplete-row test originally expected NOT NULL, but native execution proved FORCE RLS raises SQLSTATE42501 first. The test now asserts the existing row-security denial after its company-lock wait."
+  ],
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-freeze.json",
+      "sha256": "44155daadbc1716f87c0393210cb2f1e422b510c9bf5057d81abb327b391e792"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-checks.json",
+      "sha256": "f9c2460d7f1c99e0e028eee3ec5143a4b1b4e6f295ead69e9b85b81a6bc249f5"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-amendment-guard-authority.py",
+      "sha256": "f5ce03cae9689aba2de18908a07eecc1c466a205737e1d4724cb66b2a46bd73d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-guard-authority-native.json",
+      "sha256": "93c040e2e24f16df37329da5f214abd9ad2741dd2522041123732783e1f4780f"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-guard-authority-native.log",
+      "sha256": "7106f9c34782218df2fb9da6992824c024941956c00382918834b3aa48b81599"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-amendment-company-guard.py",
+      "sha256": "9f980754d9b54421848d41e4d0df41db7b44b61490fd0d494a7cec150d709c41"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-before.json",
+      "sha256": "7b8291c1595944ccd0077b47e94a649828e6b6409202fc78e51f9048a34a5391"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-after.json",
+      "sha256": "100c47f0fb3e09a88c8d10d55c266f1b2c70dd7055da293362994ff58bd03826"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-after.log",
+      "sha256": "791451b4680820f27f9d2e8657c78a0721be942371be95caffe4864d2f6f7b25"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-db-collection.log",
+      "sha256": "73878e6fd6c9727d7b95e1d1050b5e085c753669dfbf4867b3bfee4cba8e70d5"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-central.log",
+      "sha256": "c744c2059c959ad91a1b6d72b2b01a16bcfd471c6fb91e4d3ba56013ae00e632"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-company-guard-architecture.log",
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7"
+    }
+  ],
+  "limits": [
+    "Native checks use exact frozen amendment table/RLS/trigger definitions and unchanged released company-lock/trigger body, with accepted-owner and immutable-error functions explicitly stubbed and supported-event table minimal.",
+    "Native retained row contains intentionally raw fixture text, not a validated canonical business receipt. Native checks do not prove full Supabase owner admission, application behavior or byte integrity.",
+    "Eight author extension groups and five independent root groups share exact source/setup concepts; not13 independent integration tests.",
+    "Six full database tests collected only; zero full Supabase DB cases executed.",
+    "Bounded verification commands made no HTTP/RF/Archive activation, provider call, paid action, Docker or CI operation. This evidence accompanies the subsequent reviewed source commit.",
+    "Native root and author groups overlap; they are not thirteen independent full integration tests. Real final-topology DB test bodies remain unexecuted locally.",
+    "This migration is absent from run38009121217. No earlier or ongoing CI result transfers to the repair.",
+    "All A1-A7 remain pending. Full Supabase integration, browser recovery, independent Auth/object restore, capital-case support, hosted/provider acceptance and two linked immutable complete gates remain required."
+  ]
+}

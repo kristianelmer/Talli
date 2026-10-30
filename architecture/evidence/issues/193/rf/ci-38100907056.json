@@ -1,0 +1,103 @@
+{
+  "schema": "rf-integration-ci-observation-v1",
+  "recordedAtUtc": "2026-10-11T02:03:49.285763+00:00",
+  "runId": 38100907056,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38100907056",
+  "headSha": "a2a0282102ec83a2abe02960173bfb5eeaf6ebd9",
+  "mergeSha": "df5030de7eac0b901078ced9922bd61ab3a15dac",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "completedAtUtc": "2026-10-11T01:51:05Z",
+  "verification": {
+    "freshPrHeadAndMergeParentsVerified": true,
+    "bothRawCheckoutMergeVerified": true,
+    "artifacts": 0
+  },
+  "jobs": {
+    "application": {
+      "id": 114356465458,
+      "conclusion": "success",
+      "ordinaryBackend": {
+        "passed": 11220,
+        "skipped": 2,
+        "deselected": 2366,
+        "seconds": 1063.34
+      }
+    },
+    "database": {
+      "id": 114356465735,
+      "conclusion": "failure",
+      "bootstrap": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.14
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 194.44
+      },
+      "authority": {
+        "collected": 1578,
+        "passed": 1578,
+        "failed": 0,
+        "unexecuted": 0,
+        "seconds": 639.38,
+        "requiredApprovalCasesPassedOnly": 36
+      },
+      "claim": {
+        "required": 20,
+        "passed": 20,
+        "failed": 0,
+        "unexecuted": 0,
+        "cleared": true
+      },
+      "companyRetention": {
+        "required": 24,
+        "passed": 24,
+        "failed": 0,
+        "unexecuted": 0,
+        "cleared": true
+      },
+      "rfBrowser": {
+        "selected": 38,
+        "passed": 37,
+        "failed": 1
+      }
+    },
+    "immutableEvidence": {
+      "id": 114356466372,
+      "conclusion": "skipped"
+    },
+    "releaseGate": {
+      "id": 114363238291,
+      "conclusion": "failure"
+    }
+  },
+  "failure": {
+    "stage": "Independent identity restore before target Auth start",
+    "observed": "pg_restore --exit-on-error --clean --if-exists --create --dbname template1 fails database_in_use while recreating the newly initialized target postgres database.",
+    "diagnostic": "database_in_use",
+    "stderrBytes": 208,
+    "stderrSha256": "9975c376f0be984524fb5ea500a9b5d754bdd136cfe40de1e6d8aa7e71a360f8",
+    "inference": "A preloaded worker or another connection can hold the target default database; specific backend identity not observed.",
+    "native": "Separate owned16MB PostgreSQL probe reproduces exact restore flags with explicit connected target session. Fixed target default-database FORCE then same restore passes10checks; stopped/deleted. Not actual Supabase preload/Auth/independent target proof."
+  },
+  "rawEvidence": {
+    "database": "3e1d3af695c9a414ef0083d51bd8e5044a7a6732add12ad856c6597a3802d3bb",
+    "application": "734131047cb30c951c9b403f88f3a363af12de2cd60f58aa0596b12cb3f4f283",
+    "run": "8c643870ba64391e9f53ce6e60ef5cc41545cc804e08048f61cd9a47d494ae54",
+    "jobs": "5c557cd8cbf8e3612ee70ff9b7c856aba16409e3a2b85497222057b54c0e0aaf",
+    "pr": "84606bde1d5d6ed1cd7237b3bb4b93b6eb4c4c65347248e1dfd523a39b61a2f8",
+    "parents": "90349794f2e0be8b09a86cac457d568ccde18a5ba193e7b67aacbe231415527b",
+    "artifacts": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "claimActualPrerequisite": "9e9b0ce54967d22e595cd1a4d7fa200fd189c08a47b27e6453df86dde8b2f7d2",
+    "retentionActualPrerequisite": "cbbea8cb2ac01c1fb549a7cede7c02b257aafe57812bdf6c47866a4ecd5c2b29"
+  },
+  "limits": [
+    "Exact20 claim and24 retention pass-only Authority prerequisites clear, all36 approval preserved; full release/identity/pipeline still failed.",
+    "Target Auth start, nonce binding, revocation, soft deletion and successor-owner independent recovery are unreached after pg_restore failure. No aggregate final deleted recovery/postidentity clearance.",
+    "This run excludes later company-history UI and target preparation repair. No transfer of parent CI acceptance to those changes.",
+    "Raw logs and manifests retained privately; public SHA receipts only. No hosted/genuine/provider/launch clearance."
+  ]
+}

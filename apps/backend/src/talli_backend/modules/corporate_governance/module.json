@@ -9,6 +9,7 @@
   "publicEntryPoint": "talli_backend.modules.corporate_governance.public",
   "exports": {
     "commands": [
+      "AmendSupportedCorporateRegisterEvidence",
       "AnnualCloseProposalCommand",
       "ApproveAnnualCloseCommand",
       "ApproveOwnerDividendCommand",
@@ -22,9 +23,9 @@
       "RecordOwnerDividendPaymentCommand",
       "RecordShareholderLoanCommand",
       "RecordSupportedCorporateEventCommand",
-      "ReverseSupportedCorporateEventCommand",
       "RegisterAnnualCloseDocumentsCommand",
-      "RegisterOwnerDividendDocumentsCommand"
+      "RegisterOwnerDividendDocumentsCommand",
+      "ReverseSupportedCorporateEventCommand"
     ],
     "queries": [
       "AnnualCloseEventKind",
@@ -47,13 +48,27 @@
       "CorporateDecisionFactSources",
       "CorporateDecisionKind",
       "CorporateDecisionRecord",
+      "CorporateDocumentOriginalCommitment",
       "CorporateDocumentReadiness",
       "CorporateDocumentReadinessBlocker",
       "CorporateDocumentSetRecord",
       "CorporateEventRecord",
       "CorporateFinalizationRecord",
+      "CorporateGovernanceYearEvidence",
+      "CorporateGovernanceYearRegisterEvidence",
+      "CorporateLedgerAmendment",
       "CorporateLifecycleSnapshot",
       "CorporateReadinessSource",
+      "CorporateRegisterEvidenceAmendmentHead",
+      "CorporateRegisterEvidenceAmendmentLookup",
+      "CorporateRegisterEvidenceChain",
+      "CorporateRegisterEvidenceChainSnapshot",
+      "CorporateRegisterEvidenceQuery",
+      "CorporateRegisterWithdrawalReference",
+      "CorporateReportingRegisterEvidenceQuery",
+      "CorporateReportingYearBasis",
+      "CorporateYearDividendEvidence",
+      "CorporateYearSupportedEvidence",
       "DerivedCorporateDecisionFacts",
       "GeneralMeeting",
       "GroupContributionEventFacts",
@@ -69,6 +84,7 @@
       "OwnerLoanEventFacts",
       "PersistedCompanyFacts",
       "PersistedShareholderFacts",
+      "PreparedCorporateRegisterEvidenceAmendment",
       "PreparedOwnerDividendFinalization",
       "PreparedOwnerDividendPayment",
       "PreparedShareholderLoan",
@@ -77,17 +93,41 @@
       "ProposedOwnerDividend",
       "RecordedShareholderLoan",
       "RecordedSupportedCorporateEvent",
-      "ReversedSupportedCorporateEvent",
       "RenderedCorporateArtifact",
+      "ReversedSupportedCorporateEvent",
       "ReviewedOwnerDividendFacts",
       "ReviewedShareholderFacts",
       "ShareholderBallot",
       "SupportedCorporateBankFact",
       "SupportedCorporateDocumentFact",
-      "SupportedCorporateSourceFact"
+      "SupportedCorporateEventEvidenceAnchor",
+      "SupportedCorporateRegisterEvidenceAmendment",
+      "SupportedCorporateSourceFact",
+      "anchor_supported_corporate_event_evidence",
+      "assert_corporate_register_evidence_amendment_integrity",
+      "assert_corporate_register_evidence_amendment_replay",
+      "assert_corporate_register_evidence_chain_snapshot",
+      "assert_reporting_year_register_evidence",
+      "build_reporting_year_evidence",
+      "build_reporting_year_register_evidence",
+      "corporate_register_evidence_amendment_request_digest",
+      "derive_corporate_register_evidence_chain",
+      "parse_corporate_register_evidence_amendment",
+      "parse_corporate_register_evidence_amendment_command",
+      "parse_corporate_register_evidence_amendment_lookup",
+      "parse_corporate_register_evidence_chain_snapshot",
+      "parse_prepared_corporate_register_evidence_amendment",
+      "prepare_supported_corporate_register_evidence_amendment",
+      "serialize_corporate_register_evidence_amendment",
+      "serialize_corporate_register_evidence_amendment_command",
+      "serialize_corporate_register_evidence_originals"
     ],
     "events": [],
-    "errors": ["CorporateGovernanceError", "CorporateGovernanceErrorCode"],
+    "errors": [
+      "CorporateGovernanceError",
+      "CorporateGovernanceErrorCode",
+      "CorporateRegisterEvidenceAmendmentError"
+    ],
     "identifiers": [
       "AccountingEntryReference",
       "BankTransactionReference",
@@ -100,6 +140,7 @@
       "CorporateEventId",
       "CorporateFinalizationId",
       "CorporateGovernancePersistence",
+      "CorporateRegisterEvidenceAmendmentId",
       "CorporateSourceReference",
       "DocumentReference",
       "MeetingForm",
@@ -118,7 +159,9 @@
     ]
   },
   "owns": {
-    "postgresSchemas": ["corporate_governance"],
+    "postgresSchemas": [
+      "corporate_governance"
+    ],
     "tables": [
       "corporate_governance.annual_close_artifacts",
       "corporate_governance.annual_close_decisions",
@@ -130,12 +173,13 @@
       "corporate_governance.owner_dividend_events",
       "corporate_governance.owner_dividend_finalizations",
       "corporate_governance.owner_dividend_payments",
+      "corporate_governance.register_evidence_amendments",
       "corporate_governance.shareholder_loans",
       "corporate_governance.supported_events"
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql; supabase/migrations/20261010015851_governance_rf_year_source_proof.sql; supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql; supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql; supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql; supabase/contract-migrations/20261027080100_corporate_annual_close_2025.sql; supabase/rollback/20261027080100_corporate_annual_close_2025.sql"
   },
   "ports": [
     {
@@ -148,7 +192,48 @@
       ]
     }
   ],
-  "dependencies": [],
+  "dependencies": [
+    {
+      "module": "shareholder_register_filing",
+      "kind": "query",
+      "imports": [
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)",
+        "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)"
+      ]
+    },
+    {
+      "module": "documents",
+      "kind": "query",
+      "imports": [
+        "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+      ]
+    },
+    {
+      "module": "ledger",
+      "kind": "query",
+      "imports": [
+        "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+        "ledger.list_entry_amendments_v1(uuid,text)"
+      ]
+    },
+    {
+      "module": "company_access",
+      "kind": "query",
+      "imports": [
+        "public.company_access_has_fresh_mfa_v1()"
+      ]
+    },
+    {
+      "module": "shareholder_register_filing",
+      "kind": "command",
+      "imports": [
+        "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)",
+        "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)"
+      ]
+    }
+  ],
   "allowedImports": [
     "__future__",
     "collections.abc",
@@ -188,12 +273,28 @@
     "Service-role access, RLS bypass, direct browser persistence, or a second governance writer"
   ],
   "tests": {
+    "guardedReportingAdapter": "apps/backend/tests/test_postgres_corporate_reporting_evidence.py",
+    "guardedReportingDatabase": "apps/backend/tests/test_corporate_reporting_year_database_runtime.py",
+    "companyWriterGuard": "apps/backend/tests/test_governance_ledger_company_guard_database.py",
     "contract": "apps/backend/tests/test_corporate_governance_public_contract.py",
     "policy": "apps/backend/tests/test_corporate_governance.py",
     "workflow": "apps/backend/tests/test_corporate_governance_workflow.py",
     "adapter": "apps/backend/tests/test_supabase_corporate_governance.py",
     "database": "tests/corporate_governance_database_runtime.test.mjs",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "registerObservationCompletionDatabase": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+    "registerEvidenceAmendmentPure": "apps/backend/tests/test_corporate_register_evidence_amendment.py",
+    "registerEvidenceAmendmentCommand": "apps/backend/tests/test_corporate_register_evidence_amendment_command.py",
+    "registerEvidenceAmendmentDatabase": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+    "registerEvidenceAmendmentWorkflow": "apps/backend/tests/test_corporate_register_evidence_amendment_workflow.py",
+    "registerEvidenceAmendmentAdapter": "apps/backend/tests/test_supabase_corporate_register_evidence_amendment.py",
+    "registerEvidenceApplicationDatabase": "apps/backend/tests/test_governance_register_evidence_application_database.py",
+    "reportingRegisterEvidence": "apps/backend/tests/test_corporate_governance_reporting_register_evidence.py",
+    "reportingRegisterEvidenceAdapter": "apps/backend/tests/test_postgres_corporate_reporting_register_evidence.py",
+    "reportingRegisterEvidenceDatabase": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+    "registerEvidenceCompanyGuardDatabase": "apps/backend/tests/test_governance_register_evidence_company_guard_database.py",
+    "sourceRuntimeContract": "tests/rf1086_source_runtime_contract.test.mjs",
+    "corporateAnnualClose2025": "tests/corporate_annual_close_2025_database.test.mjs"
   },
   "compatibilityExceptions": []
 }

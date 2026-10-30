@@ -1,0 +1,202 @@
+{
+  "schema": "rf-company-test-retention-web-local-v2",
+  "recordedAtUtc": "2026-10-11T02:03:49.285763+00:00",
+  "baselineHead": "a2a0282102ec83a2abe02960173bfb5eeaf6ebd9",
+  "status": "REVIEWED_SPEC0_STANDARDS0_LOCAL_PASS_ACTUAL_SUCCESSOR_CI_REQUIRED",
+  "behavior": {
+    "scope": "Company-only historical test inventory, no intrinsic income year; fifty DOM records per local page; all thirteen original fields; opaque URLs as text; original dates/hash unchanged.",
+    "auth": "Exact bearer checked with server getUser before CompanyAccess current-member metadata; owner/reviewer/read_only; query needs no fresh MFA.",
+    "download": "Same upstream body, private no-store headers, company-only filename, incoming/deadline abort; only exact backend FRESH_MFA_REQUIRED redirects to existing canonical local fresh challenge.",
+    "activation": "Backend remains default None. No environment/ambient enablement or legacy fallback.",
+    "legalExportReceiptCreated": false
+  },
+  "checks": {
+    "focused": 49,
+    "mandatoryWebGroups": [
+      649,
+      123
+    ],
+    "selectors": 130,
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "compatibility": {
+      "protectedWholeWebFiles": 11,
+      "sourcePageOnlyOneAdditiveLine": true,
+      "oldPublicExports": true,
+      "oldMandatoryCommands": true,
+      "backendSdkOpenapiUnchanged": true
+    },
+    "renderedBrowser": {
+      "checks": 11,
+      "roles": [
+        "owner",
+        "reviewer",
+        "read_only"
+      ],
+      "pagination": [
+        50,
+        50,
+        1
+      ],
+      "fields": 13,
+      "mobileWidth": 390,
+      "overflow": false,
+      "consoleErrors": 0,
+      "expiredMfaChallengeThenResumedDownload": true,
+      "savedDownloadRecords": 101,
+      "offlineStatus": [
+        "STRUCTURAL_INTEGRITY_ONLY",
+        "EXPECTED_CAPTURE_MATCH"
+      ],
+      "sourceOrigin": "UNVERIFIED",
+      "longSummaryReflow": {
+        "referenceChars": 8192,
+        "statusChars": 1024,
+        "summaryChars": 9219,
+        "viewport": 390,
+        "redOverflow": true,
+        "greenOverflow": false,
+        "rawTextPreserved": true,
+        "fields": 13,
+        "records": 50
+      }
+    },
+    "physicalAbort": "PASS: actual proxy/generated client/loopback upstream; abort after first body chunk closes owned connection; one request, no fallback."
+  },
+  "qualification": [
+    "Auth HTTP and RF persistence are explicitly synthetic local fixtures. Canonical server Auth transport, current-member/action service, FastAPI, SDK, web routes, stream codec and offline verifier run unchanged. No real GoTrue/fullschema/storage/origin/independent restore evidence.",
+    "No genuine records, hosted state, provider calls, legal export receipts or public activation. Owned browser and loopback fixture stopped; Next-generated files restored exactly.",
+    "V1 broad web suite used wrong Python without FastAPI; V2 and final V3 use designated runtime. V1 focused VM NextLink double failed two renders; corrected V2 and V3 pass. Historical logs preserved.",
+    "Published CI38100907056 completed on a2: all1578 Authority/all20claim/all24retention/all36approval PASS, Application11220/2/2366 PASS; later identity restore fails database_in_use. This UI WIP excluded; actualAuth/fullpipeline/RET002 pending."
+  ],
+  "sourcePins": [
+    {
+      "path": "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx",
+      "sha256": "251f57d97a71b98669763b804b900a6c295e3d4130fed9d9235f03476c4aaf1e",
+      "bytes": 5029
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/MODULE.md",
+      "sha256": "d5847a9caf2cc9f6437bccd1dd670705132cc784a542aa3f3d59351288cc5fd5",
+      "bytes": 12222
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/index.ts",
+      "sha256": "6d443bbd6f42b89829c9d75af06fb194aa02f0fc7298449ec92626d9a03bb892",
+      "bytes": 4068
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/module.json",
+      "sha256": "731a6aecc3a305b6dd47f562a9235f6185a20f09ee47b0d2a9549cd1526e4202",
+      "bytes": 3367
+    },
+    {
+      "path": "package.json",
+      "sha256": "caa969bc7c43492a48936001e1d2131f2c06651244402f0b5b58eabbcc6a4911",
+      "bytes": 34999
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "f95b5e834533ff72b6672f05cca6988560686e480d8b21b309ce8cb183b5285c",
+      "bytes": 57498
+    },
+    {
+      "path": "apps/web/app/companies/[companyId]/rf1086-test-history/download-response.ts",
+      "sha256": "faa639f1a2e83f61ee058874900471db8c2e62d1fb17ca21f3fcf784a39dc0fb",
+      "bytes": 2568
+    },
+    {
+      "path": "apps/web/app/companies/[companyId]/rf1086-test-history/download/route.ts",
+      "sha256": "f2da4e816b234863a0f494d750f64d98bb07b101abff14cf44352d5eda928e7e",
+      "bytes": 329
+    },
+    {
+      "path": "apps/web/app/companies/[companyId]/rf1086-test-history/history-access.ts",
+      "sha256": "5e66497287ee53d77871b30ceba95a38909a8b38bf142c0681f079e2fda44d8f",
+      "bytes": 1426
+    },
+    {
+      "path": "apps/web/app/companies/[companyId]/rf1086-test-history/page.tsx",
+      "sha256": "165e24a7083fa90cb8268709a17839a1cf58fcb1c6c48646d0022fd60961962a",
+      "bytes": 4772
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/company-test-history.ts",
+      "sha256": "cc34d3b8fecb7834c43031b323b0de86ac38b66feecb318653b7e564e87aff94",
+      "bytes": 3468
+    },
+    {
+      "path": "apps/web/tests/rf1086-company-test-download.test.mjs",
+      "sha256": "82d68189017015dc73ee3dc2192f09b754e4495dd240be40922267e892d79a69",
+      "bytes": 12563
+    },
+    {
+      "path": "apps/web/tests/rf1086-company-test-history.test.mjs",
+      "sha256": "0826ee0a70c872d35216076b37640976d7739a8cd643b15ca1d568481f294585",
+      "bytes": 10185
+    }
+  ],
+  "rawEvidenceSha256": {
+    "rf-company-test-retention-web-unit-v1.log": "98abe3929560412cf721cf1185927bdb9d5a91c8a616b163685f36bc82111468",
+    "rf-company-test-retention-web-unit-v2.log": "b758e442d5538c46516e88b2a5f4f04f229718c37073ffdb89fe972b8470638f",
+    "rf-company-test-retention-web-unit-v3.log": "2b9339539da340ea5c3634999c195496b0cffe8fa7094f705878413bd16b5f65",
+    "rf-company-test-retention-web-boundary-v1.log": "3910e072d59f9b8b56d14a7936a0190af306fa5a8c7f71cbc28d51a61865e92c",
+    "rf-company-test-retention-web-boundary-v2.log": "075361ba68969a497f48d8990cff8111085a94ad360b868c0ecc614ffd16a9be",
+    "rf-company-test-retention-web-boundary-v3.log": "a97be1e04fde292ffc6e123ca0788307ef55e544c73d061c309f6f1d1008c477",
+    "rf-company-test-retention-web-selector-v1.log": "c5c29ad413ca624f37d5a98929f4c157efe60ed087aebdef14fcfb422bbcd835",
+    "rf-company-test-retention-web-typecheck-v2.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "rf-company-test-retention-web-architecture-v2.log": "3c1851838ecb3298fd81a354a7f43a0f64ff9cf3cbc92983715f597065699d98",
+    "rf-company-test-retention-web-compatibility-v1.json": "b6c37b835789086c522892dacfc9f8cd347d18e90451e699766b6c7f849efad6",
+    "rf-company-test-retention-web-next-plan-v4.json": "9256a179c45db943583a11e1360e09d7cd6d2ce9b67f6ddbb5b7f77f845a432b",
+    "rf-company-test-retention-web-plan-root-verification-v2.json": "bf067bd9748a172c086a71e1817f3134105a4b6af74b33c8b21a06cadf4ed05c",
+    "rf-history-ui-local-fixture-v1.py": "14a3ce569926ebf7c585ad358b8750079928016840d6c29ec334cf638a2478b9",
+    "rf-history-ui-fixture-run-v1.log": "c773a02271a73b4933a4884053c10f92e1c17bf898bfc3b7d83cc2e098410aa8",
+    "rf-history-ui-next-v1.log": "82d8ca4982fa3942c3ac26e5eca60d1177be1cf5ee8bbf8c9519fceb6064fd1b",
+    "rf-history-ui-browser-checks-v1.py": "e61470e05212aa2087882d77556617c0d5a120a766c0e1c51a9ace0cca64ef41",
+    "rf-history-ui-browser-checks-v1.json": "68067b38e492f86e5ee1efe4b5c1e16e91f47602e01395762f0cf126ed8fdd77",
+    "rf-history-ui-browser-checks-v1.log": "b17fe55b7be5c743b6aa07e53e8cf3db2181cc555dd40bad6ba0170d2c9d3730",
+    "rf-history-ui-download-cli-v1.json": "665bb1565d64e936685ac5f22b88379cb7e3dbcbc8e5e7e9e131c763baa8947c",
+    "rf-history-ui-download-source-v1.json": "ababbc8f7fae973df2ddcbfe31198585c5c40bc23108ee83962e991b001e4623",
+    "rf-company-test-retention-web-unit-v4.log": "7e46b87209384f0138630841a3343ff461a842e27ecb61f77e8c8349dd6e36ff",
+    "rf-company-test-retention-web-boundary-v4.log": "2fff4cf0005ef8bd9a26399640f3c15127dceb3503244e38de45a4d8f2a7352f",
+    "rf-company-test-retention-web-typecheck-v3.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "rf-company-test-retention-web-architecture-v3.log": "3c1851838ecb3298fd81a354a7f43a0f64ff9cf3cbc92983715f597065699d98",
+    "rf-company-test-retention-web-summary-red-v1.log": "65dde3e897c82d7c545cbc05434eb6b45fdd6474e97c1c775ad6b1552b255eac",
+    "rf-history-ui-local-fixture-v2.py": "953ede6eabf374d1543322f38e29a07f474d891af36e6db9e96304138e2f1892",
+    "rf-history-ui-fixture-run-v2.log": "c773a02271a73b4933a4884053c10f92e1c17bf898bfc3b7d83cc2e098410aa8",
+    "rf-history-ui-long-browser-v2.py": "4d8dd429aa073ad5ddb25c4b08a4de98c0821993e28171c561c663e8962acea9",
+    "rf-history-ui-long-browser-red-v2.json": "cc72a19fd33213c69c432253d1da5ff93e36ebc0eff8ae1c1c9864bce16f0c1c",
+    "rf-history-ui-long-browser-red-v2.log": "9f34dad91f9c1e16773a98032e489cc5ee91110d3071b7014acdddad5ea430a2",
+    "rf-history-ui-long-browser-green-v2.json": "bd6a5c569bd7aa6218ebe4307d8c4bd936e2e2b91d55fef0dacb44148e5ea233",
+    "rf-history-ui-long-browser-green-reload-v2.log": "8a1ba369b9f842179e1bd4e1d709f8478ee80f4a52a64fad1ca8a83057ee9885",
+    "rf-history-ui-long-browser-green-screenshot-v2.log": "1ff64d5085ef19004dbb518e953d72faa37185fe10500f3f677e68006571559d",
+    "rf-company-test-retention-web-implementation-spec-review-v1.json": "ecb8f148b805e85e4a5c45f031ef048e47f639f4c1c6434402aff9f588fb48de",
+    "rf-company-test-retention-web-implementation-standards-review-v1.json": "c07b170a4df386e8bf88120f4a50edaae504a07fcb73590b28435b7978e4e481",
+    "rf-company-test-retention-web-implementation-standards-ci-observation-addendum-v1.json": "f11e50def1eaebc6d30a6a9b3ee8f31257e2fdb785814836494f00b96612e914",
+    "rf-company-test-retention-web-spec-root-verification-v1.json": "265f86ab85a060497a65c3e86e9b4f0d06180fcaf45638eac5f5494a0d711c99",
+    "rf-company-test-retention-web-standards-root-verification-v1.json": "db038a9cf338bab7415ac7b4ec13cfc7fbbe177a455d6e6384e82913627c417f",
+    "rf-company-test-retention-web-historical-v2-history-page.tsx": "d48fd5d3769ab681dc5026d6fc671bcd3595791892f14e852b068d217c759d25",
+    "rf-company-test-retention-web-historical-v2-history.test.mjs": "7085b03c6b056708383e16995b09699b3b5cea3a0c27a9e0928555ce75770674",
+    "rf-company-test-retention-web-public-frozen-v2.json": "b70bfd59c7658a8114c593e91ac42049c6969b28d2b6dfe843f616dcaeedd262",
+    "rf-company-test-retention-web-requirements-frozen-v2.json": "ba3569ccebe2e933358199e6a1b6d005aa289e3e977c729a2b2dd2c918987e4a"
+  },
+  "review": {
+    "specV1": 0,
+    "standardsV1": "1 P3 ST-WEB-I1; repaired with scoped wrapping, literal long-token RED\u2192GREEN browser and regression test.",
+    "specV2": "PENDING",
+    "standardsV2": "PENDING"
+  },
+  "browserArtifacts": "Owned CLI output retained privately with SHA pins; raw logs/screenshots/download excluded from repository.",
+  "finalReview": {
+    "spec": {
+      "findings": 0,
+      "sha256": "80239401e431b6ef530f3d1a447aead21b0bba831c062ae441ad1f2202615e12"
+    },
+    "standards": {
+      "findings": 0,
+      "sha256": "285fbae44997923de2c09edc5222f155683828b3bfaaeb2f9247b989ed6262a9"
+    },
+    "rootPinsIndependentlyVerified": true,
+    "acknowledgementOnlyAfterFreeze": true
+  }
+}

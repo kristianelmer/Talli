@@ -13,6 +13,7 @@ import {
   inspectOwnerMfa,
   ownerMfaEnrollmentControl,
   ownerMfaCopy,
+  ownerMfaHistoryDownloadReturn,
   startOwnerMfaEnrollment,
   verifyOwnerMfa,
   type OwnerMfaErrorKind,
@@ -38,12 +39,15 @@ export function OwnerMfa({
   supabaseUrl,
   supabaseAnonKey,
 }: OwnerMfaProps) {
+  const historyDownloadReturn = ownerMfaHistoryDownloadReturn(returnTo);
   const supabase = useMemo(
     () => createBrowserClient(supabaseUrl, supabaseAnonKey),
     [supabaseAnonKey, supabaseUrl],
   );
   const [mode, setMode] = useState<OwnerMfaMode>("loading");
   const [factorId, setFactorId] = useState("");
+  const [factors, setFactors] = useState<{ id: string; label: string }[]>([]);
+  const [inspectionAttempt, setInspectionAttempt] = useState(0);
   const [qrCode, setQrCode] = useState("");
   const [secret, setSecret] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -54,7 +58,11 @@ export function OwnerMfa({
 
   useEffect(() => {
     let active = true;
-    void inspectOwnerMfa(supabase.auth.mfa, { requireFreshChallenge }).then((inspection) => {
+    void (async () => {
+      const session = await supabase.auth.getSession();
+      if (session.error || !session.data.session) return { kind: "error", message: ownerMfaCopy.statusError } as const;
+      return inspectOwnerMfa(supabase.auth.mfa, { requireFreshChallenge, accessToken: session.data.session.access_token });
+    })().then((inspection) => {
       if (!active) return;
       if (inspection.kind === "error") {
         setError(inspection.message);
@@ -69,15 +77,21 @@ export function OwnerMfa({
       }
       if (inspection.kind === "challenge") {
         setFactorId(inspection.factorId);
+        setFactors(inspection.factors ?? []);
         setMode("challenge");
         return;
       }
+      setMode("enrollment");
+    }).catch(() => {
+      if (!active) return;
+      setError(ownerMfaCopy.statusError);
+      setErrorKind("status");
       setMode("enrollment");
     });
     return () => {
       active = false;
     };
-  }, [requireFreshChallenge, returnTo, supabase]);
+  }, [requireFreshChallenge, returnTo, supabase, inspectionAttempt]);
 
   useEffect(() => {
     if (error) {
@@ -114,6 +128,7 @@ export function OwnerMfa({
     );
     setBusy(false);
     if (!verification.ok) {
+      setVerificationCode("");
       setError(verification.message);
       setErrorKind("verification");
       return;
@@ -126,7 +141,7 @@ export function OwnerMfa({
   const enrollmentControl = ownerMfaEnrollmentControl({ busy, errorKind });
 
   return (
-    <div className="authCard">
+    <div className="authCard ownerMfaCard">
       <div className="appBrand">
         <span className="appBrandMark" aria-hidden="true" />
         <span>Talli</span>
@@ -152,7 +167,14 @@ export function OwnerMfa({
         <p aria-live="polite">Kontrollerer sikkerheten …</p>
       ) : null}
 
-      {mode === "enrollment" ? (
+      {mode === "enrollment" && errorKind === "status" ? (
+        <button className="btn btn--primary" type="button" onClick={() => {
+          setMode("loading");
+          setError("");
+          setErrorKind(null);
+          setInspectionAttempt((attempt) => attempt + 1);
+        }}>Prøv kontrollen igjen</button>
+      ) : mode === "enrollment" ? (
         <button
           className="btn btn--primary"
           type="button"
@@ -186,6 +208,16 @@ export function OwnerMfa({
 
       {showCodeForm ? (
         <form className="authForm" onSubmit={verify}>
+          {mode === "challenge" && factors.length > 1 ? (
+            <div className="field">
+              <label htmlFor="ownerMfaFactor">Autentiseringsapp</label>
+              <select id="ownerMfaFactor" value={factorId} onChange={(event) => {
+                if (factors.some(({ id }) => id === event.target.value)) setFactorId(event.target.value);
+              }}>
+                {factors.map((factor) => <option key={factor.id} value={factor.id}>{factor.label}</option>)}
+              </select>
+            </div>
+          ) : null}
           <p id="ownerMfaCodeInstructions">
             Åpne autentiseringsappen og skriv inn den sekssifrede koden.
           </p>
@@ -216,8 +248,21 @@ export function OwnerMfa({
         </form>
       ) : null}
 
+      {mode === "challenge" ? (
+        <details className="authAlt">
+          <summary>Kan ikke bruke autentiseringsappen?</summary>
+          <p>Du må bruke en registrert app. Tilgangen kan ikke gjenopprettes automatisk her.</p>
+          <a href={`/login?${new URLSearchParams({ reauth: "1", next: returnTo })}`}>Tilbake til innlogging</a>
+        </details>
+      ) : null}
+
       {mode === "verified" ? (
-        <p aria-live="polite">Bekreftet. Åpner siden …</p>
+        historyDownloadReturn ? (
+          <div className="authForm">
+            <p aria-live="polite">Identiteten er bekreftet.</p>
+            <a className="btn btn--secondary" href={historyDownloadReturn}>Til testhistorikken</a>
+          </div>
+        ) : <p aria-live="polite">Bekreftet. Åpner siden …</p>
       ) : null}
     </div>
   );

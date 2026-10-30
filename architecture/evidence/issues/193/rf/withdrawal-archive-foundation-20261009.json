@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF withdrawal archive format and source evidence foundation",
+  "observedDate": "2026-10-09",
+  "baseRevision": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+  "status": "REVIEWED_LOCAL_FORMAT_CHECKS_PASS_NO_V5_RUNTIME_PRODUCER_OR_ACTIVATION",
+  "behavior": {
+    "codec": "Additive rf1086-production-archive-v5 requires source, override and withdrawal histories. Canonical withdrawal receipts retain original actor-scoped recovery keys; exact target and full supplied lineage are validated without deleting historical evidence or reactivating ancestors.",
+    "coverage": "None remains unknown; empty tuple means captured-empty. Parsing supplied records cannot prove that a storage producer enumerated every row.",
+    "sourceEvidence": "rf1086-source-v3 binds withdrawal receipts and independently supplied family count, rejects missing/mismatched coverage and inconsistent archive/workspace overrides. Current adapter still supplies unknown withdrawal coverage.",
+    "compatibility": "Archive-v1 through-v4 bytes and source-v1/v2 evidence hashes remain unchanged. Old RF JSON and stream routes explicitly project their existing codec and unknown withdrawal coverage; no new v5 HTTP route, SQL write port or generated client.",
+    "offlineVerification": "CLI supports v5 JSON/NDJSON and --require-register-withdrawal-history; reports captured/count independently from originals and database restore. Five original source generations remain verified in the synthetic stream fixtures."
+  },
+  "checks": [
+    {
+      "name": "Final focused archive/history/source/withdrawal regression",
+      "result": "PASS",
+      "passed": 372,
+      "log": "withdrawal-archive-regression-corrected.log",
+      "countsInclude": "32 archive-v5 cases and 94 pure withdrawal cases; counts are not additive."
+    },
+    {
+      "name": "New archive-v5 cases after final fixture correction",
+      "result": "PASS",
+      "passed": 32,
+      "log": "withdrawal-archive-tests-final.log"
+    },
+    {
+      "name": "OpenAPI drift",
+      "result": "PASS",
+      "exitCode": 0,
+      "log": "withdrawal-archive-openapi.log"
+    },
+    {
+      "name": "Architecture with contemporaneous staged RF table/catalog",
+      "result": "PASS",
+      "exitCode": 0,
+      "log": "withdrawal-archive-architecture-final.log"
+    },
+    {
+      "name": "Whitespace",
+      "result": "PASS",
+      "command": "git diff --check"
+    }
+  ],
+  "independentReview": {
+    "reviewer": "override_standards_review",
+    "result": "No remaining material findings after v3 override-consistency fix.",
+    "findingFixed": "New v3 complete-history validation initially omitted agreement between archived and workspace override records. Exact identity/content agreement now required; existing duplicate-ID rejection preserved.",
+    "executions": "Reviewer tool observations: 271 existing regressions and final32 new cases passed; duplicate actor/key across distinct targets and seven malformed collections rejected. No retained reviewer log claimed."
+  },
+  "preExpansionGoldens": {
+    "revision": "5660a7212eef88b3082985be0ac912435b2b6ffa",
+    "method": "Root computed four canonical archive byte hashes and source-v1/v2 evidence digests before adding the field; constants are exercised in the new regression tests.",
+    "values": {
+      "v1": {
+        "codec": "rf1086-production-archive-v1",
+        "sha256": "08e98630d68d5f850134986166c0a970b344963422132583ac1103a96c5b1a8c"
+      },
+      "v2": {
+        "codec": "rf1086-production-archive-v2",
+        "sha256": "7fb84f7d41014eb02c98a86ef3acee4a059d00ae08ccd87105ed417ea0c37734"
+      },
+      "v3": {
+        "codec": "rf1086-production-archive-v3",
+        "sha256": "e435bce66808c3251cfc52be862ba64f2d7950193d9f725e4ba14f2b62e37750"
+      },
+      "v4": {
+        "codec": "rf1086-production-archive-v4",
+        "sha256": "1dd3142128cd4f00528201058822541b133bc0391bb5bc6477965963ba6c3140"
+      },
+      "source-v1": {
+        "version": "rf1086-source-v1:271387258fa335a9ede265f62f6612f762d5a83746f0dfe6adc380c3d8768a63",
+        "digest": "271387258fa335a9ede265f62f6612f762d5a83746f0dfe6adc380c3d8768a63"
+      },
+      "source-v2": {
+        "version": "rf1086-source-v2:b4c8902a6a5d9297be3a1fb57bd82b5eed5e644bbb96fd423dc928e046be2394",
+        "digest": "b4c8902a6a5d9297be3a1fb57bd82b5eed5e644bbb96fd423dc928e046be2394"
+      }
+    }
+  },
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "7776eec13e8b756dde89e01a99d44ffcc10d761ebcaccfe2262078540a0ad5ab",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "68ff9fa27c4f93f4736f566a01c3fd48217c89910c26871947e68eed9fb21ef8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history.py": "d4deb4b880d158fcb1c70ed3f9db9f1637cacb40dea71391448447fbcc8cfd06",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py": "dcfd081b982bd11e871f5645c4e88ef5f934d3b021df78c04e5efc459b5c943a",
+    "apps/backend/src/talli_backend/main.py": "a1bb4f87d934af16b4dcd317cd20763ea158ecfa485060b9a95259010b9157e1",
+    "apps/backend/scripts/verify_rf1086_archive.py": "36ae6a11fca9b444be9f7ed9152629ed656945439050befa9e6d5ffc0da0aea3",
+    "apps/backend/tests/test_rf1086_withdrawal_archive.py": "98247a4ef84763a73a5751f0a0e9688b9d6006752a93cdd77250ff94c0f53010",
+    "contracts/openapi/talli-v1.json": "e4c2ef2596df2eaa7c6792d727d991206f2f2e46f4d39b1f6232fe2247609ec8"
+  },
+  "privateLogs": {
+    "withdrawal-archive-regression-corrected.log": {
+      "sha256": "55637fd8ad1e922808a81416edc0877d25a826d3d5cf70771ed1d432ef05f2e0",
+      "bytes": 501
+    },
+    "withdrawal-archive-tests-final.log": {
+      "sha256": "e67dbe36b76557dc325db779f9f22b9dadec12d3c739c228781db5d25850b608",
+      "bytes": 99
+    },
+    "withdrawal-archive-architecture-final.log": {
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    },
+    "withdrawal-archive-openapi.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "limits": [
+    "Evidence covers listed local source hashes, not an immutable complete CI pass.",
+    "No live v5 database enumeration, v5 HTTP producer/readable projection, owned restore or archive-owner completion fence is implemented by this slice.",
+    "Legacy projections remain historically readable but cannot certify withdrawal completeness. Command availability remains blocked until unconditional downstream admission, Governance repair, archive-owner coverage and old-list fencing are proved.",
+    "The frozen Company Archive facade is unchanged. Its proposed serial owner detour is a separate unresolved architecture decision.",
+    "No A1-A7 acceptance promotion, provider filing, real-company proof or launch authority."
+  ]
+}
