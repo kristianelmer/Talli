@@ -511,13 +511,13 @@ export default async function FilingObligationPage({
           <div className="filingStepHead">
             <h2 className="filingStepTitle">{f.preview.title}</h2>
             {previewReady ? (
-              <StatusBadge variant="success" label={f.status.ready} icon="check" />
+              <StatusBadge variant="info" label="Forhåndsvisning lagret" />
             ) : preview ? (
               <StatusBadge variant="warning" label={f.preview.notReady} icon="alert" />
             ) : null}
           </div>
           <div className="filingStepBody">
-            {!prerequisitesClear ? (
+            {!prerequisitesClear && !preview ? (
               <p className="filingLockNote">{f.preview.lockedNote}</p>
             ) : !preview ? (
               <>
@@ -547,14 +547,14 @@ export default async function FilingObligationPage({
                 {!previewReady ? (
                   <p className="filingLockNote">{f.preview.notReady}</p>
                 ) : null}
-                <form action={generateRf1086Preview}>
+                {prerequisitesClear ? <form action={generateRf1086Preview}>
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="companyId" value={input.company.id} />
                   <input type="hidden" name="setupId" value={setup?.id ?? ""} />
                   <SubmitButton variant="ghost" pendingLabel={f.preview.generatePending}>
                     {f.preview.regenerateCta}
                   </SubmitButton>
-                </form>
+                </form> : <p className="filingLockNote">{f.preview.lockedNote}</p>}
               </>
             )}
           </div>
