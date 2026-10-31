@@ -15,7 +15,7 @@ from talli_backend.adapters.hosted_recovery_access import (
     CATALOG_SQL, restore_access, restore_database_access, row_commitments, verify_custom_roles,
 )
 from talli_backend.adapters.hosted_recovery_capture import (
-    digest, encoded, normalized_catalog, private_read, qi, require,
+    MANAGED_SCHEMAS, digest, encoded, normalized_catalog, private_read, qi, require,
 )
 from talli_backend.adapters.hosted_recovery_sql import (
     GUC, NativeArchive, compile_program, execute_batch, execute_data,
@@ -142,6 +142,7 @@ class HostedBackupRecovery:
 
     def _fresh(self, db):
         capture = self.capture
+        require(self._empty_namespace(db), 'hosted_target_not_empty')
         facts = db.execute("select current_setting('server_version_num')::integer,d.datlocprovider,"
             "pg_encoding_to_char(d.encoding),d.datcollate,d.datctype,"
             "coalesce(to_jsonb(d)->>'datlocale',to_jsonb(d)->>'daticulocale',''),"
@@ -171,13 +172,29 @@ class HostedBackupRecovery:
 
     def _uncommitted(self, db):
         """No marker may mean rollback, never permission to reuse unrelated data."""
-        require(all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
+        require(self._empty_namespace(db) and
+            db.execute('select count(*)from storage.objects').fetchone()[0] == 0 and
+            db.execute('select count(*)from storage.buckets').fetchone()[0] == 0 and
+            all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
             for name in self.plan_body['schemas'] if name != 'public') and
             db.execute('select count(*)from auth.users').fetchone()[0] == 0 and
             db.execute('select count(*)from pg_roles where rolname=any(%s)',
                 (self.plan_body['customRoles'],)).fetchone()[0] == 0 and
             db.execute("select count(*)from pg_tables where schemaname='public'").fetchone()[0] == 0,
             'hosted_recovery_marker_unavailable')
+
+    def _empty_namespace(self, db):
+        # A new project containing an unrelated schema is not an empty target.
+        # Database ACL changes affect the whole database, beyond captured names.
+        foreign = db.execute("select count(*)from pg_namespace where nspname !~ '^pg_' "
+            "and nspname<>'information_schema' and nspname<>all(%s)",
+            (sorted(MANAGED_SCHEMAS | {'public'}),)).fetchone()[0]
+        public = db.execute("select (select count(*)from pg_class c join pg_namespace n "
+            "on n.oid=c.relnamespace where n.nspname='public')+"
+            "(select count(*)from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
+            "where n.nspname='public')+(select count(*)from pg_type t join pg_namespace n "
+            "on n.oid=t.typnamespace where n.nspname='public')").fetchone()[0]
+        return foreign == public == 0
 
     def _quarantine(self, db, metadata):
         db.execute('update auth.users set banned_until=%s where id=any(%s::uuid[])',

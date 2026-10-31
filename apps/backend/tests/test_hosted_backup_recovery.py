@@ -216,9 +216,12 @@ class DatabaseModel:
     def __init__(self, capture):
         self.capture, self.marker, self.pending = capture, None, None
         self.lose_commit_response = False; self.ddl = 0; self.calls = []
+        self.foreign_schema = False
     def execute(self, text, params=None, **kwargs):
         self.calls.append(text)
         if 'pg_try_advisory' in text: return Cursor([(True,)])
+        if text.startswith('select count(*)from pg_namespace'):
+            return Cursor([(int(self.foreign_schema),)])
         if 'to_regclass' in text: return Cursor([('marker' if self.marker else None,)])
         if text.startswith('select id::text,plan_sha'): return Cursor([self.marker] if self.marker else [])
         if 'to_regnamespace' in text: return Cursor([(None,)])
@@ -387,3 +390,13 @@ def test_database_ca_is_rechecked_before_each_connection(provider):
     private(Path(provider.settings['sslrootcert']), b'replaced certificate')
     with pytest.raises(ValueError, match='database_ca_changed'):
         with provider.database(): raise AssertionError('must reject before connecting')
+
+
+def test_unrelated_schema_never_becomes_an_empty_restore_or_rollback_target(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    target.db.foreign_schema = True
+    with pytest.raises(ValueError, match='target_not_empty'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    with pytest.raises(ValueError, match='marker_unavailable'):
+        instance.contain(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 0 and target.db.marker is None
