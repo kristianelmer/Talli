@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from hashlib import sha256
 import base64
 import json
+from pathlib import Path
 import shutil
 from types import SimpleNamespace
 
@@ -373,3 +374,16 @@ def test_provider_rejects_project_older_than_capture(provider, monkeypatch):
     http_model(monkeypatch, handler)
     with pytest.raises(ValueError, match='fresh_project_required'):
         provider.validate(source_project=SOURCE, captured_at='2026-10-30T00:00:00Z')
+
+
+@pytest.mark.parametrize('name', ['PGHOSTADDR', 'PGSERVICE', 'PGOPTIONS', 'PGPASSFILE'])
+def test_inherited_libpq_defaults_cannot_redirect_an_explicit_target(provider, monkeypatch, name):
+    monkeypatch.setenv(name, 'unreviewed-inherited-value')
+    with pytest.raises(ValueError, match='environment_override_unsupported'):
+        with provider.database(): raise AssertionError('must reject before connecting')
+
+
+def test_database_ca_is_rechecked_before_each_connection(provider):
+    private(Path(provider.settings['sslrootcert']), b'replaced certificate')
+    with pytest.raises(ValueError, match='database_ca_changed'):
+        with provider.database(): raise AssertionError('must reject before connecting')

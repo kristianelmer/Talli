@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import base64
 import json
+import os
 from pathlib import Path
 import re
 from urllib.parse import parse_qsl, unquote, urlsplit, quote
@@ -32,7 +33,15 @@ class HostedDesignation:
             'name': self.name, 'region': self.region}
 
 
+def clean_libpq_environment():
+    # libpq can use PGHOSTADDR alongside an explicit host, or load options from
+    # PGSERVICE. Reject inherited defaults rather than mutating process globals.
+    require(not any(name.startswith('PG') and value for name, value in os.environ.items()),
+        'hosted_libpq_environment_override_unsupported')
+
+
 def connection_settings(raw, designation, *, ca, ca_sha256):
+    clean_libpq_environment()
     url = urlsplit(raw)
     pairs = parse_qsl(url.query, keep_blank_values=True)
     user = unquote(url.username or '')
@@ -73,6 +82,7 @@ class SupabaseRecoveryTarget:
         require(payload.get('ref') == designation.project and payload.get('role') == 'service_role',
             'hosted_service_key_destination_mismatch')
         self.settings = connection_settings(values['databaseUrl'], designation, ca=ca, ca_sha256=ca_sha256)
+        self._ca_sha256 = ca_sha256
         self._management_token, self._service_key = values['managementToken'], key
 
     def validate(self, *, source_project, captured_at=None):
@@ -97,6 +107,9 @@ class SupabaseRecoveryTarget:
 
     @contextmanager
     def database(self):
+        clean_libpq_environment()
+        require(digest(private_read(self.settings['sslrootcert'], 65536)) == self._ca_sha256,
+            'hosted_database_ca_changed')
         with psycopg.connect(**self.settings) as db:
             db.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
             db.execute('set role postgres')

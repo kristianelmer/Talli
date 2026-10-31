@@ -418,7 +418,9 @@ Required capture inputs:
   legacy service-role JWT; newer secret-key formats are not supported here.
   Supply the independently pinned official database CA separately. DSNs must
   name this target directly or through the session pooler on port 5432;
-  connections always use TLS `verify-full`. Credentials never enter CLI output
+  connections always use TLS `verify-full`. Nonempty inherited `PG*` environment
+  settings are rejected; use a clean shell with this explicit config. The CA file
+  is rechecked before each connection. Credentials never enter CLI output
   or the work journal.
 
 Metadata must match project, organization, name and region, report
