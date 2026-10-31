@@ -21,15 +21,15 @@ def execute(*, command, config, expected_config_sha256, expected_plan_sha256=Non
         ca=values['ca'], ca_sha256=values['caSha256'])
     work = Path(values['work'])
     require(work.is_absolute(), 'hosted_work_directory_invalid')
-    if command == 'contain':
-        operator = HostedBackupRecovery.for_containment(target=target, work=work,
+    if command in ('inspect', 'contain'):
+        operator = HostedBackupRecovery.from_state(target=target, work=work,
             expected_plan_sha256=expected_plan_sha256)
-        return operator.contain(expected_plan_sha256=expected_plan_sha256)
+        return operator.inspect() if command == 'inspect' else operator.contain(
+            expected_plan_sha256=expected_plan_sha256)
     capture = ManagedCapture.open(**values['capture'])
     operator = HostedBackupRecovery(capture=capture, target=target, work=work,
         pg_restore=values['pgRestore'])
     if command == 'plan': return operator.plan()
-    if command == 'inspect': return operator.inspect()
     require(command == 'restore', 'hosted_operator_command_invalid')
     return operator.restore(expected_plan_sha256=expected_plan_sha256)
 
@@ -41,9 +41,9 @@ def main(argv=None):
     parser.add_argument('--config', required=True, help='absolute owner-private JSON configuration path')
     parser.add_argument('--expected-config-sha256', required=True,
         help='independently held digest of the reviewed configuration bytes')
-    parser.add_argument('--expected-plan-sha256', help='reviewed plan digest; required for restore/contain')
+    parser.add_argument('--expected-plan-sha256', help='reviewed plan digest; required for restore/inspect/contain')
     args = parser.parse_args(argv)
-    if args.command in ('restore', 'contain') and not args.expected_plan_sha256:
+    if args.command in ('restore', 'inspect', 'contain') and not args.expected_plan_sha256:
         parser.error('--expected-plan-sha256 is required for this command')
     try:
         result = execute(command=args.command, config=args.config,

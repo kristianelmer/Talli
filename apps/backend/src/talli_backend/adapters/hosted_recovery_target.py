@@ -110,7 +110,10 @@ class SupabaseRecoveryTarget:
         clean_libpq_environment()
         require(digest(private_read(self.settings['sslrootcert'], 65536)) == self._ca_sha256,
             'hosted_database_ca_changed')
-        with psycopg.connect(**self.settings) as db:
+        # Startup options cover the first identity/preflight query as well as
+        # inspect and contain; an import-session SET cannot bound later sessions.
+        with psycopg.connect(**{**self.settings,
+                'options': '-c statement_timeout=240000 -c lock_timeout=10000'}) as db:
             db.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
             db.execute('set role postgres')
             identity = db.execute("select current_user,current_database(),current_setting('server_version_num')::int").fetchone()

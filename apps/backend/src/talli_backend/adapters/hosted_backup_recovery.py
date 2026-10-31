@@ -25,6 +25,8 @@ CONTROL = '_talli_recovery'
 MARKER = CONTROL + '.attempt'
 BAN = '9999-12-31 00:00:00+00'
 MAX_STATE = 256 * 1024
+PROVIDER_HISTORY = {('auth', 'schema_migrations'), ('storage', 'migrations'),
+    ('realtime', 'schema_migrations')}
 
 
 def _atomic(path, body):
@@ -64,6 +66,7 @@ class HostedBackupRecovery:
             'captureSha256': capture.commitment, 'target': target.designation.body(),
             'engineMajor': 17, 'schemas': sorted(capture.schemas),
             'customRoles': sorted(r[0] for r in capture.custom_roles),
+            'managedTables': sorted(t for t in capture.profile['tables'] if t[0] in MANAGED_SCHEMAS),
             'tables': len(capture.rows), 'privateObjects': len(capture.objects),
             'publicationAuthorized': False, 'authQuarantine': 'all recovered users banned',
             'runtimeQuarantine': 'all captured custom logins disabled',
@@ -71,8 +74,8 @@ class HostedBackupRecovery:
         self.plan_sha = digest(encoded(self.plan_body))
 
     @classmethod
-    def for_containment(cls, *, target, work, expected_plan_sha256):
-        """Contain a committed/interrupted restore even after capture scratch loss.
+    def from_state(cls, *, target, work, expected_plan_sha256):
+        """Inspect/contain an attempt even after capture scratch loss.
 
         The independently held reviewed plan digest authenticates the private
         state plan; the target DB marker must match that same binding. Fresh
@@ -194,7 +197,23 @@ class HostedBackupRecovery:
             "(select count(*)from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
             "where n.nspname='public')+(select count(*)from pg_type t join pg_namespace n "
             "on n.oid=t.typnamespace where n.nspname='public')").fetchone()[0]
-        return foreign == public == 0
+        if foreign or public:
+            return False
+        expected = self.plan_body.get('managedTables')
+        require(expected is not None, 'hosted_recovery_plan_profile_unsupported')
+        managed = db.execute('select n.nspname,c.relname from pg_class c join pg_namespace n '
+            "on n.oid=c.relnamespace where n.nspname=any(%s)and c.relkind in('r','p','f','m')",
+            (sorted(MANAGED_SCHEMAS),)).fetchall()
+        if {tuple(t) for t in expected} != set(managed):
+            return False
+        # Provider-owned migration rows are preserved. Every other managed
+        # table, including Vault and extensions, must be empty before import or
+        # before a markerless attempt can be classified as rolled back.
+        for schema, table in managed:
+            if (schema, table) not in PROVIDER_HISTORY and db.execute(
+                    'select exists(select 1 from ' + qi(schema) + '.' + qi(table) + ' limit 1)').fetchone()[0]:
+                return False
+        return True
 
     def _quarantine(self, db, metadata):
         db.execute('update auth.users set banned_until=%s where id=any(%s::uuid[])',
@@ -220,8 +239,6 @@ class HostedBackupRecovery:
                 return marker
             self._fresh(db)
             execute_batch(db, GUC.encode())
-            db.execute("set statement_timeout='240s'")
-            db.execute("set lock_timeout='10s'")
             db.execute('set session_replication_role=replica')
             execute_batch(db, program.roles)
             restore_database_access(db, self.capture.database_access)

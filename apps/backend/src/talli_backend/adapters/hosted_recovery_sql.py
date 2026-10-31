@@ -72,9 +72,44 @@ class NativeArchive:
         with tempfile.TemporaryFile(dir=self.work) as selection:
             selection.write(''.join(e.line for e in entries).encode()); selection.flush()
             selection.seek(0)
-            return self._run(['--data-only' if data else '--schema-only',
+            raw = self._run(['--data-only' if data else '--schema-only',
                 '--use-list', '/dev/fd/' + str(selection.fileno()), '--file=-'],
                 pass_fds=(selection.fileno(),))
+            return bounded_native_preamble(raw)
+
+
+def bounded_native_preamble(raw):
+    """Keep the connection's deadline policy instead of pg_restore's zeroes.
+
+    Only pg_restore's generated preamble is touched. Identical SET statements
+    inside captured function bodies remain byte-for-byte unchanged.
+    """
+    code = 'hosted_archive_deadline_preamble_unsupported'
+    require(b'-- PostgreSQL database dump\n' in raw, code)
+    first_object = re.search(rb'(?m)^-- (?:Data for )?Name: ', raw)
+    require(first_object is not None or b'-- PostgreSQL database dump complete\n' in raw, code)
+    boundary = first_object.start() if first_object else len(raw)
+    allowed = {b'idle_in_transaction_session_timeout', b'transaction_timeout',
+        b'client_encoding', b'standard_conforming_strings', b'check_function_bodies',
+        b'xmloption', b'client_min_messages', b'row_security', b'default_tablespace',
+        b'default_table_access_method'}
+    prefix = []
+    for line in raw[:boundary].splitlines(keepends=True):
+        text = line.strip()
+        if not text or text.startswith(b'--') or re.fullmatch(rb'\\(?:un)?restrict [A-Za-z0-9]+', text):
+            prefix.append(line)
+            continue
+        if text == b"SELECT pg_catalog.set_config('search_path', '', false);":
+            prefix.append(line)
+            continue
+        setting = re.fullmatch(rb'SET ([a-z_]+) = ([^;\r\n]+);', text)
+        require(setting is not None, code)
+        if setting[1] in (b'statement_timeout', b'lock_timeout'):
+            require(setting[2] == b'0', code)
+            continue
+        require(setting[1] in allowed, code)
+        prefix.append(line)
+    return b''.join(prefix) + raw[boundary:]
 
 
 def sql_without_psql_framing(raw):

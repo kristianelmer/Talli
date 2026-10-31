@@ -10,10 +10,12 @@ from datetime import datetime, timezone
 import argparse
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from uuid import uuid4
 
@@ -25,7 +27,7 @@ from talli_backend.adapters import hosted_backup_recovery as recovery
 from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL, DATABASE_ACCESS_SQL, row_commitments
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, encoded
 from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL, GUC, execute_batch
-from talli_backend.adapters.hosted_recovery_target import HostedDesignation
+from talli_backend.adapters.hosted_recovery_target import HostedDesignation, SupabaseRecoveryTarget
 
 IMAGE = 'public.ecr.aws/supabase/postgres@sha256:f6be70aeb2946183fee4eb8c4fae23caf9c66f7cc4984d69d28832a975535c3d'
 SOURCE, TARGET, ORG = 'a' * 20, 'b' * 20, 'c' * 20
@@ -47,9 +49,13 @@ create schema storage authorization postgres;
 create schema extensions authorization postgres;
 create table auth.users(id uuid primary key,banned_until timestamptz);
 create table auth.refresh_tokens(id bigserial primary key,token text);
+create table auth.schema_migrations(version text primary key);
+insert into auth.schema_migrations values('synthetic-managed-auth');
 create table storage.buckets(id text primary key,public boolean);
 create table storage.objects(id uuid primary key,bucket_id text,name text);
 create table storage.buckets_vectors(id uuid primary key);
+create table storage.migrations(id integer primary key,created_at timestamptz);
+insert into storage.migrations values(1,clock_timestamp());
 """
 APPLICATION = """
 create role restore_owner nologin;
@@ -92,28 +98,34 @@ def save(path, value):
     return path
 
 
-class CommitAcknowledgementLost:
-    def __init__(self, db): self.db = db
+class CheckedConnection:
+    def __init__(self, db, *, lose_commit): self.db, self.lose_commit = db, lose_commit
     def __getattr__(self, key): return getattr(self.db, key)
     def commit(self):
+        limits = dict(self.db.execute("select name,setting::int from pg_settings where "
+            "name in('statement_timeout','lock_timeout')").fetchall())
+        assert all(0 < value <= 240000 for value in limits.values()), 'native replay removed SQL deadlines'
         self.db.commit()
-        raise ConnectionError('synthetic lost commit acknowledgement')
+        if self.lose_commit:
+            raise ConnectionError('synthetic lost commit acknowledgement')
 
 
-class LocalTarget:
-    def __init__(self, settings):
-        self.settings = settings
+class LocalTarget(SupabaseRecoveryTarget):
+    def __init__(self, settings, folder):
+        # Only the provider metadata/Storage port is replaced. SQL uses the
+        # production transport's identity, CA-file and connection deadline path.
+        ca = save(folder / 'local-transport-ca.fixture', b'local no-TLS fixture')
+        self.settings = {**settings, 'sslmode': 'disable', 'sslrootcert': str(ca)}
+        self._ca_sha256 = digest(ca.read_bytes())
         self.designation = HostedDesignation(TARGET, ORG, 'synthetic-recovery', 'eu-west-1')
         self.lose_commit = False
     def validate(self, **kwargs):
         assert kwargs['source_project'] == SOURCE
     @contextmanager
     def database(self):
-        with psycopg.connect(**self.settings) as db:
-            db.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
-            db.execute('set role postgres')
+        with super().database() as db:
             lost, self.lose_commit = self.lose_commit, False
-            yield CommitAcknowledgementLost(db) if lost else db
+            yield CheckedConnection(db, lose_commit=lost)
     def restore_object(self, obj, raw):
         assert digest(raw) == obj['sha256']
         return {**obj, 'servedExact': True, 'publicRouteDenied': True}
@@ -172,7 +184,39 @@ def exercise(container, settings, folder, pg_restore):
             # by native ACL delta statements.
             db.execute('alter default privileges in schema public grant execute on functions to anon,authenticated')
     fresh()
-    target = LocalTarget(settings)
+    target = LocalTarget(settings, folder)
+    with connect() as db:
+        original_auth_history = db.execute('select version from auth.schema_migrations').fetchall()
+        original_storage_history = db.execute('select id,created_at from storage.migrations').fetchall()
+    for case in ('unrelated-managed-table', 'occupied-managed-table'):
+        with connect() as db:
+            if case == 'unrelated-managed-table':
+                db.execute('create table extensions.unrelated_customer_data(payload text)')
+                db.execute("insert into extensions.unrelated_customer_data values('unrelated')")
+            else:
+                db.execute("insert into auth.refresh_tokens(token)values('unrelated')")
+            original_access = db.execute(DATABASE_ACCESS_SQL).fetchone()[0]
+        rejected_work = folder / case; rejected_work.mkdir(mode=0o700)
+        rejected = recovery.HostedBackupRecovery(capture=capture, target=target,
+            work=rejected_work, pg_restore=pg_restore)
+        try:
+            rejected.restore(expected_plan_sha256=rejected.plan_sha)
+            raise AssertionError('nonempty provider namespace accepted')
+        except ValueError as error:
+            assert str(error) == 'hosted_target_not_empty'
+        try:
+            rejected.contain(expected_plan_sha256=rejected.plan_sha)
+            raise AssertionError('nonempty provider namespace classified as rollback')
+        except ValueError as error:
+            assert str(error) == 'hosted_recovery_marker_unavailable'
+        with connect() as db:
+            assert db.execute(DATABASE_ACCESS_SQL).fetchone()[0] == original_access
+            if case == 'unrelated-managed-table':
+                assert db.execute('select payload from extensions.unrelated_customer_data').fetchone()[0] == 'unrelated'
+                db.execute('drop table extensions.unrelated_customer_data')
+            else:
+                assert db.execute('select token from auth.refresh_tokens').fetchone()[0] == 'unrelated'
+                db.execute('truncate auth.refresh_tokens restart identity')
     # A native dump inconsistent with its independently captured row proof must
     # roll back roles, schemas, data and marker, with containment still usable.
     wrong_rows = {**capture.rows, 'ledger.items': {'rows': 1, 'sha256': '0' * 64}}
@@ -208,14 +252,37 @@ def exercise(container, settings, folder, pg_restore):
         assert not db.execute("select has_function_privilege('anon','public.fixture_count()','execute')").fetchone()[0]
         assert db.execute("select has_schema_privilege('restore_runtime','extensions','usage')").fetchone()[0]
         assert db.execute("select pg_get_userbyid(proowner)from pg_proc where proname='read_count'").fetchone()[0] == 'restore_function_owner'
-    clean = recovery.HostedBackupRecovery.for_containment(target=target, work=work, expected_plan_sha256=operator.plan_sha)
+        assert db.execute('select version from auth.schema_migrations').fetchall() == original_auth_history
+        assert db.execute('select id,created_at from storage.migrations').fetchall() == original_storage_history
+    shutil.rmtree(capture_dir)
+    clean = recovery.HostedBackupRecovery.from_state(target=target, work=work, expected_plan_sha256=operator.plan_sha)
+    assert clean.inspect()['databaseMarkerPresent'] is True
+    with connect() as blocker:
+        blocker.execute('select id from auth.users for update')
+        # A watchdog makes the old unbounded implementation fail deterministically
+        # instead of hanging this owned regression forever.
+        watchdog = threading.Timer(12, blocker.rollback)
+        watchdog.daemon = True
+        watchdog.start()
+        started = time.monotonic()
+        try:
+            try:
+                clean.contain(expected_plan_sha256=operator.plan_sha)
+                raise AssertionError('containment waited for watchdog instead of its SQL deadline')
+            except psycopg.errors.LockNotAvailable:
+                assert time.monotonic() - started < 12
+        finally:
+            watchdog.cancel()
+            blocker.rollback()
     assert clean.contain(expected_plan_sha256=operator.plan_sha)['phase'] == 'contained'
     assert clean.contain(expected_plan_sha256=operator.plan_sha)['phase'] == 'contained'
     return {'status': 'pass', 'scope': 'synthetic local PostgreSQL, no hosted replay',
         'tablesCompared': state['verification']['tablesCompared'], 'sequence132': True,
         'crossSchemaOwner': True, 'defaultAclRepair': True, 'managedCustomUsage': True,
         'lostCommitResume': True, 'rollbackBeforeCommit': True, 'customRoleGrantorsAndOptions': True,
-        'authAndRuntimeQuarantine': True, 'repeatableContainment': True}
+        'authAndRuntimeQuarantine': True, 'repeatableContainment': True,
+        'containmentRowLockDeadline': True, 'nonemptyManagedNamespaceRefused': True,
+        'providerMigrationRowsPreserved': True, 'inspectAfterCaptureLoss': True}
 
 
 def main():

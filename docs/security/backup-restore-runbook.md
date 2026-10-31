@@ -427,7 +427,9 @@ Required capture inputs:
 Metadata must match project, organization, name and region, report
 `ACTIVE_HEALTHY`, and show creation after the capture. Database version/locale,
 extensions, managed Auth/Storage definitions and empty destination checks must
-pass before import. The owner must designate an unused project; this command
+pass before import. The managed-table inventory must match the captured profile;
+all managed tables except the named Auth/Storage/Realtime migration histories
+must be empty, including Vault and extensions. Unknown tables fail closed. The owner must designate an unused project; this command
 does not resolve free-project capacity by pausing another service.
 
 The finite profile supports lowercase PostgreSQL identifiers, at most 512 tables,
@@ -447,14 +449,21 @@ digest from its reviewed bytes, independently from the command that consumes it.
 ```sh
 uv run --project apps/backend talli-recover-hosted plan --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA
 uv run --project apps/backend talli-recover-hosted restore --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
-uv run --project apps/backend talli-recover-hosted inspect --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA
+uv run --project apps/backend talli-recover-hosted inspect --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
 uv run --project apps/backend talli-recover-hosted contain --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
 ```
 
 Review the returned plan digest and exact target before restore. The plan binds
-the capture/supplement hashes, target designation, schemas, role inventory and
+the capture/supplement hashes, target designation, schemas, role inventory, complete managed-table inventory and
 quarantine policy. The plan command performs provider metadata reads only;
 native archive inspection runs locally.
+
+Every SQL connection applies a 240-second statement timeout and 10-second lock
+wait limit at startup, including identity checks, inspect and containment. A
+blocked containment stops with state retained for a later bounded retry. Native
+zero-timeout preamble statements cannot disable those limits; unsupported
+preamble syntax or an ambiguous object boundary stops extraction. Function
+bodies after object metadata are preserved.
 
 SQL import, ACL repair, row verification, Auth bans, runtime `NOLOGIN` and the
 private `_talli_recovery.attempt` marker commit in one transaction. Membership
@@ -477,7 +486,7 @@ The target's keys, Auth configuration and existing token trust need separate
 review before any later publication. Real signing, payment, provider activation
 and all existing release gates remain closed.
 
-`contain` reasserts bans and `NOLOGIN` and is repeatable. It can use the
+`contain` reasserts bans and `NOLOGIN` and is repeatable. Both inspect and containment use the
 reviewed plan stored in private state even after capture scratch is lost; target
 credentials and the independently held plan digest are still required. After
 reboot or interruption, first inspect/contain with the same private work state.
@@ -509,7 +518,9 @@ It creates one labeled container with an ephemeral database and loopback-only
 port, uses synthetic data, and removes that exact container in `finally`.
 It verifies rollback before commit, cross-schema owners, fresh-project default
 ACL repair, role grantors/options, managed custom usage, Auth sequence 132,
-quarantine, lost-commit reconciliation and repeatable containment. Its Storage
+quarantine, lost-commit reconciliation, unknown/occupied managed-table rejection,
+retained provider migration history, capture-loss inspection, a real locked-row
+containment deadline and repeatable containment. Its Storage
 port is a local fixture; HTTP behavior is verified separately by the unit suite.
 Neither result constitutes a new hosted replay, continuous RPO, whole-service
 RTO, offsite key custody or delivered incident alert.

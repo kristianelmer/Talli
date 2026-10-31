@@ -14,7 +14,8 @@ from talli_backend.adapters import hosted_backup_recovery as recovery
 from talli_backend.adapters import hosted_recovery_operator as command
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, encoded
 from talli_backend.adapters.hosted_recovery_sql import (
-    LogicalProgram, compile_program, copy_parts, execute_data, role_program, sequence_payload, toc_entries,
+    LogicalProgram, bounded_native_preamble, compile_program, copy_parts, execute_data,
+    role_program, sequence_payload, toc_entries,
 )
 from talli_backend.adapters.hosted_recovery_target import (
     HostedDesignation, SupabaseRecoveryTarget, connection_settings,
@@ -124,6 +125,30 @@ def test_native_toc_accepts_pg_dump_18_ownerless_metadata():
         ('ENCODING', ''), ('STDSTRINGS', ''), ('EXTENSION plpgsql', '')]
 
 
+def test_native_session_preamble_cannot_disable_deadlines_or_rewrite_function_body():
+    body = (b'-- Name: original(); Type: FUNCTION; Schema: public; Owner: postgres\n'
+        b'CREATE FUNCTION public.original() RETURNS void LANGUAGE plpgsql AS $$\n'
+        b'SET statement_timeout = 0;\nSET lock_timeout = 0;\n$$;\n')
+    header = b'-- PostgreSQL database dump\nSET statement_timeout = 0;\nSET lock_timeout = 0;\n'
+    result = bounded_native_preamble(header + body)
+    assert result == b'-- PostgreSQL database dump\n' + body
+    data = (b'-- Data for Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: postgres\n'
+        b"SELECT pg_catalog.setval('auth.refresh_tokens_id_seq', 132, true);\n")
+    assert bounded_native_preamble(header + data) == b'-- PostgreSQL database dump\n' + data
+    end = b'-- PostgreSQL database dump complete\n'
+    assert bounded_native_preamble(header + end) == b'-- PostgreSQL database dump\n' + end
+    with pytest.raises(ValueError, match='deadline_preamble_unsupported'):
+        bounded_native_preamble(b"-- PostgreSQL database dump\nSET statement_timeout='0ms';\n" + body)
+
+
+@pytest.mark.parametrize('extra', [b'SET SESSION statement_timeout = 0;\n',
+    b'SET LOCAL lock_timeout = 0;\n', b"CREATE FUNCTION public.f()RETURNS void AS $$\nSET statement_timeout = 0;\n$$;\n"])
+def test_native_preamble_rejects_unknown_session_syntax_and_missing_object_boundary(extra):
+    with pytest.raises(ValueError, match='deadline_preamble_unsupported'):
+        bounded_native_preamble(b'-- PostgreSQL database dump\n' + extra +
+            b'-- PostgreSQL database dump complete\n')
+
+
 def test_role_setup_does_not_grant_admin_back_to_own_grantor(snapshot):
     roles, final = role_program(ManagedCapture.open(**snapshot))
     assert b'grant "restore_owner" to postgres with inherit true, set true;' in roles
@@ -225,11 +250,19 @@ class DatabaseModel:
         self.capture, self.marker, self.pending = capture, None, None
         self.lose_commit_response = False; self.ddl = 0; self.calls = []
         self.foreign_schema = False
+        self.foreign_managed_table = False
+        self.managed_table_occupied = False
     def execute(self, text, params=None, **kwargs):
         self.calls.append(text)
         if 'pg_try_advisory' in text: return Cursor([(True,)])
         if text.startswith('select count(*)from pg_namespace'):
             return Cursor([(int(self.foreign_schema),)])
+        if text.startswith('select n.nspname,c.relname from pg_class'):
+            rows = [tuple(t) for t in self.capture.profile['tables']
+                if t[0] in recovery.MANAGED_SCHEMAS]
+            return Cursor(rows + ([('extensions', 'unrelated_customer_data')]
+                if self.foreign_managed_table else []))
+        if text.startswith('select exists('): return Cursor([(self.managed_table_occupied,)])
         if 'to_regclass' in text: return Cursor([('marker' if self.marker else None,)])
         if text.startswith('select id::text,plan_sha'): return Cursor([self.marker] if self.marker else [])
         if 'to_regnamespace' in text: return Cursor([(None,)])
@@ -298,8 +331,9 @@ def test_containment_survives_capture_loss_and_is_repeatable(snapshot, tmp_path,
     instance, target = operator(snapshot, tmp_path, monkeypatch)
     instance.restore(expected_plan_sha256=instance.plan_sha)
     shutil.rmtree(instance.capture.directory)
-    clean = recovery.HostedBackupRecovery.for_containment(target=target, work=instance.work,
+    clean = recovery.HostedBackupRecovery.from_state(target=target, work=instance.work,
         expected_plan_sha256=instance.plan_sha)
+    assert clean.inspect()['databaseMarkerPresent'] is True
     assert clean.contain(expected_plan_sha256=instance.plan_sha)['phase'] == 'contained'
     assert clean.contain(expected_plan_sha256=instance.plan_sha)['publicationAuthorized'] is False
     assert any('alter role "restore_runtime" nologin' in q for q in target.db.calls)
@@ -317,7 +351,8 @@ def test_swapped_marker_never_authorizes_reimport_or_cleanup(snapshot, tmp_path,
 def test_cli_never_prints_transport_exception_secrets(monkeypatch, capsys):
     def failed(**kwargs): raise RuntimeError('postgresql://user:secret@host secret-service-key')
     monkeypatch.setattr(command, 'execute', failed)
-    assert command.main(['inspect', '--config', '/private/config', '--expected-config-sha256', 'a' * 64]) == 1
+    assert command.main(['inspect', '--config', '/private/config', '--expected-config-sha256', 'a' * 64,
+        '--expected-plan-sha256', 'b' * 64]) == 1
     wire = capsys.readouterr().out
     assert 'secret' not in wire and json.loads(wire)['publicationAuthorized'] is False
 
@@ -408,3 +443,49 @@ def test_unrelated_schema_never_becomes_an_empty_restore_or_rollback_target(snap
     with pytest.raises(ValueError, match='marker_unavailable'):
         instance.contain(expected_plan_sha256=instance.plan_sha)
     assert target.db.ddl == 0 and target.db.marker is None
+
+
+def test_unrelated_data_in_provider_namespace_is_not_an_empty_target(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    target.db.foreign_managed_table = True
+    with pytest.raises(ValueError, match='target_not_empty'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    with pytest.raises(ValueError, match='marker_unavailable'):
+        instance.contain(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 0 and target.db.marker is None
+
+
+def test_existing_managed_table_data_is_not_an_empty_target(snapshot, tmp_path, monkeypatch):
+    profile = json.loads((snapshot['directory'] / 'source-profile.json').read_bytes())
+    profile['tables'].append(['vault', 'secrets'])
+    rows = json.loads((snapshot['directory'] / 'source-tables.private.json').read_bytes())
+    rows['vault.secrets'] = {'rows': 0, 'sha256': EMPTY}
+    repin(snapshot, 'source-profile.json', profile)
+    repin(snapshot, 'source-tables.private.json', rows)
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    target.db.managed_table_occupied = True
+    with pytest.raises(ValueError, match='target_not_empty'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    with pytest.raises(ValueError, match='marker_unavailable'):
+        instance.contain(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 0
+
+
+def test_inspect_dispatch_uses_reviewed_state_after_capture_loss(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    shutil.rmtree(instance.capture.directory)
+    values = {'version': 1, 'designation': target.designation.body(),
+        'credentials': '/unused/credentials', 'ca': '/unused/ca', 'caSha256': '0' * 64,
+        'work': str(instance.work), 'pgRestore': '/unused/pg_restore',
+        'capture': {k: str(v) if isinstance(v, Path) else v for k, v in snapshot.items()}}
+    config = private(tmp_path / 'operator.json', values)
+    monkeypatch.setattr(command, 'SupabaseRecoveryTarget', lambda **kwargs: target)
+    def capture_unavailable(**kwargs): raise AssertionError('inspect must not read capture scratch')
+    monkeypatch.setattr(command.ManagedCapture, 'open', capture_unavailable)
+    observed = command.execute(command='inspect', config=config,
+        expected_config_sha256=digest(config.read_bytes()), expected_plan_sha256=instance.plan_sha)
+    assert observed['databaseMarkerPresent'] and observed['phase'] == 'verified_quarantined'
+    with pytest.raises(ValueError, match='reviewed_plan_changed'):
+        command.execute(command='inspect', config=config, expected_config_sha256=digest(config.read_bytes()),
+            expected_plan_sha256='0' * 64)
