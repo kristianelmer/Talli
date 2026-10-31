@@ -377,8 +377,9 @@ Run `talli-recover-hosted` only for an independently reviewed, freshly designate
 Supabase destination. It imports the bounded managed logical capture under
 quarantine. It does not create a backup, provision a project, pause another
 project, publish recovered service traffic, schedule captures, or approve a
-release. The earlier hosted rehearsal is separate evidence; the new command's
-changed-seam proof uses synthetic local PostgreSQL. No new hosted rehearsal or
+release. The earlier hosted rehearsal is separate evidence. The new reader/compiler also
+accepts its sealed 228-table input in an offline compile check; the new command's
+SQL execution proof uses synthetic local PostgreSQL. No new hosted rehearsal or
 outage is implied.
 
 The managed format is distinct from `LocalBackupGenerations`' native disposition

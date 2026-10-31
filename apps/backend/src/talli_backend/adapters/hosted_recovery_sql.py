@@ -32,7 +32,14 @@ def toc_entries(text):
         match = re.fullmatch(r'\d+; \d+ \d+ ([A-Z][A-Z ]*) (\S+) (.*)\n?', line)
         require(match is not None, 'hosted_archive_toc_invalid')
         kind, schema, tail = match.groups()
-        tag, owner = tail.strip().rsplit(' ', 1)
+        # pg_dump 18 includes ownerless ENCODING/STDSTRINGS/SEARCHPATH
+        # records. Preserve a trailing blank owner (also used by extension
+        # comments); stripping it would misparse the tag as an owner.
+        tag, separator, owner = tail.rstrip('\r\n').rpartition(' ')
+        if not separator and kind in ('ENCODING', 'STDSTRINGS', 'SEARCHPATH'):
+            tag, owner = tail.strip(), ''
+        else:
+            require(bool(separator and tag), 'hosted_archive_toc_invalid')
         result.append(Entry(line, kind, schema, tag, owner))
     require(1 <= len(result) <= 10000, 'hosted_archive_toc_bound')
     return tuple(result)

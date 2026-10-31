@@ -116,6 +116,14 @@ def test_native_toc_retains_schema_and_schema_acl_entries():
         ('SCHEMA', '-', 'ledger'), ('ACL', '-', 'SCHEMA ledger'), ('FUNCTION', 'ledger', 'read(id uuid)')]
 
 
+def test_native_toc_accepts_pg_dump_18_ownerless_metadata():
+    entries = toc_entries('1; 0 0 ENCODING - ENCODING \n'
+        '2; 0 0 STDSTRINGS - STDSTRINGS\n'
+        '3; 0 0 COMMENT - EXTENSION plpgsql \n')
+    assert [(e.tag, e.owner) for e in entries] == [
+        ('ENCODING', ''), ('STDSTRINGS', ''), ('EXTENSION plpgsql', '')]
+
+
 def test_role_setup_does_not_grant_admin_back_to_own_grantor(snapshot):
     roles, final = role_program(ManagedCapture.open(**snapshot))
     assert b'grant "restore_owner" to postgres with inherit true, set true;' in roles
