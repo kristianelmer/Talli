@@ -370,3 +370,157 @@ Rotation physically removes only catalog-owned expired generations while a verif
 For restore, independently recover the private key and catalog/journal custody, decrypt into a new isolated directory, verify its native backup commitment, then bind the explicit captured cut through `NativeDispositionRecovery.bind_prefix(..., captured=...)`. Captured obligations require exact terminal owner receipts; current later obligations still replay through the owning Documents seam before the fresh target can publish Auth/Storage. The decrypt receipt itself never authorizes publication.
 
 This narrows the local implementation gap only. Approved paid/offsite resources, new backup-principal/access approval, actual scheduled execution, delivered alerts/human acknowledgment, operating RPO/RTO/load and hosted/full-service signoff remain outstanding. Original RF retention and strict-constructor findings above are historical evidence and are not reclassified by this controller.
+
+## Opt-in managed logical recovery operator (31 October)
+
+Run `talli-recover-hosted` only for an independently reviewed, freshly designated
+Supabase destination. It imports the bounded managed logical capture under
+quarantine. It does not create a backup, provision a project, pause another
+project, publish recovered service traffic, schedule captures, or approve a
+release. The earlier hosted rehearsal is separate evidence. The new reader/compiler also
+accepts its sealed 228-table input in an offline compile check; the new command's
+SQL execution proof uses synthetic local PostgreSQL. No new hosted rehearsal or
+outage is implied.
+
+The managed format is distinct from `LocalBackupGenerations`' native disposition
+bundle. Nonempty native disposition tables, managed encryption-key tables and
+queued provider work fail closed. A missing deletion-journal adapter remains a
+current dependency for captures containing those obligations. This command
+issues no deletion-replay receipt and changes no launch or publication gate.
+
+### Private inputs and designation
+
+Use the [configuration example](hosted-recovery-operator.example.json) as a shape
+only. Replace every placeholder with independently verified owner evidence.
+All input files must be owner-only regular files, without symlink ancestors;
+capture/work directories must be owner-only. Use canonical absolute paths
+(`/private/tmp`, not macOS's `/tmp` symlink). Keep the work directory outside the
+capture and external credential file. Never commit filled configuration,
+credentials, decrypted captures, object paths, actor identifiers or work state.
+
+Required capture inputs:
+
+- The verified decrypted `talli-designated-hosted-capture-v1` inventory, its header,
+  and an independently held SHA-256 of the header. All pinned members must be
+  present, exact and exclusive; role passwords are excluded.
+- A separately pinned source-access supplement: `sourceProject`,
+  `sourceCatalogStillExactToOriginal: true`, `access: {schemas, relations}`,
+  and `databaseAccess: {database: "postgres", owner: "postgres", grants}`.
+  Schema/relation rows are the named owner/grantor/grantee/privilege/grant-option
+  observations returned by `hosted_recovery_access.ACCESS_SQL`; database grants
+  use `DATABASE_ACCESS_SQL`. They must be collected by the authorized capture
+  process, with evidence that the original source catalog stayed exact. Merely
+  setting the boolean or recomputing a checksum supplies no provenance.
+- Source profile: timezone-aware `capturedAt`, project reference, complete table
+  inventory, seven database facts (version, locale provider, encoding, collation,
+  ctype, locale, owner), and ordered extension identity/version/owner/schema rows.
+- External credential JSON with exactly `project`, `databaseUrl`,
+  `managementToken`, `serviceRoleKey`. The bounded profile requires the target's
+  legacy service-role JWT; newer secret-key formats are not supported here.
+  Supply the independently pinned official database CA separately. DSNs must
+  name this target directly or through the session pooler on port 5432;
+  connections always use TLS `verify-full`. Nonempty inherited `PG*` environment
+  settings are rejected; use a clean shell with this explicit config. The CA file
+  is rechecked before each connection. Credentials never enter CLI output
+  or the work journal.
+
+Metadata must match project, organization, name and region, report
+`ACTIVE_HEALTHY`, and show creation after the capture. Database version/locale,
+extensions, managed Auth/Storage definitions and empty destination checks must
+pass before import. The managed-table inventory must match the captured profile;
+all managed tables except the named Auth/Storage/Realtime migration histories
+must be empty, including Vault and extensions. Unknown tables fail closed. The owner must designate an unused project; this command
+does not resolve free-project capacity by pausing another service.
+
+The finite profile supports lowercase PostgreSQL identifiers, at most 512 tables,
+32 private files of at most 8 MiB each, 256 Auth users, 64 MiB per capture member
+and 256 MiB total. Application procedures/materialized data, custom triggers on
+managed tables, non-owner ACL grantor chains, unsupported role grantor chains
+and foreign keys to Storage transport IDs fail closed. Native provider migration
+history is preserved. Storage IDs, versions and timestamps are recreated by the
+Storage API, while bucket/path and file bytes are preserved.
+
+### Plan, restore/resume, inspect and contain
+
+Install the backend project with the locked dependencies. Pin the actual
+`pg_restore` executable path in the reviewed configuration. Obtain the config
+digest from its reviewed bytes, independently from the command that consumes it.
+
+```sh
+uv run --project apps/backend talli-recover-hosted plan --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA
+uv run --project apps/backend talli-recover-hosted restore --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
+uv run --project apps/backend talli-recover-hosted inspect --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
+uv run --project apps/backend talli-recover-hosted contain --config /absolute/private/operator.json --expected-config-sha256 CONFIG_SHA --expected-plan-sha256 REVIEWED_PLAN_SHA
+```
+
+Review the returned plan digest and exact target before restore. The plan binds
+the capture/supplement hashes, target designation, schemas, role inventory, complete managed-table inventory and
+quarantine policy. The plan command performs provider metadata reads only;
+native archive inspection runs locally.
+
+Every SQL connection applies a 240-second statement timeout and 10-second lock
+wait limit at startup, including identity checks, inspect and containment. A
+blocked containment stops with state retained for a later bounded retry. Native
+zero-timeout preamble statements cannot disable those limits; unsupported
+preamble syntax or an ambiguous object boundary stops extraction. Function
+bodies after object metadata are preserved.
+
+SQL import, ACL repair, row verification, Auth bans, runtime `NOLOGIN` and the
+private `_talli_recovery.attempt` marker commit in one transaction. Membership
+grantors/options are compared exactly; source LOGIN deliberately becomes false.
+Sequence counters include managed Auth counters. PostgreSQL `setval` is
+nontransactional: an aborted import can leave an advanced counter on the empty
+quarantined target. Containment does not claim counter rollback.
+
+An unknown database commit response stops with private state retained. Repeat
+the same restore command to reconcile its marker; it never blindly replays DDL
+over committed data. Private object POSTs use no overwrite; resume reads and
+hashes existing bytes. Wrong existing content, changed public bucket state or
+an unexpected marker stops for inspection. Do not delete state or substitute a
+target to bypass these checks.
+
+`verified_quarantined` means row/ACL/object checks passed with recovered users
+banned and runtime logins disabled. It grants no service publication authority,
+nor a claim that source Auth tokens or managed encryption keys were recovered.
+The target's keys, Auth configuration and existing token trust need separate
+review before any later publication. Real signing, payment, provider activation
+and all existing release gates remain closed.
+
+`contain` reasserts bans and `NOLOGIN` and is repeatable. Both inspect and containment use the
+reviewed plan stored in private state even after capture scratch is lost; target
+credentials and the independently held plan digest are still required. After
+reboot or interruption, first inspect/contain with the same private work state.
+A mismatched or missing marker with unrelated imported data is never treated as
+an empty rollback. Retain state until containment is independently checked.
+Containment preserves forensic data and private objects; it does not pause or
+delete the project, revoke owner API credentials, or remove owner-held input
+files. Expire/rotate temporary credentials and remove decrypted scratch through
+the approved custody procedure after the evidence is sealed.
+
+### Changed-seam regression
+
+The fast unit suite covers binding, COPY framing, provider HTTP contracts,
+readback after a lost upload response, marker reconciliation and capture-loss
+containment:
+
+```sh
+uv run --project apps/backend pytest apps/backend/tests/test_hosted_backup_recovery.py -q
+```
+
+For actual SQL behavior, run the explicit disposable Docker regression with the
+cached pinned PostgreSQL 17 image and a local `pg_restore` (17 or newer):
+
+```sh
+uv run --project apps/backend python scripts/test-hosted-recovery-owned.py --pg-restore /absolute/path/pg_restore
+```
+
+It creates one labeled container with an ephemeral database and loopback-only
+port, uses synthetic data, and removes that exact container in `finally`.
+It verifies rollback before commit, cross-schema owners, fresh-project default
+ACL repair, role grantors/options, managed custom usage, Auth sequence 132,
+quarantine, lost-commit reconciliation, unknown/occupied managed-table rejection,
+retained provider migration history, capture-loss inspection, a real locked-row
+containment deadline and repeatable containment. Its Storage
+port is a local fixture; HTTP behavior is verified separately by the unit suite.
+Neither result constitutes a new hosted replay, continuous RPO, whole-service
+RTO, offsite key custody or delivered incident alert.

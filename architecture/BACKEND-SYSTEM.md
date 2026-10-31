@@ -1534,3 +1534,11 @@ The workspace exposes simulation labels only with `includeSyntheticContext=true`
 -->
 
 The explicit operational artifact `supabase/private-preview/20261029170000_synthetic_tax_current_draft.sql` separately opens only finite, owner-scoped retention of current-reference drafts, with an exact fixture/year/reference wrapper and the existing Company Access eligibility contract. It expires at 2026-10-30 18:00 UTC. It is excluded from ordinary migration/topology application. Temporary migration SET authority is restored within the transaction; persistent grants and memberships remain unchanged. Its companion containment restores the prior closed marker and V2 delegate without deleting originals. Both artifacts require exact target and function identity checks before execution; they grant no submission authority.
+
+## Explicit managed logical recovery operator
+
+The opt-in hostedLogicalRecovery operator consumes an independently pinned managed capture and an explicit fresh Supabase designation. Its separate target-local attempt marker commits with restored data, Auth bans and disabled runtime logins; it is not company content or a runtime-composed capability. Private Storage restoration resumes by exact readback. The command has no publication, project lifecycle, scheduler or release-signoff authority. Native disposition bundles retain their existing replay contract. ADR0012 ownership and the existing deletion-recovery boundary remain unchanged. See the backup runbook for the supported profile and cleanup.
+
+<!-- architecture-inventory
+{"infrastructure":["hostedLogicalRecovery=>Explicit operator only; owner-designated fresh target, capture and plan digests, atomic Auth/runtime quarantine, resumable private object restoration; no publication or project lifecycle authority."],"adapterDependencies":["talli_backend.adapters.hosted_backup_recovery","talli_backend.adapters.hosted_recovery_access","talli_backend.adapters.hosted_recovery_capture","talli_backend.adapters.hosted_recovery_operator","talli_backend.adapters.hosted_recovery_sql","talli_backend.adapters.hosted_recovery_target","tempfile","resource"]}
+-->

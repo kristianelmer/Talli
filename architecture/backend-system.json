@@ -803,7 +803,8 @@
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
     "durableWorker": "The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions.",
     "deletionRecovery": "Offline reviewed disposition journal outside customer snapshots, durable owner receipts and fresh-target replay head. Restored backend traffic/readiness fail closed on missing journal, missing replay, rollback, owner gaps or changed head. Auth/Storage publication remains a separate orchestration responsibility; no hosted purge adapter or scheduler. Synthetic local preflight verifies Auth sessions/MFA, case authority, Billing history, Documents bytes and generation via an explicitly owned native control channel; a scoped export and same-session company write fence bind the native command. Whole-company owner/legal/export coverage stays unavailable. Fresh-target recovery compares the complete native table census and row-byte facts, role state, all object bytes and attributes, plus the native disposition guard functions, trigger attachments/enabled states and scoped RLS/ACL policy with the independently pinned backup, then retains the original admitted permit bytes. Its bind_prefix accepts at most eight chronological same-company deletion-only captured cuts with exact exports and requires a source generation guard for new multi-cut bindings; the existing single-cut bind stays compatible. Replay holds the native company source fence through every cut and receipt publication, releasing it on failure. Its declared operational writes register only Documents native targets/plans; ordinary erasure remains the restricted Documents owner command.",
-    "localBackupGenerations": "Local synthetic encrypted native generations with a separate SQLite completion catalog, public-key-only writer, external recovery key and admitted-journal/export custody. Capture and verified AEAD readback precede atomic completion; source capture time determines usable age. Seven-day rotation removes only catalog-owned generations and protects a verified survivor. Local sampled readiness records failed, incomplete, corrupt or stale generations. No scheduler, remote service, new backup principal, hosted operation, alert delivery or operating RPO/RTO acceptance."
+    "localBackupGenerations": "Local synthetic encrypted native generations with a separate SQLite completion catalog, public-key-only writer, external recovery key and admitted-journal/export custody. Capture and verified AEAD readback precede atomic completion; source capture time determines usable age. Seven-day rotation removes only catalog-owned generations and protects a verified survivor. Local sampled readiness records failed, incomplete, corrupt or stale generations. No scheduler, remote service, new backup principal, hosted operation, alert delivery or operating RPO/RTO acceptance.",
+    "hostedLogicalRecovery": "Explicit operator only; owner-designated fresh target, capture and plan digests, atomic Auth/runtime quarantine, resumable private object restoration; no publication or project lifecycle authority."
   },
   "adapterBindings": [
     {
@@ -1525,7 +1526,15 @@
       "stat",
       "tarfile",
       "cryptography.hazmat.primitives.ciphers.aead",
-      "talli_backend.adapters.local_backup_generations"
+      "talli_backend.adapters.local_backup_generations",
+      "talli_backend.adapters.hosted_backup_recovery",
+      "talli_backend.adapters.hosted_recovery_access",
+      "talli_backend.adapters.hosted_recovery_capture",
+      "talli_backend.adapters.hosted_recovery_operator",
+      "talli_backend.adapters.hosted_recovery_sql",
+      "talli_backend.adapters.hosted_recovery_target",
+      "tempfile",
+      "resource"
     ]
   }
 }
