@@ -4,6 +4,7 @@ from copy import deepcopy
 import io
 import json
 import os
+import re
 from pathlib import Path
 import signal
 import sys
@@ -202,12 +203,42 @@ def test_original_timeouts_and_failure_only_workflow_contract():
     assert 'timeout: 360_000' in browser and 'timeout: 180_000' in browser
     assert "failure() && steps.rehearsal.outcome == 'failure'" in workflow
     assert workflow.index('actual_replay.py consume') < workflow.index('actual_replay.py cleanup')
-    assert 'upload-artifact' not in workflow[workflow.index('  database:'):workflow.index('  evidence:')]
+    diagnostic = workflow[workflow.index('  database-diagnostic:'):workflow.index('  evidence:')]
+    assert 'upload-artifact' not in diagnostic
     # Repaired bootstrap/stream never schedules the old bare-restore consumer.
-    database = workflow[workflow.index('  database:'):workflow.index('  evidence:')]
+    database = diagnostic
     assert 'TALLI_RF_LEGACY_REPLAY: "false"' in database
     assert database.count("env.TALLI_RF_LEGACY_REPLAY == 'true'") == 3
     assert 'if [ "$TALLI_RF_LEGACY_REPLAY" = "true" ]; then' in database
+
+
+def test_integration_artifacts_exclude_private_replay_and_allow_only_safe_publication_paths():
+    root = Path(__file__).resolve().parents[3]
+    workflow = (root / '.github/workflows/release-gate.yml').read_text()
+    matrix = workflow[workflow.index('  database:'):workflow.index('  database-diagnostic:')]
+    assert 'rf1086_actual_replay.py' not in matrix
+    assert 'TALLI_RF_REPLAY_DIR' not in matrix
+    uploads = matrix.split('uses: actions/upload-artifact@')[1:]
+    assert len(uploads) == 2
+    paths = []
+    for upload in uploads:
+        block = upload.split('\n      - name:', 1)[0]
+        match = re.search(r'^          path: (.+)$', block, re.MULTILINE)
+        assert match is not None
+        if match[1] == '|':
+            suffix = block[match.end():]
+            entries = re.match(r'(?:\n            [^\n]+)+', suffix)
+            assert entries is not None
+            paths.extend(line.strip() for line in entries[0].splitlines() if line.strip())
+        else:
+            paths.append(match[1])
+        assert 'include-hidden-files: true' not in block
+    assert paths == [
+        '${{ env.TALLI_CI_OUTPUT_DIR }}/publish/result.json',
+        '${{ env.TALLI_CI_OUTPUT_DIR }}/publish/phases.jsonl',
+        '${{ env.TALLI_CI_OUTPUT_DIR }}/publish/timings.md',
+        '${{ env.TALLI_CI_OUTPUT_DIR }}/publish/browser/',
+    ]
 
 @pytest.mark.parametrize('fault', [None, 'archive_binding', 'initialized', 'strict_roles', 'strict_catalog', 'causal'])
 def test_full_control_requires_fresh_failed_bindings_before_inventory(setup, monkeypatch, fault):
