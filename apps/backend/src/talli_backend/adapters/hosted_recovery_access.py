@@ -54,8 +54,9 @@ def restore_access(db, capture, final_memberships):
     which native ACL deltas do not revoke. Reset from captured complete sets,
     under the actual owning role so grantors and grant options remain meaningful.
     """
-    schemas = sorted(capture.schemas)
-    scope = capture.schemas | {'auth', 'storage'}
+    schemas = sorted(capture.application_schemas)
+    scope = capture.application_schemas | {'auth', 'storage'}
+    inert_provider = capture.profile.get('providerState') is not None
     actual = db.execute(CATALOG_SQL).fetchone()[0]
     expected_functions = {tuple(r[:3]): r for r in capture.catalog['functions'] if r[0] in scope}
     actual_functions = {tuple(r[:3]): r for r in actual['functions'] if r[0] in scope}
@@ -85,12 +86,14 @@ def restore_access(db, capture, final_memberships):
         present = actual_functions[identity]
         require(wanted[:5] == present[:5], 'hosted_function_definition_or_owner_changed')
         if sorted(wanted[5], key=encoded) != sorted(present[5], key=encoded):
+            require(not inert_provider or identity[0] in capture.application_schemas,
+                'hosted_provider_managed_access_changed')
             reset('function', qi(identity[0]) + '.' + qi(identity[1]) + '(' + identity[2] + ')',
                 wanted[4], wanted[5], present[5])
             repairs['functions'] += 1
     for category in ('relations', 'schemas'):
         size = 2 if category == 'relations' else 1
-        wanted_rows = {tuple(r[:size]): r for r in capture.access[category]}
+        wanted_rows = {tuple(r[:size]): r for r in capture.access[category] if r[0] in schemas}
         present_rows = {tuple(r[:size]): r for r in observed_access[category]}
         require(set(wanted_rows) == set(present_rows), 'hosted_access_inventory_changed')
         for identity, wanted in wanted_rows.items():
@@ -101,7 +104,8 @@ def restore_access(db, capture, final_memberships):
                 reset(kind, '.'.join(qi(x) for x in identity), wanted[-2], wanted[-1], present[-1])
                 repairs[category] += 1
     execute_batch(db, final_memberships)
-    require(normalized_access(capture.access) == normalized_access(
+    require(normalized_access({k: [r for r in rows if r[0] in schemas]
+        for k, rows in capture.access.items()}) == normalized_access(
         db.execute(ACCESS_SQL, (schemas, schemas)).fetchone()[0]), 'hosted_source_access_changed')
     require(normalized_catalog(capture.catalog, scope) == normalized_catalog(
         db.execute(CATALOG_SQL).fetchone()[0], scope), 'hosted_source_catalog_changed')

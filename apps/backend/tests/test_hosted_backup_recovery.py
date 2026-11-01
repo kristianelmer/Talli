@@ -252,6 +252,9 @@ class DatabaseModel:
         self.foreign_schema = False
         self.foreign_managed_table = False
         self.managed_table_occupied = False
+        self.enabled_logins = {r[0] for r in capture.custom_roles if r[5]}
+        self.replication_mode = 'origin'
+        self.policy_authority = False
     def execute(self, text, params=None, **kwargs):
         self.calls.append(text)
         if 'pg_try_advisory' in text: return Cursor([(True,)])
@@ -271,6 +274,16 @@ class DatabaseModel:
         if 'to_regnamespace' in text: return Cursor([(None,)])
         if text.startswith("select current_setting('server_version_num')"):
             return Cursor([tuple(self.capture.profile['facts'])])
+        if text == "select current_setting('session_replication_role')":
+            return Cursor([(self.replication_mode,)])
+        if text.startswith('select rolsuper or pg_has_role'):
+            return Cursor([(self.policy_authority,)])
+        if text.startswith('select rolname from pg_roles where rolname=any'):
+            return Cursor([(name,) for name in sorted(set(params[0]) & self.enabled_logins)])
+        if text.startswith('select count(*)from pg_roles where rolname=any') and 'rolcanlogin' in text:
+            return Cursor([(len(set(params[0]) & self.enabled_logins),)])
+        if text.startswith('alter role "') and text.endswith(' nologin'):
+            self.enabled_logins.discard(text.split('"')[1])
         if text.startswith('select e.extname'): return Cursor([])
         if text.startswith('select 1 from pg_constraint'): return Cursor([])
         if 'jsonb_build_object' in text and "'functions'" in text: return Cursor([(self.capture.catalog,)])

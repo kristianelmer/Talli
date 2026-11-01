@@ -18,6 +18,10 @@ from talli_backend.adapters.deletion_journal import LocalReplayReceipt
 from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL, DATABASE_ACCESS_SQL
 from talli_backend.adapters.hosted_recovery_capture import MANAGED_SCHEMAS, digest, encoded, private_read, qi, require
 from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL, GUC, NativeArchive, compile_program
+from talli_backend.adapters.hosted_recovery_provider import (
+    PROFILE as PROVIDER_PROFILE, SCHEMAS as PROVIDER_SCHEMAS, SQL as PROVIDER_SQL,
+    parameters as provider_parameters,
+)
 from talli_backend.adapters.managed_disposition_binding import (
     FORMAT, TABLES, ManagedDispositionBinding, native_custody,
 )
@@ -194,6 +198,15 @@ def _capture(target, directory, *, binding_sha256, pg_restore, held):
         catalog = snapshot.query(CATALOG_SQL); roles = snapshot.query(ROLES_SQL)
         access = snapshot.query(ACCESS_SQL, (schemas, schemas))
         database_access = snapshot.query(DATABASE_ACCESS_SQL)
+        provider = None
+        if PROVIDER_SCHEMAS & set(schemas):
+            require(PROVIDER_SCHEMAS <= set(schemas), 'hosted_provider_profile_required')
+            provider = {'profile': PROVIDER_PROFILE,
+                'structure': snapshot.query(PROVIDER_SQL, provider_parameters())}
+            provider['sequenceState'] = [snapshot.query(
+                'select jsonb_build_array(' + sql.Literal(schema).as_string() + ',' +
+                sql.Literal(name).as_string() + ',last_value,is_called)from ' + qi(schema) + '.' + qi(name))
+                for schema, name, *_ in provider['structure']['sequences']]
         rows = _row_facts(snapshot, tables)
         objects, contents, history = _objects(snapshot, held)
         dump = snapshot.dump()
@@ -209,7 +222,7 @@ def _capture(target, directory, *, binding_sha256, pg_restore, held):
         'contents.list': ''.join(entry.line for entry in inventory.entries).encode(),
         'source-profile.json': encoded({'sourceNativeTarget': target.target, 'nativeOrigin': origin,
             'facts': facts, 'extensions': extensions, 'tables': tables,
-            'capturedAt': captured_at}),
+            'capturedAt': captured_at, **({'providerState': provider} if provider else {})}),
         'source-tables.private.json': encoded(rows), 'source-catalog.private.json': encoded(catalog),
         'source-roles.private.json': encoded(roles), 'object-manifest.private.json': encoded(objects)})
     contents['native-held-history.private.json'] = encoded(history)

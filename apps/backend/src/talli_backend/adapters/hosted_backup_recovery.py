@@ -21,6 +21,11 @@ from talli_backend.adapters.hosted_recovery_capture import (
 from talli_backend.adapters.hosted_recovery_sql import (
     GUC, NativeArchive, compile_program, execute_batch, execute_data, verify_managed_triggers,
 )
+from talli_backend.adapters.hosted_recovery_provider import (
+    SCHEMAS as PROVIDER_SCHEMAS,
+    summary as provider_summary, verify as verify_provider_state,
+    require_policy_authority,
+)
 
 CONTROL = '_talli_recovery'
 MARKER = CONTROL + '.attempt'
@@ -78,6 +83,9 @@ class HostedBackupRecovery:
         if self.disposition is not None:
             self.plan_body.update(version=2, sourceOrigin='owned-native-replayed',
                 disposition=self.disposition.summary())
+        provider = provider_summary(capture)
+        if provider is not None:
+            self.plan_body['providerState'] = provider
         self.plan_sha = digest(encoded(self.plan_body))
 
     @classmethod
@@ -110,6 +118,13 @@ class HostedBackupRecovery:
         finally: os.close(descriptor)
 
     def _validate(self, *, capture_required=True):
+        if 'providerState' in self.plan_body:
+            # An ordinary managed connection cannot attest service isolation or
+            # transfer provider keys. Only an explicitly owned inert transport
+            # can supply this capability; absence refuses before hosted calls.
+            isolation = getattr(self.target, 'require_inert_provider_state', None)
+            require(callable(isolation), 'hosted_provider_target_composition_unsupported')
+            isolation(self.plan_body['providerState'])
         # Re-read every bound member before a command, not just construction.
         if capture_required and self.capture is not None:
             for name in self.capture.files: self.capture.read(name)
@@ -165,16 +180,24 @@ class HostedBackupRecovery:
             'from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname').fetchall()
         require([list(row) for row in extensions] == capture.profile['extensions'],
             'hosted_extension_profile_changed')
+        verify_provider_state(db, capture)
+        if 'providerState' in self.plan_body:
+            require(db.execute("select current_setting('session_replication_role')").fetchone()[0] == 'origin',
+                'hosted_provider_origin_mode_required')
+            require_policy_authority(db, capture)
         require(all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
-            for name in capture.schemas if name != 'public'), 'hosted_target_not_empty')
+            for name in capture.application_schemas if name != 'public'), 'hosted_target_not_empty')
         require(db.execute('select count(*)from auth.users').fetchone()[0] == 0 and
             db.execute('select count(*)from storage.objects').fetchone()[0] == 0 and
             db.execute('select count(*)from storage.buckets').fetchone()[0] == 0,
             'hosted_target_not_empty')
         require(db.execute("select count(*)from pg_tables where schemaname='public'").fetchone()[0] == 0,
             'hosted_target_not_empty')
-        require(db.execute('select count(*)from pg_roles where rolname=any(%s)',
-            (self.plan_body['customRoles'],)).fetchone()[0] == 0, 'hosted_target_not_empty')
+        if 'providerState' in self.plan_body:
+            verify_custom_roles(db, capture)
+        else:
+            require(db.execute('select count(*)from pg_roles where rolname=any(%s)',
+                (self.plan_body['customRoles'],)).fetchone()[0] == 0, 'hosted_target_not_empty')
         current = db.execute(CATALOG_SQL).fetchone()[0]
         # Definitions and RLS must match before importing into provider tables.
         # Custom policies are intentionally restored separately, not overwritten.
@@ -190,19 +213,23 @@ class HostedBackupRecovery:
             db.execute('select count(*)from storage.objects').fetchone()[0] == 0 and
             db.execute('select count(*)from storage.buckets').fetchone()[0] == 0 and
             all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
-            for name in self.plan_body['schemas'] if name != 'public') and
+            for name in self.plan_body['schemas'] if name != 'public' and
+                (name not in PROVIDER_SCHEMAS or 'providerState' not in self.plan_body)) and
             db.execute('select count(*)from auth.users').fetchone()[0] == 0 and
             db.execute('select count(*)from pg_roles where rolname=any(%s)',
-                (self.plan_body['customRoles'],)).fetchone()[0] == 0 and
+                (self.plan_body['customRoles'],)).fetchone()[0] ==
+                (len(self.plan_body['customRoles']) if 'providerState' in self.plan_body else 0) and
             db.execute("select count(*)from pg_tables where schemaname='public'").fetchone()[0] == 0,
             'hosted_recovery_marker_unavailable')
 
     def _empty_namespace(self, db):
         # A new project containing an unrelated schema is not an empty target.
         # Database ACL changes affect the whole database, beyond captured names.
+        provider = self.plan_body.get('providerState')
+        allowed = MANAGED_SCHEMAS | {'public'} | (PROVIDER_SCHEMAS if provider else set())
         foreign = db.execute("select count(*)from pg_namespace where nspname !~ '^pg_' "
             "and nspname<>'information_schema' and nspname<>all(%s)",
-            (sorted(MANAGED_SCHEMAS | {'public'}),)).fetchone()[0]
+            (sorted(allowed),)).fetchone()[0]
         public = db.execute("select (select count(*)from pg_class c join pg_namespace n "
             "on n.oid=c.relnamespace where n.nspname='public')+"
             "(select count(*)from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
@@ -210,6 +237,14 @@ class HostedBackupRecovery:
             "on n.oid=t.typnamespace where n.nspname='public')").fetchone()[0]
         if foreign or public:
             return False
+        if provider:
+            # Markerless reconciliation must enforce the same original state,
+            # including when the capture scratch has been lost. Do not call an
+            # unrelated populated provider namespace an empty rollback.
+            if self.capture is None:
+                return False
+            verify_provider_state(db, self.capture)
+            verify_custom_roles(db, self.capture)
         expected = self.plan_body.get('managedTables')
         require(expected is not None, 'hosted_recovery_plan_profile_unsupported')
         managed = db.execute('select n.nspname,c.relname from pg_class c join pg_namespace n '
@@ -227,9 +262,14 @@ class HostedBackupRecovery:
         return True
 
     def _quarantine(self, db, metadata):
-        db.execute('update auth.users set banned_until=%s where id=any(%s::uuid[])',
-            (BAN, metadata['actors']))
-        for name in metadata['logins']:
+        if metadata['actors']:
+            db.execute('update auth.users set banned_until=%s where id=any(%s::uuid[])',
+                (BAN, metadata['actors']))
+        # Exact NOLOGIN prerequisites need no ALTER ROLE authority. Containment
+        # changes only roles which have actually become enabled.
+        enabled = db.execute('select rolname from pg_roles where rolname=any(%s)and rolcanlogin',
+            (metadata['logins'],)).fetchall()
+        for name, in enabled:
             db.execute('alter role ' + qi(name) + ' nologin')
 
     def _quarantined(self, db, metadata):
@@ -322,19 +362,25 @@ class HostedBackupRecovery:
                 'hosted_recovery_target_busy')
             marker = self._marker(db, state)
             if marker is not None:
+                verify_provider_state(db, self.capture)
+                if 'providerState' in self.plan_body:
+                    verify_custom_roles(db, self.capture)
                 self._quarantined(db, marker)
                 require(self._history_current(db, marker), 'hosted_disposition_history_copy_changed')
                 state['quarantine'] = marker
                 return marker
             self._fresh(db, program)
             execute_batch(db, GUC.encode())
-            db.execute('set session_replication_role=replica')
+            if not program.preserve_provider_constraints:
+                db.execute('set session_replication_role=replica')
             execute_batch(db, program.roles)
             restore_database_access(db, self.capture.database_access)
             execute_batch(db, program.schemas)
             execute_batch(db, program.temporary_create)
             execute_batch(db, program.definitions)
-            copied = execute_data(db, program.data, self.capture.rows)
+            copied = execute_data(db, program.data, self.capture.rows,
+                order_by_foreign_keys=program.preserve_provider_constraints)
+            execute_batch(db, program.post_data)
             # Include managed sequence counters even though managed table/schema
             # definitions and migration history remain provider-owned.
             for (schema, name), value, called in program.sequences:
@@ -350,6 +396,7 @@ class HostedBackupRecovery:
             # captured postgres membership can intentionally disable both
             # INHERIT and SET, including access to cross-owned schemas.
             repairs = restore_access(db, self.capture, b'')
+            verify_provider_state(db, self.capture)
             # Mutable provider migration timestamps and future uploaded Storage
             # transport identities are explicit differences, not wildcard skips.
             compared = [t for t in self.capture.profile['tables'] if '.'.join(t) in copied or
@@ -359,7 +406,8 @@ class HostedBackupRecovery:
                 'hosted_restored_table_bytes_changed')
             execute_batch(db, program.final_memberships)
             actors = [str(r[0]) for r in db.execute('select id from auth.users order by id')]
-            logins = [r[0] for r in self.capture.custom_roles if r[5]]
+            logins = [r[0] for r in self.capture.custom_roles
+                if r[5] or 'providerState' in self.plan_body]
             metadata = {'actors': actors, 'logins': logins, 'repairs': repairs,
                 'tablesCompared': len(compared), 'sequenceCounters': len(program.sequences),
                 'publicationAuthorized': False}
@@ -385,7 +433,8 @@ class HostedBackupRecovery:
             db.execute('insert into ' + MARKER + ' values(%s,%s,%s,%s,%s::jsonb)',
                 (state['id'], self.plan_sha, self.capture.commitment,
                  self.target.designation.project, json.dumps(metadata)))
-            db.execute('set session_replication_role=origin')
+            if not program.preserve_provider_constraints:
+                db.execute('set session_replication_role=origin')
             db.commit()
             return metadata
 
@@ -414,6 +463,9 @@ class HostedBackupRecovery:
                 if self.disposition is not None: self.disposition.check_current()
                 with self.target.database() as db:
                     self._quarantined(db, self._marker(db, state))
+                    verify_provider_state(db, self.capture)
+                    if 'providerState' in self.plan_body:
+                        verify_custom_roles(db, self.capture)
                 state['verification'] = {'tablesCompared': metadata['tablesCompared'],
                     'sequenceCounters': metadata['sequenceCounters'], 'aclRepairs': metadata['repairs'],
                     'privateObjectsServedExact': len(state['objects']), 'authUsersBanned': len(metadata['actors']),
@@ -441,12 +493,19 @@ class HostedBackupRecovery:
                 marker = self._marker(db, state)
                 if marker is not None: self._quarantined(db, marker)
                 else: self._uncommitted(db)
+                provider_current = None
+                if 'providerState' in self.plan_body and self.capture is not None:
+                    verify_provider_state(db, self.capture)
+                    verify_custom_roles(db, self.capture)
+                    provider_current = True
                 history_current = False
                 try:
                     if marker is not None: history_current = self._history_current(db, marker)
                 except Exception:
                     pass
             result = {**state, 'databaseMarkerPresent': marker is not None}
+            if 'providerState' in self.plan_body:
+                result['providerStateCurrent'] = provider_current
             if 'disposition' in self.plan_body:
                 current = False
                 try:

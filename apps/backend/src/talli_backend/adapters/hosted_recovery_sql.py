@@ -66,13 +66,15 @@ class NativeArchive:
             output.seek(0)
             return output.read()
 
-    def sql(self, entries, *, data=False):
+    def sql(self, entries, *, data=False, section=None):
         # An explicit full-TOC selection retains SCHEMA and SCHEMA ACL entries;
         # pg_restore --schema filters do not retain those entries themselves.
         with tempfile.TemporaryFile(dir=self.work) as selection:
             selection.write(''.join(e.line for e in entries).encode()); selection.flush()
             selection.seek(0)
+            require(section in (None, 'pre-data', 'post-data'), 'hosted_archive_section_invalid')
             raw = self._run(['--data-only' if data else '--schema-only',
+                *(['--section=' + section] if section else []),
                 '--use-list', '/dev/fd/' + str(selection.fileno()), '--file=-'],
                 pass_fds=(selection.fileno(),))
             return bounded_native_preamble(raw)
@@ -151,9 +153,52 @@ def execute_batch(db, raw):
             pass
 
 
-def execute_data(db, raw, expected_rows):
+def execute_data(db, raw, expected_rows, *, order_by_foreign_keys=False):
+    parts = list(copy_parts(raw))
+    if order_by_foreign_keys:
+        # Only native TABLE DATA is selected by this program. Refuse active SQL
+        # between COPY blocks rather than moving arbitrary statements around.
+        copies = [value for kind, value in parts if kind == 'copy']
+        require(len({v[0] for v in copies}) == len(copies), 'hosted_archive_copy_inventory_changed')
+        for table, _, body in copies:
+            require(table in expected_rows and bool(body) == (expected_rows[table]['rows'] > 0),
+                'hosted_archive_copy_inventory_changed')
+        started = False
+        prefix = []
+        for kind, value in parts:
+            if kind == 'copy':
+                started = True
+            elif started:
+                require(all(not line.strip() or line.lstrip().startswith(b'--')
+                    for line in value.splitlines()), 'hosted_archive_ordered_data_sql_unsupported')
+            else:
+                prefix.append(('sql', value))
+        # Existing provider constraints remain enabled. PostgreSQL supplies
+        # exact relation identities; no SQL text parser infers dependencies.
+        dependencies = {table: set() for table, _, body in copies if body}
+        foreign_keys = db.execute(
+                'select n.nspname,c.relname,rn.nspname,rc.relname from pg_constraint k '
+                'join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace '
+                'join pg_class rc on rc.oid=k.confrelid join pg_namespace rn on rn.oid=rc.relnamespace '
+                "where k.contype='f' and n.nspname||'.'||c.relname=any(%s) limit 4097",
+                (sorted(dependencies),)).fetchall()
+        require(len(foreign_keys) <= 4096, 'hosted_provider_foreign_key_bound')
+        for child_schema, child, parent_schema, parent in foreign_keys:
+            child, parent = child_schema + '.' + child, parent_schema + '.' + parent
+            if child in dependencies and parent in dependencies and child != parent:
+                dependencies[child].add(parent)
+        order = []
+        while dependencies:
+            ready = sorted(table for table, parents in dependencies.items() if not parents)
+            require(ready, 'hosted_provider_foreign_key_cycle_unsupported')
+            order.extend(ready)
+            dependencies = {table: parents - set(ready) for table, parents in dependencies.items()
+                if table not in ready}
+        by_table = {value[0]: value for value in copies}
+        order.extend(sorted(set(by_table) - set(order)))
+        parts = prefix + [('copy', by_table[table]) for table in order]
     seen = set()
-    for kind, value in copy_parts(raw):
+    for kind, value in parts:
         if kind == 'sql':
             execute_batch(db, value)
             continue
@@ -182,7 +227,12 @@ def sequence_payload(raw):
     return tuple(result)
 
 
-def role_program(capture):
+def role_program(capture, *, definition_owners=()):
+    from talli_backend.adapters.hosted_recovery_provider import (
+        profile as provider_profile, role_program as provider_role_program,
+    )
+    if provider_profile(capture) is not None:
+        return provider_role_program(capture, definition_owners=definition_owners)
     custom = {r[0] for r in capture.custom_roles}
     statements = []
     final = []
@@ -244,6 +294,8 @@ class LogicalProgram:
     extension_usage: bytes
     sequences: tuple
     managed_triggers: tuple = ()
+    post_data: bytes = b''
+    preserve_provider_constraints: bool = False
 
 
 def managed_trigger_definitions(archive):
@@ -283,6 +335,9 @@ def verify_managed_triggers(db, expected):
 
 
 def compile_program(capture, archive):
+    from talli_backend.adapters.hosted_recovery_provider import profile as provider_profile
+    provider = provider_profile(capture)
+    application_schemas = capture.application_schemas
     entries = archive.entries
     require(not any(e.kind in ('PROCEDURE', 'MATERIALIZED VIEW DATA') and
         e.schema in capture.schemas for e in entries), 'hosted_archive_object_kind_unsupported')
@@ -292,12 +347,12 @@ def compile_program(capture, archive):
         for row in capture.catalog['constraints']),
         'hosted_storage_transport_identity_dependency_unsupported')
     def application(entry):
-        return entry.schema in capture.schemas or entry.kind in ('SCHEMA', 'ACL', 'COMMENT') and \
+        return entry.schema in application_schemas or entry.kind in ('SCHEMA', 'ACL', 'COMMENT') and \
             entry.schema == '-' and (entry.tag.split()[0] if entry.kind == 'SCHEMA' else
-                entry.tag.split()[1] if entry.tag.startswith('SCHEMA ') else None) in capture.schemas
+                entry.tag.split()[1] if entry.tag.startswith('SCHEMA ') else None) in application_schemas
     app = [e for e in entries if application(e)]
     creates = [e for e in app if e.kind == 'SCHEMA']
-    require({e.tag for e in creates} | {'public'} == set(capture.schemas),
+    require({e.tag for e in creates} | {'public'} == set(application_schemas),
         'hosted_capture_schema_inventory_changed')
     definitions = [e for e in app if e.kind not in ('SCHEMA', 'ACL', 'DEFAULT ACL', 'TABLE DATA', 'SEQUENCE SET')]
     acls = [e for e in app if e.kind in ('ACL', 'DEFAULT ACL') and e.owner != 'supabase_admin']
@@ -305,7 +360,7 @@ def compile_program(capture, archive):
     owners = {(e.schema, e.owner) for e in definitions if e.kind in
         ('FUNCTION', 'TABLE', 'VIEW', 'MATERIALIZED VIEW', 'SEQUENCE', 'TYPE') and e.owner != 'postgres'}
     custom = {r[0] for r in capture.custom_roles}
-    require(all(schema in capture.schemas and owner in custom for schema, owner in owners),
+    require(all(schema in application_schemas and owner in custom for schema, owner in owners),
         'hosted_capture_owner_unsupported')
     temporary = ''.join('grant create on schema ' + qi(schema) + ' to ' + qi(owner) + ';'
         for schema, owner in sorted(owners)).encode()
@@ -315,15 +370,27 @@ def compile_program(capture, archive):
     # source-owned custom policies separately after application definitions.
     policies = [e for e in entries if e.kind == 'POLICY' and e.schema in ('auth', 'storage')]
     data = [e for e in entries if e.kind == 'TABLE DATA' and
-        (e.schema in capture.schemas or e.schema in ('auth', 'storage') and
+        (e.schema in application_schemas or e.schema in ('auth', 'storage') and
          e.tag not in ('schema_migrations', 'migrations', 'buckets', 'objects'))]
     require({e.schema + '.' + e.tag for e in data} == {name for name in capture.rows
-        if name.split('.')[0] in capture.schemas or name.split('.')[0] in ('auth', 'storage') and
+        if name.split('.')[0] in application_schemas or name.split('.')[0] in ('auth', 'storage') and
         name.split('.')[1] not in ('schema_migrations', 'migrations', 'buckets', 'objects')},
         'hosted_capture_data_inventory_changed')
-    all_data = archive.sql([e for e in entries if e.kind == 'SEQUENCE SET'], data=True)
+    if provider:
+        # Existing Storage triggers are needed for subsequent API uploads, but
+        # no COPY may fire a provider user trigger in this constrained profile.
+        nonempty_copies = {e.schema + '.' + e.tag for e in data
+            if capture.rows[e.schema + '.' + e.tag]['rows']}
+        require(not any(e.schema + '.' + e.tag.split()[0].strip('"') in nonempty_copies
+            for e in entries if e.kind == 'TRIGGER' and e.schema in ('auth', 'storage')),
+            'hosted_provider_trigger_side_effects_unsupported')
+    # Provider sequence state is already present and verified separately. Never
+    # attempt SETVAL as postgres on a provider-owned sequence.
+    sequence_entries = [e for e in entries if e.kind == 'SEQUENCE SET' and
+        e.schema not in capture.schemas - application_schemas]
+    all_data = archive.sql(sequence_entries, data=True)
     sequences = sequence_payload(all_data)
-    require(len(sequences) == sum(e.kind == 'SEQUENCE SET' for e in entries),
+    require(len(sequences) == len(sequence_entries),
         'hosted_capture_sequence_inventory_changed')
     managed_acls = archive.sql([e for e in entries if e.kind == 'ACL' and
         (e.schema in MANAGED_SCHEMAS or e.schema == '-' and e.tag.startswith('SCHEMA ') and
@@ -333,10 +400,12 @@ def compile_program(capture, archive):
         match = re.fullmatch(r'GRANT [^\n]+ TO ([a-z_][a-z_0-9]*)( WITH GRANT OPTION)?;', line)
         if match and match[1] in custom:
             grants.append(line)
-    roles, final = role_program(capture)
-    return LogicalProgram(roles, archive.sql(creates), temporary, archive.sql(definitions),
+    roles, final = role_program(capture, definition_owners={e.owner for e in definitions})
+    definitions_sql = archive.sql(definitions, section='pre-data') if provider else archive.sql(definitions)
+    post_data = archive.sql(definitions, section='post-data') if provider else b''
+    return LogicalProgram(roles, archive.sql(creates), temporary, definitions_sql,
         archive.sql(data, data=True), archive.sql(policies), archive.sql(acls), remove, final,
-        '\n'.join(grants).encode(), sequences, managed_triggers)
+        '\n'.join(grants).encode(), sequences, managed_triggers, post_data, provider is not None)
 
 GUC = "set search_path=''; set timezone='UTC'; set datestyle='ISO,YMD'; set intervalstyle='postgres'; set bytea_output='hex'; set extra_float_digits=3; "
 

@@ -643,8 +643,52 @@ rows, roles, objects and attributes while managed compilation still refuses it.
 In the populated 249-table fixture, `pg_net` owns the `net` namespace, so the dump
 has no independent `CREATE SCHEMA net` entry. `_realtime`, `pgboss_v10` and
 `supabase_functions` also contain objects owned by provider roles. The current
-managed profile does not model this provider-namespace composition; that full
-bundle remains refused. Supporting it requires an explicit provider data/access
-contract and matching fresh-destination checks. Do not omit namespaces or rows,
+ordinary hosted transport does not model this provider-namespace composition;
+that full hosted restore remains refused. Do not omit namespaces or rows,
 or relabel provider objects as application objects, to manufacture a successful
 handoff. Native recovery and owning-read results remain separate evidence.
+
+An explicit `talli-inert-native-provider-state-v1` prerequisite now permits the
+native capture/compiler to account for all five namespaces: `_realtime`, `net`,
+`pgboss_v10`, `supabase_functions`, and `supabase_migrations`. Its fifteen tables
+include all original migration/configuration rows. The profile requires provider
+definitions, columns/types and privileges, extension membership, sequence state,
+owners, ACLs and row commitments to match an already provisioned isolated target.
+The complete original role graph must also be provisioned, with every custom role
+NOLOGIN. The application importer never creates these provider objects, copies
+their rows, rewrites their original grantors, or grants provider-owner access.
+The reviewed plan states these prerequisites and denies provider state/key import
+and service activation authority. Ciphertext equality is not proof of key portability.
+
+This profile is available only through a caller-supplied owned, inert transport
+whose `require_inert_provider_state(plan_profile)` checks its actual resource and
+service isolation before each command and upload. The ordinary
+`SupabaseRecoveryTarget` deliberately has no such capability and refuses before
+hosted calls. A source-derived provider-only fixture proves this prerequisite;
+it does not prove that an independently initialized Supabase project matches.
+
+The constrained importer requires the connection's replication mode to be
+`origin`; it does not request permission to change that mode. Application
+pre-data definitions precede native COPY, existing provider foreign keys determine
+COPY order, and application post-data constraints/triggers follow COPY.
+Nonempty tables with Auth/Storage user triggers, work-bearing provider rows,
+provider user triggers, interleaved active data SQL, excessive dependency edges,
+and multi-table FK cycles refuse. A self-reference is checked within its single
+COPY statement. Existing triggers on untouched Storage tables retain their exact
+captured definitions for later API uploads; provider state is checked again after
+uploads. The target must keep worker/network isolation throughout.
+
+Original managed-table policies still require their actual table-owner authority.
+In the populated fixture, `postgres` cannot create
+`support_case_read_storage_objects` on `storage.objects`. The current importer
+therefore refuses with `hosted_managed_policy_owner_unavailable` before application
+DDL. Neither the policy nor its owner requirement is omitted. Successful native
+capture and exact provider prerequisites do not establish a complete application
+restore, Auth/MFA recovery, restored owning reads, or hosted acceptance.
+
+Resume rechecks provider state and the original quarantined role graph. All custom
+roles remain in quarantine, including roles captured as NOLOGIN. Inspection after
+capture loss can still inspect/contain a matching durable marker, but reports
+`providerStateCurrent: null`; it cannot claim fresh provider verification from a
+stored success receipt. Markerless classification with missing capture remains
+refused for this profile.

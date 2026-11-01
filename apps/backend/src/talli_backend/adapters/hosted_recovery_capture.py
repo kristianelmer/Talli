@@ -251,6 +251,8 @@ class ManagedCapture:
             'hosted_disposition_history_inventory_invalid')
         result = cls(directory, commitment, source, pins, profile, rows,
             catalog, roles, tuple(objects), values, database_access, disposition, tuple(history))
+        from talli_backend.adapters.hosted_recovery_provider import profile as provider_profile
+        provider_profile(result)
         if native:
             disposition.verify_capture(result, header_sha256=header_sha256, access_sha256=access_sha256)
         return result
@@ -265,6 +267,11 @@ class ManagedCapture:
     @property
     def schemas(self):
         return frozenset(row[0] for row in self.access['schemas'])
+
+    @property
+    def application_schemas(self):
+        from talli_backend.adapters.hosted_recovery_provider import SCHEMAS
+        return self.schemas - SCHEMAS
 
     @property
     def custom_roles(self):
