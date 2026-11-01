@@ -18,7 +18,7 @@ from talli_backend.adapters.hosted_recovery_capture import (
     MANAGED_SCHEMAS, digest, encoded, normalized_catalog, private_read, qi, require,
 )
 from talli_backend.adapters.hosted_recovery_sql import (
-    GUC, NativeArchive, compile_program, execute_batch, execute_data,
+    GUC, NativeArchive, compile_program, execute_batch, execute_data, verify_managed_triggers,
 )
 
 CONTROL = '_talli_recovery'
@@ -143,7 +143,7 @@ class HostedBackupRecovery:
             self.plan_body['captureSha256'], self.target.designation.project), 'hosted_recovery_marker_changed')
         return rows[0][4]
 
-    def _fresh(self, db):
+    def _fresh(self, db, program):
         capture = self.capture
         require(self._empty_namespace(db), 'hosted_target_not_empty')
         facts = db.execute("select current_setting('server_version_num')::integer,d.datlocprovider,"
@@ -172,6 +172,7 @@ class HostedBackupRecovery:
         right = normalized_catalog(current, {'auth', 'storage'})
         for key in ('constraints', 'functions', 'indexes', 'rls'):
             require(left[key] == right[key], 'hosted_managed_schema_profile_changed')
+        verify_managed_triggers(db, program.managed_triggers)
 
     def _uncommitted(self, db):
         """No marker may mean rollback, never permission to reuse unrelated data."""
@@ -237,7 +238,7 @@ class HostedBackupRecovery:
             if marker is not None:
                 self._quarantined(db, marker)
                 return marker
-            self._fresh(db)
+            self._fresh(db, program)
             execute_batch(db, GUC.encode())
             db.execute('set session_replication_role=replica')
             execute_batch(db, program.roles)

@@ -434,11 +434,18 @@ does not resolve free-project capacity by pausing another service.
 
 The finite profile supports lowercase PostgreSQL identifiers, at most 512 tables,
 32 private files of at most 8 MiB each, 256 Auth users, 64 MiB per capture member
-and 256 MiB total. Application procedures/materialized data, custom triggers on
-managed tables, non-owner ACL grantor chains, unsupported role grantor chains
+and 256 MiB total. Application procedures/materialized data, unmatched triggers on
+managed Auth/Storage tables, non-owner ACL grantor chains, unsupported role grantor chains
 and foreign keys to Storage transport IDs fail closed. Native provider migration
 history is preserved. Storage IDs, versions and timestamps are recreated by the
 Storage API, while bucket/path and file bytes are preserved.
+
+Before import, all noninternal Auth/Storage trigger declarations must match the
+fresh destination exactly, with normal (`O`) enable state. Dump trigger owners
+describe their table owner and cannot identify a trigger's creator. Missing,
+extra or changed destination triggers stop recovery before DDL. Multiline
+native trigger declarations and source enable-state alterations are outside
+this finite profile and stop extraction; managed triggers are never replayed.
 
 ### Plan, restore/resume, inspect and contain
 
@@ -524,3 +531,13 @@ containment deadline and repeatable containment. Its Storage
 port is a local fixture; HTTP behavior is verified separately by the unit suite.
 Neither result constitutes a new hosted replay, continuous RPO, whole-service
 RTO, offsite key custody or delivered incident alert.
+
+The separate native regression needs installed PostgreSQL 17 or newer server
+binaries and `pg_restore`. It creates a private Unix-socket-only cluster,
+demonstrates a custom Auth trigger's provider table-owner label in a real dump,
+and checks exact declaration matching plus missing, changed and disabled trigger
+refusal. It stops and removes only its own cluster; no hosted target is used.
+
+```sh
+uv run --project apps/backend python scripts/test-hosted-recovery-triggers.py --pg-bin /absolute/postgres/bin --pg-restore /absolute/path/pg_restore
+```

@@ -15,7 +15,7 @@ from talli_backend.adapters import hosted_recovery_operator as command
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, encoded
 from talli_backend.adapters.hosted_recovery_sql import (
     LogicalProgram, bounded_native_preamble, compile_program, copy_parts, execute_data,
-    role_program, sequence_payload, toc_entries,
+    managed_trigger_definitions, role_program, sequence_payload, toc_entries, verify_managed_triggers,
 )
 from talli_backend.adapters.hosted_recovery_target import (
     HostedDesignation, SupabaseRecoveryTarget, connection_settings,
@@ -318,6 +318,52 @@ def test_wrong_reviewed_plan_prevents_even_provider_validation(snapshot, tmp_pat
     assert target.validations == 0 and not target.db.calls
 
 
+def test_provider_owned_custom_trigger_cannot_be_silently_omitted(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    program = recovery.compile_program(instance.capture, instance.archive)
+    declaration = ('CREATE TRIGGER custom_hook AFTER INSERT ON auth.users '
+        'FOR EACH ROW EXECUTE FUNCTION public.custom_hook()')
+    monkeypatch.setattr(recovery, 'compile_program', lambda *args: SimpleNamespace(
+        **{**vars(program), 'managed_triggers': (declaration,)}))
+    with pytest.raises(ValueError, match='managed_trigger_profile_changed'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 0 and target.db.marker is None
+
+
+def test_native_managed_trigger_declaration_matches_fresh_provider_exactly():
+    declaration = ('CREATE TRIGGER provider_hook AFTER INSERT ON storage.objects '
+        'FOR EACH ROW EXECUTE FUNCTION storage.provider_hook()')
+    archive = SimpleNamespace(entries=toc_entries(
+        '3681; 2620 16390 TRIGGER storage objects provider_hook supabase_storage_admin\n'),
+        sql=lambda entries: (b'-- PostgreSQL database dump\nSET client_encoding = \'UTF8\';\n'
+            b'-- Name: objects provider_hook; Type: TRIGGER; Schema: storage; Owner: supabase_storage_admin\n'
+            + declaration.encode() + b';\n-- PostgreSQL database dump complete\n'))
+    expected = managed_trigger_definitions(archive)
+    assert expected == (declaration,)
+    class DB:
+        def __init__(self, rows): self.rows = rows
+        def execute(self, query): return Cursor(self.rows)
+    verify_managed_triggers(DB([(declaration, 'O')]), expected)
+    for rows in ([], [(declaration, 'D')], [(declaration, 'R')], [(declaration, 'A')],
+            [(declaration.replace('AFTER INSERT', 'AFTER DELETE'), 'O')],
+            [(declaration, 'O'), (declaration + ' unexpected', 'O')]):
+        with pytest.raises(ValueError, match='managed_trigger_profile_changed'):
+            verify_managed_triggers(DB(rows), expected)
+
+
+@pytest.mark.parametrize('body', [
+    b'ALTER TABLE storage.objects DISABLE TRIGGER provider_hook;\n',
+    b'CREATE TRIGGER provider_hook\nAFTER INSERT ON storage.objects;\n',
+    b'-- missing declaration\n',
+])
+def test_unsupported_managed_trigger_state_or_declaration_fails_closed(body):
+    archive = SimpleNamespace(entries=toc_entries(
+        '1; 2620 1 TRIGGER storage objects provider_hook supabase_storage_admin\n'),
+        sql=lambda entries: b'-- Name: objects provider_hook; Type: TRIGGER\n' + body)
+    with pytest.raises(ValueError, match='managed_trigger_definition_unsupported'):
+        managed_trigger_definitions(archive)
+
+
 def test_lost_commit_response_is_reconciled_without_replaying_ddl(snapshot, tmp_path, monkeypatch):
     instance, target = operator(snapshot, tmp_path, monkeypatch); target.db.lose_commit_response = True
     with pytest.raises(ConnectionError): instance.restore(expected_plan_sha256=instance.plan_sha)
@@ -393,7 +439,6 @@ def test_naive_capture_time_cannot_skip_fresh_destination_requirement(snapshot):
 
 @pytest.mark.parametrize('line,code', [
     ('1; 1255 1 PROCEDURE public execute_work() postgres\n', 'object_kind_unsupported'),
-    ('1; 2620 1 TRIGGER auth users custom_hook postgres\n', 'managed_custom_trigger_unsupported'),
 ])
 def test_unsupported_objects_stop_before_extracting_sql(snapshot, line, code):
     capture = ManagedCapture.open(**snapshot)

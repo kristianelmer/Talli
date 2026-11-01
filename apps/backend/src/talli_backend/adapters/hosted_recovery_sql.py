@@ -243,15 +243,50 @@ class LogicalProgram:
     final_memberships: bytes
     extension_usage: bytes
     sequences: tuple
+    managed_triggers: tuple = ()
+
+
+def managed_trigger_definitions(archive):
+    """Read the bounded native declarations, never infer their creator from TOC owner.
+
+    pg_dump labels triggers with their table owner. Preserve only matching fresh
+    provider definitions; a custom hook must not disappear during managed import.
+    Multi-line declarations and ALTER/enable-state variants need a new profile.
+    """
+    entries = [e for e in archive.entries if e.kind == 'TRIGGER' and
+        e.schema in ('auth', 'storage')]
+    if not entries:
+        return ()
+    raw = sql_without_psql_framing(archive.sql(entries))
+    boundary = re.search(rb'(?m)^-- Name: ', raw)
+    code = 'hosted_managed_trigger_definition_unsupported'
+    require(boundary is not None, code)
+    declarations = []
+    for line in raw[boundary.start():].decode().splitlines():
+        if not line.strip() or line.startswith('--'):
+            continue
+        require(re.fullmatch(r'CREATE (?:CONSTRAINT )?TRIGGER [^\r\n]+;', line) is not None, code)
+        declarations.append(line[:-1])
+    require(len(declarations) == len(entries) and len(set(declarations)) == len(entries), code)
+    return tuple(sorted(declarations))
+
+
+def verify_managed_triggers(db, expected):
+    # pg_dump deparses with an empty search_path. Otherwise visible public
+    # functions can lose their schema qualification in pg_get_triggerdef.
+    db.execute("set local search_path=''")
+    current = db.execute('select pg_get_triggerdef(t.oid),t.tgenabled from pg_trigger t '
+        'join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace '
+        "where n.nspname in('auth','storage') and not t.tgisinternal").fetchall()
+    require(sorted(current) == [(definition, 'O') for definition in expected],
+        'hosted_managed_trigger_profile_changed')
 
 
 def compile_program(capture, archive):
     entries = archive.entries
     require(not any(e.kind in ('PROCEDURE', 'MATERIALIZED VIEW DATA') and
         e.schema in capture.schemas for e in entries), 'hosted_archive_object_kind_unsupported')
-    require(not any(e.kind == 'TRIGGER' and e.schema in ('auth', 'storage') and
-        not e.owner.startswith('supabase_') for e in entries),
-        'hosted_managed_custom_trigger_unsupported')
+    managed_triggers = managed_trigger_definitions(archive)
     require(not any(row[0] in capture.schemas and
         re.search(r'REFERENCES\s+"?storage"?\."?objects"?\b', row[3], re.I)
         for row in capture.catalog['constraints']),
@@ -301,7 +336,7 @@ def compile_program(capture, archive):
     roles, final = role_program(capture)
     return LogicalProgram(roles, archive.sql(creates), temporary, archive.sql(definitions),
         archive.sql(data, data=True), archive.sql(policies), archive.sql(acls), remove, final,
-        '\n'.join(grants).encode(), sequences)
+        '\n'.join(grants).encode(), sequences, managed_triggers)
 
 GUC = "set search_path=''; set timezone='UTC'; set datestyle='ISO,YMD'; set intervalstyle='postgres'; set bytea_output='hex'; set extra_float_digits=3; "
 
