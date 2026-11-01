@@ -129,7 +129,89 @@ jobs:
         run: git diff --check
 
   database:
-    name: Database isolation
+    name: Database isolation / ${{ matrix.group }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rf_scope == 'full' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [predecessor, authority, financial-database, browser]
+    env:
+      TALLI_CI_OUTPUT_DIR: ${{ runner.temp }}/talli-integration-${{ matrix.group }}-a${{ github.run_attempt }}
+      TALLI_CI_CANDIDATE: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out the immutable revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Check browser rehearsal syntax
+        run: npm run check:browser-syntax
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends pkg-config libicu-dev g++
+          python -m pip install uv==0.10.2
+          uv sync --locked
+          uv sync --project apps/backend --locked
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Prefetch official PostgreSQL fixture images anonymously
+        run: bash scripts/prefetch-postgres-fixture-images.sh
+
+      - name: Prefetch the pinned Supabase local stack
+        env:
+          TALLI_GHCR_JOB_TOKEN: ${{ github.token }}
+        run: bash scripts/prefetch-supabase-fixture-images.sh
+
+
+      - name: Run the isolated integration group
+        env:
+          TALLI_PYTHON_BIN: .venv/bin/python
+          INTEGRATION_GROUP: ${{ matrix.group }}
+        run: bash scripts/test-supabase-local.sh --group "$INTEGRATION_GROUP"
+
+      - name: Retain exact group result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-result-${{ github.run_id }}-${{ matrix.group }}-a${{ github.run_attempt }}
+          path: ${{ env.TALLI_CI_OUTPUT_DIR }}/publish/result.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain safe phase and browser diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-diagnostics-${{ github.run_id }}-${{ matrix.group }}-a${{ github.run_attempt }}
+          path: |
+            ${{ env.TALLI_CI_OUTPUT_DIR }}/publish/phases.jsonl
+            ${{ env.TALLI_CI_OUTPUT_DIR }}/publish/timings.md
+            ${{ env.TALLI_CI_OUTPUT_DIR }}/publish/browser/
+          if-no-files-found: warn
+          retention-days: 7
+
+  database-diagnostic:
+    name: Database diagnostic
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope != 'full' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -284,8 +366,17 @@ jobs:
     if: ${{ always() }}
     needs: [application, database, evidence]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 5
     steps:
+      - name: Check out the immutable revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
       - name: Require every readiness job
         env:
           RF_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}
@@ -302,3 +393,18 @@ jobs:
           else
             test "$EVIDENCE_RESULT" = "skipped"
           fi
+
+      - name: Validate every exact-candidate group receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TALLI_CI_CANDIDATE: ${{ github.event.pull_request.head.sha || github.sha }}
+          TALLI_CI_RECORD_EVIDENCE: ${{ inputs.record_evidence }}
+        run: node scripts/verify-integration-results.mjs
+
+      - name: Retain integration verdict
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-verdict-${{ github.run_id }}-a${{ github.run_attempt }}
+          path: integration-verdict.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { establishOwnerAal2 } from "./support/tax-browser-auth.mjs";
 import { mkdir } from "node:fs/promises";
@@ -9,12 +10,13 @@ import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock
 
 // Mandatory full-stack lane. Only identity/admission prerequisites are seeded;
 // the normal owner form, verified JWT, restricted SQL and Audit create effects.
-test("owner captures every settlement kind through wizard and workspace and retries without duplicate effects", { timeout: 240_000 }, async (t) => {
+test("owner captures every settlement kind through wizard and workspace and retries without duplicate effects", { timeout: 240_000 }, withCiBrowserDiagnostics('tax-settlement', async (t, diagnostics) => {
   const fixture = await startTaxBrowserFixture();
   let browser;
-  t.after(async () => { try { await browser?.close(); } finally { await fixture.close(); } });
+  t.after(async () => { try { await diagnostics.finish(); await browser?.close(); } finally { await fixture.close(); } });
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
+  diagnostics.observeContext(context);
   const blockedRequests = [];
   await installBrowserEgressGuard(context, { approvalEnabled: false, blockedRequests, mockBaseUrl: fixture.siteOrigin });
   const page = await context.newPage();
@@ -59,7 +61,7 @@ test("owner captures every settlement kind through wizard and workspace and retr
   assert.equal(await confirm.isDisabled(), true);
   await page.waitForFunction(() => document.querySelector("table tbody")?.textContent?.includes("202,00"));
   assert.doesNotMatch(await page.locator("table tbody").innerText(), /101,00/u);
-  if (process.env.TALLI_TAX_BROWSER_ARTIFACTS === "1") {
+  if (!process.env.TALLI_CI_SAFE_DIAGNOSTICS_DIR && process.env.TALLI_TAX_BROWSER_ARTIFACTS === "1") {
     await mkdir("output/playwright", { recursive: true });
     await page.screenshot({ path: "output/playwright/tax-settlement-preview.png", fullPage: true });
   }
@@ -119,7 +121,7 @@ test("owner captures every settlement kind through wizard and workspace and retr
   assert.deepEqual(fixture.controls.captures.map(call => [call.body.settlementKind, call.status, call.response.replayed]),
     [["payable",201,false],["payable",201,true],["payment",201,false],["refund",201,false]]);
   assert.deepEqual(blockedRequests, []);
-});
+}));
 
 async function poll(condition) {
   const deadline = Date.now() + 20_000;

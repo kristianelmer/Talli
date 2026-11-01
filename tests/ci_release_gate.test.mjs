@@ -52,6 +52,12 @@ const workflowPath = new URL(
 );
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
 
+function workflowJob(workflow, name) {
+  const section = workflow.split(`\n  ${name}:\n`)[1]?.split(/\n {2}[\w-]+:\n/u)[0];
+  assert.ok(section, `missing workflow job: ${name}`);
+  return section;
+}
+
 test("RF successor registry provides both forward and rollback migration files", () => {
   const layers = JSON.parse(readFileSync(new URL("../scripts/rf-consequential-successors.json", import.meta.url), "utf8"));
   for (const { migration } of layers) {
@@ -598,23 +604,25 @@ for(const [name,context] of [
   const result=spawnSync('bash',[script],{encoding:'utf8',env:{...process.env,...context,TALLI_GHCR_JOB_TOKEN:registryJobFixture.token,RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
   assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/designated Actions context/u);assert.doesNotMatch(result.stderr,/mktemp/u);assertNoRegistryJobCredential(result);
  });
-test('registry job credentials are step-scoped and use read-only package permission in exactly two jobs',()=>{
+test('registry job credentials are step-scoped and use read-only package permission in matrix, diagnostic and evidence jobs',()=>{
   const workflow=readFileSync(workflowPath,'utf8');
-  assert.equal(workflow.split('TALLI_GHCR_JOB_TOKEN: ${{ github.token }}').length-1,2);
-  for(const [job,next] of [['database','evidence'],['evidence','release-gate']]){
-    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+  assert.equal(workflow.split('TALLI_GHCR_JOB_TOKEN: ${{ github.token }}').length-1,3);
+  for(const job of ['database','database-diagnostic','evidence']){
+    const section=workflowJob(workflow,job);
     assert.match(section,/permissions:\n\s+contents: read\n\s+packages: read/u);
     assert.match(section,/Prefetch the pinned Supabase local stack\n\s+env:\n\s+TALLI_GHCR_JOB_TOKEN: \$\{\{ github.token \}\}\n\s+run: bash scripts\/prefetch-supabase-fixture-images.sh/u);
     assert.doesNotMatch(section,/packages: write|secrets\.|write-all/u);
   }
 });
 
-test('only the full-stack database and immutable jobs prefetch Supabase before their original aggregates',()=>{
+test('matrix, diagnostic and immutable jobs prefetch Supabase before their isolated or canonical aggregates',()=>{
   const workflow=readFileSync(workflowPath,'utf8'),command='bash scripts/prefetch-supabase-fixture-images.sh';
-  assert.equal(workflow.split(command).length-1,2);
-  for(const [job,next,aggregate] of [['database','evidence','npm run test:supabase:local'],['evidence','release-gate','npm run gate:customer-ready']]){
-    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+  assert.equal(workflow.split(command).length-1,3);
+  for(const [job,aggregate] of [['database','bash scripts/test-supabase-local.sh --group "$INTEGRATION_GROUP"'],
+    ['database-diagnostic','npm run test:supabase:local'],['evidence','npm run gate:customer-ready']]){
+    const section=workflowJob(workflow,job);
     assert.ok(section.indexOf(command)>section.indexOf('npm ci'));
+    assert.ok(section.includes(aggregate),`missing aggregate in ${job}`);
     assert.ok(section.indexOf(command)<section.indexOf(aggregate));
   }
 });
@@ -622,14 +630,16 @@ test('only the full-stack database and immutable jobs prefetch Supabase before t
 test("every database-using gate job prefetches the same fixed official PostgreSQL images", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   const command = "bash scripts/prefetch-postgres-fixture-images.sh";
-  assert.equal(workflow.split(command).length - 1, 3);
-  for (const [job, nextJob, aggregate] of [
-    ["application", "database", "npm run test:launch-rehearsal"],
-    ["database", "evidence", "npm run test:supabase:local"],
-    ["evidence", "release-gate", "npm run gate:customer-ready"],
+  assert.equal(workflow.split(command).length - 1, 4);
+  for (const [job, aggregate] of [
+    ["application", "npm run test:launch-rehearsal"],
+    ["database", 'bash scripts/test-supabase-local.sh --group "$INTEGRATION_GROUP"'],
+    ["database-diagnostic", "npm run test:supabase:local"],
+    ["evidence", "npm run gate:customer-ready"],
   ]) {
-    const section = workflow.slice(workflow.indexOf(`  ${job}:`), workflow.indexOf(`  ${nextJob}:`));
+    const section = workflowJob(workflow, job);
     assert.ok(section.includes(command));
+    assert.ok(section.includes(aggregate));
     assert.ok(section.indexOf(command) < section.indexOf(aggregate));
   }
 });
@@ -657,6 +667,13 @@ function initializeTemporaryRepository() {
   return directory;
 }
 
+function installHarnessGitShim(directory, binDirectory) {
+  mkdirSync(join(directory, ".git"));
+  const git = join(binDirectory, "git");
+  writeFileSync(git, '#!/bin/sh\n[ "$*" = "rev-parse --git-path talli-integration.lock" ] || exit 97\nprintf "%s\\n" ".git/talli-integration.lock"\n');
+  chmodSync(git, 0o755);
+}
+
 function createHarnessWorkspace(mode, guideState) {
   const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
   const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
@@ -672,6 +689,7 @@ function createHarnessWorkspace(mode, guideState) {
   mkdirSync(dirname(nextEnvPath), { recursive: true });
   mkdirSync(join(directory, "scripts"));
   mkdirSync(binDirectory);
+  installHarnessGitShim(directory, binDirectory);
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
   writeFileSync(tsconfigPath, "original config\n");
@@ -891,12 +909,12 @@ test("RF10 workflow selection is closed and cannot produce a release verdict", (
   }
   const normalized = "${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}";
   const rehearsal = workflow.split("      - name: Rehearse migrations, RLS, storage, and owner persistence\n")[1]?.split("\n      - name:")[0];
-  const verdict = workflow.split("      - name: Require every readiness job\n")[1];
+  const verdict = workflow.split("      - name: Require every readiness job\n")[1]?.split("\n      - name:")[0];
   assert.ok(rehearsal?.includes(`RF_SCOPE: ${normalized}`));
   assert.ok(verdict?.includes(`RF_SCOPE: ${normalized}`));
   const evidence = workflow.split("  evidence:\n")[1]?.split("\n  release-gate:")[0];
   assert.match(evidence, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.record_evidence && \(inputs\.rf_scope \|\| 'full'\) == 'full' \}\}/u);
-  const script = section => section.split("        run: |\n")[1].split("\n").map(line => line.replace(/^          /u, "")).join("\n");
+  const script = section => section.split("\n      - name:")[0].split("        run: |\n")[1].split("\n").map(line => line.replace(/^          /u, "")).join("\n");
   const dir = mkdtempSync(join(tmpdir(), "talli-rf10-workflow-"));
   try {
     const npm = join(dir, "npm");
@@ -932,7 +950,7 @@ test("RF10 package argv selects only the exact source title and omits unmatched 
   assert.equal(scripts["test:browser-shareholder-register-filing:rf10-diagnostic"], command);
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const start = source.indexOf("const scenarios = [");
-  const boundary = "`, {\n  timeout: 360_000,\n}, async (t) => {";
+  const boundary = "`, {\n  timeout: 360_000,";
   const end = source.indexOf(boundary, start);
   assert.ok(start >= 0 && end > start);
   assert.equal(source.indexOf(boundary, end + 1), -1);
@@ -965,8 +983,7 @@ test("RF10 package argv selects only the exact source title and omits unmatched 
 
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
-  const databaseJob =
-    workflow.match(/\n  database:[\s\S]*?\n  release-gate:/)?.[0] ?? "";
+  const databaseJob = workflowJob(workflow, "database");
 
   assert.match(databaseJob, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.ok(databaseJob.includes("python -m pip install uv==0.10.2"));
@@ -1071,8 +1088,11 @@ test("database harness restores generated drift and preserves failure semantics"
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else {
         assert.equal(result.status, mode === "command-and-restore-failure" ? 7 : 1, result.stderr);
-        const snapshots = readdirSync(workspace.snapshotDirectory)
-          .map((name) => readFileSync(join(workspace.snapshotDirectory, name), "utf8"))
+        const retained = readdirSync(workspace.snapshotDirectory, { withFileTypes: true });
+        assert.equal(retained.filter(entry => entry.isDirectory() && entry.name.startsWith("talli-supabase-local.")).length, 1,
+          "failed cleanup preserves its owned workdir");
+        const snapshots = retained.filter(entry => entry.isFile())
+          .map((entry) => readFileSync(join(workspace.snapshotDirectory, entry.name), "utf8"))
           .sort();
         assert.deepEqual(snapshots, [
           "original declaration\n", "original config\n",
@@ -1676,6 +1696,7 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existin
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
   try {
    mkdirSync(join(dir,'apps/web'),{recursive:true});mkdirSync(join(dir,'bin'));mkdirSync(join(dir,'snapshots'));
+   installHarnessGitShim(dir,join(dir,'bin'));
    writeFileSync(join(dir,'apps/web/next-env.d.ts'),'original declaration\r\n');
    writeFileSync(join(dir,'apps/web/tsconfig.json'),'original config\r\n');
    if(existingGuides) for(const name of ['AGENTS.md','CLAUDE.md']) writeFileSync(join(dir,'apps/web',name),`original ${name}\r\n`);

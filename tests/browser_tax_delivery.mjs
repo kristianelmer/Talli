@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import {createHash,randomUUID} from "node:crypto";
 import {mkdir,readFile,writeFile} from "node:fs/promises";
@@ -11,19 +12,20 @@ import {connectedViewport,activateConnectedButton,assertConnectedLayout,assertCo
 
 const viewport=connectedViewport();
 
-test("owner completes finite Tax delivery, lost-response recovery and changed correction with exact originals",{timeout:240_000},async t=>{
+test("owner completes finite Tax delivery, lost-response recovery and changed correction with exact originals",{timeout:240_000},withCiBrowserDiagnostics('tax-delivery', async (t, diagnostics) => {
   const fixture=await startTaxBrowserFixture({incomeYear:2025,delivery:true});
   let browser,page;
-  const artifactPath=process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR;
+  const artifactPath=process.env.TALLI_CI_SAFE_DIAGNOSTICS_DIR ? undefined : process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR;
   t.after(async()=>{try{
     if(artifactPath){
       await writeFile(artifactPath+'/backend-private.log',fixture.diagnostics(),{mode:0o600});
       await writeFile(artifactPath+'/state-private.json',JSON.stringify(await fixture.deliveryState()),{mode:0o600});
       if(page){await writeFile(artifactPath+'/page-private.txt',await page.locator('body').innerText(),{mode:0o600});await page.screenshot({path:artifactPath+'/final.png',fullPage:true});}
     }
-  }finally{try{await browser?.close();}finally{await fixture.close();}}});
+  }finally{try{await diagnostics.finish();await browser?.close();}finally{await fixture.close();}}});
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext(viewport.contextOptions),blockedRequests=[];
+  diagnostics.observeContext(context);
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
   page=await context.newPage();page.setDefaultTimeout(25_000);
   const scope=`companyId=${fixture.companyId}&incomeYear=2025`;
@@ -109,13 +111,14 @@ test("owner completes finite Tax delivery, lost-response recovery and changed co
   assert.equal(state.calls.filter(value=>value.family==='intake').length,2);
   assert.equal(state.calls.filter(value=>value.family==='parent').length,3);
   assert.deepEqual(blockedRequests,[]);
-});
+}, { variant: viewport.mobile ? 'mobile' : 'desktop' }));
 
-test("owner can read blocking validation findings and documents without a submission action",{timeout:150_000},async t=>{
+test("owner can read blocking validation findings and documents without a submission action",{timeout:150_000},withCiBrowserDiagnostics('tax-delivery', async (t, diagnostics) => {
   const fixture=await startTaxBrowserFixture({incomeYear:2025,delivery:true,validationBlocked:true,partialCalculated:true});
   let browser,page;
-  t.after(async()=>{try{await browser?.close();}finally{await fixture.close();}});
+  t.after(async()=>{try{await diagnostics.finish();await browser?.close();}finally{await fixture.close();}});
   browser=await chromium.launch({headless:true});const context=await browser.newContext(viewport.contextOptions),blockedRequests=[];
+  diagnostics.observeContext(context);
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
   page=await context.newPage();page.setDefaultTimeout(25_000);
   await page.goto(fixture.siteOrigin+'/login');
@@ -147,7 +150,7 @@ test("owner can read blocking validation findings and documents without a submis
   assert.equal(new URL(originalHref,fixture.siteOrigin).searchParams.get('key'),'validation_result:'+row.validation.originalSha256,'displayed fields link to their latest exact enclosing original');
   assert.equal(row.originals.filter(value=>value.purpose==='validation_result').length,2);
   await assertConnectedLayout(page,viewport,'blocked validation');await assertConnectedReflow(page,viewport);
-  if(process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR)await page.screenshot({path:process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR+'/'+(viewport.mobile?'touch':'desktop')+'-validation-blocked.png',fullPage:true});
+  if(!process.env.TALLI_CI_SAFE_DIAGNOSTICS_DIR&&process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR)await page.screenshot({path:process.env.TALLI_TAX_BROWSER_ARTIFACT_DIR+'/'+(viewport.mobile?'touch':'desktop')+'-validation-blocked.png',fullPage:true});
   const state=await fixture.deliveryState();assert.deepEqual(state.errors,[]);
   assert.ok(state.calls.every(call=>call.method!=='PUT'));assert.deepEqual(blockedRequests,[]);
-});
+}, { variant: viewport.mobile ? 'mobile' : 'desktop' }));

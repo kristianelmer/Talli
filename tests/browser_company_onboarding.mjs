@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -37,7 +38,7 @@ const anonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const databaseUrl = process.env.DATABASE_URL;
 
-test("a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI", { timeout: 240_000 }, async (t) => {
+test("a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI", { timeout: 240_000 }, withCiBrowserDiagnostics('onboarding', async (t, diagnostics) => {
   if (!supabaseUrl || !serviceRoleKey || !anonKey || !databaseUrl) {
     t.skip("Supabase env missing");
     return;
@@ -100,6 +101,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
         // The shared cleanup helper reports any substantive teardown failure.
       }
     }
+    await diagnostics.finish();
     const cleanupErrors = await cleanupBrowserOwnerResources(resources);
     const failure = cleanupFailure(resources.primaryFailure, cleanupErrors);
     if (failure) throw failure;
@@ -222,6 +224,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
 
     resources.browser = await chromium.launch({ headless: true });
     const page = await resources.browser.newPage({ viewport: { width: 390, height: 844 } });
+    diagnostics.observePage(page);
     const browserProblems = [];
     page.on("request", (request) => browserRequests.push(request.url()));
     page.on("console", (message) => {
@@ -660,7 +663,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     resources.primaryFailure = error;
     throw error;
   }
-});
+}));
 
 async function assertAccessibleEligibilityLookup(page) {
   await page.getByRole("heading", { name: "Sjekk selskapet gratis" }).waitFor();

@@ -1,4 +1,4 @@
-/** Fixed topology bootstrap for a fresh owned local browser diagnostic only. */
+/** Explicit authority/current topology prerequisites on a fresh owned local stack. */
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -26,14 +26,18 @@ async function guardedWriters(database) {
 }
 
 // Explicit subprocess/SQL ports make ordering/failure tests resource-free.
-export async function prepareRf1086BrowserTail({ database, run }) {
+export async function prepareAuthorityContractBase({ database, run }) {
   run(["node", "scripts/rehearse-authority-topology.mjs", "rollback"]);
   run(["npm", "run", "test:ledger-hosted-migration-authority"], { TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL: "1" });
   run(["npm", "run", "test:corporate-governance-database-lifecycle"]);
   await database.query(await readFile(new URL("../supabase/contract-migrations/20260905013000_billing_contract.sql", import.meta.url), "utf8"));
   run(["node", "scripts/rehearse-governance-contract.mjs"]);
   run(["node", "scripts/rehearse-authority-topology.mjs", "recutover"]);
-  const before = await guardedWriters(database);
+  return guardedWriters(database);
+}
+
+export async function prepareRf1086BrowserTail({ database, run }) {
+  const before = await prepareAuthorityContractBase({ database, run });
   for (const phase of ["prepare", "contract", "filing-expand", "filing-contract"]) {
     run(["node", "scripts/rehearse-tax-topology.mjs", phase]);
   }
@@ -46,7 +50,8 @@ export async function prepareRf1086BrowserTail({ database, run }) {
 }
 
 async function main() {
-  if (process.argv.length !== 2 || !isLoopbackPostgresUrl(process.env.DATABASE_URL)
+  const authorityOnly = process.argv.length === 3 && process.argv[2] === '--authority-contract';
+  if (!(process.argv.length === 2 || authorityOnly) || !isLoopbackPostgresUrl(process.env.DATABASE_URL)
       || !process.env.TALLI_SUPABASE_WORKDIR) {
     throw new Error("browser_bootstrap_requires_owned_loopback_workdir");
   }
@@ -55,7 +60,7 @@ async function main() {
   let failure;
   try {
     await database.connect();
-    await prepareRf1086BrowserTail({ database, run(args, extra = {}) {
+    await (authorityOnly ? prepareAuthorityContractBase : prepareRf1086BrowserTail)({ database, run(args, extra = {}) {
       const command = args[0] === "node" ? process.execPath : args[0];
       console.log(`RF10_BOOTSTRAP:${args.join(" ")}`);
       const result = spawnSync(command, args.slice(1), { stdio: "inherit", env: { ...process.env, ...extra } });

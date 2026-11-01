@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { createServer } from "node:http";
@@ -19,7 +20,7 @@ const nextCli = createRequire(
 ).resolve("next/dist/bin/next");
 const internalKey = "browser-only-marketing-measurement-key";
 
-test("the production public journey is consent-silent, accessible, mobile-safe, and privacy bounded", { timeout: 180_000 }, async (t) => {
+test("the production public journey is consent-silent, accessible, mobile-safe, and privacy bounded", { timeout: 180_000 }, withCiBrowserDiagnostics('public-acquisition', async (t, diagnostics) => {
   assert.equal(
     existsSync(new URL("../apps/web/.next/BUILD_ID", import.meta.url)),
     true,
@@ -40,6 +41,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   let browser;
 
   t.after(async () => {
+    await diagnostics.finish();
     await browser?.close();
     await stopOwnedProcess(next);
     await new Promise((resolve) => backend.close(() => resolve()));
@@ -80,6 +82,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
 
   browser = await chromium.launch({ headless: true });
   const guardedSignup = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  diagnostics.observePage(guardedSignup);
   await guardedSignup.goto(`${baseUrl}/signup?next=%2Fonboarding`);
   await guardedSignup.waitForURL(`${baseUrl}/sjekk-selskapet`);
   assert.equal(
@@ -90,6 +93,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   await guardedSignup.close();
 
   const desktop = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  diagnostics.observePage(desktop);
   const browserProblems = [];
   const browserUrls = [];
   const firstPartyRequests = [];
@@ -232,6 +236,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   );
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  diagnostics.observePage(mobile);
   const mobileFirstPartyRequests = [];
   const mobileProblems = [];
   mobile.on("request", (request) => {
@@ -276,7 +281,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   assert.deepEqual(backendProblems, []);
   assert.deepEqual(browserProblems, []);
   assert.deepEqual(mobileProblems, []);
-});
+}));
 
 function createMeasurementBackend({ internalKey: expectedKey, problems, requests }) {
   return createServer((request, response) => {

@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import {spawnSync} from "node:child_process";
 import {copyCompanyYearArchive,assertRestoreIntegrity} from "../apps/web/app/lib/backup-restore.ts";
 import {verifyAccountsCompanyArchive} from "../packages/talli-api-client/src/index.ts";
@@ -14,10 +15,10 @@ import {installBrowserEgressGuard} from "./fixtures/system-user-authority-mock.m
 import {connectedViewport,activateConnectedButton,assertConnectedLayout,assertConnectedReflow} from "./support/connected-viewport.mjs";
 
 const viewport=connectedViewport();
-const artifactDir=process.env.TALLI_ACCOUNTS_BROWSER_ARTIFACT_DIR;
+const artifactDir=process.env.TALLI_CI_SAFE_DIAGNOSTICS_DIR ? undefined : process.env.TALLI_ACCOUNTS_BROWSER_ARTIFACT_DIR;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 
-test('Accounts actual owner reviews, reconciles lost uploads and retains a technical archive',{timeout:480_000},async t=>{
+test('Accounts actual owner reviews, reconciles lost uploads and retains a technical archive',{timeout:480_000},withCiBrowserDiagnostics('accounts-delivery', async (t, diagnostics) => {
   const fixture=await startTaxBrowserFixture({incomeYear:2025,accountsDelivery:true});let browser,page;
   t.after(async()=>{try{
     if(artifactDir){
@@ -26,8 +27,9 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
       await writeFile(artifactDir+'/filing-calls-private.json',JSON.stringify(fixture.controls.filingCalls,null,2),{mode:0o600});
       if(page&&!['/mfa','/login'].includes(new URL(page.url()).pathname))await writeFile(artifactDir+'/page-private.txt',await page.locator('body').innerText(),{mode:0o600});
     }
-  }finally{try{await browser?.close();}finally{await fixture.close();}}});
+  }finally{try{await diagnostics.finish();await browser?.close();}finally{await fixture.close();}}});
   browser=await chromium.launch({headless:true});const context=await browser.newContext(viewport.contextOptions);const blockedRequests=[];
+  diagnostics.observeContext(context);
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
   page=await context.newPage();page.setDefaultTimeout(60_000);
   async function checkpoint(name){
@@ -216,4 +218,4 @@ test('Accounts actual owner reviews, reconciles lost uploads and retains a techn
     viewport:viewport.mobile?'390 touch +320 reflow':'desktop',filingId,corporateDecisionId:corporate.decisionId,corporateSourceMode:"actual 2025 owner approval, signing attestation and finalized annual-close workflow",
     mutations:mutations.length,latestParentAttemptFaultBlocked:true,correctionFilingId:child.filingId,correctionInstance:finalChild.knownInstance,exactSignatureSha256:signature.sha256,sourceSha256:row.sourceSha256,fields:row.fields.length,
     originalCount:row.originals.length,providerActivated:false,signatureAuthenticityProved:false,registryAcceptanceProved:false},null,2)+'\n',{mode:0o600});
-});
+}, { variant: viewport.mobile ? 'mobile' : 'desktop' }));

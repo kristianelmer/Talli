@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { fixtureTableTransaction, deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
@@ -26,7 +27,7 @@ const databaseUrl = process.env.DATABASE_URL;
 // it never converts the full-stack authority journey into a skipped test.
 test("owner connects through hydrated Next, generated FastAPI transport, real RLS and a local authority mock", {
   timeout: 240_000,
-}, async (t) => {
+}, withCiBrowserDiagnostics('authority', async (t, diagnostics) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
   assert.ok(isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackPostgresUrl(databaseUrl), "authority browser fixtures require loopback");
   assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true");
@@ -41,6 +42,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
   t.after(async () => {
     const cleanupErrors = [];
     const attempt = async (operation) => { try { await operation(); } catch (error) { cleanupErrors.push(error); } };
+    await diagnostics.finish();
     await attempt(() => resources.browser?.close());
     await attempt(() => stopOwnedProcess(resources.web));
     await attempt(() => stopOwnedProcess(resources.backend));
@@ -140,6 +142,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     await waitForOwnedReadiness({ process: resources.web, url: siteOrigin });
     resources.browser = await chromium.launch({ headless: true });
     const context = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+    diagnostics.observeContext(context);
     captureBrowserHealth(context, health);
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const page = await context.newPage();
@@ -239,6 +242,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.equal(directCallback.status, 401);
 
     const otherContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+    diagnostics.observeContext(otherContext);
     captureBrowserHealth(otherContext, health);
     await installBrowserEgressGuard(otherContext, { approvalEnabled: false, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const otherPage = await otherContext.newPage();
@@ -292,7 +296,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     // provider body or generated private key is included in fixture output.
     throw new Error(`${error.message}\nweb=${ownedProcessDiagnostics(resources.web)}\nbackend=${ownedProcessDiagnostics(resources.backend)}`, { cause: error });
   }
-});
+}));
 
 function runtimeEnvironment() {
   const result = {};
