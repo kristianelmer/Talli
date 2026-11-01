@@ -10,13 +10,15 @@ import fcntl
 import json
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
+import re
 
 from talli_backend.adapters.hosted_recovery_access import (
-    CATALOG_SQL, restore_access, restore_database_access, row_commitments, verify_custom_roles,
+    ACCESS_SQL, CATALOG_SQL, DATABASE_ACCESS_SQL, restore_access, restore_database_access,
+    row_commitments, verify_custom_roles,
 )
 from talli_backend.adapters.hosted_recovery_capture import (
-    MANAGED_SCHEMAS, digest, encoded, normalized_catalog, private_read, qi, require,
+    MANAGED_SCHEMAS, digest, encoded, normalized_access, normalized_catalog, private_read, qi, require,
 )
 from talli_backend.adapters.hosted_recovery_sql import (
     GUC, NativeArchive, compile_program, execute_batch, execute_data, verify_managed_triggers,
@@ -32,6 +34,8 @@ MARKER = CONTROL + '.attempt'
 HISTORY = CONTROL + '.native_history'
 BAN = '9999-12-31 00:00:00+00'
 MAX_STATE = 256 * 1024
+TARGET_LOCK = 725128419231
+OWNER_PROFILE = 'talli-inert-native-provider-state-v2'
 PROVIDER_HISTORY = {('auth', 'schema_migrations'), ('storage', 'migrations'),
     ('realtime', 'schema_migrations')}
 
@@ -86,7 +90,37 @@ class HostedBackupRecovery:
         provider = provider_summary(capture)
         if provider is not None:
             self.plan_body['providerState'] = provider
+        if provider is not None and provider['profile'] == OWNER_PROFILE:
+            from talli_backend.adapters.hosted_recovery_owner_policy import policy_contract
+            capability = getattr(target, 'require_inert_provider_state', None)
+            require(callable(capability), 'hosted_provider_target_composition_unsupported')
+            identity = self._physical_identity(capability(provider))
+            self.plan_body.update(version=3, ownerPolicy={
+                'protocol': 'original-owner-policy-v1', 'targetIdentity': identity,
+                **policy_contract(capture, compile_program(capture, self.archive))})
         self.plan_sha = digest(encoded(self.plan_body))
+
+    @property
+    def _owner_staged(self):
+        return 'ownerPolicy' in self.plan_body
+
+    @staticmethod
+    def _physical_identity(value):
+        require(isinstance(value, dict) and set(value) ==
+            {'kind', 'target', 'systemIdentifier', 'database', 'databaseImage'} and
+            value['kind'] == 'owned-local-native-v2' and value['database'] == 'postgres' and
+            isinstance(value['systemIdentifier'], str) and
+            re.fullmatch('[1-9][0-9]{0,19}', value['systemIdentifier']) and
+            int(value['systemIdentifier']) < 2**64 and
+            isinstance(value['databaseImage'], str) and
+            re.fullmatch('sha256:[a-f0-9]{64}', value['databaseImage']),
+            'hosted_owner_target_identity_required')
+        try:
+            valid_target = isinstance(value['target'], str) and str(UUID(value['target'])) == value['target']
+        except ValueError:
+            valid_target = False
+        require(valid_target, 'hosted_owner_target_identity_required')
+        return dict(value)
 
     @classmethod
     def from_state(cls, *, target, work, expected_plan_sha256, disposition=None):
@@ -117,6 +151,35 @@ class HostedBackupRecovery:
             yield
         finally: os.close(descriptor)
 
+    @contextmanager
+    def _target_command_lock(self):
+        """Serialize the owner handoff, uploads and terminal containment.
+
+        A session lock survives commits and fresh snapshots. The owner connects
+        separately while this original importer connection holds the lock; no
+        owner credential or privileged executor enters the importer.
+        """
+        if not self._owner_staged:
+            yield
+            return
+        self._validate(capture_required=False)
+        with self.target.database() as db:
+            require(db.execute('select pg_try_advisory_lock(%s)', (TARGET_LOCK,)).fetchone()[0],
+                'hosted_recovery_target_busy')
+            db.commit()
+            try:
+                yield
+            finally:
+                db.rollback()
+                db.execute('select pg_advisory_unlock(%s)', (TARGET_LOCK,))
+                db.commit()
+
+    def _verify_provider(self, db, *, pending=False):
+        if self._owner_staged:
+            verify_provider_state(db, self.capture, pending_managed_policies=pending)
+        else:
+            verify_provider_state(db, self.capture)
+
     def _validate(self, *, capture_required=True):
         if 'providerState' in self.plan_body:
             # An ordinary managed connection cannot attest service isolation or
@@ -124,7 +187,10 @@ class HostedBackupRecovery:
             # can supply this capability; absence refuses before hosted calls.
             isolation = getattr(self.target, 'require_inert_provider_state', None)
             require(callable(isolation), 'hosted_provider_target_composition_unsupported')
-            isolation(self.plan_body['providerState'])
+            identity = isolation(self.plan_body['providerState'])
+            if self._owner_staged:
+                require(self._physical_identity(identity) == self.plan_body['ownerPolicy']['targetIdentity'],
+                    'hosted_owner_target_identity_changed')
         # Re-read every bound member before a command, not just construction.
         if capture_required and self.capture is not None:
             for name in self.capture.files: self.capture.read(name)
@@ -168,6 +234,147 @@ class HostedBackupRecovery:
             self.plan_body['captureSha256'], self.target.designation.project), 'hosted_recovery_marker_changed')
         return rows[0][4]
 
+    def _update_marker(self, db, state, metadata):
+        require(len(encoded(metadata)) <= MAX_STATE, 'hosted_recovery_state_bound')
+        changed = db.execute('update ' + MARKER + ' set metadata=%s::jsonb where id=%s and '
+            'plan_sha=%s and capture_sha=%s and target_ref=%s', (json.dumps(metadata), state['id'],
+                self.plan_sha, self.plan_body['captureSha256'], self.target.designation.project))
+        require(changed.rowcount == 1, 'hosted_recovery_marker_changed')
+
+    def _owner_binding(self, state, metadata):
+        require(self._owner_staged and metadata.get('ownerStage', {}).get('version') == 1,
+            'hosted_owner_stage_invalid')
+        stage = metadata['ownerStage']
+        require(stage.get('status') in ('pending_owner_policy', 'policies_verified', 'contained') and
+            digest(encoded(stage['prepared'])) == stage['preparedSha256'], 'hosted_owner_stage_invalid')
+        return {'version': 1, 'attemptId': state['id'], 'planSha256': self.plan_sha,
+            'captureSha256': self.plan_body['captureSha256'],
+            'preparedSha256': stage['preparedSha256'],
+            'policySha256': self.plan_body['ownerPolicy']['policySha256'],
+            'target': self.plan_body['target'],
+            'targetIdentity': self.plan_body['ownerPolicy']['targetIdentity']}
+
+    @staticmethod
+    def _auth_projection(db):
+        # The original full rows were checked first. Only banned_until may
+        # change while making the checkpoint; a trigger cannot hide extra work.
+        rows = [r[0] for r in db.execute("select (to_jsonb(t)-'banned_until')::text from auth.users t "
+            "order by (to_jsonb(t)-'banned_until')::text collate \"C\"")]
+        require(len(rows) <= 256 and sum(len(r.encode()) for r in rows) <= 64 * 1024**2,
+            'hosted_recovery_actor_bound')
+        return digest(encoded(rows))
+
+    def _prepared_facts(self, db, program, tables):
+        """Recompute the quarantine checkpoint without retaining extra access."""
+        from talli_backend.adapters.native_managed_handoff import ROLES_SQL
+        from talli_backend.adapters.hosted_recovery_provider import SQL as STRUCTURE_SQL
+        from talli_backend.adapters.hosted_recovery_owner_policy import policy_status
+        execute_batch(db, GUC.encode())
+        verify_custom_roles(db, self.capture)
+        self._verify_provider(db, pending=True)
+        roles = db.execute(ROLES_SQL).fetchone()[0]
+        role_sha = digest(encoded(roles))
+        database_access = db.execute(DATABASE_ACCESS_SQL).fetchone()[0]
+        database_access['grants'] = sorted(database_access['grants'], key=encoded)
+        expected_database_access = {**self.capture.database_access,
+            'grants': sorted(self.capture.database_access['grants'], key=encoded)}
+        require(database_access == expected_database_access, 'hosted_database_acl_changed')
+        scope = sorted(self.capture.schemas | {'auth', 'storage'})
+        catalog = db.execute(CATALOG_SQL).fetchone()[0]
+        policy_status(self.capture, catalog, allow_missing=True)
+        # Only these explicitly inventoried policies vary at the owner seam.
+        catalog = normalized_catalog(catalog, set(scope))
+        catalog['policies'] = [r for r in catalog['policies'] if r[0] not in ('auth', 'storage')]
+        access = normalized_access(db.execute(ACCESS_SQL, (scope, scope)).fetchone()[0])
+        structure = db.execute(STRUCTURE_SQL, (scope,) * 5).fetchone()[0]
+        # Original ADMIN authority may be needed to read cross-owned rows. The
+        # same bounded role program already used for import is restored before
+        # returning, and its original grantor/options are verified again.
+        with db.transaction():
+            execute_batch(db, program.roles)
+            rows = row_commitments(db, tables)
+            sequences = [[names, *db.execute('select last_value,is_called from ' +
+                qi(names[0]) + '.' + qi(names[1])).fetchone()] for names, _, _ in program.sequences]
+            execute_batch(db, program.final_memberships)
+        verify_custom_roles(db, self.capture)
+        require(digest(encoded(db.execute(ROLES_SQL).fetchone()[0])) == role_sha,
+            'hosted_owner_role_graph_changed')
+        return {'tables': tables, 'rows': rows, 'sequences': sequences,
+            'rolesSha256': role_sha, 'catalogSha256': digest(encoded(catalog)),
+            'accessSha256': digest(encoded(access)), 'structureSha256': digest(encoded(structure)),
+            'databaseAccessSha256': digest(encoded(database_access))}
+
+    def _verify_prepared(self, db, state, metadata, program):
+        self._owner_binding(state, metadata)
+        require(metadata['ownerStage']['status'] != 'contained', 'hosted_recovery_already_contained')
+        require(self._private_control_current(db), 'hosted_control_acl_changed')
+        require(self._history_current(db, metadata), 'hosted_disposition_history_copy_changed')
+        prepared = metadata['ownerStage']['prepared']
+        from talli_backend.adapters.hosted_recovery_sql import copy_parts
+        copied = {value[0] for kind, value in copy_parts(program.data) if kind == 'copy'}
+        expected_tables = [t for t in self.capture.profile['tables'] if '.'.join(t) in copied or t[0] == 'auth']
+        require(prepared['tables'] == expected_tables and len(expected_tables) == metadata['tablesCompared'],
+            'hosted_owner_prepared_inventory_changed')
+        require(self._prepared_facts(db, program, expected_tables) == prepared,
+            'hosted_owner_prepared_state_changed')
+
+    def _policy_ready(self, state, program):
+        """Read actual owner work; a private receipt never authorizes uploads."""
+        from talli_backend.adapters.hosted_recovery_owner_policy import policy_status
+        with self.target.database() as db:
+            metadata = self._marker(db, state)
+            require(metadata is not None, 'hosted_recovery_marker_unavailable')
+            self._quarantined(db, metadata)
+            self._verify_prepared(db, state, metadata, program)
+            require(self._history_current(db, metadata), 'hosted_disposition_history_copy_changed')
+            missing = policy_status(self.capture, db.execute(CATALOG_SQL).fetchone()[0], allow_missing=True)
+            if missing:
+                require(metadata['ownerStage']['status'] == 'pending_owner_policy',
+                    'hosted_owner_policy_inventory_changed')
+                return False, metadata
+            self._verify_provider(db)
+            metadata['ownerStage']['status'] = 'policies_verified'
+            self._update_marker(db, state, metadata)
+            db.commit()
+            return True, metadata
+
+    @contextmanager
+    def owner_policy_request(self, *, expected_plan_sha256, expected_request_sha256):
+        """Guard a separate original owner's step without receiving its credential.
+
+        Caller performs only the exported policy SQL on its independently bound
+        owner connection. The original importer serializes this interval against
+        restore/contain and verifies fresh database facts after the caller exits.
+        """
+        require(expected_plan_sha256 == self.plan_sha and self._owner_staged,
+            'hosted_reviewed_plan_changed')
+        from talli_backend.adapters.hosted_recovery_owner_policy import read_request, policy_status
+        with self._lock(), self._target_command_lock():
+            self._validate()
+            state = self._state()
+            require(state['phase'] != 'contained', 'hosted_recovery_already_contained')
+            program = compile_program(self.capture, self.archive)
+            with self.target.database() as db:
+                metadata = self._marker(db, state)
+                require(metadata is not None, 'hosted_recovery_marker_unavailable')
+                self._verify_prepared(db, state, metadata, program)
+                self._quarantined(db, metadata)
+                binding = self._owner_binding(state, metadata)
+                missing = policy_status(self.capture, db.execute(CATALOG_SQL).fetchone()[0], allow_missing=True)
+            request = state.get('ownerRequest')
+            require(isinstance(request, dict) and request.get('manifestSha256') == expected_request_sha256 and
+                Path(request['directory']) == self.work / 'original-owner-request',
+                'hosted_owner_request_changed')
+            manifest, raw = read_request(Path(request['directory']), expected_request_sha256, binding=binding)
+            yield {'manifest': manifest, 'sql': raw, 'alreadyInstalled': not missing}
+            self._validate()
+            ready, metadata = self._policy_ready(state, program)
+            require(ready, 'hosted_owner_policy_required')
+            state['quarantine'] = metadata
+            state['ownerActionRequired'] = False
+            self._save(state, 'verified_quarantined' if state['phase'] == 'verified_quarantined'
+                else 'database_quarantined')
+
     def _fresh(self, db, program):
         capture = self.capture
         require(self._empty_namespace(db), 'hosted_target_not_empty')
@@ -180,11 +387,12 @@ class HostedBackupRecovery:
             'from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname').fetchall()
         require([list(row) for row in extensions] == capture.profile['extensions'],
             'hosted_extension_profile_changed')
-        verify_provider_state(db, capture)
+        self._verify_provider(db, pending=self._owner_staged)
         if 'providerState' in self.plan_body:
             require(db.execute("select current_setting('session_replication_role')").fetchone()[0] == 'origin',
                 'hosted_provider_origin_mode_required')
-            require_policy_authority(db, capture)
+            if not self._owner_staged:
+                require_policy_authority(db, capture)
         require(all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
             for name in capture.application_schemas if name != 'public'), 'hosted_target_not_empty')
         require(db.execute('select count(*)from auth.users').fetchone()[0] == 0 and
@@ -243,7 +451,7 @@ class HostedBackupRecovery:
             # unrelated populated provider namespace an empty rollback.
             if self.capture is None:
                 return False
-            verify_provider_state(db, self.capture)
+            self._verify_provider(db, pending=self._owner_staged)
             verify_custom_roles(db, self.capture)
         expected = self.plan_body.get('managedTables')
         require(expected is not None, 'hosted_recovery_plan_profile_unsupported')
@@ -358,11 +566,16 @@ class HostedBackupRecovery:
 
     def _restore_database(self, state, program):
         with self.target.database() as db:
-            require(db.execute('select pg_try_advisory_xact_lock(725128419231)').fetchone()[0],
-                'hosted_recovery_target_busy')
+            if not self._owner_staged:
+                require(db.execute('select pg_try_advisory_xact_lock(725128419231)').fetchone()[0],
+                    'hosted_recovery_target_busy')
             marker = self._marker(db, state)
             if marker is not None:
-                verify_provider_state(db, self.capture)
+                if self._owner_staged:
+                    self._owner_binding(state, marker)
+                    require(marker['ownerStage']['status'] != 'contained', 'hosted_recovery_already_contained')
+                    self._verify_prepared(db, state, marker, program)
+                self._verify_provider(db, pending=self._owner_staged)
                 if 'providerState' in self.plan_body:
                     verify_custom_roles(db, self.capture)
                 self._quarantined(db, marker)
@@ -388,15 +601,18 @@ class HostedBackupRecovery:
                     (schema + '.' + name, value, called))
                 actual = db.execute('select last_value,is_called from ' + qi(schema) + '.' + qi(name)).fetchone()
                 require(actual == (value, called), 'hosted_sequence_payload_changed')
-            execute_batch(db, program.policies)
+            if not self._owner_staged:
+                execute_batch(db, program.policies)
             execute_batch(db, program.remove_temporary_create)
             execute_batch(db, program.acl)
-            execute_batch(db, program.extension_usage)
+            if not self._owner_staged:
+                execute_batch(db, program.extension_usage)
             # Keep temporary owner inheritance through byte verification. The
             # captured postgres membership can intentionally disable both
             # INHERIT and SET, including access to cross-owned schemas.
-            repairs = restore_access(db, self.capture, b'')
-            verify_provider_state(db, self.capture)
+            repairs = restore_access(db, self.capture, b'', pending_managed_policies=True) \
+                if self._owner_staged else restore_access(db, self.capture, b'')
+            self._verify_provider(db, pending=self._owner_staged)
             # Mutable provider migration timestamps and future uploaded Storage
             # transport identities are explicit differences, not wildcard skips.
             compared = [t for t in self.capture.profile['tables'] if '.'.join(t) in copied or
@@ -413,8 +629,11 @@ class HostedBackupRecovery:
                 'publicationAuthorized': False}
             state['quarantine'] = metadata
             self._save(state, 'database_outcome_pending')
+            auth_before = self._auth_projection(db) if self._owner_staged else None
             self._quarantine(db, metadata)
             self._quarantined(db, metadata)
+            if self._owner_staged:
+                require(self._auth_projection(db) == auth_before, 'hosted_owner_quarantine_transformation_changed')
             verify_custom_roles(db, self.capture)
             db.execute('create schema ' + CONTROL + ' authorization postgres')
             db.execute('revoke all on schema ' + CONTROL + ' from public')
@@ -430,6 +649,12 @@ class HostedBackupRecovery:
             db.execute('revoke all on table ' + MARKER + ' from public,anon,authenticated,service_role')
             self._seal_control(db)
             require(self._history_current(db, metadata), 'hosted_disposition_history_copy_changed')
+            if self._owner_staged:
+                prepared = self._prepared_facts(db, program, compared)
+                metadata['ownerStage'] = {'version': 1, 'status': 'pending_owner_policy',
+                    'prepared': prepared, 'preparedSha256': digest(encoded(prepared))}
+                state['quarantine'] = metadata
+                self._save(state, 'database_outcome_pending')
             db.execute('insert into ' + MARKER + ' values(%s,%s,%s,%s,%s::jsonb)',
                 (state['id'], self.plan_sha, self.capture.commitment,
                  self.target.designation.project, json.dumps(metadata)))
@@ -440,7 +665,7 @@ class HostedBackupRecovery:
 
     def restore(self, *, expected_plan_sha256):
         require(expected_plan_sha256 == self.plan_sha, 'hosted_reviewed_plan_changed')
-        with self._lock():
+        with self._lock(), self._target_command_lock():
             self._validate()
             require(self.capture.database_access is not None, 'hosted_database_acl_profile_required')
             state = self._state(create=True)
@@ -449,11 +674,29 @@ class HostedBackupRecovery:
                 program = compile_program(self.capture, self.archive)
                 self._save(state, 'database_outcome_pending')
                 metadata = self._restore_database(state, program)
+                if self._owner_staged:
+                    ready, metadata = self._policy_ready(state, program)
+                    if not ready:
+                        from talli_backend.adapters.hosted_recovery_owner_policy import export_request
+                        binding = self._owner_binding(state, metadata)
+                        request = export_request(self.capture, program, binding,
+                            self.work / 'original-owner-request')
+                        state['quarantine'] = metadata
+                        state['ownerRequest'] = request
+                        state['ownerActionRequired'] = True
+                        self._save(state, 'awaiting_original_owner_policy')
+                        return state
+                    state['ownerActionRequired'] = False
+                    state['quarantine'] = metadata
                 self._save(state, 'database_quarantined')
                 for obj in self.capture.objects:
                     self._validate()
                     with self.target.database() as db:
-                        self._quarantined(db, self._marker(db, state))
+                        current = self._marker(db, state)
+                        self._quarantined(db, current)
+                        if self._owner_staged:
+                            self._verify_prepared(db, state, current, program)
+                            self._verify_provider(db)
                     receipt = self.target.restore_object(obj, self.capture.read(obj['file']))
                     # Reconcile even completed entries by readback on explicit
                     # resume, rather than trusting a stale local HTTP receipt.
@@ -462,8 +705,11 @@ class HostedBackupRecovery:
                     self._save(state, 'objects_quarantined')
                 if self.disposition is not None: self.disposition.check_current()
                 with self.target.database() as db:
-                    self._quarantined(db, self._marker(db, state))
-                    verify_provider_state(db, self.capture)
+                    current = self._marker(db, state)
+                    self._quarantined(db, current)
+                    if self._owner_staged:
+                        self._verify_prepared(db, state, current, program)
+                    self._verify_provider(db)
                     if 'providerState' in self.plan_body:
                         verify_custom_roles(db, self.capture)
                 state['verification'] = {'tablesCompared': metadata['tablesCompared'],
@@ -474,6 +720,9 @@ class HostedBackupRecovery:
                     self.disposition.check_current()
                     state['verification']['dispositionReplayCurrent'] = True
                     state['verification']['nativeHistoryFilesCopiedExact'] = metadata['nativeHistoryFiles']
+                if self._owner_staged:
+                    state['verification']['originalManagedPoliciesInstalled'] = True
+                    state['verification']['preparedQuarantineCheckpointCurrent'] = True
                 self._save(state, 'verified_quarantined')
                 return state
             except BaseException as error:
@@ -493,11 +742,18 @@ class HostedBackupRecovery:
                 marker = self._marker(db, state)
                 if marker is not None: self._quarantined(db, marker)
                 else: self._uncommitted(db)
+                owner_policies_current = None
                 provider_current = None
                 if 'providerState' in self.plan_body and self.capture is not None:
-                    verify_provider_state(db, self.capture)
+                    pending = self._owner_staged and marker is not None and \
+                        marker.get('ownerStage', {}).get('status') == 'pending_owner_policy'
+                    self._verify_provider(db, pending=pending or marker is None and self._owner_staged)
                     verify_custom_roles(db, self.capture)
                     provider_current = True
+                    if self._owner_staged:
+                        from talli_backend.adapters.hosted_recovery_owner_policy import policy_status
+                        owner_policies_current = not policy_status(self.capture,
+                            db.execute(CATALOG_SQL).fetchone()[0], allow_missing=True)
                 history_current = False
                 try:
                     if marker is not None: history_current = self._history_current(db, marker)
@@ -506,6 +762,10 @@ class HostedBackupRecovery:
             result = {**state, 'databaseMarkerPresent': marker is not None}
             if 'providerState' in self.plan_body:
                 result['providerStateCurrent'] = provider_current
+            if self._owner_staged:
+                result['originalManagedPoliciesCurrent'] = owner_policies_current
+                if marker is not None and marker.get('ownerStage', {}).get('status') == 'contained':
+                    result['phase'] = 'contained'
             if 'disposition' in self.plan_body:
                 current = False
                 try:
@@ -520,7 +780,7 @@ class HostedBackupRecovery:
 
     def contain(self, *, expected_plan_sha256):
         require(expected_plan_sha256 == self.plan_sha, 'hosted_reviewed_plan_changed')
-        with self._lock():
+        with self._lock(), self._target_command_lock():
             self._validate(capture_required=False)
             state = self._state()
             self._save(state, 'containment_pending')
@@ -532,6 +792,10 @@ class HostedBackupRecovery:
                     require(self._private_control_current(db, allow_missing_history=True),
                         'hosted_control_acl_changed')
                     self._quarantined(db, marker)
+                    if self._owner_staged:
+                        self._owner_binding(state, marker)
+                        marker['ownerStage']['status'] = 'contained'
+                        self._update_marker(db, state, marker)
                 else:
                     self._uncommitted(db)
                 db.commit()

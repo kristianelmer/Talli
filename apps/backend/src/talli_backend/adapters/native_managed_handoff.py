@@ -20,6 +20,7 @@ from talli_backend.adapters.hosted_recovery_capture import MANAGED_SCHEMAS, dige
 from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL, GUC, NativeArchive, compile_program
 from talli_backend.adapters.hosted_recovery_provider import (
     PROFILE as PROVIDER_PROFILE, SCHEMAS as PROVIDER_SCHEMAS, SQL as PROVIDER_SQL,
+    MANAGED_ACCESS_SCHEMAS,
     parameters as provider_parameters,
 )
 from talli_backend.adapters.managed_disposition_binding import (
@@ -202,11 +203,13 @@ def _capture(target, directory, *, binding_sha256, pg_restore, held):
         if PROVIDER_SCHEMAS & set(schemas):
             require(PROVIDER_SCHEMAS <= set(schemas), 'hosted_provider_profile_required')
             provider = {'profile': PROVIDER_PROFILE,
-                'structure': snapshot.query(PROVIDER_SQL, provider_parameters())}
+                'structure': snapshot.query(PROVIDER_SQL, provider_parameters(PROVIDER_PROFILE)),
+                'managedAccess': snapshot.query(ACCESS_SQL,
+                    (sorted(MANAGED_ACCESS_SCHEMAS), sorted(MANAGED_ACCESS_SCHEMAS)))}
             provider['sequenceState'] = [snapshot.query(
                 'select jsonb_build_array(' + sql.Literal(schema).as_string() + ',' +
                 sql.Literal(name).as_string() + ',last_value,is_called)from ' + qi(schema) + '.' + qi(name))
-                for schema, name, *_ in provider['structure']['sequences']]
+                for schema, name, *_ in provider['structure']['sequences'] if schema in PROVIDER_SCHEMAS]
         rows = _row_facts(snapshot, tables)
         objects, contents, history = _objects(snapshot, held)
         dump = snapshot.dump()

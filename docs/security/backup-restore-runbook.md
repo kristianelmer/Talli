@@ -680,7 +680,7 @@ uploads. The target must keep worker/network isolation throughout.
 
 Original managed-table policies still require their actual table-owner authority.
 In the populated fixture, `postgres` cannot create
-`support_case_read_storage_objects` on `storage.objects`. The current importer
+`support_case_read_storage_objects` on `storage.objects`. The V1 importer
 therefore refuses with `hosted_managed_policy_owner_unavailable` before application
 DDL. Neither the policy nor its owner requirement is omitted. Successful native
 capture and exact provider prerequisites do not establish a complete application
@@ -692,3 +692,57 @@ capture loss can still inspect/contain a matching durable marker, but reports
 `providerStateCurrent: null`; it cannot claim fresh provider verification from a
 stored success receipt. Markerless classification with missing capture remains
 refused for this profile.
+
+
+### Separate original-owner policy handoff on an owned local target
+
+The opt-in `talli-inert-native-provider-state-v2` profile adds exact Auth/Storage
+columns, types, original owners and grant chains to the inert prerequisites.
+V1 keeps its original refusal. V2 additionally requires the transport to return
+an actual owned local target UUID, PostgreSQL system identifier, database name
+and pinned database image. That physical identity is bound into the reviewed plan
+and rechecked before each command and upload. The ordinary hosted transport still
+has no inert capability; this protocol does not authorize a hosted owner login,
+provider key transfer, new role membership or independent managed initialization.
+
+On the V2 path, the importer uses only its existing postgres permissions. It
+imports original application/Auth data, verifies source row commitments, restores
+the original role graph, bans all captured users and disables every custom login.
+The Auth quarantine may change only `banned_until`. Data, private native history
+and a protected `pending_owner_policy` marker commit together. The importer then
+returns `awaiting_original_owner_policy`, with `ownerActionRequired: true`; CLI
+exit status is **2**, not success. No Storage object upload starts at this point.
+
+The private `original-owner-request` directory contains only `request.json` and
+`policies.sql`. Its independently retained manifest digest binds the exact original
+policy declarations, owners and identities to the plan, capture, attempt,
+physical target and prepared quarantine checkpoint. An exact completed export is
+idempotent; partial or changed requests refuse. Preserve that digest independently
+of the directory. A request file or an owner's acknowledgement never proves that
+the database policy exists.
+
+`HostedBackupRecovery.owner_policy_request(...)` coordinates a separate existing
+original owner's connection without receiving its credential or an executor.
+The caller must independently bind that connection to the exact owned target and
+use only the exported original policy SQL in a bounded transaction. The importer
+holds the target session advisory lock throughout this interval. A normal return
+requires fresh catalog readback: policy identity, definition, roles, RLS flags and
+actual table owner must match. An unknown owner commit is reconciled by readback
+on the next restore; it does not justify blind DDL replay. Importer credentials,
+privileges and marker access remain separate from the original owner connection.
+
+Before owner work and each upload, resume recomputes the prepared data, sequence,
+structure, access, catalog and original role-graph commitments, verifies quarantine
+and private history, and permits only the explicitly inventoried missing policies.
+Unexpected policies or any other drift refuse. All original policies must be
+installed before private uploads and final `verified_quarantined` status. Uploads
+retain their exact byte/readback and public-access denial checks.
+
+Restore, owner work and containment share one target-scoped session lock across
+commits and HTTP operations. Containment records a terminal state in the protected
+database marker as well as local state. A stale local state copy or old owner
+request cannot reopen a contained attempt. Capture-loss containment remains
+available using the independently held reviewed plan digest. Final quarantine
+verification is a local recovery claim only; real Auth/MFA and owning-read checks,
+independent managed compatibility, key portability and operating readiness require
+their own evidence and authority.

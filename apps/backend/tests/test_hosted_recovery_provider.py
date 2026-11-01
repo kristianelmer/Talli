@@ -1,6 +1,7 @@
 """Provider state is an exact inert prerequisite, never a managed write waiver."""
 from copy import deepcopy
 from dataclasses import replace
+import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -29,7 +30,7 @@ def populated(snapshot):
     structure['extensionMembers'] = [['pg_net', 'schema', None, 'net', 'net']]
     profile = {**base.profile, 'tables': base.profile['tables'] + [t.split('.') for t in tables],
         'extensions': [['pg_net', '0.20.3', 'supabase_admin', 'extensions']],
-        'providerState': {'profile': provider.PROFILE, 'structure': structure, 'sequenceState': []}}
+        'providerState': {'profile': provider.PROFILE_V1, 'structure': structure, 'sequenceState': []}}
     access = {**base.access, 'schemas': base.access['schemas'] +
         [[name, 'supabase_admin', []] for name in sorted(provider.SCHEMAS)]}
     # Direct structured contract fixture; this is not a native custody producer.
@@ -265,7 +266,7 @@ def inert_phase_model(snapshot, tmp_path, monkeypatch):
     from talli_backend.adapters import hosted_backup_recovery as recovery
     from talli_backend.adapters.hosted_recovery_capture import encoded
     instance, target = operator(snapshot, tmp_path, monkeypatch)
-    instance.plan_body['providerState'] = {'profile': provider.PROFILE}
+    instance.plan_body['providerState'] = {'profile': provider.PROFILE_V1}
     instance.plan_sha = digest(encoded(instance.plan_body))
     target.require_inert_provider_state = lambda _: None
     monkeypatch.setattr(recovery, 'verify_provider_state', lambda *args: None)
@@ -372,3 +373,333 @@ def test_type_only_application_owner_gets_original_temporary_role_access(populat
     start, final = role_program(populated, definition_owners={'restore_owner'})
     assert b'grant "restore_owner" to postgres with inherit true,set true' in start
     assert b'admin false,inherit false,set false' in final
+
+
+@pytest.fixture
+def populated_v2(populated):
+    """V2 keeps managed definitions/access, but never their mutable row state."""
+    capture = deepcopy(populated)
+    for name in ('supabase_admin', 'supabase_auth_admin', 'supabase_storage_admin', 'authenticated'):
+        capture.roles['roles'].append([name, False, False, False, False, False,
+            False, False, -1, None, None])
+    state = capture.profile['providerState']
+    state['profile'] = provider.PROFILE
+    state['managedAccess'] = {'schemas': [
+        ['auth', 'supabase_auth_admin', [['supabase_auth_admin', 'postgres', 'USAGE', False]]],
+        ['storage', 'supabase_storage_admin', [['supabase_storage_admin', 'postgres', 'USAGE', False]]]],
+        'relations': []}
+    for schema, table, owner in (('auth', 'users', 'supabase_auth_admin'),
+            ('storage', 'objects', 'supabase_storage_admin')):
+        capture.profile['tables'].append([schema, table])
+        capture.rows[schema + '.' + table] = {'rows': 1, 'sha256': digest(b'managed mutable row')}
+        state['structure']['relations'].append([schema, table, 'r', owner, 'p', 'd',
+            None, None, None, None, [['id', 'uuid', True, '', '', None, None, None, None]]])
+        state['managedAccess']['relations'].append([schema, table, 'r', owner,
+            [[owner, 'postgres', 'SELECT', False], [owner, 'authenticated', 'SELECT', False]]])
+        capture.catalog['rls'].append([schema, table, True, False, owner])
+    state['structure']['sequences'] = [
+        ['net', 'http_request_queue_id_seq', 'bigint', 1, 1, 9999, 1, 1, False],
+        ['auth', 'refresh_tokens_id_seq', 'bigint', 1, 1, 9999, 1, 1, False]]
+    state['sequenceState'] = [['net', 'http_request_queue_id_seq', 1, False]]
+    state['structure']['relations'].extend([
+        ['net', 'http_request_queue_id_seq', 'S', 'supabase_admin', 'p', 'd', None, None, None, None, []],
+        ['auth', 'refresh_tokens_id_seq', 'S', 'supabase_auth_admin', 'p', 'd', None, None, None, None, []]])
+    state['managedAccess']['relations'].append(['auth', 'refresh_tokens_id_seq', 'S',
+        'supabase_auth_admin', [['supabase_auth_admin', 'postgres', 'USAGE', False]]])
+    state['structure']['triggers'] = [['storage', 'objects', 'objects_hook',
+        'CREATE TRIGGER objects_hook AFTER INSERT ON storage.objects '
+        'FOR EACH ROW EXECUTE FUNCTION storage.objects_hook()', 'O']]
+    state['structure']['types'] = [['auth', 'mfa_status', 'e', 'supabase_auth_admin',
+        '-', False, None, ['verified'], [], None]]
+    capture.catalog['policies'].append(['storage', 'objects', 'original_policy', 'PERMISSIVE',
+        ['authenticated'], 'SELECT', 'true', None])
+    return capture
+
+
+def test_v1_keeps_five_schema_contract_and_never_selects_owner_stage(populated):
+    state = provider.profile(populated)
+    assert state['profile'] == provider.PROFILE_V1
+    assert all(set(p) == provider.SCHEMAS for p in provider.parameters(provider.PROFILE_V1))
+    summary = provider.summary(populated)
+    assert summary['profile'] == provider.PROFILE_V1
+    assert 'version' not in summary and 'ownerPolicyStageRequired' not in summary
+    assert 'managedAccess' not in state
+    # Adding V2 fields cannot silently upgrade an independently pinned V1 input.
+    state['managedAccess'] = {'schemas': [], 'relations': []}
+    with pytest.raises(ValueError, match='provider_profile_required'):
+        provider.profile(populated)
+
+
+def test_v2_extends_structure_without_expanding_row_or_counter_prerequisites(populated_v2):
+    state = provider.profile(populated_v2)
+    assert all(set(p) == provider.STRUCTURE_SCHEMAS for p in provider.parameters())
+    assert populated_v2.application_schemas == {'public'}
+    assert {r[0] for r in state['structure']['sequences']} == {'net', 'auth'}
+    assert state['sequenceState'] == [['net', 'http_request_queue_id_seq', 1, False]]
+    summary = provider.summary(populated_v2)
+    assert summary['profile'] == provider.PROFILE and summary['version'] == 2
+    assert summary['ownerPolicyStageRequired'] is True
+    assert summary['managedAccessAlreadyPresentRequired'] is True
+    assert summary['managedAccessImportAuthorized'] is False
+    assert set(summary['tables']) == provider.TABLES
+    assert sum(r['rows'] for r in summary['tables'].values()) == 193
+
+
+@pytest.mark.parametrize('fault', ['missing_access', 'extra_field', 'missing_schema',
+    'duplicate_schema', 'unknown_owner', 'unknown_grantor', 'unknown_grantee',
+    'wrong_privilege', 'wrong_option', 'duplicate_grant', 'missing_relation',
+    'wrong_relation_kind', 'wrong_relation_owner', 'extra_relation', 'malformed_grant',
+    'null_relation', 'unknown_structure_owner', 'missing_column', 'oversized_access',
+    'managed_application_schema'])
+def test_v2_managed_access_requires_complete_bounded_original_facts(populated_v2, fault):
+    state = populated_v2.profile['providerState']
+    access = state['managedAccess']
+    relation = access['relations'][0]
+    grant = relation[-1][0]
+    if fault == 'missing_access': state.pop('managedAccess')
+    elif fault == 'extra_field': access['repairOwners'] = True
+    elif fault == 'missing_schema': access['schemas'].pop()
+    elif fault == 'duplicate_schema': access['schemas'].append(deepcopy(access['schemas'][0]))
+    elif fault == 'unknown_owner': access['schemas'][0][1] = 'unrecorded_owner'
+    elif fault == 'unknown_grantor': grant[0] = 'unrecorded_grantor'
+    elif fault == 'unknown_grantee': grant[1] = 'unrecorded_grantee'
+    elif fault == 'wrong_privilege': grant[2] = 'EXECUTE'
+    elif fault == 'wrong_option': grant[3] = 1
+    elif fault == 'duplicate_grant': relation[-1].append(deepcopy(grant))
+    elif fault == 'missing_relation': access['relations'].pop()
+    elif fault == 'wrong_relation_kind': relation[2] = 'S'
+    elif fault == 'wrong_relation_owner': relation[3] = 'postgres'
+    elif fault == 'extra_relation': access['relations'].append(['auth', 'unrecorded', 'r', 'postgres', []])
+    elif fault == 'malformed_grant': relation[-1] = [None]
+    elif fault == 'null_relation': access['relations'] = [None]
+    elif fault == 'unknown_structure_owner': state['structure']['relations'][0][3] = 'unrecorded_owner'
+    elif fault == 'missing_column': state['structure']['relations'][-3][10] = [None]
+    elif fault == 'oversized_access': relation[-1] = ['x' * (4 * 1024**2)]
+    else: populated_v2.access['schemas'].append(['auth', 'supabase_auth_admin', []])
+    with pytest.raises(ValueError, match='hosted_provider_'):
+        provider.profile(populated_v2)
+
+
+@pytest.mark.parametrize('fault', ['missing_table', 'extra_table', 'missing_readonly_table',
+    'auth_trigger', 'provider_trigger', 'disabled_storage_trigger', 'replica_storage_trigger',
+    'unknown_trigger_schema', 'auth_counter', 'missing_readonly_counter', 'duplicate_counter'])
+def test_v2_table_trigger_and_counter_scope_refuses_unsupported_state(populated_v2, fault):
+    state = populated_v2.profile['providerState']
+    if fault == 'missing_table': populated_v2.profile['tables'].remove(['auth', 'users'])
+    elif fault == 'extra_table': populated_v2.profile['tables'].append(['storage', 'unrecorded'])
+    elif fault == 'missing_readonly_table':
+        populated_v2.profile['tables'].remove(['net', '_http_response'])
+    elif fault == 'auth_trigger': state['structure']['triggers'][0][0] = 'auth'
+    elif fault == 'provider_trigger': state['structure']['triggers'][0][0] = 'pgboss_v10'
+    elif fault == 'disabled_storage_trigger': state['structure']['triggers'][0][4] = 'D'
+    elif fault == 'replica_storage_trigger': state['structure']['triggers'][0][4] = 'R'
+    elif fault == 'unknown_trigger_schema': state['structure']['triggers'][0][0] = 'unrecorded'
+    elif fault == 'auth_counter': state['sequenceState'].append(['auth', 'refresh_tokens_id_seq', 1, False])
+    elif fault == 'missing_readonly_counter': state['sequenceState'] = []
+    else: state['sequenceState'].append(deepcopy(state['sequenceState'][0]))
+    with pytest.raises(ValueError, match='hosted_provider_|hosted_background_provider_'):
+        provider.profile(populated_v2)
+
+
+@pytest.mark.parametrize('table', sorted(provider.WORK_TABLES))
+def test_v2_never_turns_queued_provider_work_into_preprovisioned_history(populated_v2, table):
+    populated_v2.rows[table]['rows'] = 1
+    with pytest.raises(ValueError, match='background_provider_work_unsupported'):
+        provider.profile(populated_v2)
+
+
+class ProviderDB:
+    """Read-only target facts; access/catalog/structure drift varies independently."""
+    def __init__(self, capture):
+        self.capture = capture
+        self.structure = deepcopy(capture.profile['providerState']['structure'])
+        self.managed_access = deepcopy(capture.profile['providerState'].get('managedAccess'))
+        self.access = {key: [deepcopy(r) for r in rows if r[0] in provider.SCHEMAS]
+            for key, rows in capture.access.items()}
+        self.catalog = deepcopy(capture.catalog)
+        self.roles = deepcopy(capture.roles)
+        self.calls = []
+
+    def execute(self, statement, parameters=None):
+        self.calls.append((statement, parameters))
+        assert statement.startswith(('select ', 'set local ')), 'provider verification cannot repair state'
+        from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL
+        from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL
+        if statement == provider.SQL: value = self.structure
+        elif statement == ACCESS_SQL:
+            value = self.managed_access if set(parameters[0]) == provider.MANAGED_ACCESS_SCHEMAS else self.access
+        elif statement == CATALOG_SQL: value = self.catalog
+        elif statement.startswith('set local '): value = None
+        elif statement.startswith('select last_value,is_called'):
+            assert 'auth.' not in statement and '"auth".' not in statement
+            return SimpleNamespace(fetchone=lambda: (1, False))
+        elif statement.startswith('select rolname,rolsuper'):
+            return SimpleNamespace(fetchall=lambda: [tuple(r) for r in self.roles['roles']
+                if r[0] in parameters[0]])
+        elif statement == 'select rolname from pg_roles':
+            return SimpleNamespace(fetchall=lambda: [(r[0],) for r in self.roles['roles']])
+        elif 'from pg_auth_members' in statement:
+            return SimpleNamespace(fetchall=lambda: [tuple(r) for r in self.roles['memberships']
+                if r[0] in parameters[0] and r[1] in parameters[1]])
+        else: raise AssertionError('unexpected provider query: ' + statement)
+        return SimpleNamespace(fetchone=lambda: (value,))
+
+
+@pytest.fixture
+def provider_verification(monkeypatch):
+    """Exercise provider verification with the real owner-policy inventory guard."""
+    from talli_backend.adapters import hosted_recovery_access as access
+    from talli_backend.adapters import hosted_recovery_owner_policy as owner_policy
+    calls = {'policies': [], 'tables': []}
+    original_policy_status = owner_policy.policy_status
+
+    def rows(db, tables):
+        calls['tables'].append(tables)
+        return {'.'.join(t): db.capture.rows['.'.join(t)] for t in tables}
+
+    def policy_status(capture, actual_catalog, *, allow_missing=False):
+        calls['policies'].append((actual_catalog, allow_missing))
+        return original_policy_status(capture, actual_catalog, allow_missing=allow_missing)
+
+    monkeypatch.setattr(access, 'row_commitments', rows)
+    monkeypatch.setattr(owner_policy, 'policy_status', policy_status)
+    return calls
+
+
+def test_v1_verification_does_not_call_owner_policy_or_read_managed_access(populated, provider_verification):
+    db = ProviderDB(populated)
+    provider.verify(db, populated)
+    assert provider_verification['policies'] == []
+    assert {'.'.join(t) for t in provider_verification['tables'][0]} == provider.TABLES
+    assert db.calls[1][1] == provider.parameters(provider.PROFILE_V1)
+    with pytest.raises(ValueError, match='provider_profile_required'):
+        provider.verify(db, populated, pending_managed_policies=True)
+
+
+def test_v2_verification_guards_policies_before_excluding_only_managed_policy_rows(populated_v2, provider_verification):
+    db = ProviderDB(populated_v2)
+    db.catalog['policies'] = []
+    with pytest.raises(ValueError, match='owner_policy_missing'):
+        provider.verify(db, populated_v2)
+    provider.verify(db, populated_v2, pending_managed_policies=True)
+    assert provider_verification['policies'][-1] == (db.catalog, True)
+    assert {'.'.join(t) for t in provider_verification['tables'][-1]} == provider.TABLES
+    assert db.calls[1][1] == provider.parameters(provider.PROFILE)
+    db.catalog['policies'] = deepcopy(populated_v2.catalog['policies'])
+    provider.verify(db, populated_v2)
+    assert provider_verification['policies'][-1] == (db.catalog, False)
+
+
+@pytest.mark.parametrize('fault,code', [('column', 'structure_changed'), ('column_acl', 'structure_changed'),
+    ('type_acl', 'structure_changed'), ('trigger', 'structure_changed'), ('managed_acl', 'managed_access_changed'),
+    ('managed_owner', 'managed_access_changed'), ('catalog_owner', 'catalog_changed'),
+    ('unknown_policy', 'owner_policy_unexpected_policy'),
+    ('conflicting_policy', 'owner_policy_definition_changed'),
+    ('readonly_policy', 'catalog_changed')])
+def test_v2_verification_refuses_extended_definition_access_and_policy_drift(populated_v2, provider_verification, fault, code):
+    db = ProviderDB(populated_v2)
+    auth = next(r for r in db.structure['relations'] if r[:2] == ['auth', 'users'])
+    if fault == 'column': auth[10][0][1] = 'text'
+    elif fault == 'column_acl': auth[10][0][6] = '{authenticated=r/supabase_auth_admin}'
+    elif fault == 'type_acl': db.structure['types'][0][9] = '{authenticated=U/supabase_auth_admin}'
+    elif fault == 'trigger': db.structure['triggers'][0][3] += ' altered'
+    elif fault == 'managed_acl': db.managed_access['relations'][0][-1][0][3] = True
+    elif fault == 'managed_owner': db.managed_access['schemas'][0][1] = 'postgres'
+    elif fault == 'catalog_owner': db.catalog['rls'][0][4] = 'postgres'
+    elif fault == 'unknown_policy': db.catalog['policies'][0][2] = 'unrecorded_policy'
+    elif fault == 'conflicting_policy': db.catalog['policies'][0][6] = 'false'
+    else: db.catalog['policies'].append(['pgboss_v10', 'job', 'unrecorded_policy',
+        'PERMISSIVE', ['postgres'], 'SELECT', 'true', None])
+    with pytest.raises(ValueError, match=code):
+        provider.verify(db, populated_v2, pending_managed_policies=True)
+
+
+def test_v2_keeps_original_grantor_chains_and_grant_options_verbatim(populated_v2):
+    state = populated_v2.profile['providerState']
+    state['managedAccess']['relations'][0][-1].append(['postgres', 'restore_runtime', 'SELECT', True])
+    before = deepcopy(state)
+    assert provider.profile(populated_v2) == before
+    assert state == before
+
+
+@pytest.mark.parametrize('fault,code', [('provider_role', 'provider_roles_changed'),
+    ('provider_grantor', 'provider_memberships_changed'), ('extra_role', 'provider_role_inventory_changed')])
+def test_v2_verification_preserves_original_provider_role_graph(populated_v2, provider_verification, fault, code):
+    populated_v2.roles['memberships'].append(['supabase_storage_admin', 'postgres', 'supabase_admin',
+        False, False, True])
+    db = ProviderDB(populated_v2)
+    if fault == 'provider_role':
+        next(r for r in db.roles['roles'] if r[0] == 'supabase_storage_admin')[2] = True
+    elif fault == 'provider_grantor': db.roles['memberships'][-1][2] = 'postgres'
+    else: db.roles['roles'].append(['unrecorded_role', False, False, False, False, False,
+        False, False, -1, None, None])
+    with pytest.raises(ValueError, match=code): provider.verify(db, populated_v2)
+
+
+def test_v2_cannot_be_downgraded_by_relabelling_its_structure_as_v1(populated_v2):
+    state = populated_v2.profile['providerState']
+    state['profile'] = provider.PROFILE_V1
+    state.pop('managedAccess')
+    with pytest.raises(ValueError, match='provider_profile_invalid'):
+        provider.profile(populated_v2)
+
+
+def test_native_capture_defaults_to_v2_access_and_readonly_counters_in_one_snapshot(populated_v2, tmp_path, monkeypatch):
+    from talli_backend.adapters import native_managed_handoff as handoff
+    from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL
+    from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL
+    capture = populated_v2
+    calls = []
+    active = []
+
+    class Snapshot:
+        def __init__(self, target): pass
+        def __enter__(self):
+            active.append(True)
+            return self
+        def __exit__(self, *args): active.pop()
+        def query(self, statement, parameters=()):
+            assert active, 'all source facts must use the same native snapshot'
+            calls.append((statement, parameters))
+            if statement == provider.SQL:
+                assert parameters == provider.parameters(provider.PROFILE)
+                return deepcopy(capture.profile['providerState']['structure'])
+            if statement == ACCESS_SQL:
+                if set(parameters[0]) == provider.MANAGED_ACCESS_SCHEMAS:
+                    return deepcopy(capture.profile['providerState']['managedAccess'])
+                assert not set(parameters[0]) & provider.MANAGED_ACCESS_SCHEMAS
+                return deepcopy(capture.access)
+            if statement == CATALOG_SQL: return deepcopy(capture.catalog)
+            if statement == handoff.ROLES_SQL: return deepcopy(capture.roles)
+            if statement == handoff.FACTS_SQL: return capture.profile['facts']
+            if 'from pg_largeobject_metadata' in statement: return 0
+            if 'from pg_tables' in statement: return capture.profile['tables']
+            if 'from pg_namespace' in statement:
+                assert set(parameters[0]) == handoff.MANAGED_SCHEMAS
+                return sorted(capture.schemas)
+            if 'from pg_extension' in statement: return capture.profile['extensions']
+            if statement == handoff.DATABASE_ACCESS_SQL: return capture.database_access
+            if statement.startswith('select jsonb_build_array('):
+                assert 'from "net"."http_request_queue_id_seq"' in statement
+                return ['net', 'http_request_queue_id_seq', 1, False]
+            raise AssertionError('unexpected native snapshot query: ' + statement)
+        def dump(self):
+            assert active
+            return b'PGDMPsnapshot-test'
+
+    monkeypatch.setattr(handoff, '_NativeSnapshot', Snapshot)
+    monkeypatch.setattr(handoff, '_row_facts', lambda *args: capture.rows)
+    monkeypatch.setattr(handoff, '_objects', lambda *args: ([], {}, []))
+    monkeypatch.setattr(handoff, 'NativeArchive', lambda *args, **kwargs: SimpleNamespace(entries=[]))
+    destination = tmp_path / 'native-handoff'
+    destination.mkdir(mode=0o700)
+    handoff._capture(SimpleNamespace(target='native-target', system='independent-system'), destination,
+        binding_sha256='a' * 64, pg_restore='/unused/pg_restore', held=[])
+    result = json.loads((destination / 'capture/source-profile.json').read_bytes())
+    state = result['providerState']
+    assert state['profile'] == provider.PROFILE
+    assert state['managedAccess'] == capture.profile['providerState']['managedAccess']
+    assert state['sequenceState'] == [['net', 'http_request_queue_id_seq', 1, False]]
+    access = json.loads((destination / 'access.json').read_bytes())['access']
+    assert {r[0] for r in access['schemas']} == capture.schemas
+    assert sum(statement == ACCESS_SQL for statement, _ in calls) == 2

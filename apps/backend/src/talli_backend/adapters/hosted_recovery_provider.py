@@ -12,7 +12,10 @@ from talli_backend.adapters.hosted_recovery_capture import (
 
 SCHEMAS = frozenset({'_realtime', 'net', 'pgboss_v10', 'supabase_functions',
     'supabase_migrations'})
-PROFILE = 'talli-inert-native-provider-state-v1'
+MANAGED_ACCESS_SCHEMAS = frozenset({'auth', 'storage'})
+STRUCTURE_SCHEMAS = SCHEMAS | MANAGED_ACCESS_SCHEMAS
+PROFILE_V1 = 'talli-inert-native-provider-state-v1'
+PROFILE = 'talli-inert-native-provider-state-v2'
 TABLES = frozenset({'_realtime.extensions', '_realtime.feature_flags',
     '_realtime.schema_migrations', '_realtime.tenants', 'net._http_response',
     'net.http_request_queue', 'pgboss_v10.archive', 'pgboss_v10.job',
@@ -62,8 +65,9 @@ cross join lateral pg_identify_object(d.classid,d.objid,d.objsubid)i
 where d.refclassid='pg_extension'::regclass and d.deptype='e' and e.extname='pg_net'))"""
 
 
-def parameters():
-    return (sorted(SCHEMAS),) * 5
+def parameters(profile_name=PROFILE):
+    require(profile_name in (PROFILE_V1, PROFILE), 'hosted_provider_profile_required')
+    return (sorted(STRUCTURE_SCHEMAS if profile_name == PROFILE else SCHEMAS),) * 5
 
 
 def _name(value):
@@ -71,17 +75,18 @@ def _name(value):
         'hosted_provider_profile_invalid')
 
 
-def _structure_types(structure):
+def _structure_types(structure, *, schemas=SCHEMAS, roles=None):
     """Validate identities before any slicing, hashing or dynamic identifier use."""
     code = 'hosted_provider_profile_invalid'
     for category in ('relations', 'types', 'sequences'):
         rows = structure[category]
         for row in rows:
             _name(row[0]); _name(row[1])
-            require(row[0] in SCHEMAS, code)
+            require(row[0] in schemas, code)
         require(len({tuple(r[:2]) for r in rows}) == len(rows), code)
     for row in structure['relations']:
         _name(row[3])
+        require(roles is None or row[3] in roles, code)
         require(isinstance(row[2], str) and row[2] in ('r', 'p', 'v', 'm', 'S', 'i', 'I', 'c') and
             isinstance(row[10], list) and len(row[10]) <= 256, code)
         for column in row[10]:
@@ -93,6 +98,7 @@ def _structure_types(structure):
         require(len({c[0] for c in row[10]}) == len(row[10]), code)
     for row in structure['types']:
         _name(row[3])
+        require(roles is None or row[3] in roles, code)
         require(isinstance(row[2], str) and isinstance(row[4], str) and type(row[5]) is bool and
             all(row[i] is None or isinstance(row[i], str) for i in (6, 9)) and
             all(isinstance(row[i], list) and len(row[i]) <= 512 and
@@ -103,10 +109,63 @@ def _structure_types(structure):
             row[6] <= row[3] <= row[5] and row[7] > 0, code)
     for row in structure['defaultAcl']:
         _name(row[0]); _name(row[1])
-        require(row[1] in SCHEMAS and isinstance(row[2], str) and isinstance(row[3], str), code)
+        require(row[1] in schemas and (roles is None or row[0] in roles) and
+            isinstance(row[2], str) and isinstance(row[3], str), code)
+    if roles is not None:
+        for row in structure['triggers']:
+            for name in row[:3]: _name(name)
+            require(row[0] in schemas and isinstance(row[3], str) and
+                row[4] == 'O', 'hosted_provider_trigger_side_effects_unsupported')
+        require(len({tuple(r[:3]) for r in structure['triggers']}) ==
+            len(structure['triggers']), code)
     for row in structure['extensionMembers']:
         require(row[0] == 'pg_net' and isinstance(row[1], str) and
             all(v is None or isinstance(v, str) for v in row[2:4]) and isinstance(row[4], str), code)
+
+
+def _managed_access(value, structure, roles):
+    """Require complete original Auth/Storage identities and named grant chains.
+
+    Keep captured values verbatim. Only comparison order may be canonicalized;
+    provider grantors, owners and grant options are never repaired or relabelled.
+    """
+    code = 'hosted_provider_managed_access_invalid'
+    require(isinstance(value, dict) and set(value) == {'schemas', 'relations'} and
+        all(isinstance(rows, list) and len(rows) <= 4096 for rows in value.values()), code)
+    relations = {(r[0], r[1]): (r[2], r[3]) for r in structure['relations']
+        if r[0] in MANAGED_ACCESS_SCHEMAS and r[2] in ('r', 'p', 'v', 'm', 'S')}
+    identities = {}
+    for category, rows in value.items():
+        seen = set()
+        for row in rows:
+            require(isinstance(row, list) and len(row) ==
+                (3 if category == 'schemas' else 5), code)
+            count = 1 if category == 'schemas' else 2
+            for name in row[:count]: _name(name)
+            require(row[0] in MANAGED_ACCESS_SCHEMAS and isinstance(row[-2], str) and
+                row[-2] in roles and isinstance(row[-1], list) and len(row[-1]) <= 4096, code)
+            identity = tuple(row[:count])
+            require(identity not in seen, code)
+            seen.add(identity)
+            if category == 'schemas':
+                privileges = {'USAGE', 'CREATE'}
+            else:
+                require(isinstance(row[2], str) and identity in relations and
+                    (row[2], row[3]) == relations[identity], code)
+                privileges = {'SELECT', 'UPDATE', 'USAGE'} if row[2] == 'S' else {
+                    'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN'}
+            grants = set()
+            for grant in row[-1]:
+                require(isinstance(grant, list) and len(grant) == 4 and
+                    all(isinstance(v, str) for v in grant[:3]) and
+                    grant[0] in roles and grant[1] in roles | {'PUBLIC'} and
+                    grant[2] in privileges and type(grant[3]) is bool, code)
+                key = tuple(grant[:3])
+                require(key not in grants, code)
+                grants.add(key)
+        identities[category] = seen
+    require(identities['schemas'] == {(s,) for s in MANAGED_ACCESS_SCHEMAS} and
+        identities['relations'] == set(relations), code)
 
 
 def profile(capture):
@@ -124,8 +183,13 @@ def profile(capture):
         return None
     require(present == SCHEMAS and SCHEMAS <= capture.schemas and
         capture.source_project.startswith('native:') and
-        isinstance(value, dict) and set(value) == {'profile', 'structure', 'sequenceState'} and
-        value['profile'] == PROFILE, 'hosted_provider_profile_required')
+        isinstance(value, dict) and value.get('profile') in (PROFILE_V1, PROFILE),
+        'hosted_provider_profile_required')
+    extended = value['profile'] == PROFILE
+    require(not extended or not (MANAGED_ACCESS_SCHEMAS & capture.schemas),
+        'hosted_provider_profile_invalid')
+    require(set(value) == {'profile', 'structure', 'sequenceState'} |
+        ({'managedAccess'} if extended else set()), 'hosted_provider_profile_required')
     require(len(encoded(value)) <= 4 * 1024**2, 'hosted_provider_profile_invalid')
     structure = value['structure']
     require(isinstance(structure, dict) and set(structure) ==
@@ -136,10 +200,14 @@ def profile(capture):
         'defaultAcl': 4, 'extensionMembers': 5}
     require(all(isinstance(row, list) and len(row) == sizes[key]
         for key, rows in structure.items() for row in rows), 'hosted_provider_profile_invalid')
-    _structure_types(structure)
-    require({r[0] + '.' + r[1] for r in structure['relations'] if r[2] in ('r', 'p')} == TABLES,
+    schemas = STRUCTURE_SCHEMAS if extended else SCHEMAS
+    roles = {r[0] for r in capture.roles['roles']}
+    _structure_types(structure, schemas=schemas, roles=roles if extended else None)
+    tables = {'.'.join(t) for t in capture.profile['tables'] if t[0] in schemas}
+    require({r[0] + '.' + r[1] for r in structure['relations'] if r[2] in ('r', 'p')} == tables,
         'hosted_provider_table_profile_changed')
-    require(not structure['triggers'], 'hosted_background_provider_work_unsupported')
+    require(not any(r[0] in SCHEMAS | {'auth'} for r in structure['triggers']) if extended else
+        not structure['triggers'], 'hosted_background_provider_work_unsupported')
     require({'.'.join(t) for t in capture.profile['tables'] if t[0] in SCHEMAS} == TABLES,
         'hosted_provider_table_profile_changed')
     require(all(capture.rows[t]['rows'] == 0 for t in WORK_TABLES),
@@ -147,17 +215,22 @@ def profile(capture):
     require(['pg_net', '0.20.3', 'supabase_admin', 'extensions'] in capture.profile['extensions'] and
         ['pg_net', 'schema', None, 'net', 'net'] in structure['extensionMembers'],
         'hosted_provider_extension_membership_changed')
+    if extended:
+        _managed_access(value['managedAccess'], structure, roles)
+    # Auth/Storage counters are restored by the importer. Only immutable
+    # provider counters are prerequisites, even when their definitions span V2.
+    sequences = [r for r in structure['sequences'] if r[0] in SCHEMAS]
     require(isinstance(value['sequenceState'], list) and len(value['sequenceState']) <= 512 and
         all(isinstance(r, list) and len(r) == 4 and isinstance(r[0], str) and
             isinstance(r[1], str) and type(r[2]) is int and type(r[3]) is bool
             for r in value['sequenceState']) and
         {tuple(r[:2]) for r in value['sequenceState']} ==
-        {tuple(r[:2]) for r in structure['sequences']} and
-        len(value['sequenceState']) == len(structure['sequences']),
+        {tuple(r[:2]) for r in sequences} and
+        len(value['sequenceState']) == len(sequences),
         'hosted_provider_sequence_profile_changed')
     for schema, name, counter, _ in value['sequenceState']:
         _name(schema); _name(name)
-        sequence = next(r for r in structure['sequences'] if r[:2] == [schema, name])
+        sequence = next(r for r in sequences if r[:2] == [schema, name])
         require(sequence[6] <= counter <= sequence[5], 'hosted_provider_sequence_profile_changed')
     return value
 
@@ -166,7 +239,10 @@ def summary(capture):
     value = profile(capture)
     if value is None:
         return None
-    return {'profile': PROFILE, 'structureSha256': digest(encoded(value)),
+    return {'profile': value['profile'], 'structureSha256': digest(encoded(value)),
+        **({'version': 2, 'ownerPolicyStageRequired': True,
+            'managedAccessAlreadyPresentRequired': True,
+            'managedAccessImportAuthorized': False} if value['profile'] == PROFILE else {}),
         'tables': {t: capture.rows[t] for t in sorted(TABLES)},
         'stateAlreadyPresentRequired': True, 'providerStateImportAuthorized': False,
         'customRolesAlreadyPresentRequired': True, 'customRoleImportAuthorized': False,
@@ -204,14 +280,23 @@ def role_program(capture, *, definition_owners=()):
     return start.encode(), ''.join(final).encode()
 
 
-def verify(db, capture):
-    if profile(capture) is None:
+def verify(db, capture, *, pending_managed_policies=False):
+    value = profile(capture)
+    if value is None:
         return
     from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL, row_commitments
     from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL
+    extended = value['profile'] == PROFILE
+    require(not pending_managed_policies or extended, 'hosted_provider_profile_required')
+    schemas = STRUCTURE_SCHEMAS if extended else SCHEMAS
     db.execute("set local search_path=''")
-    require(db.execute(SQL, parameters()).fetchone()[0] == capture.profile['providerState']['structure'],
+    require(db.execute(SQL, parameters(value['profile'])).fetchone()[0] == value['structure'],
         'hosted_provider_structure_changed')
+    if extended:
+        actual = db.execute(ACCESS_SQL, (sorted(MANAGED_ACCESS_SCHEMAS),
+            sorted(MANAGED_ACCESS_SCHEMAS))).fetchone()[0]
+        require(normalized_access(value['managedAccess']) == normalized_access(actual),
+            'hosted_provider_managed_access_changed')
     for schema, name, counter, called in capture.profile['providerState']['sequenceState']:
         require(db.execute('select last_value,is_called from ' + qi(schema) + '.' + qi(name)).fetchone()
             == (counter, called), 'hosted_provider_sequence_state_changed')
@@ -237,8 +322,19 @@ def verify(db, capture):
     wanted = {k: [r for r in rows if r[0] in SCHEMAS] for k, rows in capture.access.items()}
     actual = db.execute(ACCESS_SQL, (sorted(SCHEMAS), sorted(SCHEMAS))).fetchone()[0]
     require(normalized_access(wanted) == normalized_access(actual), 'hosted_provider_access_changed')
-    require(normalized_catalog(capture.catalog, SCHEMAS) == normalized_catalog(
-        db.execute(CATALOG_SQL).fetchone()[0], SCHEMAS), 'hosted_provider_catalog_changed')
+    actual_catalog = db.execute(CATALOG_SQL).fetchone()[0]
+    if extended:
+        from talli_backend.adapters.hosted_recovery_owner_policy import policy_status
+        policy_status(capture, actual_catalog, allow_missing=pending_managed_policies)
+    wanted_catalog = normalized_catalog(capture.catalog, schemas)
+    current_catalog = normalized_catalog(actual_catalog, schemas)
+    if extended:
+        # The policy inventory guard above is authoritative for named missing
+        # policies. All other policies and every other catalog field stay exact.
+        for catalog in (wanted_catalog, current_catalog):
+            catalog['policies'] = [r for r in catalog['policies']
+                if r[0] not in MANAGED_ACCESS_SCHEMAS]
+    require(wanted_catalog == current_catalog, 'hosted_provider_catalog_changed')
     require(row_commitments(db, [t.split('.') for t in sorted(TABLES)]) ==
         {t: capture.rows[t] for t in TABLES}, 'hosted_provider_state_changed')
 

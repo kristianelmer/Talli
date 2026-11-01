@@ -47,7 +47,7 @@ def restore_database_access(db, expected):
         'hosted_database_acl_changed')
 
 
-def restore_access(db, capture, final_memberships):
+def restore_access(db, capture, final_memberships, *, pending_managed_policies=False):
     """Repair only captured identities; changed bodies/owners always stop restore.
 
     PostgreSQL fresh-project DEFAULT PRIVILEGES can add anon/authenticated grants
@@ -107,8 +107,15 @@ def restore_access(db, capture, final_memberships):
     require(normalized_access({k: [r for r in rows if r[0] in schemas]
         for k, rows in capture.access.items()}) == normalized_access(
         db.execute(ACCESS_SQL, (schemas, schemas)).fetchone()[0]), 'hosted_source_access_changed')
-    require(normalized_catalog(capture.catalog, scope) == normalized_catalog(
-        db.execute(CATALOG_SQL).fetchone()[0], scope), 'hosted_source_catalog_changed')
+    actual = db.execute(CATALOG_SQL).fetchone()[0]
+    wanted = normalized_catalog(capture.catalog, scope)
+    observed = normalized_catalog(actual, scope)
+    if pending_managed_policies:
+        from talli_backend.adapters.hosted_recovery_owner_policy import policy_status
+        policy_status(capture, actual, allow_missing=True)
+        for catalog in (wanted, observed):
+            catalog['policies'] = [r for r in catalog['policies'] if r[0] not in ('auth', 'storage')]
+    require(wanted == observed, 'hosted_source_catalog_changed')
     return repairs
 
 

@@ -63,15 +63,22 @@ def main(argv=None):
         result = execute(command=args.command, config=args.config,
             expected_config_sha256=args.expected_config_sha256,
             expected_plan_sha256=args.expected_plan_sha256)
+        pending_owner = result.get('phase') == 'awaiting_original_owner_policy'
         if args.command != 'plan':
             # Private object names and original actor identifiers stay in private
             # custody; terminal output is a bounded non-secret status projection.
             result = {key: value for key, value in result.items() if key in
                 ('phase', 'planSha256', 'publicationAuthorized', 'verification', 'databaseMarkerPresent',
                  'providerProjectPauseOrDeletionPerformed', 'ownerCaptureAndCredentialFilesRemoved',
-                 'dispositionReplayCurrent')}
+                 'dispositionReplayCurrent', 'ownerActionRequired', 'ownerRequest',
+                 'providerStateCurrent', 'originalManagedPoliciesCurrent')}
+            if 'ownerRequest' in result:
+                # Never project policy SQL, private binding material or any
+                # owner credential into terminal output.
+                result['ownerRequest'] = {k: v for k, v in result['ownerRequest'].items()
+                    if k in ('directory', 'manifestSha256', 'policySha256')}
         print(json.dumps(result, sort_keys=True))
-        return 0
+        return 2 if pending_owner else 0
     except Exception as error:
         code = str(error) if isinstance(error, ValueError) and re.fullmatch(
             'hosted_[a-z_]+', str(error)) else 'hosted_operator_failed_inspect_private_state'
