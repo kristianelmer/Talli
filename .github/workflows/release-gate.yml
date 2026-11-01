@@ -141,9 +141,13 @@ jobs:
       matrix:
         group: [predecessor, authority, financial-database, browser]
     env:
-      TALLI_CI_OUTPUT_DIR: ${{ runner.temp }}/talli-integration-${{ matrix.group }}-a${{ github.run_attempt }}
       TALLI_CI_CANDIDATE: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
+      - name: Select fresh integration output
+        env:
+          INTEGRATION_GROUP: ${{ matrix.group }}
+        run: echo "TALLI_CI_OUTPUT_DIR=$RUNNER_TEMP/talli-integration-$INTEGRATION_GROUP-a$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
       - name: Check out the immutable revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
