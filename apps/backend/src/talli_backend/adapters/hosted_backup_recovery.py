@@ -391,8 +391,9 @@ class HostedBackupRecovery:
         if 'providerState' in self.plan_body:
             require(db.execute("select current_setting('session_replication_role')").fetchone()[0] == 'origin',
                 'hosted_provider_origin_mode_required')
-            if not self._owner_staged:
-                require_policy_authority(db, capture)
+        if not self._owner_staged:
+            require_policy_authority(db, capture,
+                managed_policy_grants='providerState' not in self.plan_body)
         require(all(db.execute('select to_regnamespace(%s)', (name,)).fetchone()[0] is None
             for name in capture.application_schemas if name != 'public'), 'hosted_target_not_empty')
         require(db.execute('select count(*)from auth.users').fetchone()[0] == 0 and

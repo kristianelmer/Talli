@@ -678,7 +678,8 @@ COPY statement. Existing triggers on untouched Storage tables retain their exact
 captured definitions for later API uploads; provider state is checked again after
 uploads. The target must keep worker/network isolation throughout.
 
-Original managed-table policies still require their actual table-owner authority.
+Original managed-table policies on this native prerequisite still require their
+actual table-owner authority.
 In the populated fixture, `postgres` cannot create
 `support_case_read_storage_objects` on `storage.objects`. The V1 importer
 therefore refuses with `hosted_managed_policy_owner_unavailable` before application
@@ -746,3 +747,39 @@ available using the independently held reviewed plan digest. Final quarantine
 verification is a local recovery claim only; real Auth/MFA and owning-read checks,
 independent managed compatibility, key portability and operating readiness require
 their own evidence and authority.
+
+### Managed CLI history and provider policy permission
+
+The ordinary managed capture is distinct from the native inert profile.
+`supabase_migrations` alone is application-owned CLI history: retain its schemas,
+definitions, rows, owners and grants in the logical payload. Its shared name does
+not require the five native provider namespaces or select an original-owner
+handoff. Other native provider namespaces still require the complete native
+contract; a managed capture cannot declare that contract to bypass admission.
+
+Some managed PostgreSQL installations use
+[Supautils policy grants](https://github.com/supabase/supautils#table-ownership-bypass)
+to let `postgres` manage a policy without owning its table or inheriting the owner
+role. The ordinary restore preflight accepts original owner authority or an exact
+current-role/table grant from the registered `supautils.policy_grants` setting.
+It requires SIGHUP context, no pending restart and bounded, unambiguous JSON.
+An unregistered custom placeholder, wildcard, malformed grant or permission for
+another role/table cannot authorize restore. The operator changes neither the
+setting nor memberships. Missing authority refuses before application DDL.
+
+The captured managed 17.11 rehearsal has 228 tables, 17 application schemas,
+five private objects and six sequence counters. Its original Storage policy can
+use the ordinary transaction when the destination grants that existing policy
+permission. The source's grant and the earlier manual rehearsal are evidence
+about those observations, not the paused destination's current execution. Check
+the exact destination's complete engine/locale/extensions, managed definitions,
+empty namespaces and current policy permission on a separately authorized hosted
+attempt. Missing permission stops; it does not activate the local native owner
+handoff or authorize a new provider-owner credential.
+
+Keep the operator quarantined while preparing any service demonstration. Native
+capture excludes original database passwords; use separately approved fresh test
+credentials. A target signing context and successful fixture MFA do not establish
+general managed-key portability. Retain the existing restrictions on hosted
+lifecycle, credential custody, continuous recovery and live filing. An offline
+compile, local SQL regression or proposed procedure cannot close the hosted gate.

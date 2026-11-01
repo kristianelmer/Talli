@@ -270,8 +270,8 @@ class ManagedCapture:
 
     @property
     def application_schemas(self):
-        from talli_backend.adapters.hosted_recovery_provider import SCHEMAS
-        return self.schemas - SCHEMAS
+        from talli_backend.adapters.hosted_recovery_provider import SCHEMAS, profile
+        return self.schemas - SCHEMAS if profile(self) is not None else self.schemas
 
     @property
     def custom_roles(self):

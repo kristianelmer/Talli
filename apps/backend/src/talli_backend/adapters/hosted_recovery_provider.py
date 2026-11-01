@@ -7,7 +7,7 @@ The ordinary hosted transport deliberately supplies no isolation capability.
 import re
 
 from talli_backend.adapters.hosted_recovery_capture import (
-    digest, encoded, normalized_access, normalized_catalog, qi, require,
+    digest, encoded, json_bytes, normalized_access, normalized_catalog, qi, require,
 )
 
 SCHEMAS = frozenset({'_realtime', 'net', 'pgboss_v10', 'supabase_functions',
@@ -181,6 +181,13 @@ def profile(capture):
     if not present:
         require(value is None, 'hosted_provider_profile_invalid')
         return None
+    if not capture.source_project.startswith('native:'):
+        # Hosted CLI migration history is application-owned payload. Its name
+        # also appears in the native platform profile; that overlap does not
+        # turn a managed capture into a native provider-state transfer.
+        require(not (present - {'supabase_migrations'}), 'hosted_provider_profile_required')
+        require(value is None, 'hosted_provider_profile_invalid')
+        return None
     require(present == SCHEMAS and SCHEMAS <= capture.schemas and
         capture.source_project.startswith('native:') and
         isinstance(value, dict) and value.get('profile') in (PROFILE_V1, PROFILE),
@@ -339,13 +346,45 @@ def verify(db, capture, *, pending_managed_policies=False):
         {t: capture.rows[t] for t in TABLES}, 'hosted_provider_state_changed')
 
 
-def require_policy_authority(db, capture):
+def _managed_policy_grants(db):
+    # Supautils registers this SIGHUP-only GUC when its policy hook is loaded.
+    # A user-set custom placeholder is not a registered pg_settings entry. Read
+    # existing provider authority only; never set a GUC or grant a membership.
+    row = db.execute("select current_user,setting,context,pending_restart from pg_settings "
+        "where name='supautils.policy_grants' and vartype='string'").fetchone()
+    if row is None:
+        return frozenset()
+    role, raw, context, pending = row
+    code = 'hosted_managed_policy_grants_invalid'
+    require(context == 'sighup' and pending is False and isinstance(raw, str) and
+        len(raw.encode()) <= 65536, code)
+    try:
+        values = json_bytes(raw.encode())
+    except ValueError:
+        raise ValueError(code) from None
+    require(isinstance(values, dict) and len(values) <= 512, code)
+    for name, tables in values.items():
+        require(isinstance(name, str) and re.fullmatch('[a-z_][a-z_0-9]{0,62}', name) and
+            isinstance(tables, list) and len(tables) <= 512 and
+            all(isinstance(t, str) and re.fullmatch(
+                '[a-z_][a-z_0-9]{0,62}\\.[a-z_][a-z_0-9]{0,62}', t) for t in tables), code)
+    return frozenset(values.get(role, ()))
+
+
+def require_policy_authority(db, capture, *, managed_policy_grants=False):
     """Fail before app DDL when postgres cannot install an original policy."""
     owners = {(r[0], r[1]): r[4] for r in capture.catalog['rls']}
+    grants = None
     for schema, table, *_ in capture.catalog['policies']:
         if schema not in ('auth', 'storage'):
             continue
         owner = owners.get((schema, table))
-        require(owner is not None and db.execute(
+        require(owner is not None, 'hosted_managed_policy_owner_unavailable')
+        authority = db.execute(
             "select rolsuper or pg_has_role(current_user,%s,'USAGE')from pg_roles where rolname=current_user",
-            (owner,)).fetchone()[0], 'hosted_managed_policy_owner_unavailable')
+            (owner,)).fetchone()[0]
+        if not authority and managed_policy_grants:
+            if grants is None:
+                grants = _managed_policy_grants(db)
+            authority = schema + '.' + table in grants
+        require(authority, 'hosted_managed_policy_owner_unavailable')

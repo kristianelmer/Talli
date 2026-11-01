@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 from uuid import uuid4
 
 import psycopg
@@ -27,6 +28,7 @@ from talli_backend.adapters import hosted_backup_recovery as recovery
 from talli_backend.adapters.hosted_recovery_access import ACCESS_SQL, DATABASE_ACCESS_SQL, row_commitments
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, encoded
 from talli_backend.adapters.hosted_recovery_sql import CATALOG_SQL, GUC, execute_batch
+from talli_backend.adapters.hosted_recovery_provider import require_policy_authority
 from talli_backend.adapters.hosted_recovery_target import HostedDesignation, SupabaseRecoveryTarget
 
 IMAGE = 'public.ecr.aws/supabase/postgres@sha256:f6be70aeb2946183fee4eb8c4fae23caf9c66f7cc4984d69d28832a975535c3d'
@@ -58,6 +60,9 @@ create table storage.migrations(id integer primary key,created_at timestamptz);
 insert into storage.migrations values(1,clock_timestamp());
 """
 APPLICATION = """
+create schema supabase_migrations authorization postgres;
+create table supabase_migrations.schema_migrations(version text primary key,statements text[]);
+insert into supabase_migrations.schema_migrations values('20261030',array['original; migration']),('20261031',array['second migration']);
 create role restore_owner nologin;
 create role restore_function_owner nologin;
 create role restore_runtime login;
@@ -146,12 +151,12 @@ def exercise(container, settings, folder, pg_restore):
     capture_dir = folder / 'capture'; capture_dir.mkdir(mode=0o700)
     with connect() as db:
         execute_batch(db, GUC.encode())
-        tables = [list(r) for r in db.execute("select schemaname,tablename from pg_tables where schemaname in('ledger','public','auth','storage')order by 1,2")]
+        tables = [list(r) for r in db.execute("select schemaname,tablename from pg_tables where schemaname in('ledger','public','auth','storage','supabase_migrations')order by 1,2")]
         facts = list(db.execute(FACTS).fetchone())
         extensions = [list(r) for r in db.execute('select e.extname,e.extversion,pg_get_userbyid(e.extowner),n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname')]
         catalog = db.execute(CATALOG_SQL).fetchone()[0]
         roles = db.execute(ROLES).fetchone()[0]
-        access = db.execute(ACCESS_SQL, (['public', 'ledger'], ['public', 'ledger'])).fetchone()[0]
+        access = db.execute(ACCESS_SQL, (['public', 'ledger', 'supabase_migrations'],) * 2).fetchone()[0]
         database_access = db.execute(DATABASE_ACCESS_SQL).fetchone()[0]
         rows = row_commitments(db, tables)
     dump = run(['docker', 'exec', container, 'pg_dump', '-h', '/tmp', '-U', 'supabase_admin', '-d', 'postgres', '-Fc'])
@@ -185,6 +190,20 @@ def exercise(container, settings, folder, pg_restore):
             db.execute('alter default privileges in schema public grant execute on functions to anon,authenticated')
     fresh()
     target = LocalTarget(settings, folder)
+    # A custom placeholder must not impersonate a loaded provider policy hook.
+    with connect() as db:
+        db.execute('create role policy_probe_owner; create table storage.policy_probe(id int); '
+            'alter table storage.policy_probe owner to policy_probe_owner; set local role postgres')
+        db.execute("set local supautils.policy_grants='{" +
+            '"postgres":["storage.policy_probe"]' + "}'")
+        probe = SimpleNamespace(catalog={'rls': [['storage', 'policy_probe', False, False, 'policy_probe_owner']],
+            'policies': [['storage', 'policy_probe', 'original']]})
+        try:
+            require_policy_authority(db, probe, managed_policy_grants=True)
+            raise AssertionError('unregistered policy hook placeholder accepted')
+        except ValueError as error:
+            assert str(error) == 'hosted_managed_policy_owner_unavailable'
+        db.rollback()
     with connect() as db:
         original_auth_history = db.execute('select version from auth.schema_migrations').fetchall()
         original_storage_history = db.execute('select id,created_at from storage.migrations').fetchall()
@@ -254,6 +273,8 @@ def exercise(container, settings, folder, pg_restore):
         assert db.execute("select pg_get_userbyid(proowner)from pg_proc where proname='read_count'").fetchone()[0] == 'restore_function_owner'
         assert db.execute('select version from auth.schema_migrations').fetchall() == original_auth_history
         assert db.execute('select id,created_at from storage.migrations').fetchall() == original_storage_history
+        assert db.execute('select version,statements from supabase_migrations.schema_migrations order by version').fetchall() == [
+            ('20261030', ['original; migration']), ('20261031', ['second migration'])]
     shutil.rmtree(capture_dir)
     clean = recovery.HostedBackupRecovery.from_state(target=target, work=work, expected_plan_sha256=operator.plan_sha)
     assert clean.inspect()['databaseMarkerPresent'] is True
@@ -282,7 +303,8 @@ def exercise(container, settings, folder, pg_restore):
         'lostCommitResume': True, 'rollbackBeforeCommit': True, 'customRoleGrantorsAndOptions': True,
         'authAndRuntimeQuarantine': True, 'repeatableContainment': True,
         'containmentRowLockDeadline': True, 'nonemptyManagedNamespaceRefused': True,
-        'providerMigrationRowsPreserved': True, 'inspectAfterCaptureLoss': True}
+        'providerMigrationRowsPreserved': True, 'applicationCliHistoryRestoredExact': True,
+        'unregisteredPolicyHookRefused': True, 'inspectAfterCaptureLoss': True}
 
 
 def main():
