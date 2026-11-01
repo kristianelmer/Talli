@@ -5,6 +5,7 @@ authority. The operator consumes an independently verified decrypted managed
 capture. Native disposition bundles keep their existing replay/identity contract.
 """
 from contextlib import contextmanager
+import base64
 import fcntl
 import json
 import os
@@ -23,6 +24,7 @@ from talli_backend.adapters.hosted_recovery_sql import (
 
 CONTROL = '_talli_recovery'
 MARKER = CONTROL + '.attempt'
+HISTORY = CONTROL + '.native_history'
 BAN = '9999-12-31 00:00:00+00'
 MAX_STATE = 256 * 1024
 PROVIDER_HISTORY = {('auth', 'schema_migrations'), ('storage', 'migrations'),
@@ -61,6 +63,8 @@ class HostedBackupRecovery:
             'hosted_work_credentials_overlap')
         require(capture.source_project != target.designation.project and CONTROL not in capture.schemas,
             'hosted_source_target_same')
+        self.disposition = capture.disposition
+        if self.disposition is not None: self.disposition.require_external(self.work)
         self.archive = NativeArchive(capture, pg_restore=pg_restore, work=self.work)
         self.plan_body = {'version': 1, 'sourceProject': capture.source_project,
             'captureSha256': capture.commitment, 'target': target.designation.body(),
@@ -71,10 +75,13 @@ class HostedBackupRecovery:
             'publicationAuthorized': False, 'authQuarantine': 'all recovered users banned',
             'runtimeQuarantine': 'all captured custom logins disabled',
             'deletionJournalPublicationAuthority': False}
+        if self.disposition is not None:
+            self.plan_body.update(version=2, sourceOrigin='owned-native-replayed',
+                disposition=self.disposition.summary())
         self.plan_sha = digest(encoded(self.plan_body))
 
     @classmethod
-    def from_state(cls, *, target, work, expected_plan_sha256):
+    def from_state(cls, *, target, work, expected_plan_sha256, disposition=None):
         """Inspect/contain an attempt even after capture scratch loss.
 
         The independently held reviewed plan digest authenticates the private
@@ -90,6 +97,7 @@ class HostedBackupRecovery:
         require(digest(encoded(state['plan'])) == expected_plan_sha256 and
             state['plan']['target'] == target.designation.body(), 'hosted_reviewed_plan_changed')
         self.capture, self.target = None, target
+        self.disposition = disposition
         self.plan_body, self.plan_sha = state['plan'], expected_plan_sha256
         return self
 
@@ -101,12 +109,14 @@ class HostedBackupRecovery:
             yield
         finally: os.close(descriptor)
 
-    def _validate(self):
+    def _validate(self, *, capture_required=True):
         # Re-read every bound member before a command, not just construction.
-        if self.capture is not None:
+        if capture_required and self.capture is not None:
             for name in self.capture.files: self.capture.read(name)
+            if self.disposition is not None: self.disposition.check_current()
         return self.target.validate(source_project=self.plan_body['sourceProject'],
-            captured_at=self.capture.profile.get('capturedAt') if self.capture is not None else None)
+            captured_at=self.capture.profile.get('capturedAt')
+                if capture_required and self.capture is not None else None)
 
     def plan(self):
         self._validate()
@@ -230,6 +240,82 @@ class HostedBackupRecovery:
             (metadata['logins'],)).fetchone()[0]
         require(users == 0 and logins == 0, 'hosted_quarantine_changed')
 
+    @staticmethod
+    def _history_facts(rows):
+        facts = []; total = 0
+        for path, body in rows:
+            raw = bytes(body); total += len(raw)
+            require(len(facts) < 256 and total <= 16 * 1024**2,
+                'hosted_disposition_history_inventory_invalid')
+            facts.append({'path': path, 'bytes': len(raw), 'sha256': digest(raw)})
+        facts.sort(key=lambda f: f['path'])
+        return {'nativeHistoryFiles': len(facts), 'nativeHistorySha256': digest(encoded(facts))}
+
+    def _control_objects(self):
+        objects = [('schema', CONTROL)] + [('table', MARKER)]
+        if 'disposition' in self.plan_body:
+            objects.append(('table', HISTORY))
+        return objects
+
+    def _control_acl(self, kind, identity):
+        if kind == 'schema':
+            return ("select nspowner,nspacl from pg_namespace where nspname='" + identity + "'")
+        return ("select relowner,relacl from pg_class where oid='" + identity + "'::regclass")
+
+    def _private_control_current(self, db, *, allow_missing_history=False):
+        for kind, identity in self._control_objects():
+            if identity == HISTORY and db.execute('select to_regclass(%s)', (HISTORY,)).fetchone()[0] is None:
+                if allow_missing_history: continue
+                return False
+            query = self._control_acl(kind, identity)
+            if db.execute("select count(*)from (" + query + ")o(owner,acl) where "
+                    "owner<>'postgres'::regrole or exists(select 1 from aclexplode(acl)a "
+                    "where a.grantee<>owner)").fetchone()[0]:
+                return False
+            if kind == 'table' and db.execute("select count(*)from pg_attribute where attrelid='" +
+                    identity + "'::regclass and attacl is not null and exists(select 1 from "
+                    "aclexplode(attacl)a where a.grantee<>'postgres'::regrole)").fetchone()[0]:
+                return False
+        return True
+
+    def _seal_control(self, db, *, allow_missing_history=False):
+        # Containment uses only pinned state and fixed control identities. It
+        # remains available after capture, journal or proof loss.
+        for kind, identity in self._control_objects():
+            if identity == HISTORY and allow_missing_history and db.execute(
+                    'select to_regclass(%s)', (HISTORY,)).fetchone()[0] is None:
+                continue
+            db.execute('alter ' + kind + ' ' + identity + ' owner to postgres')
+            query = self._control_acl(kind, identity)
+            grants = db.execute("select distinct case when a.grantee=0 then 'PUBLIC' else "
+                "pg_get_userbyid(a.grantee)end from (" + query + ")o(owner,acl) cross join lateral "
+                "aclexplode(acl)a where a.grantee<>owner").fetchall()
+            for name, in grants:
+                db.execute('revoke all on ' + kind + ' ' + identity + ' from ' +
+                    ('PUBLIC' if name == 'PUBLIC' else qi(name)) + ' cascade')
+            if kind == 'table':
+                grants = db.execute("select distinct attname,case when a.grantee=0 then 'PUBLIC' "
+                    "else pg_get_userbyid(a.grantee)end from pg_attribute cross join lateral "
+                    "aclexplode(attacl)a where attrelid='" + identity + "'::regclass "
+                    "and a.grantee<>'postgres'::regrole").fetchall()
+                for column, name in grants:
+                    db.execute('revoke all(' + qi(column) + ')on table ' + identity + ' from ' +
+                        ('PUBLIC' if name == 'PUBLIC' else qi(name)) + ' cascade')
+
+    def _history_current(self, db, metadata):
+        if 'nativeHistorySha256' not in metadata:
+            return 'disposition' not in self.plan_body
+        if not self._private_control_current(db):
+            return False
+        count, size, largest, path_size = db.execute('select count(*),coalesce(sum(octet_length(payload)),0),'
+            'coalesce(max(octet_length(payload)),0),coalesce(max(octet_length(path)),0)from ' + HISTORY).fetchone()
+        if count > 256 or size > 16 * 1024**2 or largest > 8 * 1024**2 or path_size > 2048:
+            return False
+        rows = db.execute('select path,payload from ' + HISTORY +
+            ' order by path collate "C" limit 257').fetchall()
+        return self._history_facts(rows) == {k: metadata[k] for k in
+            ('nativeHistoryFiles', 'nativeHistorySha256')}
+
     def _restore_database(self, state, program):
         with self.target.database() as db:
             require(db.execute('select pg_try_advisory_xact_lock(725128419231)').fetchone()[0],
@@ -237,6 +323,8 @@ class HostedBackupRecovery:
             marker = self._marker(db, state)
             if marker is not None:
                 self._quarantined(db, marker)
+                require(self._history_current(db, marker), 'hosted_disposition_history_copy_changed')
+                state['quarantine'] = marker
                 return marker
             self._fresh(db, program)
             execute_batch(db, GUC.encode())
@@ -282,24 +370,18 @@ class HostedBackupRecovery:
             verify_custom_roles(db, self.capture)
             db.execute('create schema ' + CONTROL + ' authorization postgres')
             db.execute('revoke all on schema ' + CONTROL + ' from public')
+            if self.disposition is not None:
+                db.execute('create table ' + HISTORY + '(path text primary key,payload bytea not null)')
+                native_rows = [(item['path'], base64.b64decode(item['base64'], validate=True))
+                    for item in self.capture.native_history]
+                for row in native_rows:
+                    db.execute('insert into ' + HISTORY + ' values(%s,%s)', row)
+                metadata.update(self._history_facts(native_rows))
             db.execute('create table ' + MARKER + '(id uuid primary key,plan_sha text not null,'
                 'capture_sha text not null,target_ref text not null,metadata jsonb not null)')
             db.execute('revoke all on table ' + MARKER + ' from public,anon,authenticated,service_role')
-            # Restored global default privileges also apply to newly created
-            # control objects. Remove any inherited grants, including custom
-            # runtime grants, before the authoritative marker can commit.
-            for kind, identity, query in (
-                ('schema', CONTROL, "select distinct case when a.grantee=0 then 'PUBLIC' else "
-                 "pg_get_userbyid(a.grantee)end from pg_namespace n cross join lateral "
-                 "aclexplode(n.nspacl)a where n.nspname='_talli_recovery' and a.grantee<>n.nspowner"),
-                ('table', MARKER, "select distinct case when a.grantee=0 then 'PUBLIC' else "
-                 "pg_get_userbyid(a.grantee)end from pg_class c cross join lateral "
-                 "aclexplode(c.relacl)a where c.oid='_talli_recovery.attempt'::regclass "
-                 "and a.grantee<>c.relowner"),
-            ):
-                for name, in db.execute(query).fetchall():
-                    db.execute('revoke all on ' + kind + ' ' + identity + ' from ' +
-                        ('PUBLIC' if name == 'PUBLIC' else qi(name)) + ' cascade')
+            self._seal_control(db)
+            require(self._history_current(db, metadata), 'hosted_disposition_history_copy_changed')
             db.execute('insert into ' + MARKER + ' values(%s,%s,%s,%s,%s::jsonb)',
                 (state['id'], self.plan_sha, self.capture.commitment,
                  self.target.designation.project, json.dumps(metadata)))
@@ -329,12 +411,17 @@ class HostedBackupRecovery:
                     state['objects'] = [r for r in state['objects'] if
                         (r['bucket'], r['name']) != (obj['bucket'], obj['name'])] + [receipt]
                     self._save(state, 'objects_quarantined')
+                if self.disposition is not None: self.disposition.check_current()
                 with self.target.database() as db:
                     self._quarantined(db, self._marker(db, state))
                 state['verification'] = {'tablesCompared': metadata['tablesCompared'],
                     'sequenceCounters': metadata['sequenceCounters'], 'aclRepairs': metadata['repairs'],
                     'privateObjectsServedExact': len(state['objects']), 'authUsersBanned': len(metadata['actors']),
                     'runtimeLoginsDisabled': len(metadata['logins'])}
+                if self.disposition is not None:
+                    self.disposition.check_current()
+                    state['verification']['dispositionReplayCurrent'] = True
+                    state['verification']['nativeHistoryFilesCopiedExact'] = metadata['nativeHistoryFiles']
                 self._save(state, 'verified_quarantined')
                 return state
             except BaseException as error:
@@ -348,24 +435,43 @@ class HostedBackupRecovery:
 
     def inspect(self):
         with self._lock():
-            self._validate()
+            self._validate(capture_required=False)
             state = self._state()
             with self.target.database() as db:
                 marker = self._marker(db, state)
                 if marker is not None: self._quarantined(db, marker)
                 else: self._uncommitted(db)
-            return {**state, 'databaseMarkerPresent': marker is not None}
+                history_current = False
+                try:
+                    if marker is not None: history_current = self._history_current(db, marker)
+                except Exception:
+                    pass
+            result = {**state, 'databaseMarkerPresent': marker is not None}
+            if 'disposition' in self.plan_body:
+                current = False
+                try:
+                    if self.disposition is not None and self.disposition.summary() == self.plan_body['disposition']:
+                        self.disposition.require_external(self.work)
+                        self.disposition.check_current()
+                        current = history_current
+                except Exception:
+                    pass
+                result['dispositionReplayCurrent'] = current
+            return result
 
     def contain(self, *, expected_plan_sha256):
         require(expected_plan_sha256 == self.plan_sha, 'hosted_reviewed_plan_changed')
         with self._lock():
-            self._validate()
+            self._validate(capture_required=False)
             state = self._state()
             self._save(state, 'containment_pending')
             with self.target.database() as db:
                 marker = self._marker(db, state)
                 if marker is not None:
                     self._quarantine(db, marker)
+                    self._seal_control(db, allow_missing_history=True)
+                    require(self._private_control_current(db, allow_missing_history=True),
+                        'hosted_control_acl_changed')
                     self._quarantined(db, marker)
                 else:
                     self._uncommitted(db)

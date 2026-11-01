@@ -114,9 +114,11 @@ class ManagedCapture:
     objects: tuple
     access: dict
     database_access: dict | None
+    disposition: object | None = None
+    native_history: tuple = ()
 
     @classmethod
-    def open(cls, *, directory, header, header_sha256, access, access_sha256):
+    def open(cls, *, directory, header, header_sha256, access, access_sha256, disposition=None):
         directory = Path(directory).absolute()
         require(directory.is_dir() and not directory.is_symlink() and
             directory.stat().st_uid == os.getuid() and not directory.stat().st_mode & 0o077,
@@ -124,11 +126,18 @@ class ManagedCapture:
         raw = private_read(header, 65536)
         require(digest(raw) == header_sha256, 'hosted_capture_header_changed')
         envelope = json_bytes(raw)
-        require(envelope.get('format') == 'talli-designated-hosted-capture-v1' and
-            re.fullmatch('[a-z]{20}', envelope.get('projectRef', '')),
-            'hosted_capture_format_invalid')
+        native = envelope.get('format') == 'talli-native-replayed-managed-capture-v1'
+        if native:
+            from uuid import UUID
+            source = 'native:' + str(UUID(envelope['sourceNativeTarget']))
+            require(disposition is not None, 'hosted_disposition_replay_adapter_required')
+        else:
+            require(envelope.get('format') == 'talli-designated-hosted-capture-v1' and
+                re.fullmatch('[a-z]{20}', envelope.get('projectRef', '')) and disposition is None,
+                'hosted_capture_format_invalid')
+            source = envelope['projectRef']
         pins = envelope['pins']
-        require(8 <= len(pins) <= 40 and REQUIRED <= set(pins) and
+        require(8 <= len(pins) <= (41 if native else 40) and REQUIRED <= set(pins) and
             set(pins) == {p.name for p in directory.iterdir()}, 'hosted_capture_inventory_changed')
         contents = {}
         for name, pin in pins.items():
@@ -147,7 +156,8 @@ class ManagedCapture:
         catalog = json_bytes(contents['source-catalog.private.json'])
         roles = json_bytes(contents['source-roles.private.json'])
         objects = json_bytes(contents['object-manifest.private.json'])
-        require(profile['projectRef'] == envelope['projectRef'] and
+        require((profile.get('sourceNativeTarget') == envelope['sourceNativeTarget'] if native else
+            profile.get('projectRef') == source) and
             len(profile['facts']) == 7 and profile['facts'][0] // 10000 == 17 and
             profile['facts'][6] == 'postgres',
             'hosted_capture_database_profile_invalid')
@@ -198,14 +208,15 @@ class ManagedCapture:
         require(not any(rows.get(name, {'rows': 0})['rows'] for name in
             ('cron.job', 'net.http_request_queue', 'supabase_functions.hooks')),
             'hosted_background_provider_work_unsupported')
-        require(not any(v['rows'] for k, v in rows.items() if k.startswith('documents.local_native_disposition_')),
+        require(native or not any(v['rows'] for k, v in rows.items() if k.startswith('documents.local_native_disposition_')),
             'hosted_disposition_replay_adapter_required')
         require(rows.get('auth.users', {'rows': 0})['rows'] <= 256,
             'hosted_recovery_actor_bound')
         extra = private_read(access, 16 * 1024**2)
         require(digest(extra) == access_sha256, 'hosted_capture_access_changed')
         supplement = json_bytes(extra)
-        require(supplement.get('sourceProject') == envelope['projectRef'] and
+        require((supplement.get('sourceNativeTarget') == envelope['sourceNativeTarget'] if native else
+            supplement.get('sourceProject') == source) and
             supplement.get('sourceCatalogStillExactToOriginal') is True,
             'hosted_capture_access_binding_invalid')
         values = supplement['access']
@@ -234,8 +245,14 @@ class ManagedCapture:
                     privilege in {'CONNECT', 'CREATE', 'TEMPORARY'} and type(option) is bool,
                     'hosted_capture_database_access_invalid')
         commitment = digest(encoded({'headerSha256': header_sha256, 'accessSha256': access_sha256}))
-        return cls(directory, commitment, envelope['projectRef'], pins, profile, rows,
-            catalog, roles, tuple(objects), values, database_access)
+        history = json_bytes(contents['native-held-history.private.json']) if native else []
+        require(isinstance(history, list) and len(history) <= 256,
+            'hosted_disposition_history_inventory_invalid')
+        result = cls(directory, commitment, source, pins, profile, rows,
+            catalog, roles, tuple(objects), values, database_access, disposition, tuple(history))
+        if native:
+            disposition.verify_capture(result, header_sha256=header_sha256, access_sha256=access_sha256)
+        return result
 
     def read(self, name):
         require(name in self.files, 'hosted_capture_member_unavailable')

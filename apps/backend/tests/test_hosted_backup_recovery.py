@@ -263,6 +263,9 @@ class DatabaseModel:
             return Cursor(rows + ([('extensions', 'unrelated_customer_data')]
                 if self.foreign_managed_table else []))
         if text.startswith('select exists('): return Cursor([(self.managed_table_occupied,)])
+        if 'to_regclass' in text and params == (recovery.HISTORY,):
+            return Cursor([('history' if any(c.startswith('create table ' + recovery.HISTORY)
+                for c in self.calls) else None,)])
         if 'to_regclass' in text: return Cursor([('marker' if self.marker else None,)])
         if text.startswith('select id::text,plan_sha'): return Cursor([self.marker] if self.marker else [])
         if 'to_regnamespace' in text: return Cursor([(None,)])
@@ -275,6 +278,8 @@ class DatabaseModel:
             self.pending = (*params[:4], json.loads(params[4])); return Cursor()
         if 'select id from auth.users' in text: return Cursor([])
         if text.startswith('select row_to_json'): return Cursor([])
+        if text.startswith('select count(*),coalesce(sum(octet_length(payload))'):
+            return Cursor([(0, 0, 0, 0)])
         if 'count(*)' in text: return Cursor([(0,)])
         if text == 'create original ddl;': self.ddl += 1
         return Cursor()

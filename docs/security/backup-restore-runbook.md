@@ -382,10 +382,10 @@ accepts its sealed 228-table input in an offline compile check; the new command'
 SQL execution proof uses synthetic local PostgreSQL. No new hosted rehearsal or
 outage is implied.
 
-The managed format is distinct from `LocalBackupGenerations`' native disposition
-bundle. Nonempty native disposition tables, managed encryption-key tables and
-queued provider work fail closed. A missing deletion-journal adapter remains a
-current dependency for captures containing those obligations. This command
+The original managed format is distinct from `LocalBackupGenerations`' native
+disposition bundle. Nonempty native disposition tables require the explicit
+native handoff below; the original profile still refuses them. Managed
+encryption-key tables and queued provider work fail closed. The managed command
 issues no deletion-replay receipt and changes no launch or publication gate.
 
 ### Private inputs and designation
@@ -541,3 +541,96 @@ refusal. It stops and removes only its own cluster; no hosted target is used.
 ```sh
 uv run --project apps/backend python scripts/test-hosted-recovery-triggers.py --pg-bin /absolute/postgres/bin --pg-restore /absolute/path/pg_restore
 ```
+
+## Native disposition handoff to managed recovery
+
+`capture_native_managed_handoff` in
+`talli_backend.adapters.native_managed_handoff` composes an already independently
+bound, isolated native restore with the existing owning replay workflow. First
+complete `NativeDispositionRecovery.bind`/`bind_prefix` for that exact native
+target and original backup. Supply its independently pinned binding, the exact
+current external `JournalHead`, the journal and every held Documents export.
+The original authorization bytes and authorization time remain unchanged; the
+local-only permit never becomes hosted delete authority.
+
+The composition replays through `PostgresDocumentDisposition` under its checked
+company fence. Partial native Storage/SQL outcomes reconcile through that owner.
+Only after every owner prefix is applied does it capture a single exported SQL
+snapshot and the checked ordinary object bytes. The result is a distinct
+`talli-native-replayed-managed-capture-v1` profile whose source identity is
+`native:<UUID>`. Native target/plan/terminal receipt rows remain in that logical
+copy as history. No hosted native target is registered and all captured custom
+logins still become `NOLOGIN`.
+
+This finite profile accepts at most eight same-company local Documents cuts.
+Current ordinary objects in the private `company-documents` bucket keep their
+logical key, bytes and content type through Storage. Older retained native
+generations must exactly match the independent held exports and current retained
+record selectors. Their original paths and raw bytes are copied into the
+owner-only `_talli_recovery.native_history` recovery table in the same transaction
+as the private marker and quarantine. This preserves at most 256 historical files
+and 16 MiB of historical bytes; no business role receives access. Database path
+and payload bounds are checked before fetching carrier rows. Readback hashes,
+control ownership and schema/table/column ACLs are verified on import, resume
+and inspection. The native sidecar and 32 distinct current object files fit the
+41-member native capture limit; the original profile retains its 40-member limit.
+These bytes are a private recovery
+carrier, not native Storage version IDs exposed by the managed Storage API.
+Original native attributes and the original physical bundle remain in their
+independent custody. Unknown files, other buckets and large objects stop capture;
+none are silently truncated. Original native backups and held exports remain
+separate and are never pruned. The original owner proof, not a handwritten sidecar or a captured
+head alone, supplies provenance. Existing OS custody remains the writer trust
+boundary; hashes do not authenticate a malicious administrator.
+
+Use a new canonical destination under an owner-private directory, outside all
+original custody. Its `handoff.json` contains the capture coordinates and
+external `disposition` coordinates. The managed operator accepts those explicit
+coordinates in configuration version `2`, adding the `disposition` key to the
+version `1` shape. Independently review/pin that configuration and its current
+minimum; never obtain the minimum from the candidate being restored. The plan
+binds the handoff proof, native source and journal cut. All ordinary managed
+engine/locale/extensions/schema, exact row/access and object checks still apply.
+
+Missing, rolled-back, changed or advanced journal custody, missing held bytes,
+changed original backup/binding or missing owner prefixes close admission.
+The cut is checked again through restore and before verified quarantine. A
+later obligation requires a newly replayed native candidate; this command does
+not perform its deletion on the hosted target. Inspection reports
+`dispositionReplayCurrent: false` when the prerequisite is unavailable, stale or
+the private historical carrier no longer matches its committed bytes.
+Containment remains independent of capture/journal/export availability and
+reasserts the same bound target's quarantine and private control ownership/ACLs.
+
+Output becomes usable only after complete local validation and atomic rename.
+Interrupted replay/capture can be retried using the same completed native binding
+and a new unused destination; existing owner prefixes are reconciled. Retain and
+inspect any interrupted private scratch. An existing destination is never
+overwritten, including after a lost completion response; read and verify its
+`handoff.json` rather than repeating registration or deleting state.
+
+This is an opt-in local composition and a managed admission prerequisite.
+Native restore/binding must already be verified. It neither deploys a hosted
+purge adapter nor opens Auth/Storage/public traffic. Matching hosted execution,
+continuous capture/offsite custody, delivered alerts and operating RPO/RTO
+acceptance remain separate requirements.
+
+Snapshot SQL sessions have five-second statement and three-second lock limits;
+the exported snapshot holder has a fifteen-minute idle transaction limit. The
+owned Linux database image must supply coreutils `timeout`: `pg_dump` runs under
+an eight-second process deadline with one-second forced termination, a three-second
+lock wait and server disconnect checks. Missing tooling fails closed; a killed
+host Docker client is not treated as cancellation of container work.
+
+The opt-in two-cluster SQL regression uses installed PostgreSQL binaries:
+
+```sh
+uv run --project apps/backend python scripts/test-managed-native-handoff-owned.py --pg-bin /absolute/postgres/bin --pg-restore /absolute/path/pg_restore
+```
+
+It exercises the actual native Documents SQL/RLS and managed restore SQL with
+nonempty erase/retain obligations, lost retirement response, blocked snapshot,
+private historical byte copying and ACL denial, corrupted carrier refusal,
+missing journal and capture-loss containment. Its prior native restore/binding,
+Docker identity and Storage transport are fixture ports. It does not establish
+new full-native or hosted execution, Auth/MFA recovery or service publication.

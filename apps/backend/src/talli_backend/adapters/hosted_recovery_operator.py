@@ -7,14 +7,16 @@ import re
 from talli_backend.adapters.hosted_backup_recovery import HostedBackupRecovery
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, json_bytes, private_read, require
 from talli_backend.adapters.hosted_recovery_target import HostedDesignation, SupabaseRecoveryTarget
+from talli_backend.adapters.managed_disposition_binding import ManagedDispositionBinding
 
 
 def execute(*, command, config, expected_config_sha256, expected_plan_sha256=None):
     raw = private_read(config, 32768)
     require(digest(raw) == expected_config_sha256, 'hosted_operator_config_changed')
     values = json_bytes(raw)
-    require(set(values) == {'version', 'designation', 'credentials', 'ca', 'caSha256',
-        'work', 'pgRestore', 'capture'} and values['version'] == 1,
+    required = {'version', 'designation', 'credentials', 'ca', 'caSha256', 'work', 'pgRestore', 'capture'}
+    require((set(values) == required and values['version'] == 1) or
+        (set(values) == required | {'disposition'} and values['version'] == 2),
         'hosted_operator_config_invalid')
     designation = HostedDesignation(**values['designation'])
     target = SupabaseRecoveryTarget(designation=designation, credentials=values['credentials'],
@@ -22,11 +24,23 @@ def execute(*, command, config, expected_config_sha256, expected_plan_sha256=Non
     work = Path(values['work'])
     require(work.is_absolute(), 'hosted_work_directory_invalid')
     if command in ('inspect', 'contain'):
+        disposition = None
+        if command == 'inspect' and 'disposition' in values:
+            try:
+                disposition = ManagedDispositionBinding(customer_root=values['capture']['directory'],
+                    **values['disposition'])
+            except Exception:
+                # Inspection still verifies the target marker/quarantine and
+                # reports a closed replay prerequisite; containment never needs
+                # capture, journal or held-byte availability.
+                pass
         operator = HostedBackupRecovery.from_state(target=target, work=work,
-            expected_plan_sha256=expected_plan_sha256)
+            expected_plan_sha256=expected_plan_sha256, disposition=disposition)
         return operator.inspect() if command == 'inspect' else operator.contain(
             expected_plan_sha256=expected_plan_sha256)
-    capture = ManagedCapture.open(**values['capture'])
+    disposition = ManagedDispositionBinding(customer_root=values['capture']['directory'],
+        **values['disposition']) if 'disposition' in values else None
+    capture = ManagedCapture.open(**values['capture'], disposition=disposition)
     operator = HostedBackupRecovery(capture=capture, target=target, work=work,
         pg_restore=values['pgRestore'])
     if command == 'plan': return operator.plan()
@@ -54,7 +68,8 @@ def main(argv=None):
             # custody; terminal output is a bounded non-secret status projection.
             result = {key: value for key, value in result.items() if key in
                 ('phase', 'planSha256', 'publicationAuthorized', 'verification', 'databaseMarkerPresent',
-                 'providerProjectPauseOrDeletionPerformed', 'ownerCaptureAndCredentialFilesRemoved')}
+                 'providerProjectPauseOrDeletionPerformed', 'ownerCaptureAndCredentialFilesRemoved',
+                 'dispositionReplayCurrent')}
         print(json.dumps(result, sort_keys=True))
         return 0
     except Exception as error:

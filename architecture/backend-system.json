@@ -1534,7 +1534,9 @@
       "talli_backend.adapters.hosted_recovery_sql",
       "talli_backend.adapters.hosted_recovery_target",
       "tempfile",
-      "resource"
+      "resource",
+      "talli_backend.adapters.managed_disposition_binding",
+      "talli_backend.adapters.native_managed_handoff"
     ]
   }
 }
