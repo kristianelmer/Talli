@@ -292,6 +292,7 @@ const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded'
 const ecrDataLimit = 'Error response from daemon: toomanyrequests: Data limit exceeded';
 const dockerHubSource = tag => `docker.io/library/postgres:${tag}`;
 const ecrDeadline = 'Error response from daemon: Head "https://public.ecr.aws/v2/docker/library/postgres/manifests/17-alpine": Get "https://public.ecr.aws/token/?scope=repository%3Adocker%2Flibrary%2Fpostgres%3Apull&service=public.ecr.aws": context deadline exceeded';
+const ecrHeaderTimeout = 'Error response from daemon: Get "https://public.ecr.aws/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)';
 
 for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
   const { result, calls, sleeps } = runFixturePrefetch({
@@ -310,19 +311,31 @@ test("PostgreSQL fixture prefetch retries the throttled image anonymously then c
   assert.match(result.stderr, /toomanyrequests: Rate exceeded/u);
 });
 
-test("PostgreSQL fixture prefetch retries the observed registry token deadline anonymously", () => {
-  const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": [ecrDeadline] } });
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
-  assert.deepEqual(sleeps, [["5"]]);
-});
-
-test("PostgreSQL fixture prefetch bounds repeated registry token deadlines", () => {
-  const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrDeadline) } });
-  assert.equal(result.status, 23, result.stderr);
-  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
-  assert.deepEqual(sleeps, [["5"], ["10"]]);
-});
+for (const [label, message] of [['registry token deadline', ecrDeadline], ['registry header timeout', ecrHeaderTimeout]]) {
+  test(`PostgreSQL fixture prefetch retries the observed ${label} anonymously`, () => {
+    const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": [message] } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+    assert.deepEqual(sleeps, [["5"]]);
+  });
+  test(`PostgreSQL fixture prefetch bounds repeated ${label}`, () => {
+    const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(message) } });
+    assert.equal(result.status, 23, result.stderr);
+    assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+    assert.deepEqual(sleeps, [["5"], ["10"]]);
+  });
+}
+for (const supabase of [false, true]) {
+  for (const message of [ecrHeaderTimeout + '\nunauthorized', 'manifest unknown\n' + ecrHeaderTimeout]) {
+    test(`registry header timeout never outranks a permanent error (${supabase ? 'Supabase' : 'PostgreSQL'}): ${message.split('\n').at(-1)}`, () => {
+      const image = supabase ? 'public.ecr.aws/supabase/postgres:17.6.1.143' : postgresPrefetchCalls[0][1];
+      const { result, calls, sleeps } = runFixturePrefetch({ supabase, pullFailures: { [image]: [message] } });
+      assert.equal(result.status, 23, result.stderr);
+      assert.deepEqual(calls, [['pull', image]]);
+      assert.deepEqual(sleeps, []);
+    });
+  }
+}
 
 test("PostgreSQL fixture prefetch bounds repeated throttle failures and stops before tagging", () => {
   const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrThrottle) } });
@@ -497,11 +510,22 @@ test('Supabase stack prefetch bounds repeated GHCR throttles and never tags a fa
   assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],...Array(5).fill(['pull',ghcr])]);
   assert.deepEqual(sleeps,[['20'],['40'],['60'],['60']]);
 });
-test('Supabase stack prefetch bounds ECR transport retries without inventing another fallback',()=>{
-  const ecr=supabaseEcr(supabaseStackImages[0]);
-  const {result,calls,sleeps}=runFixturePrefetch({supabase:true,pullFailures:{[ecr]:Array(4).fill(ecrDeadline)}});
-  assert.equal(result.status,23);assert.deepEqual(calls,Array(3).fill(['pull',ecr]));assert.deepEqual(sleeps,[['20'],['40']]);
+for (const [label, message] of [['token deadline', ecrDeadline], ['header timeout', ecrHeaderTimeout]]) {
+  test('Supabase stack prefetch bounds ECR ' + label + ' retries without inventing another fallback', () => {
+    const ecr = supabaseEcr(supabaseStackImages[0]);
+    const { result, calls, sleeps } = runFixturePrefetch({ supabase: true, pullFailures: { [ecr]: Array(4).fill(message) } });
+    assert.equal(result.status, 23); assert.deepEqual(calls, Array(3).fill(['pull', ecr]));
+    assert.deepEqual(sleeps, [['20'], ['40']]);
+  });
+}
+test('Supabase stack prefetch recovers an observed registry header timeout on the same source', () => {
+  const ecr = supabaseEcr(supabaseStackImages[0]);
+  const { result, calls, sleeps } = runFixturePrefetch({ supabase: true, pullFailures: { [ecr]: [ecrHeaderTimeout] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [['pull', ecr], ...supabaseCacheCalls]);
+  assert.deepEqual(sleeps, [['20']]);
 });
+
 for(const fatal of ['unauthorized','manifest unknown','x509: certificate expired','connection refused','unclassified failure']){
   test('Supabase stack prefetch stops on ECR permanent or unknown failure: '+fatal,()=>{
     const ecr=supabaseEcr(supabaseStackImages[0]);
