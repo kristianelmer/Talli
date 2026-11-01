@@ -572,8 +572,10 @@ as the private marker and quarantine. This preserves at most 256 historical file
 and 16 MiB of historical bytes; no business role receives access. Database path
 and payload bounds are checked before fetching carrier rows. Readback hashes,
 control ownership and schema/table/column ACLs are verified on import, resume
-and inspection. The native sidecar and 32 distinct current object files fit the
-41-member native capture limit; the original profile retains its 40-member limit.
+and inspection. The native profile supports up to 64 current objects and 73
+members, including the native sidecar and distinct current object files. Per-file
+and aggregate byte bounds remain unchanged. The original managed profile retains
+its 32-object and 40-member limits.
 These bytes are a private recovery
 carrier, not native Storage version IDs exposed by the managed Storage API.
 Original native attributes and the original physical bundle remain in their
@@ -617,7 +619,7 @@ acceptance remain separate requirements.
 
 Snapshot SQL sessions have five-second statement and three-second lock limits;
 the exported snapshot holder has a fifteen-minute idle transaction limit. The
-owned Linux database image must supply coreutils `timeout`: `pg_dump` runs under
+owned Linux database image must supply GNU or BusyBox `timeout`: `pg_dump` runs under
 an eight-second process deadline with one-second forced termination, a three-second
 lock wait and server disconnect checks. Missing tooling fails closed; a killed
 host Docker client is not treated as cancellation of container work.
@@ -634,3 +636,15 @@ private historical byte copying and ACL denial, corrupted carrier refusal,
 missing journal and capture-loss containment. Its prior native restore/binding,
 Docker identity and Storage transport are fixture ports. It does not establish
 new full-native or hosted execution, Auth/MFA recovery or service publication.
+
+The populated local CLI image is not automatically compatible with this managed
+profile. Actual native restore and `bind_prefix` can verify its complete census,
+rows, roles, objects and attributes while managed compilation still refuses it.
+In the populated 249-table fixture, `pg_net` owns the `net` namespace, so the dump
+has no independent `CREATE SCHEMA net` entry. `_realtime`, `pgboss_v10` and
+`supabase_functions` also contain objects owned by provider roles. The current
+managed profile does not model this provider-namespace composition; that full
+bundle remains refused. Supporting it requires an explicit provider data/access
+contract and matching fresh-destination checks. Do not omit namespaces or rows,
+or relabel provider objects as application objects, to manufacture a successful
+handoff. Native recovery and owning-read results remain separate evidence.

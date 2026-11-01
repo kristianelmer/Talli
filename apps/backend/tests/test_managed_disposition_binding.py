@@ -249,10 +249,11 @@ def test_journal_advance_between_preflight_and_replay_cannot_expand_the_bound_cu
     assert entered == []
 
 
-def test_native_sidecar_and_32_distinct_objects_fit_the_capture_member_bound(handoff):
+@pytest.mark.parametrize('count', [32, 64])
+def test_native_sidecar_and_distinct_objects_fit_the_capture_member_bound(handoff, count):
     capture, args, _, _ = handoff
     objects = []
-    for index in range(32):
+    for index in range(count):
         body = ('distinct bounded object ' + str(index)).encode()
         sha = digest(body); name = 'object-' + sha + '.bin'
         repin(capture, name, body)
@@ -264,7 +265,30 @@ def test_native_sidecar_and_32_distinct_objects_fit_the_capture_member_bound(han
     private(Path(args['proof']), proof)
     args['proof_sha256'] = digest(Path(args['proof']).read_bytes())
     result = ManagedCapture.open(**capture, disposition=ManagedDispositionBinding(**args))
-    assert len(result.files) == 41 and len(result.objects) == 32
+    assert len(result.files) == count + 9 and len(result.objects) == count
+
+
+def test_native_producer_rejects_65_objects_before_storage_access():
+    from talli_backend.adapters.native_managed_handoff import _objects
+    class Snapshot:
+        target = None
+        def query(self, sql):
+            if 'from storage.buckets' in sql:
+                return [['company-documents', False]]
+            assert 'from storage.objects' in sql
+            return [[str(index), str(uuid4()), 'application/pdf'] for index in range(65)]
+    with pytest.raises(ValueError, match='native_object_profile_unsupported'):
+        _objects(Snapshot(), {})
+
+
+def test_original_managed_profile_still_rejects_33_logical_objects(snapshot):
+    body = b'one shared object body'; sha = digest(body); name = 'object-' + sha + '.bin'
+    repin(snapshot, name, body)
+    repin(snapshot, 'object-manifest.private.json', [{'bucket': 'company-documents',
+        'name': 'document-' + str(index), 'sha256': sha, 'bytes': len(body), 'file': name}
+        for index in range(33)])
+    with pytest.raises(ValueError, match='object_inventory_invalid'):
+        ManagedCapture.open(**snapshot)
 
 
 def test_oversized_database_history_path_stops_before_payload_fetch():

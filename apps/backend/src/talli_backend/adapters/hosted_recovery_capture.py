@@ -137,7 +137,7 @@ class ManagedCapture:
                 'hosted_capture_format_invalid')
             source = envelope['projectRef']
         pins = envelope['pins']
-        require(8 <= len(pins) <= (41 if native else 40) and REQUIRED <= set(pins) and
+        require(8 <= len(pins) <= (73 if native else 40) and REQUIRED <= set(pins) and
             set(pins) == {p.name for p in directory.iterdir()}, 'hosted_capture_inventory_changed')
         contents = {}
         for name, pin in pins.items():
@@ -187,7 +187,8 @@ class ManagedCapture:
             not r[0].startswith(('pg_', 'supabase_'))}
         require(all(not any((r[1], r[3], r[4], r[6], r[7])) for r in roles['roles'] if r[0] in custom),
             'hosted_privileged_custom_role_unsupported')
-        require(len(objects) <= 32 and len({(o['bucket'], o['name']) for o in objects}) == len(objects),
+        require(len(objects) <= (64 if native else 32) and
+            len({(o['bucket'], o['name']) for o in objects}) == len(objects),
             'hosted_capture_object_inventory_invalid')
         for obj in objects:
             require(re.fullmatch('[a-z0-9][a-z0-9_-]{0,62}', obj['bucket']) and

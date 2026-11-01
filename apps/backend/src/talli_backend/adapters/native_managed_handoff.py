@@ -90,11 +90,12 @@ class _NativeSnapshot:
     def dump(self):
         self.target.validate()
         # Killing only the host Docker client can leave the container process
-        # alive. The owned Linux image must supply coreutils timeout; no fallback.
+        # alive. Use the common GNU/BusyBox timeout interface in the pinned
+        # native images; missing tooling fails closed, without an unbounded fallback.
         # pg_dump resets statement_timeout itself, so keep a process deadline and
         # a server disconnect check instead of relying on that startup setting.
         return self.target._run('exec', '-i', '-e', 'PGOPTIONS=-c client_connection_check_interval=1s',
-            self.target.database, 'timeout', '--signal=TERM', '--kill-after=1s', '8s',
+            self.target.database, 'timeout', '-s', 'TERM', '-k', '1', '8',
             'pg_dump', '--lock-wait-timeout=3000', '-h', '/tmp', '-U', 'supabase_admin',
             '-d', 'postgres', '-Fc', '--snapshot=' + self.snapshot)
 
@@ -120,7 +121,7 @@ def _objects(snapshot, held):
         'hosted_disposition_native_bucket_profile_unsupported')
     objects = snapshot.query("select coalesce(json_agg(json_build_array(name,version::text,metadata->>'mimetype')order by name),'[]')"
         "from storage.objects where bucket_id='company-documents'")
-    require(len(objects) <= 32 and len({row[0] for row in objects}) == len(objects),
+    require(len(objects) <= 64 and len({row[0] for row in objects}) == len(objects),
         'hosted_disposition_native_object_profile_unsupported')
     require(snapshot.query('select count(*)from storage.objects') == len(objects),
         'hosted_disposition_native_object_profile_unsupported')
