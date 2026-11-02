@@ -522,6 +522,17 @@ and end with containment. Native V1/V2 retain their separate initialization and
 original-owner handoff contracts. Historical plans are not upgraded or rehashed
 in place; retain their pinned evidence and containment procedure.
 
+An explicit managed application-owner drill must use
+`quarantined_owner_work(expected_plan_sha256=...)` around any temporary actor or
+runtime opening and its verification. It rechecks the durable quarantined stage
+under the same command-wide lease before entering, and reuses terminal
+containment before releasing that lease on success or exception. The yielded
+completion dictionary is populated only after containment commits. This context
+does not open actors, execute application SQL or authorize a deployment itself;
+the caller still needs its separate reviewed owner-operation scope. Never unban
+actors after an earlier inspection without this live check, or nest a second
+coordinator lock on another connection inside the held lease.
+
 `verified_quarantined` means row/ACL/object checks passed with recovered users
 banned and runtime logins disabled. It grants no service publication authority,
 nor a claim that source Auth tokens or managed encryption keys were recovered.

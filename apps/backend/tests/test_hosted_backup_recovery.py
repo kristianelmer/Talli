@@ -436,6 +436,35 @@ def test_managed_containment_refuses_a_stale_copied_journal(snapshot, tmp_path, 
     assert target.db.ddl == 1
 
 
+@pytest.mark.parametrize('fail', [False, True])
+def test_owner_work_requarantines_before_its_lease_ends(snapshot, tmp_path, monkeypatch, fail):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    completion = {}
+    try:
+        with instance.quarantined_owner_work(expected_plan_sha256=instance.plan_sha) as completion:
+            target.db.enabled_logins.add('restore_runtime')
+            if fail:
+                raise RuntimeError('reviewed owner work interrupted')
+    except RuntimeError:
+        assert fail
+    assert completion['phase'] == 'contained'
+    assert completion['preparedQuarantineCheckpointCurrent'] is None
+    assert not target.db.enabled_logins
+    assert target.db.marker[4]['managedStage']['status'] == 'contained'
+
+
+def test_owner_work_cannot_open_a_database_contained_by_an_older_command(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    stale = (instance.work / 'state.json').read_bytes()
+    instance.contain(expected_plan_sha256=instance.plan_sha)
+    private(instance.work / 'state.json', stale)
+    with pytest.raises(ValueError, match='already_contained'):
+        with instance.quarantined_owner_work(expected_plan_sha256=instance.plan_sha):
+            raise AssertionError('terminal owner session admitted')
+
+
 @pytest.mark.parametrize('changed', ['rows', 'authority'])
 def test_managed_marker_resume_refuses_changed_checkpoint(snapshot, tmp_path, monkeypatch, changed):
     instance, target = operator(snapshot, tmp_path, monkeypatch)

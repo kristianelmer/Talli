@@ -893,32 +893,67 @@ class HostedBackupRecovery:
         with self._lock(), self._target_command_lock():
             self._validate(capture_required=False)
             state = self._state()
-            self._save(state, 'containment_pending')
+            return self._contain_locked(state)
+
+    def _contain_locked(self, state):
+        self._save(state, 'containment_pending')
+        with self.target.database() as db:
+            marker = self._marker(db, state)
+            if marker is not None:
+                self._quarantine(db, marker)
+                self._seal_control(db, allow_missing_history=True)
+                require(self._private_control_current(db, allow_missing_history=True),
+                    'hosted_control_acl_changed')
+                self._quarantined(db, marker)
+                if self._owner_staged:
+                    self._owner_binding(state, marker)
+                    marker['ownerStage']['status'] = 'contained'
+                    self._update_marker(db, state, marker)
+                elif self._managed_lifecycle:
+                    self._checkpoint_stage(state, marker)['status'] = 'contained'
+                    self._update_marker(db, state, marker)
+            else:
+                self._uncommitted(db)
+            db.commit()
+        self._save(state, 'contained')
+        result = {**state, 'providerProjectPauseOrDeletionPerformed': False,
+            'ownerCaptureAndCredentialFilesRemoved': False}
+        if self._managed_lifecycle:
+            # Containment does not validate or rebaseline drifted data.
+            result['preparedQuarantineCheckpointCurrent'] = None
+            if 'verification' in result:
+                result['verification'] = {**result['verification'],
+                    'preparedQuarantineCheckpointCurrent': None}
+        return result
+
+    @contextmanager
+    def quarantined_owner_work(self, *, expected_plan_sha256):
+        """Guard explicit owner work, then durably contain before releasing it.
+
+        This admits no SQL or activation itself and never rebases the recovery
+        checkpoint. The caller's separately reviewed application-owner operation
+        supplies its own exact change/data checks. Completion is populated only
+        after containment commits, including when that operation raises.
+        """
+        require(expected_plan_sha256 == self.plan_sha and self._managed_lifecycle,
+            'hosted_reviewed_plan_changed')
+        with self._lock(), self._target_command_lock():
+            self._validate(capture_required=False)
+            state = self._state()
             with self.target.database() as db:
                 marker = self._marker(db, state)
-                if marker is not None:
-                    self._quarantine(db, marker)
-                    self._seal_control(db, allow_missing_history=True)
-                    require(self._private_control_current(db, allow_missing_history=True),
-                        'hosted_control_acl_changed')
-                    self._quarantined(db, marker)
-                    if self._owner_staged:
-                        self._owner_binding(state, marker)
-                        marker['ownerStage']['status'] = 'contained'
-                        self._update_marker(db, state, marker)
-                    elif self._managed_lifecycle:
-                        self._checkpoint_stage(state, marker)['status'] = 'contained'
-                        self._update_marker(db, state, marker)
-                else:
-                    self._uncommitted(db)
-                db.commit()
-            self._save(state, 'contained')
-            result = {**state, 'providerProjectPauseOrDeletionPerformed': False,
-                'ownerCaptureAndCredentialFilesRemoved': False}
-            if self._managed_lifecycle:
-                # Containment does not validate or rebaseline drifted data.
-                result['preparedQuarantineCheckpointCurrent'] = None
-                if 'verification' in result:
-                    result['verification'] = {**result['verification'],
-                        'preparedQuarantineCheckpointCurrent': None}
-            return result
+                stage = self._checkpoint_stage(state, marker)
+                require(stage['status'] != 'contained', 'hosted_recovery_already_contained')
+                require(state['phase'] == 'verified_quarantined' and
+                    state.get('verification', {}).get('preparedQuarantineCheckpointCurrent') is True and
+                    state['verification'].get('privateObjectsServedExact') == self.plan_body['privateObjects'],
+                    'hosted_verified_quarantine_required')
+                require(self._private_control_current(db), 'hosted_control_acl_changed')
+                self._quarantined(db, marker)
+                if self.initialization is not None:
+                    self.initialization.verify(db)
+            completion = {}
+            try:
+                yield completion
+            finally:
+                completion.update(self._contain_locked(state))

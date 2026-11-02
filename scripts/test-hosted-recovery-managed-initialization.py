@@ -634,6 +634,38 @@ def exercise(container, settings, folder, pg_restore):
         assert captureless_dispatch('contain', op, target)['phase'] == 'contained'
     finally:
         held.rename(capture.directory)
+    owner_work_results = []
+    for fail in (False, True):
+        target = fresh()
+        op = operator(target, 'owner-work-' + str(fail))
+        op.restore(expected_plan_sha256=op.plan_sha)
+        peer = operator(target, 'owner-work-peer-' + str(fail))
+        owned.save(peer.work / 'state.json', json.loads((op.work / 'state.json').read_bytes()))
+        completion = {}
+        try:
+            with op.quarantined_owner_work(expected_plan_sha256=op.plan_sha) as completion:
+                with target.database() as db:
+                    db.execute('update auth.users set banned_until=null')
+                    db.execute('alter role restore_runtime login')
+                    db.commit()
+                refused(lambda: peer.contain(expected_plan_sha256=peer.plan_sha),
+                    code='hosted_recovery_target_busy')
+                if fail:
+                    raise RuntimeError('synthetic owner-work interruption')
+        except RuntimeError:
+            assert fail
+        assert completion['phase'] == 'contained'
+        with connect() as db:
+            assert db.execute('select count(*)from auth.users where banned_until is null').fetchone()[0] == 0
+            assert not db.execute("select rolcanlogin from pg_roles where rolname='restore_runtime'").fetchone()[0]
+            assert db.execute("select metadata->'managedStage'->>'status'from _talli_recovery.attempt").fetchone()[0] == 'contained'
+        try:
+            with peer.quarantined_owner_work(expected_plan_sha256=peer.plan_sha):
+                raise AssertionError('stale journal reopened contained owner work')
+        except ValueError as error:
+            assert str(error) == 'hosted_recovery_already_contained'
+        owner_work_results.append({'interrupted': fail, 'terminalBeforeLeaseReleased': True,
+            'staleOpeningRefused': True})
     return {'status': 'pass', 'scope': 'synthesized managed provider fixture; real PostgreSQL 17.11',
         'independentManagedServiceAcceptance': False, 'storageDaemonTested': False,
         'profile': PROFILE, 'extensionFunctionsVerified': len(extension_functions), 'extensionOwnerDifferences': 3,
@@ -647,6 +679,7 @@ def exercise(container, settings, folder, pg_restore):
         'realCompetingJournalsRefusedDuringUpload': contention,
         'databaseTerminalContainmentRefusesStaleJournal': True,
         'targetCliExpiryRenewalAllowedAndFlagsBound': True,
+        'boundedOwnerWork': owner_work_results,
         'postBucketCreationDriftRefusedBeforeUpload': True,
         'hostedCalls': 0}
 
