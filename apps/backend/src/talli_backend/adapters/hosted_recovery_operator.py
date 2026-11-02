@@ -79,7 +79,8 @@ def main(argv=None):
                 ('phase', 'planSha256', 'publicationAuthorized', 'verification', 'databaseMarkerPresent',
                  'providerProjectPauseOrDeletionPerformed', 'ownerCaptureAndCredentialFilesRemoved',
                  'dispositionReplayCurrent', 'ownerActionRequired', 'ownerRequest',
-                 'providerStateCurrent', 'originalManagedPoliciesCurrent')}
+                 'providerStateCurrent', 'originalManagedPoliciesCurrent',
+                 'preparedQuarantineCheckpointCurrent')}
             if 'ownerRequest' in result:
                 # Never project policy SQL, private binding material or any
                 # owner credential into terminal output.

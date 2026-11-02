@@ -104,14 +104,17 @@ def save(path, value):
 
 
 class CheckedConnection:
-    def __init__(self, db, *, lose_commit): self.db, self.lose_commit = db, lose_commit
+    def __init__(self, db, *, target): self.db, self.target = db, target
     def __getattr__(self, key): return getattr(self.db, key)
     def commit(self):
         limits = dict(self.db.execute("select name,setting::int from pg_settings where "
             "name in('statement_timeout','lock_timeout')").fetchall())
         assert all(0 < value <= 240000 for value in limits.values()), 'native replay removed SQL deadlines'
+        lose = self.target.lose_commit and self.db.execute(
+            "select to_regclass('_talli_recovery.attempt')").fetchone()[0] is not None
         self.db.commit()
-        if self.lose_commit:
+        if lose:
+            self.target.lose_commit = False
             raise ConnectionError('synthetic lost commit acknowledgement')
 
 
@@ -129,8 +132,9 @@ class LocalTarget(SupabaseRecoveryTarget):
     @contextmanager
     def database(self):
         with super().database() as db:
-            lost, self.lose_commit = self.lose_commit, False
-            yield CheckedConnection(db, lose_commit=lost)
+            # A command now opens a separate session lease first. Inject the
+            # failure at the actual data/marker commit, not that lease commit.
+            yield CheckedConnection(db, target=self)
     def restore_object(self, obj, raw):
         assert digest(raw) == obj['sha256']
         return {**obj, 'servedExact': True, 'publicRouteDenied': True}

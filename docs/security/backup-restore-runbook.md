@@ -486,6 +486,42 @@ hashes existing bytes. Wrong existing content, changed public bucket state or
 an unexpected marker stops for inspection. Do not delete state or substitute a
 target to bypass these checks.
 
+New ordinary managed plans use version 5 and bind the explicit
+`managedLifecycle` contract. The quarantined import records a protected
+`managedStage` checkpoint in the same database transaction: original application
+table commitments after the Auth-ban transformation, sequence counters, complete
+named catalogs and structure, schema/relation/column/default access, role flags
+and memberships, and database ACLs. Resume, every object-upload boundary and
+completion recompute those facts before accepting the committed marker. A marker
+alone cannot accept changed data or authority. All managed policies remain in
+this checkpoint; the native V2 owner-policy exception does not apply.
+
+Cross-owned row readback temporarily borrows the existing creator's bounded role
+grants, then restores and verifies the original grantors/options before returning.
+It does not recreate roles or retain extra access. Only the designated
+`cli_login_postgres` expiry field is excluded from the role commitment so that
+target credentials can be renewed; its flags and every membership remain bound.
+Passwords are never captured or committed as checkpoint material.
+
+The original importer holds one database session advisory lock across database
+transactions, HTTP object operations and terminal containment. A command from a
+different local journal refuses while that lease is held. Containment reasserts
+bans/`NOLOGIN` and commits `managedStage.status=contained`; restoring a stale local
+journal cannot resume that database. Inspect reports the durable contained phase
+even if the local file predates containment. Capture-loss inspect/contain keep
+their held-plan/marker checks; full checkpoint validation is reported unavailable
+when its original input is missing, rather than inferred from a prior receipt.
+Containment remains available when application/provider checkpoint facts drift.
+
+These checks bind the accepted recovery state, not later application-owner work.
+The separately reviewed Accounts portable-reader conversion deliberately changes
+one application definition. It never silently rebases the recovery checkpoint;
+subsequent restore/resume must refuse that difference. The bounded owner step and
+current owning-route tests use their own exact predecessor/data/authority checks,
+and end with containment. Native V1/V2 retain their separate initialization and
+original-owner handoff contracts. Historical plans are not upgraded or rehashed
+in place; retain their pinned evidence and containment procedure.
+
 `verified_quarantined` means row/ACL/object checks passed with recovered users
 banned and runtime logins disabled. It grants no service publication authority,
 nor a claim that source Auth tokens or managed encryption keys were recovered.
@@ -510,7 +546,7 @@ The default profile retains exact provider comparisons. A separately reviewed
 version-3 operator configuration can explicitly set
 `"managedInitialization": "supabase-managed-17.11-storage-versioning-v1"`.
 It accepts only the following observed initialization differences, bound into a
-version-4 plan with the capture, destination, contract digest and fresh/restored
+version-5 plan with the capture, destination, lifecycle contract and fresh/restored
 catalog and trigger digests:
 
 - `pg_stat_statements 1.11`, `pgcrypto 1.3` and `uuid-ossp 1.1` in `extensions`
@@ -564,8 +600,10 @@ uv run --project apps/backend python scripts/test-hosted-recovery-managed-initia
 
 It independently authors the source/destination provider fixture SQL and checks
 the three owner differences, the exact Storage replacement, rollback, origin-mode
-foreign keys, unsupported-trigger refusal, marker resume, bucket drift and terminal
-containment. Its Storage HTTP transport is modeled; it does not test a Storage
+foreign keys, unsupported-trigger refusal, unknown commit/upload responses,
+application-byte and authority drift on resume, competing journals during uploads,
+bucket drift and database-terminal containment against stale journals. Its Storage
+HTTP transport is modeled; it does not test a Storage
 daemon or establish an independently installed managed service. It is an explicit
 local command, not a release-CI phase. The current-candidate CI unit suite checks
 the new comparison/configuration rules alongside the existing release groups.

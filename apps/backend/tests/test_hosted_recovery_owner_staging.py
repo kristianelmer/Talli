@@ -175,6 +175,8 @@ def staged(snapshot, tmp_path, monkeypatch):
     model = StageDatabase(instance.capture)
     target = StageTarget(original, model)
     instance.target = target
+    # This fixture deliberately switches the ordinary model to native V2.
+    instance.plan_body.pop('managedLifecycle', None)
     instance.plan_body.update(version=3, privateObjects=1,
         providerState={'profile': recovery.OWNER_PROFILE}, ownerPolicy={
             'protocol': 'original-owner-policy-v1', 'targetIdentity': dict(target.identity),

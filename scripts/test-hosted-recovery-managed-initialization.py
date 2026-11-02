@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import unquote
 from uuid import uuid4
 from unittest.mock import patch
@@ -131,6 +132,14 @@ def refused(action, *, code=None, sqlstate=None):
     raise AssertionError('unsupported initialization or payload was accepted')
 
 
+def interrupted(action):
+    try:
+        action()
+    except ConnectionError:
+        return
+    raise AssertionError('synthetic unknown outcome was not interrupted')
+
+
 class OriginCursor:
     def __init__(self, cursor, connection, target):
         self.cursor, self.connection, self.target = cursor, connection, target
@@ -167,6 +176,8 @@ class FixtureTarget(owned.LocalTarget):
         self.uploads = 0
         self.drift_after_upload = None
         self.drift_after_bucket_creation = False
+        self.during_upload = None
+        self.interrupt_after_upload = False
     @contextmanager
     def database(self):
         with super().database() as db:
@@ -196,12 +207,17 @@ class FixtureTarget(owned.LocalTarget):
         key = bucket, name
         if method == 'POST':
             assert key not in self.objects and isinstance(body, bytes)
+            if self.during_upload is not None:
+                self.during_upload()
             with self.database() as db:
                 db.execute('insert into storage.objects(id,bucket_id,name)values(%s,%s,%s)',
                     (uuid4(), bucket, name))
                 db.commit()
             self.objects[key] = body
             self.uploads += 1
+            if self.interrupt_after_upload:
+                self.interrupt_after_upload = False
+                raise ConnectionError('synthetic lost object upload acknowledgement')
             if self.uploads == self.drift_after_upload:
                 with self.connect() as db:
                     db.execute("update storage.buckets set versioning_status='ENABLED'")
@@ -512,6 +528,112 @@ def exercise(container, settings, folder, pg_restore):
         assert captureless_dispatch('contain', op, target)['phase'] == 'contained'
     finally:
         held.rename(capture.directory)
+    # A committed marker is not permission to trust changed application bytes,
+    # authority, definitions or counters. Containment remains independent of
+    # these prepared-fact checks and never accepts a replacement baseline.
+    lifecycle_failures = {}
+    for label, sql, code in (
+        ('application-row', "update ledger.items set payload='changed original bytes'", 'hosted_owner_prepared_state_changed'),
+        ('table-acl', 'grant select on ledger.items to anon', 'hosted_owner_prepared_state_changed'),
+        ('schema-acl', 'grant usage on schema ledger to anon', 'hosted_owner_prepared_state_changed'),
+        ('column-acl', 'grant select(payload)on ledger.items to anon', 'hosted_owner_prepared_state_changed'),
+        ('role-membership', 'grant restore_function_owner to anon', 'hosted_custom_memberships_changed'),
+        ('role-flags', 'alter role restore_runtime bypassrls', 'hosted_custom_role_profile_changed'),
+        ('database-acl', 'grant create on database postgres to anon', 'hosted_database_acl_changed'),
+        ('policy', 'alter policy owner_only on ledger.items using(true)', 'hosted_owner_prepared_state_changed'),
+        ('column-definition', 'alter table ledger.items add column unexpected integer', 'hosted_owner_prepared_state_changed'),
+        ('function-inventory', 'create function ledger.unexpected()returns int language sql as $$select 1$$', 'hosted_owner_prepared_state_changed'),
+        ('default-acl', 'alter default privileges for role restore_owner in schema ledger grant select on tables to anon', 'hosted_owner_prepared_state_changed'),
+        ('sequence-counter', "select setval('auth.refresh_tokens_id_seq',999,true)", 'hosted_owner_prepared_state_changed'),
+    ):
+        target = fresh()
+        op = operator(target, 'checkpoint-drift-' + label)
+        op.restore(expected_plan_sha256=op.plan_sha)
+        copies, uploads = len(target.copies), target.uploads
+        with connect() as db:
+            db.execute(sql)
+        assert op.inspect()['preparedQuarantineCheckpointCurrent'] is False
+        lifecycle_failures[label] = refused(lambda: op.restore(expected_plan_sha256=op.plan_sha), code=code)
+        assert len(target.copies) == copies and target.uploads == uploads
+        assert op.contain(expected_plan_sha256=op.plan_sha)['phase'] == 'contained'
+
+    # Renewing only the target CLI login's expiry is credential rotation. Its
+    # authority is still part of the complete role checkpoint.
+    target = fresh()
+    with connect() as db:
+        db.execute("create role cli_login_postgres login valid until '2030-01-01'")
+    op = operator(target, 'target-cli-renewal')
+    op.restore(expected_plan_sha256=op.plan_sha)
+    copies, uploads = len(target.copies), target.uploads
+    with connect() as db:
+        db.execute("alter role cli_login_postgres valid until '2031-01-01'")
+    assert op.restore(expected_plan_sha256=op.plan_sha)['phase'] == 'verified_quarantined'
+    assert len(target.copies) == copies and target.uploads == uploads
+    with connect() as db:
+        db.execute('alter role cli_login_postgres createrole')
+    refused(lambda: op.restore(expected_plan_sha256=op.plan_sha), code='hosted_owner_prepared_state_changed')
+    assert op.contain(expected_plan_sha256=op.plan_sha)['phase'] == 'contained'
+    with connect() as db:
+        db.execute('drop role cli_login_postgres')
+
+    # Reconcile the real, committed DB outcome without another COPY or role
+    # creation. A lost object response similarly resumes by exact readback.
+    target = fresh()
+    target.lose_commit = True
+    op = operator(target, 'lost-database-commit')
+    interrupted(lambda: op.restore(expected_plan_sha256=op.plan_sha))
+    copies = len(target.copies)
+    assert copies and target.uploads == 0
+    assert op.restore(expected_plan_sha256=op.plan_sha)['phase'] == 'verified_quarantined'
+    assert len(target.copies) == copies and target.uploads == 2
+    assert op.inspect()['preparedQuarantineCheckpointCurrent'] is True
+
+    target = fresh()
+    target.interrupt_after_upload = True
+    op = operator(target, 'lost-object-response')
+    interrupted(lambda: op.restore(expected_plan_sha256=op.plan_sha))
+    copies = len(target.copies)
+    assert target.uploads == 1
+    assert op.restore(expected_plan_sha256=op.plan_sha)['phase'] == 'verified_quarantined'
+    assert len(target.copies) == copies and target.uploads == 2
+
+    # Distinct local journals share the same database session lease through the
+    # HTTP interval. Real contenders in other threads cannot resume or contain
+    # until that command releases it. The stale original journal then cannot
+    # resurrect a target contained by its peer.
+    target = fresh()
+    op = operator(target, 'serialized-primary')
+    peer = operator(target, 'serialized-peer')
+    resumer = operator(target, 'serialized-resumer')
+    contention = []
+    def contenders():
+        if contention:
+            return
+        owned.save(peer.work / 'state.json', json.loads((op.work / 'state.json').read_bytes()))
+        owned.save(resumer.work / 'state.json', json.loads((op.work / 'state.json').read_bytes()))
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(refused, lambda: resumer.restore(expected_plan_sha256=resumer.plan_sha),
+                           code='hosted_recovery_target_busy'),
+                pool.submit(refused, lambda: peer.contain(expected_plan_sha256=peer.plan_sha),
+                           code='hosted_recovery_target_busy')]
+            contention.extend(f.result(timeout=10) for f in futures)
+    target.during_upload = contenders
+    assert op.restore(expected_plan_sha256=op.plan_sha)['phase'] == 'verified_quarantined'
+    assert len(contention) == 2 and target.uploads == 2
+    stale = (op.work / 'state.json').read_bytes()
+    assert peer.contain(expected_plan_sha256=peer.plan_sha)['phase'] == 'contained'
+    owned.save(op.work / 'state.json', stale)
+    assert op.inspect()['phase'] == 'contained'
+    copies, uploads = len(target.copies), target.uploads
+    refused(lambda: op.restore(expected_plan_sha256=op.plan_sha), code='hosted_recovery_already_contained')
+    assert len(target.copies) == copies and target.uploads == uploads
+    held = capture.directory.with_name('capture-unavailable')
+    capture.directory.rename(held)
+    try:
+        assert captureless_dispatch('inspect', op, target)['phase'] == 'contained'
+        assert captureless_dispatch('contain', op, target)['phase'] == 'contained'
+    finally:
+        held.rename(capture.directory)
     return {'status': 'pass', 'scope': 'synthesized managed provider fixture; real PostgreSQL 17.11',
         'independentManagedServiceAcceptance': False, 'storageDaemonTested': False,
         'profile': PROFILE, 'extensionFunctionsVerified': len(extension_functions), 'extensionOwnerDifferences': 3,
@@ -520,6 +642,11 @@ def exercise(container, settings, folder, pg_restore):
         'orderedProviderCopyAndInvalidFk': True, 'cycleAndTriggerRefusals': True,
         'preflightAndRollbackFaults': mutation_results, 'bucketResumeInspectAndUploadDriftRefused': True,
         'terminalContainment': True, 'configV3CapturelessInspectContainAndMismatchRefusal': True,
+        'preparedCheckpointDriftRefusals': lifecycle_failures,
+        'databaseAndObjectUnknownOutcomesResumeWithoutRecopy': True,
+        'realCompetingJournalsRefusedDuringUpload': contention,
+        'databaseTerminalContainmentRefusesStaleJournal': True,
+        'targetCliExpiryRenewalAllowedAndFlagsBound': True,
         'postBucketCreationDriftRefusedBeforeUpload': True,
         'hostedCalls': 0}
 

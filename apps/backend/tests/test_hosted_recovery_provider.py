@@ -266,6 +266,9 @@ def inert_phase_model(snapshot, tmp_path, monkeypatch):
     from talli_backend.adapters import hosted_backup_recovery as recovery
     from talli_backend.adapters.hosted_recovery_capture import encoded
     instance, target = operator(snapshot, tmp_path, monkeypatch)
+    # This model explicitly selects native V1 rather than ordinary managed V5.
+    instance.plan_body.pop('managedLifecycle', None)
+    instance.plan_body['version'] = 1
     instance.plan_body['providerState'] = {'profile': provider.PROFILE_V1}
     instance.plan_sha = digest(encoded(instance.plan_body))
     target.require_inert_provider_state = lambda _: None

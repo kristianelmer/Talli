@@ -1,5 +1,6 @@
 """Operator seam tests: identity, native framing, unknown outcomes and custody."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
+from copy import deepcopy
 from hashlib import sha256
 import base64
 import json
@@ -237,7 +238,9 @@ def test_public_bucket_or_different_existing_object_never_overwrites(provider, m
 
 
 class Cursor:
-    def __init__(self, rows=()): self.rows = rows
+    def __init__(self, rows=(), *, rowcount=None):
+        self.rows = rows
+        self.rowcount = len(rows) if rowcount is None else rowcount
     def fetchone(self): return self.rows[0]
     def fetchall(self): return list(self.rows)
     def __iter__(self): return iter(self.rows)
@@ -270,7 +273,10 @@ class DatabaseModel:
             return Cursor([('history' if any(c.startswith('create table ' + recovery.HISTORY)
                 for c in self.calls) else None,)])
         if 'to_regclass' in text: return Cursor([('marker' if self.marker else None,)])
-        if text.startswith('select id::text,plan_sha'): return Cursor([self.marker] if self.marker else [])
+        if text.startswith('select id::text,plan_sha'): return Cursor([deepcopy(self.marker)] if self.marker else [])
+        if text.startswith('update _talli_recovery.attempt set metadata='):
+            self.pending = (*self.marker[:4], json.loads(params[0]))
+            return Cursor(rowcount=1)
         if 'to_regnamespace' in text: return Cursor([(None,)])
         if text.startswith("select current_setting('server_version_num')"):
             return Cursor([tuple(self.capture.profile['facts'])])
@@ -301,6 +307,13 @@ class DatabaseModel:
         if self.lose_commit_response:
             self.lose_commit_response = False
             raise ConnectionError('private database URL must not be recorded')
+    def rollback(self): self.pending = None
+    @contextmanager
+    def transaction(self):
+        try: yield
+        except BaseException:
+            self.rollback()
+            raise
 
 
 class TargetModel:
@@ -327,6 +340,13 @@ def operator(snapshot, tmp_path, monkeypatch):
     monkeypatch.setattr(recovery, 'restore_access', lambda *args: {'functions': 0})
     monkeypatch.setattr(recovery, 'verify_custom_roles', lambda *args: None)
     instance = recovery.HostedBackupRecovery(capture=capture, target=target, work=work, pg_restore='/pg_restore')
+    # This model isolates transactional marker failures. Real SQL regressions
+    # exercise the prepared-fact acquisition and independent session lease.
+    target_lock = instance._target_command_lock
+    monkeypatch.setattr(instance, '_target_command_lock', lambda:
+        target_lock() if instance._owner_staged else nullcontext())
+    monkeypatch.setattr(instance, '_prepared_facts', lambda db, selected, tables:
+        {'tables': tables, 'rows': 'original', 'authority': 'original'})
     return instance, target
 
 
@@ -403,6 +423,48 @@ def test_containment_survives_capture_loss_and_is_repeatable(snapshot, tmp_path,
     assert any('alter role "restore_runtime" nologin' in q for q in target.db.calls)
 
 
+def test_managed_containment_refuses_a_stale_copied_journal(snapshot, tmp_path, monkeypatch):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    stale = (instance.work / 'state.json').read_bytes()
+    instance.contain(expected_plan_sha256=instance.plan_sha)
+    assert target.db.marker[4]['managedStage']['status'] == 'contained'
+    private(instance.work / 'state.json', stale)
+    assert instance.inspect()['phase'] == 'contained'
+    with pytest.raises(ValueError, match='already_contained'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 1
+
+
+@pytest.mark.parametrize('changed', ['rows', 'authority'])
+def test_managed_marker_resume_refuses_changed_checkpoint(snapshot, tmp_path, monkeypatch, changed):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    original = instance._prepared_facts
+    monkeypatch.setattr(instance, '_prepared_facts', lambda *args:
+        {**original(*args), changed: 'changed'})
+    assert instance.inspect()['preparedQuarantineCheckpointCurrent'] is False
+    with pytest.raises(ValueError, match='prepared_state_changed'):
+        instance.restore(expected_plan_sha256=instance.plan_sha)
+    assert target.db.ddl == 1
+    assert instance.contain(expected_plan_sha256=instance.plan_sha)['phase'] == 'contained'
+
+
+@pytest.mark.parametrize('lifecycle', [None, {'version': 1}, {**recovery.MANAGED_LIFECYCLE, 'version': 2}])
+def test_captureless_managed_lifecycle_cannot_be_partially_selected(snapshot, tmp_path, monkeypatch, lifecycle):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    state = instance._state(create=True)
+    if lifecycle is None:
+        state['plan'].pop('managedLifecycle')
+    else:
+        state['plan']['managedLifecycle'] = lifecycle
+    pin = digest(encoded(state['plan']))
+    private(instance.work / 'state.json', state)
+    with pytest.raises(ValueError, match='managed_lifecycle_binding_invalid'):
+        recovery.HostedBackupRecovery.from_state(target=target, work=instance.work,
+            expected_plan_sha256=pin)
+
+
 def test_swapped_marker_never_authorizes_reimport_or_cleanup(snapshot, tmp_path, monkeypatch):
     instance, target = operator(snapshot, tmp_path, monkeypatch)
     instance.restore(expected_plan_sha256=instance.plan_sha)
@@ -419,6 +481,27 @@ def test_cli_never_prints_transport_exception_secrets(monkeypatch, capsys):
         '--expected-plan-sha256', 'b' * 64]) == 1
     wire = capsys.readouterr().out
     assert 'secret' not in wire and json.loads(wire)['publicationAuthorized'] is False
+
+
+@pytest.mark.parametrize('current', [True, False, None])
+def test_cli_inspection_keeps_live_checkpoint_status(snapshot, tmp_path, monkeypatch, capsys, current):
+    instance, target = operator(snapshot, tmp_path, monkeypatch)
+    instance.restore(expected_plan_sha256=instance.plan_sha)
+    assert instance._state()['verification']['preparedQuarantineCheckpointCurrent'] is True
+    if current is False:
+        original = instance._prepared_facts
+        monkeypatch.setattr(instance, '_prepared_facts', lambda *args:
+            {**original(*args), 'authority': 'changed'})
+    elif current is None:
+        shutil.rmtree(instance.capture.directory)
+        instance = recovery.HostedBackupRecovery.from_state(target=target, work=instance.work,
+            expected_plan_sha256=instance.plan_sha)
+    monkeypatch.setattr(command, 'execute', lambda **kwargs: instance.inspect())
+    assert command.main(['inspect', '--config', '/private/config',
+        '--expected-config-sha256', 'a' * 64, '--expected-plan-sha256', instance.plan_sha]) == 0
+    wire = json.loads(capsys.readouterr().out)
+    assert wire['preparedQuarantineCheckpointCurrent'] is current
+    assert wire['verification']['preparedQuarantineCheckpointCurrent'] is current
 
 
 def repin(snapshot, name, value):
