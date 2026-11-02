@@ -334,9 +334,10 @@ def verify_managed_triggers(db, expected):
         'hosted_managed_trigger_profile_changed')
 
 
-def compile_program(capture, archive):
+def compile_program(capture, archive, *, preserve_managed_constraints=False):
     from talli_backend.adapters.hosted_recovery_provider import profile as provider_profile
     provider = provider_profile(capture)
+    constrained = provider is not None or preserve_managed_constraints
     application_schemas = capture.application_schemas
     entries = archive.entries
     require(not any(e.kind in ('PROCEDURE', 'MATERIALIZED VIEW DATA') and
@@ -376,7 +377,7 @@ def compile_program(capture, archive):
         if name.split('.')[0] in application_schemas or name.split('.')[0] in ('auth', 'storage') and
         name.split('.')[1] not in ('schema_migrations', 'migrations', 'buckets', 'objects')},
         'hosted_capture_data_inventory_changed')
-    if provider:
+    if constrained:
         # Existing Storage triggers are needed for subsequent API uploads, but
         # no COPY may fire a provider user trigger in this constrained profile.
         nonempty_copies = {e.schema + '.' + e.tag for e in data
@@ -401,11 +402,11 @@ def compile_program(capture, archive):
         if match and match[1] in custom:
             grants.append(line)
     roles, final = role_program(capture, definition_owners={e.owner for e in definitions})
-    definitions_sql = archive.sql(definitions, section='pre-data') if provider else archive.sql(definitions)
-    post_data = archive.sql(definitions, section='post-data') if provider else b''
+    definitions_sql = archive.sql(definitions, section='pre-data') if constrained else archive.sql(definitions)
+    post_data = archive.sql(definitions, section='post-data') if constrained else b''
     return LogicalProgram(roles, archive.sql(creates), temporary, definitions_sql,
         archive.sql(data, data=True), archive.sql(policies), archive.sql(acls), remove, final,
-        '\n'.join(grants).encode(), sequences, managed_triggers, post_data, provider is not None)
+        '\n'.join(grants).encode(), sequences, managed_triggers, post_data, constrained)
 
 GUC = "set search_path=''; set timezone='UTC'; set datestyle='ISO,YMD'; set intervalstyle='postgres'; set bytea_output='hex'; set extra_float_digits=3; "
 

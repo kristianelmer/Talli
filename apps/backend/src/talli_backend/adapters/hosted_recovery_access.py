@@ -47,7 +47,8 @@ def restore_database_access(db, expected):
         'hosted_database_acl_changed')
 
 
-def restore_access(db, capture, final_memberships, *, pending_managed_policies=False):
+def restore_access(db, capture, final_memberships, *, pending_managed_policies=False,
+        managed_initialization=None):
     """Repair only captured identities; changed bodies/owners always stop restore.
 
     PostgreSQL fresh-project DEFAULT PRIVILEGES can add anon/authenticated grants
@@ -56,9 +57,15 @@ def restore_access(db, capture, final_memberships, *, pending_managed_policies=F
     """
     schemas = sorted(capture.application_schemas)
     scope = capture.application_schemas | {'auth', 'storage'}
-    inert_provider = capture.profile.get('providerState') is not None
+    if managed_initialization is not None:
+        scope |= {'extensions'}
+        from talli_backend.adapters.hosted_recovery_managed_initialization import expected_catalog
+        expected = expected_catalog(capture.catalog, scope)
+    else:
+        expected = normalized_catalog(capture.catalog, scope)
+    preserve_provider_acl = capture.profile.get('providerState') is not None or managed_initialization is not None
     actual = db.execute(CATALOG_SQL).fetchone()[0]
-    expected_functions = {tuple(r[:3]): r for r in capture.catalog['functions'] if r[0] in scope}
+    expected_functions = {tuple(r[:3]): r for r in expected['functions']}
     actual_functions = {tuple(r[:3]): r for r in actual['functions'] if r[0] in scope}
     require(set(expected_functions) == set(actual_functions), 'hosted_function_inventory_changed')
     observed_access = db.execute(ACCESS_SQL, (schemas, schemas)).fetchone()[0]
@@ -86,7 +93,7 @@ def restore_access(db, capture, final_memberships, *, pending_managed_policies=F
         present = actual_functions[identity]
         require(wanted[:5] == present[:5], 'hosted_function_definition_or_owner_changed')
         if sorted(wanted[5], key=encoded) != sorted(present[5], key=encoded):
-            require(not inert_provider or identity[0] in capture.application_schemas,
+            require(not preserve_provider_acl or identity[0] in capture.application_schemas,
                 'hosted_provider_managed_access_changed')
             reset('function', qi(identity[0]) + '.' + qi(identity[1]) + '(' + identity[2] + ')',
                 wanted[4], wanted[5], present[5])
@@ -108,7 +115,7 @@ def restore_access(db, capture, final_memberships, *, pending_managed_policies=F
         for k, rows in capture.access.items()}) == normalized_access(
         db.execute(ACCESS_SQL, (schemas, schemas)).fetchone()[0]), 'hosted_source_access_changed')
     actual = db.execute(CATALOG_SQL).fetchone()[0]
-    wanted = normalized_catalog(capture.catalog, scope)
+    wanted = expected
     observed = normalized_catalog(actual, scope)
     if pending_managed_policies:
         from talli_backend.adapters.hosted_recovery_owner_policy import policy_status

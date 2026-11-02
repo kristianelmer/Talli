@@ -504,7 +504,71 @@ delete the project, revoke owner API credentials, or remove owner-held input
 files. Expire/rotate temporary credentials and remove decrypted scratch through
 the approved custody procedure after the evidence is sealed.
 
-### Changed-seam regression
+### Explicit managed 17.11 initialization compatibility
+
+The default profile retains exact provider comparisons. A separately reviewed
+version-3 operator configuration can explicitly set
+`"managedInitialization": "supabase-managed-17.11-storage-versioning-v1"`.
+It accepts only the following observed initialization differences, bound into a
+version-4 plan with the capture, destination, contract digest and fresh/restored
+catalog and trigger digests:
+
+- `pg_stat_statements 1.11`, `pgcrypto 1.3` and `uuid-ossp 1.1` in `extensions`
+  have target owner `postgres` instead of source `supabase_admin`. The other two
+  extension identities remain exact. All captured extension function bodies,
+  owners, grantors and EXECUTE grants must match after the existing captured
+  custom-role grants are replayed. Preflight allows only those not-yet-created
+  captured grantees to be absent; unrelated grant differences refuse.
+- The exact captured Storage `buckets_versioning_dark_check` is absent. The
+  target must instead have the exact recorded
+  `storage.enforce_versioning_status_transition()` body, owner and ACL, with its
+  exact enabled trigger. All remaining managed definitions, indexes, constraints,
+  policies and RLS must match the source-bound expectation.
+
+These are different provider states, not preserved extension ownership or
+equivalent versioning semantics. The old CHECK prevents non-`DISABLED` values;
+the newer trigger allows transitions that the old CHECK forbids and does not
+restrict INSERT. Talli recovery therefore requires private buckets with
+`versioning_status = 'DISABLED'` throughout this path. The column must remain
+`text NOT NULL DEFAULT 'DISABLED'::text`. This dependency is checked after each
+bucket is created, before each upload, after each upload, at completion, and on
+resume/inspection. Any public or non-`DISABLED` bucket refuses acceptance.
+
+The importer does not edit provider owners, definitions, constraints or triggers.
+It imports in `origin` mode with foreign keys and provider triggers enabled,
+orders COPY by existing foreign keys, and refuses cycles and unsupported user
+triggers on nonempty copied provider tables. Managed foreign keys must be ordinary
+nonpartitioned constraints with all four internal enforcement triggers present
+and enabled in origin; disabled internal triggers cannot hide behind unchanged
+constraint definitions. Application pre-data/COPY/post-data,
+row commitments, original application owners/access and quarantine remain exact.
+Provider ACL mismatches cannot be repaired through this compatibility path.
+Native V1/V2 cannot select it. Missing, partial, altered or additional provider
+differences stop recovery; no automatic fallback selects this profile.
+
+The saved November 2 independently initialized hosted catalog supplies the
+observed differences. Its failed-preflight attempt and cleanup are separate
+evidence. Offline reconstruction of that catalog and local service tests do not
+establish a successful current hosted restore or original managed-key portability.
+A new hosted window remains a separate human decision after the current candidate,
+full CI, input pins and executable procedure are reviewable.
+
+### Changed-seam regression commands
+
+The explicit managed-initialization SQL regression uses a cached ARM64 Supabase
+PostgreSQL 17.11 image (the pinned image is identified in the script):
+
+```sh
+uv run --project apps/backend python scripts/test-hosted-recovery-managed-initialization.py --pg-restore /absolute/path/pg_restore
+```
+
+It independently authors the source/destination provider fixture SQL and checks
+the three owner differences, the exact Storage replacement, rollback, origin-mode
+foreign keys, unsupported-trigger refusal, marker resume, bucket drift and terminal
+containment. Its Storage HTTP transport is modeled; it does not test a Storage
+daemon or establish an independently installed managed service. It is an explicit
+local command, not a release-CI phase. The current-candidate CI unit suite checks
+the new comparison/configuration rules alongside the existing release groups.
 
 The fast unit suite covers binding, COPY framing, provider HTTP contracts,
 readback after a lost upload response, marker reconciliation and capture-loss

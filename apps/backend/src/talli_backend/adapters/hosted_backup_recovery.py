@@ -28,6 +28,7 @@ from talli_backend.adapters.hosted_recovery_provider import (
     summary as provider_summary, verify as verify_provider_state,
     require_policy_authority,
 )
+from talli_backend.adapters.hosted_recovery_managed_initialization import ManagedInitialization
 
 CONTROL = '_talli_recovery'
 MARKER = CONTROL + '.attempt'
@@ -59,7 +60,7 @@ class HostedBackupRecovery:
     lost commit response is reconciled against that marker; native DDL is never
     replayed speculatively. Object uploads resume by exact hash readback.
     """
-    def __init__(self, *, capture, target, work, pg_restore):
+    def __init__(self, *, capture, target, work, pg_restore, managed_initialization=None):
         self.capture, self.target = capture, target
         self.work = Path(work).absolute()
         require(self.work.is_dir() and not self.work.is_symlink() and
@@ -75,6 +76,8 @@ class HostedBackupRecovery:
         self.disposition = capture.disposition
         if self.disposition is not None: self.disposition.require_external(self.work)
         self.archive = NativeArchive(capture, pg_restore=pg_restore, work=self.work)
+        self.initialization = ManagedInitialization.from_capture(capture, self.archive,
+            managed_initialization) if managed_initialization is not None else None
         self.plan_body = {'version': 1, 'sourceProject': capture.source_project,
             'captureSha256': capture.commitment, 'target': target.designation.body(),
             'engineMajor': 17, 'schemas': sorted(capture.schemas),
@@ -90,6 +93,10 @@ class HostedBackupRecovery:
         provider = provider_summary(capture)
         if provider is not None:
             self.plan_body['providerState'] = provider
+        if self.initialization is not None:
+            require(provider is None and self.disposition is None,
+                'hosted_managed_initialization_source_unsupported')
+            self.plan_body.update(version=4, managedInitialization=self.initialization.binding)
         if provider is not None and provider['profile'] == OWNER_PROFILE:
             from talli_backend.adapters.hosted_recovery_owner_policy import policy_contract
             capability = getattr(target, 'require_inert_provider_state', None)
@@ -141,6 +148,11 @@ class HostedBackupRecovery:
         self.capture, self.target = None, target
         self.disposition = disposition
         self.plan_body, self.plan_sha = state['plan'], expected_plan_sha256
+        binding = self.plan_body.get('managedInitialization')
+        self.initialization = ManagedInitialization(binding) if binding is not None else None
+        require(binding is None or 'providerState' not in self.plan_body and
+            'disposition' not in self.plan_body and self.plan_body.get('version') == 4,
+            'hosted_managed_initialization_binding_invalid')
         return self
 
     @contextmanager
@@ -174,11 +186,13 @@ class HostedBackupRecovery:
                 db.execute('select pg_advisory_unlock(%s)', (TARGET_LOCK,))
                 db.commit()
 
-    def _verify_provider(self, db, *, pending=False):
+    def _verify_provider(self, db, *, pending=False, fresh=False):
         if self._owner_staged:
             verify_provider_state(db, self.capture, pending_managed_policies=pending)
         else:
             verify_provider_state(db, self.capture)
+        if self.initialization is not None:
+            self.initialization.verify(db, fresh=fresh)
 
     def _validate(self, *, capture_required=True):
         if 'providerState' in self.plan_body:
@@ -385,12 +399,15 @@ class HostedBackupRecovery:
         require(list(facts) == capture.profile['facts'], 'hosted_database_profile_changed')
         extensions = db.execute('select e.extname,e.extversion,pg_get_userbyid(e.extowner),n.nspname '
             'from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname').fetchall()
-        require([list(row) for row in extensions] == capture.profile['extensions'],
-            'hosted_extension_profile_changed')
-        self._verify_provider(db, pending=self._owner_staged)
-        if 'providerState' in self.plan_body:
+        if self.initialization is None:
+            require([list(row) for row in extensions] == capture.profile['extensions'],
+                'hosted_extension_profile_changed')
+        self._verify_provider(db, pending=self._owner_staged, fresh=True)
+        if 'providerState' in self.plan_body or self.initialization is not None:
             require(db.execute("select current_setting('session_replication_role')").fetchone()[0] == 'origin',
                 'hosted_provider_origin_mode_required')
+        if self.initialization is not None:
+            require(program.preserve_provider_constraints, 'hosted_provider_origin_mode_required')
         if not self._owner_staged:
             require_policy_authority(db, capture,
                 managed_policy_grants='providerState' not in self.plan_body)
@@ -412,9 +429,10 @@ class HostedBackupRecovery:
         # Custom policies are intentionally restored separately, not overwritten.
         left = normalized_catalog(capture.catalog, {'auth', 'storage'})
         right = normalized_catalog(current, {'auth', 'storage'})
-        for key in ('constraints', 'functions', 'indexes', 'rls'):
-            require(left[key] == right[key], 'hosted_managed_schema_profile_changed')
-        verify_managed_triggers(db, program.managed_triggers)
+        if self.initialization is None:
+            for key in ('constraints', 'functions', 'indexes', 'rls'):
+                require(left[key] == right[key], 'hosted_managed_schema_profile_changed')
+            verify_managed_triggers(db, program.managed_triggers)
 
     def _uncommitted(self, db):
         """No marker may mean rollback, never permission to reuse unrelated data."""
@@ -611,8 +629,12 @@ class HostedBackupRecovery:
             # Keep temporary owner inheritance through byte verification. The
             # captured postgres membership can intentionally disable both
             # INHERIT and SET, including access to cross-owned schemas.
-            repairs = restore_access(db, self.capture, b'', pending_managed_policies=True) \
-                if self._owner_staged else restore_access(db, self.capture, b'')
+            if self._owner_staged:
+                repairs = restore_access(db, self.capture, b'', pending_managed_policies=True)
+            elif self.initialization is not None:
+                repairs = restore_access(db, self.capture, b'', managed_initialization=self.initialization)
+            else:
+                repairs = restore_access(db, self.capture, b'')
             self._verify_provider(db, pending=self._owner_staged)
             # Mutable provider migration timestamps and future uploaded Storage
             # transport identities are explicit differences, not wildcard skips.
@@ -672,7 +694,9 @@ class HostedBackupRecovery:
             state = self._state(create=True)
             require(state['phase'] != 'contained', 'hosted_recovery_already_contained')
             try:
-                program = compile_program(self.capture, self.archive)
+                program = compile_program(self.capture, self.archive,
+                    preserve_managed_constraints=True) if self.initialization is not None else \
+                    compile_program(self.capture, self.archive)
                 self._save(state, 'database_outcome_pending')
                 metadata = self._restore_database(state, program)
                 if self._owner_staged:
@@ -698,12 +722,19 @@ class HostedBackupRecovery:
                         if self._owner_staged:
                             self._verify_prepared(db, state, current, program)
                             self._verify_provider(db)
+                    if self.initialization is not None:
+                        self.target.ensure_private_bucket(obj['bucket'])
+                        with self.target.database() as db:
+                            self.initialization.verify(db)
                     receipt = self.target.restore_object(obj, self.capture.read(obj['file']))
                     # Reconcile even completed entries by readback on explicit
                     # resume, rather than trusting a stale local HTTP receipt.
                     state['objects'] = [r for r in state['objects'] if
                         (r['bucket'], r['name']) != (obj['bucket'], obj['name'])] + [receipt]
                     self._save(state, 'objects_quarantined')
+                    if self.initialization is not None:
+                        with self.target.database() as db:
+                            self.initialization.verify(db)
                 if self.disposition is not None: self.disposition.check_current()
                 with self.target.database() as db:
                     current = self._marker(db, state)
@@ -743,6 +774,8 @@ class HostedBackupRecovery:
                 marker = self._marker(db, state)
                 if marker is not None: self._quarantined(db, marker)
                 else: self._uncommitted(db)
+                if self.initialization is not None:
+                    self.initialization.verify(db, fresh=marker is None)
                 owner_policies_current = None
                 provider_current = None
                 if 'providerState' in self.plan_body and self.capture is not None:

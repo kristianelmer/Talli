@@ -8,6 +8,7 @@ from talli_backend.adapters.hosted_backup_recovery import HostedBackupRecovery
 from talli_backend.adapters.hosted_recovery_capture import ManagedCapture, digest, json_bytes, private_read, require
 from talli_backend.adapters.hosted_recovery_target import HostedDesignation, SupabaseRecoveryTarget
 from talli_backend.adapters.managed_disposition_binding import ManagedDispositionBinding
+from talli_backend.adapters.hosted_recovery_managed_initialization import PROFILE as MANAGED_INITIALIZATION
 
 
 def execute(*, command, config, expected_config_sha256, expected_plan_sha256=None):
@@ -16,8 +17,11 @@ def execute(*, command, config, expected_config_sha256, expected_plan_sha256=Non
     values = json_bytes(raw)
     required = {'version', 'designation', 'credentials', 'ca', 'caSha256', 'work', 'pgRestore', 'capture'}
     require((set(values) == required and values['version'] == 1) or
-        (set(values) == required | {'disposition'} and values['version'] == 2),
+        (set(values) == required | {'disposition'} and values['version'] == 2) or
+        (set(values) == required | {'managedInitialization'} and values['version'] == 3),
         'hosted_operator_config_invalid')
+    require(values['version'] != 3 or values['managedInitialization'] == MANAGED_INITIALIZATION,
+        'hosted_managed_initialization_source_unsupported')
     designation = HostedDesignation(**values['designation'])
     target = SupabaseRecoveryTarget(designation=designation, credentials=values['credentials'],
         ca=values['ca'], ca_sha256=values['caSha256'])
@@ -36,13 +40,17 @@ def execute(*, command, config, expected_config_sha256, expected_plan_sha256=Non
                 pass
         operator = HostedBackupRecovery.from_state(target=target, work=work,
             expected_plan_sha256=expected_plan_sha256, disposition=disposition)
+        binding = operator.plan_body.get('managedInitialization')
+        require((values.get('managedInitialization') is None and binding is None) or
+            isinstance(binding, dict) and binding.get('profile') == values.get('managedInitialization'),
+            'hosted_managed_initialization_binding_invalid')
         return operator.inspect() if command == 'inspect' else operator.contain(
             expected_plan_sha256=expected_plan_sha256)
     disposition = ManagedDispositionBinding(customer_root=values['capture']['directory'],
         **values['disposition']) if 'disposition' in values else None
     capture = ManagedCapture.open(**values['capture'], disposition=disposition)
     operator = HostedBackupRecovery(capture=capture, target=target, work=work,
-        pg_restore=values['pgRestore'])
+        pg_restore=values['pgRestore'], managed_initialization=values.get('managedInitialization'))
     if command == 'plan': return operator.plan()
     require(command == 'restore', 'hosted_operator_command_invalid')
     return operator.restore(expected_plan_sha256=expected_plan_sha256)
