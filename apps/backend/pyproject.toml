@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 talli-recover-hosted = "talli_backend.adapters.hosted_recovery_operator:main"
 talli-recovery-window = "talli_backend.adapters.hosted_recovery_window:main"
+talli-independent-recovery = "talli_backend.adapters.hosted_recovery_remote:main"
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,14 @@
+# INACTIVE REGISTRATION STUB. No provider credential, environment, or arming.
+# Future approved registration copies this file to the default branch at
+# .github/workflows/talli-recovery-cleanup.yml. Dispatch the separately reviewed
+# activation ref afterwards; this stub can never produce an accepted arm.
+name: Recovery pilot registration only
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  registration-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo 'Registration only; no runtime, credentials, or arming.'

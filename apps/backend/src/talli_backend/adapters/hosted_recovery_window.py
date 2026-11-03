@@ -148,44 +148,50 @@ def _request(pipe, credentials, action, ref, allowed):
         pipe.close()
 
 
+def bounded_rpc(target, args, *, deadline, max_bytes=4096):
+    """One bounded disposable request; partial child frames cannot block the parent."""
+    require(type(max_bytes) is int and 0 < max_bytes <= 2 * 1024 * 1024, 'hosted_window_frame_bound_invalid')
+    ctx = multiprocessing.get_context('spawn')
+    receiver, sender = ctx.Pipe(duplex=False)
+    process = ctx.Process(target=target,
+        args=(sender, *args), daemon=True)
+    process.start(); sender.close()
+    try:
+        # Connection.recv()/recv_bytes() can block on a PARTIAL frame even
+        # after poll(). Read the bounded JSON frame incrementally instead.
+        descriptor = receiver.fileno()
+        os.set_blocking(descriptor, False)
+        raw = bytearray(); size = None
+        while size is None or len(raw) < size + 4:
+            if not deadline.open():
+                raise WindowStopped('hosted_window_provider_call_deadline')
+            try:
+                chunk = os.read(descriptor, max_bytes + 4 - len(raw))
+            except BlockingIOError:
+                time.sleep(min(.02, max(0, deadline.remaining())))
+                continue
+            require(chunk, 'hosted_window_provider_call_outcome_unknown')
+            raw.extend(chunk)
+            if size is None and len(raw) >= 4:
+                size = struct.unpack('!i', raw[:4])[0]
+                require(0 < size <= max_bytes, 'hosted_window_provider_frame_invalid')
+        require(deadline.open(), 'hosted_window_provider_call_deadline')
+        value = json_bytes(bytes(raw[4:4 + size]))
+        if value.get('ok') is not True:
+            raise SafeTransportFailure(value.get('failure'))
+        return value['value']
+    finally:
+        if process.is_alive():
+            process.kill()
+        process.join(timeout=2); receiver.close(); process.close()
+
+
 class Provider:
     def __init__(self, credentials, allowed):
         self.credentials, self.allowed = str(credentials), allowed
 
     def call(self, action, ref, *, deadline):
-        ctx = multiprocessing.get_context('spawn')
-        receiver, sender = ctx.Pipe(duplex=False)
-        process = ctx.Process(target=_request,
-            args=(sender, self.credentials, action, ref, self.allowed), daemon=True)
-        process.start(); sender.close()
-        try:
-            # Connection.recv()/recv_bytes() can block on a PARTIAL frame even
-            # after poll(). Read the bounded JSON frame incrementally instead.
-            descriptor = receiver.fileno()
-            os.set_blocking(descriptor, False)
-            raw = bytearray(); size = None
-            while size is None or len(raw) < size + 4:
-                if not deadline.open():
-                    raise WindowStopped('hosted_window_provider_call_deadline')
-                try:
-                    chunk = os.read(descriptor, 4096 + 4 - len(raw))
-                except BlockingIOError:
-                    time.sleep(min(.02, max(0, deadline.remaining())))
-                    continue
-                require(chunk, 'hosted_window_provider_call_outcome_unknown')
-                raw.extend(chunk)
-                if size is None and len(raw) >= 4:
-                    size = struct.unpack('!i', raw[:4])[0]
-                    require(0 < size <= 4096, 'hosted_window_provider_frame_invalid')
-            require(deadline.open(), 'hosted_window_provider_call_deadline')
-            value = json_bytes(bytes(raw[4:4 + size]))
-            if value.get('ok') is not True:
-                raise SafeTransportFailure(value.get('failure'))
-            return value['value']
-        finally:
-            if process.is_alive():
-                process.kill()
-            process.join(timeout=2); receiver.close(); process.close()
+        return bounded_rpc(_request, (self.credentials, action, ref, self.allowed), deadline=deadline)
 
 
 class WindowSupervisor:

@@ -1557,3 +1557,15 @@ See [the guardian runbook](../docs/security/hosted-recovery-window.md).
 <!-- architecture-inventory
 {"infrastructure":["hostedRecoveryWindow=>Separately approved detached guardian; one consumed authority and fixed worker, bounded provider processes, target pause and original capacity restoration. Awake-host enforcement only; no host-suspend coverage, provider transition guarantee, SQL containment inference or release acceptance."],"adapterDependencies":["talli_backend.adapters.hosted_recovery_diagnostics","talli_backend.adapters.hosted_recovery_window","contextvars","errno","functools","multiprocessing","signal","struct","importlib.util"]}
 -->
+
+## Independent cleanup arming preparation
+
+The independent protocol remains outside FastAPI. Its workflow is an inactive
+metadata-only template under docs/security/workflows. Local commands require a
+fresh signed remote acknowledgement and durable one-use consumption. Only the
+remote owner performs cleanup; mailbox-only reconstruction retains unknown
+history. See [the protocol runbook](../docs/security/independent-recovery-cleanup.md).
+
+<!-- architecture-inventory
+{"infrastructure":["hostedRecoveryArming=>Inactive independent cleanup preparation: signed authority/config/commit/run/job/deadline arming, durable remote intent acknowledgement and exclusive local consumption before dispatch. Separate cleanup owner survives local coordinator process loss in loopback simulations. Metadata-only workflow template is not deployed; mailbox reconstruction alone cannot prove complete pending history and permits observation only. GitHub/runner availability, provider transition time, SQL containment and hosted acceptance remain unproved."],"adapterDependencies":["copy","zipfile","cryptography.exceptions","cryptography.hazmat.primitives.asymmetric.ed25519","talli_backend.adapters.hosted_recovery_arming","talli_backend.adapters.hosted_recovery_mailbox","talli_backend.adapters.hosted_recovery_remote"]}
+-->
