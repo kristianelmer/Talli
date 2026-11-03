@@ -203,12 +203,17 @@ class WindowSupervisor:
         self.events = []
         self.timing = {}
         self.failure = None
+        self.pending = {}
+        self.cleanup_failures = {}
+        self.pending_history_known = True
 
     def emit(self, event, **values):
         self.events = (self.events + [{'atUtc': utc(time.time()), 'event': event, **values}])[-64:]
         try:
             self.record({'version': 1, 'events': self.events, 'timing': dict(self.timing),
-                'failure': self.failure, 'localHostAvailabilityRequired': True,
+                'failure': self.failure, 'pendingMutations': dict(self.pending),
+                'pendingHistoryKnown': self.pending_history_known,
+                'cleanupFailures': dict(self.cleanup_failures), 'localHostAvailabilityRequired': True,
                 'hostSuspendCovered': False, 'sqlContainmentVerified': False})
         except Exception:
             self.records_available = False
@@ -220,8 +225,22 @@ class WindowSupervisor:
         # Time spent inside a DNS/TLS/provider call cannot block the guardian past
         # its admission deadline. A killed POST is an UNKNOWN outcome, not failure.
         bound = self.deadline_factory(min(self.config['callSeconds'], deadline.remaining()))
-        self.emit('provider.request', action=action, project=ref)
+        key = action + ':' + ref
+        if action in ('pause', 'resume'):
+            require(key not in self.pending, 'hosted_window_mutation_pending')
+            self.pending[key] = {'action': action, 'project': ref,
+                'goal': 'INACTIVE' if action == 'pause' else 'ACTIVE_HEALTHY',
+                'atUtc': utc(time.time()), 'acknowledged': False}
+        try:
+            self.emit('provider.request', action=action, project=ref)
+        except Exception:
+            # No transport call has begun; this request is known NOT dispatched.
+            if action in ('pause', 'resume'):
+                del self.pending[key]
+            raise
         value = self.provider.call(action, ref, deadline=bound)
+        if key in self.pending:
+            self.pending[key]['acknowledged'] = True
         self.emit('provider.response', action=action, project=ref)
         require(deadline.open(), 'hosted_window_deadline_closed')
         return value
@@ -235,6 +254,11 @@ class WindowSupervisor:
         if require_engine:
             require(observed.get('engine') == expected['engine'], 'hosted_window_engine_changed')
         require(observed.get('status') in STATUSES, 'hosted_window_status_unknown')
+        # A pre-request state proves neither rejection nor completion of a lost
+        # POST. Clear an intent only on observing its requested goal.
+        for key, intent in list(self.pending.items()):
+            if intent['project'] == expected['project'] and intent['goal'] == observed['status']:
+                del self.pending[key]
         self.emit('project.observed', role=role, status=observed['status'])
         return observed['status']
 
@@ -262,34 +286,39 @@ class WindowSupervisor:
         while pause_deadline.open():
             try:
                 status = self.project('target', pause_deadline, require_engine=False)
-                if status == 'INACTIVE':
+                if status == 'INACTIVE' and not self.unresolved('target', 'resume'):
                     target_paused = True
                     break
-                if status not in ('PAUSING', 'GOING_DOWN') and not pause_requested:
+                if status not in ('INACTIVE', 'PAUSING', 'GOING_DOWN') and not pause_requested and \
+                        not self.unresolved('target', 'pause'):
                     pause_requested = True
                     try:
                         self.call('pause', self.config['target']['project'], pause_deadline)
                     except Exception as error:
+                        self.cleanup_failure('target.pause', error)
                         self.emit('target.pause.outcome.unknown', failure=safe_failure(error))
             except Exception as error:
+                self.cleanup_failure('target.observe', error)
                 self.emit('target.pause.unverified', failure=safe_failure(error))
             self.sleep(min(self.config['pollSeconds'], max(0, pause_deadline.remaining())))
         resume_requested = False
         while deadline.open():
             try:
                 status = self.project('capacity', deadline)
-                if status == 'ACTIVE_HEALTHY':
+                if status == 'ACTIVE_HEALTHY' and not self.unresolved('capacity', 'pause'):
                     capacity_healthy = True
                     break
                 # A lost pause response can leave PAUSING -> INACTIVE during
                 # cleanup. Observe that transition before issuing one restore.
-                if status == 'INACTIVE' and not resume_requested:
+                if status == 'INACTIVE' and not resume_requested and not self.unresolved('capacity', 'resume'):
                     resume_requested = True
                     try:
                         self.call('resume', self.config['capacity']['project'], deadline)
                     except Exception as error:
+                        self.cleanup_failure('capacity.resume', error)
                         self.emit('capacity.resume.outcome.unknown', failure=safe_failure(error))
             except Exception as error:
+                self.cleanup_failure('capacity.observe', error)
                 self.emit('capacity.health.unverified', failure=safe_failure(error))
             self.sleep(min(self.config['pollSeconds'], max(0, deadline.remaining())))
         boundaries_current = False
@@ -297,12 +326,43 @@ class WindowSupervisor:
             boundaries_current = (self.project('source', deadline) == 'ACTIVE_HEALTHY' and
                 self.project('preserved', deadline) == 'INACTIVE')
         except Exception as error:
+            self.cleanup_failure('preserved.observe', error)
             self.emit('preserved.boundaries.unverified', failure=safe_failure(error))
         self.emit('cleanup.finished', targetPaused=target_paused, capacityHealthy=capacity_healthy,
             preservedBoundaryStatesVerified=boundaries_current)
         return {'targetPaused': target_paused, 'capacityHealthy': capacity_healthy,
             'preservedBoundaryStatesVerified': boundaries_current,
-            'cleanupVerified': target_paused and capacity_healthy and boundaries_current}
+            'pendingMutations': dict(self.pending), 'cleanupFailures': dict(self.cleanup_failures),
+            'pendingHistoryKnown': self.pending_history_known,
+            'cleanupVerified': target_paused and capacity_healthy and boundaries_current and
+                not self.pending and self.pending_history_known}
+
+    def unresolved(self, role, action):
+        return action + ':' + self.config[role]['project'] in self.pending
+
+    def cleanup_failure(self, phase, error):
+        # First safe failure per fixed cleanup boundary survives arbitrary polls.
+        if phase not in self.cleanup_failures and len(self.cleanup_failures) < 8:
+            self.cleanup_failures[phase] = {'atUtc': utc(time.time()), 'phase': phase,
+                **safe_failure(error)}
+
+    def restore_pending(self, prior):
+        self.pending_history_known = prior.get('pendingHistoryKnown') is True
+        intents = prior.get('pendingMutations')
+        if not isinstance(intents, dict) or len(intents) > 4:
+            self.pending_history_known = False
+            return
+        for key, intent in intents.items():
+            require(isinstance(intent, dict) and set(intent) ==
+                {'action', 'project', 'goal', 'atUtc', 'acknowledged'}, 'hosted_window_pending_invalid')
+            require(intent['action'] in ('pause', 'resume') and
+                intent['project'] in {self.config[r]['project'] for r in ('capacity', 'target')} and
+                key == intent['action'] + ':' + intent['project'] and
+                intent['goal'] == ('INACTIVE' if intent['action'] == 'pause' else 'ACTIVE_HEALTHY') and
+                type(intent['acknowledged']) is bool, 'hosted_window_pending_invalid')
+            when = datetime.fromisoformat(intent['atUtc'])
+            require(when.tzinfo is not None, 'hosted_window_pending_invalid')
+            self.pending[key] = dict(intent)
 
     def run(self, worker):
         preflight = self.deadline_factory(60)
@@ -432,6 +492,11 @@ def main(argv=None):
         with os.fdopen(descriptor, 'w') as f:
             json.dump({'configSha256': args.expected_config_sha256, 'authoritySha256': args.expected_authority_sha256}, f)
             f.flush(); os.fsync(f.fileno())
+        directory = os.open(authority_dir, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
         work.mkdir(mode=0o700)
         child = launch_guardian([sys.executable, '-B', '-m',
             'talli_backend.adapters.hosted_recovery_window', 'supervise',
@@ -450,8 +515,23 @@ def main(argv=None):
         require(args.command == 'cleanup' or not (work / 'guardian.json').exists(),
             'hosted_window_no_guardian_resume')
         from talli_backend.adapters.hosted_backup_recovery import _atomic
+        journal = work / 'guardian.json'
+        prior = {}
+        cleanup_sequence = None
+        if args.command == 'cleanup':
+            existing = sorted(work.glob('cleanup-journal-??????.json'))
+            cleanup_sequence = int(existing[-1].stem.rsplit('-', 1)[1]) + 1 if existing else 1
+            require(cleanup_sequence < 1_000_000, 'hosted_window_cleanup_journal_bound')
+            source = existing[-1] if existing else journal
+            if source.exists():
+                prior = json_bytes(private_read(source, 256 * 1024))
+                require(prior.get('configSha256') == args.expected_config_sha256 and
+                    prior.get('authoritySha256') == args.expected_authority_sha256 and
+                    prior.get('windowId') == authority['windowId'], 'hosted_window_prior_journal_changed')
+            journal = work / ('cleanup-journal-' + format(cleanup_sequence, '06d') + '.json')
+            require(not journal.exists(), 'hosted_window_cleanup_journal_exists')
         def record(value):
-            _atomic(work / 'guardian.json', {**value, 'configSha256': args.expected_config_sha256,
+            _atomic(journal, {**value, 'configSha256': args.expected_config_sha256,
                 'authoritySha256': args.expected_authority_sha256, 'windowId': authority['windowId'],
                 'reviewedCandidate': config['worker']['head'], 'reviewedTree': config['worker']['tree'],
                 'python': sys.version.split()[0], 'monotonicClock': time.get_clock_info('monotonic').implementation})
@@ -464,9 +544,10 @@ def main(argv=None):
         signal.signal(signal.SIGTERM, interrupted)
         signal.signal(signal.SIGINT, interrupted)
         if args.command == 'cleanup':
+            supervisor.restore_pending(prior)
             result = {**supervisor.cleanup(), 'hostedRecoveryAccepted': False,
                 'previousWorkerTerminationVerified': False, 'hostSuspendCovered': False}
-            _atomic(work / ('cleanup-only-' + str(time.time_ns()) + '.json'), result)
+            _atomic(work / ('cleanup-only-' + format(cleanup_sequence, '06d') + '.json'), result)
         else:
             result = supervisor.run(lambda deadline: bounded_process(config['worker']['argv'],
                 cwd=config['worker']['cwd'], deadline=deadline))

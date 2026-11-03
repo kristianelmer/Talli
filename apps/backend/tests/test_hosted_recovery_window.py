@@ -182,6 +182,59 @@ def test_cleanup_retries_a_lost_target_metadata_read_within_reserved_budget():
     assert failed and provider.calls.count(('pause', provider.cfg['target']['project'])) == 1
 
 
+@pytest.mark.parametrize('action,role', [('pause', 'capacity'), ('resume', 'target')])
+@pytest.mark.parametrize('visible_later', [False, True])
+def test_deferred_unknown_mutation_cannot_be_cleared_by_unchanged_pre_request_state(action, role, visible_later):
+    supervisor, provider, _, _ = setup()
+    original = provider.call; deferred = []; observed = []
+    def delayed(act, ref, *, deadline):
+        if act == action and ref == provider.cfg[role]['project'] and not deferred:
+            provider.calls.append((act, ref)); deferred.append(True)
+            raise window.WindowStopped('hosted_window_provider_call_outcome_unknown')
+        if act == 'get_project' and ref == provider.cfg[role]['project'] and deferred:
+            observed.append(True)
+            if visible_later and len(observed) == 4:
+                provider.statuses[role] = 'INACTIVE' if action == 'pause' else 'ACTIVE_HEALTHY'
+        return original(act, ref, deadline=deadline)
+    provider.call = delayed
+    result = supervisor.run(lambda d: pytest.fail('no worker after unknown mutation'))
+    assert result['cleanupVerified'] is visible_later
+    assert provider.calls.count((action, provider.cfg[role]['project'])) == 1
+    if not visible_later:
+        assert action + ':' + provider.cfg[role]['project'] in result['pendingMutations']
+        # The request may commit AFTER the last observation; never call that safe.
+        provider.statuses[role] = 'INACTIVE' if action == 'pause' else 'ACTIVE_HEALTHY'
+        assert not result['cleanupVerified']
+
+
+def test_cleanup_safe_error_survives_long_poll_ring_without_worker_failure():
+    from talli_backend.adapters.hosted_recovery_diagnostics import SafeTransportFailure
+    supervisor, provider, _, records = setup()
+    original = provider.call
+    def forbidden(action, ref, *, deadline):
+        if action == 'pause' and ref == provider.cfg['target']['project']:
+            raise SafeTransportFailure({'class': 'HttpStatusError', 'sqlState': None,
+                'category': 'http_status_error', 'httpStatus': 403})
+        return original(action, ref, deadline=deadline)
+    provider.call = forbidden
+    result = supervisor.run(lambda d: 0)
+    assert not result['cleanupVerified'] and result['failure'] is None
+    assert result['cleanupFailures']['target.pause']['httpStatus'] == 403
+    assert records[-1]['cleanupFailures']['target.pause']['httpStatus'] == 403
+    assert not any(e['event'] == 'target.pause.outcome.unknown' for e in records[-1]['events'])
+
+
+def test_cleanup_restart_retains_unresolved_resume_and_never_reissues_it():
+    supervisor, provider, _, _ = setup()
+    ref = provider.cfg['target']['project']
+    pending = {'resume:' + ref: {'action': 'resume', 'project': ref, 'goal': 'ACTIVE_HEALTHY',
+        'atUtc': '2026-11-03T00:00:00+00:00', 'acknowledged': False}}
+    supervisor.restore_pending({'pendingHistoryKnown': True, 'pendingMutations': pending})
+    result = supervisor.cleanup()
+    assert not result['cleanupVerified'] and result['pendingMutations'] == pending
+    assert not any(a in ('pause', 'resume') for a, r in provider.calls)
+
+
 @pytest.mark.parametrize('drift', [{'name': 'other'}, {'engine': '17.12.0.000'},
     {'organization_id': 'f' * 20}, {'region': 'eu-north-1'}])
 def test_wrong_target_metadata_refuses_before_mutation(drift):
@@ -410,6 +463,12 @@ def test_cleanup_only_allows_expired_consumed_authority_with_missing_worker(tmp_
     auth_pin = save(auth_path, auth)
     save(tmp_path / (auth['windowId'] + '.used'), {'configSha256': pin, 'authoritySha256': auth_pin})
     Path(cfg['work']).mkdir(mode=0o700)
+    original_journal = {'configSha256': pin, 'authoritySha256': auth_pin, 'windowId': auth['windowId'],
+        'pendingMutations': {}, 'pendingHistoryKnown': True,
+        'timing': {'cleanupAtUtc': '2000-01-01T00:01:00+00:00'},
+        'failure': {'category': 'connection_reset'}}
+    journal = Path(cfg['work']) / 'guardian.json'; save(journal, original_journal)
+    original_bytes = journal.read_bytes()
     Path(cfg['worker']['argv'][1]).unlink()
     provider = ProviderModel(cfg, Clock())
     provider.statuses.update(target='ACTIVE_HEALTHY', capacity='INACTIVE')
@@ -419,6 +478,14 @@ def test_cleanup_only_allows_expired_consumed_authority_with_missing_worker(tmp_
         '--authority', str(auth_path), '--expected-authority-sha256', auth_pin]) == 0
     assert [a for a, r in provider.calls if a in ('pause', 'resume')] == ['pause', 'resume']
     assert not any(a == 'resume' and r == cfg['target']['project'] for a, r in provider.calls)
+    assert journal.read_bytes() == original_bytes
+    assert (Path(cfg['work']) / 'cleanup-journal-000001.json').exists()
+    first_cleanup = (Path(cfg['work']) / 'cleanup-journal-000001.json').read_bytes()
+    assert window.main(['cleanup', '--config', str(path), '--expected-config-sha256', pin,
+        '--authority', str(auth_path), '--expected-authority-sha256', auth_pin]) == 0
+    assert journal.read_bytes() == original_bytes
+    assert (Path(cfg['work']) / 'cleanup-journal-000001.json').read_bytes() == first_cleanup
+    assert (Path(cfg['work']) / 'cleanup-journal-000002.json').exists()
 
 
 @pytest.mark.parametrize('action,role', [('pause', 'source'), ('resume', 'source'),

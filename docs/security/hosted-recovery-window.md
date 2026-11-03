@@ -72,7 +72,14 @@ start/resume a second attempt. Worker exit0 is not a product/recovery verdict.
 Provider operations use fixed Supabase Management API GET metadata and POST
 pause/restore endpoints, in bounded disposable processes with no redirects or
 proxy environment. A lost response is unknown; GET reconciles it without repeating
-the import. Cleanup stops the worker process group, requests target pause, observes
+the import. Every dispatched pause/resume stays in `pendingMutations` until its
+requested goal is observed. The unchanged pre-request state never clears it:
+a delayed pause can still take capacity offline after an initially healthy GET,
+or a delayed resume can bring a currently paused target up later. Unresolved
+mutations prevent cleanup success; no blind duplicate POST is issued. This
+reconciliation assumes one lifecycle owner and the provider's metadata observations;
+it is not a provider transaction receipt or a guarantee against later state changes.
+Cleanup stops the worker process group, requests target pause, observes
 INACTIVE, restores capacity, observes its original engine/ACTIVE_HEALTHY and checks
 source/preserved state. It still attempts capacity restoration if target pause
 cannot be verified. It never infers SQL containment. Provider failure yields an
@@ -83,7 +90,12 @@ cooperative worker topology; it cannot revoke work that has escaped the host.
 expiry or loss/change of the worker checkout. It cannot start a worker or resume
 the target. It does not kill a PID from a saved journal (PID reuse); previous
 worker termination and SQL containment remain unverified. It writes a separate
-cleanup receipt. SIGTERM requests cleanup of an active guardian; SIGKILL, host loss
+numbered invocation journal from its first event and a separate cleanup receipt;
+the original guardian acknowledgement/deadline/failure remain unchanged. Pending
+mutations carry forward from the latest bound journal. Missing pending history
+prevents a verified-cleanup claim. First safe failures per cleanup boundary survive
+the event ring, alongside the original window deadline/failure. SIGTERM requests
+cleanup of an active guardian; SIGKILL, host loss
 or blocked local storage cannot be handled by that same process.
 
 ## What is actually enforced
