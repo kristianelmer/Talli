@@ -45,6 +45,11 @@ from a timeout. An unchanged pre-request state cannot clear an intent; the remot
 must freshly observe its requested goal. Source and preserved projects cannot be
 mutated by this protocol.
 
+Arming alone does not establish lifecycle cleanup ownership. A runner with no
+accepted local lifecycle intent never issues cleanup POSTs, even if another owner
+has changed the observed project states. An accepted intent with a lost ACK still
+retains conservative cleanup ownership and its pending obligation.
+
 The remote is the only cleanup owner. The local coordinator stops/reaps its held
 worker on cancellation, exhausted deadline or failed heartbeat. It cannot prove
 worker termination after its own loss. At the shared cutoff or early close the

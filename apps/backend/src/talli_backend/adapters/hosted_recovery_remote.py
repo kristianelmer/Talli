@@ -247,16 +247,19 @@ class RemoteRunner:
                     self.ledger.close('closed')
                 except Exception as error:
                     self.failure = self.failure or safe_failure(error)
-                if not armed or self.config['mode'] == 'metadata-only':
+                if not armed or self.config['mode'] == 'metadata-only' or not self.ledger.accepted:
                     # Independent enforcement in runtime, in addition to protocol mode.
                     result = {'metadataOnly':self.config['mode']=='metadata-only',
                         'lifecycleAdmitted':False,'preflightOrArmingFailed':not armed,
+                        'cleanupSkipReason':'not_armed' if not armed else
+                            'metadata_only' if self.config['mode']=='metadata-only' else 'no_accepted_lifecycle_intent',
                         'cleanupVerified':False,'pendingMutations':self.ledger.pending}
                 else:
                     self.cleanup.restore_pending({'pendingHistoryKnown':True,
                         'pendingMutations':self.ledger.pending})
                     result = self.cleanup.cleanup()
                 result.update(binding=self.binding,armed=armed,failure=self.failure,
+                    lifecycleAdmitted=armed and self.config['mode']=='cleanup' and bool(self.ledger.accepted),
                     hostedRecoveryAccepted=False,providerTransitionBoundGuaranteed=False,
                     remoteRunnerAvailabilityGuaranteed=False,localCoordinatorTerminationVerified=False,
                     cleanupTiming=dict(self.cleanup.timing),

@@ -41,6 +41,7 @@ class Simulation:
         self.local_delays={}
         self.remote_read_delay=0
         self.drop_local_heartbeats=False
+        self.fail_intent_ack_response=False
         self.mutations_with_caller=[]
         self.lock=threading.RLock()
 
@@ -81,6 +82,8 @@ class Simulation:
                 if self.path=='/mailbox':
                     if value['kind']=='armed':time.sleep(model.arm_delay)
                     with model.lock:model.messages.append(value)
+                    if model.fail_intent_ack_response and value['kind']=='intent_ack':
+                        self.reply(503,{});return
                     if model.drop_local_heartbeats and value['kind']=='heartbeat' and \
                             self.headers.get('X-Simulation-Caller')=='local':
                         with model.lock:model.messages.pop()
@@ -397,3 +400,28 @@ def test_missing_heartbeat_stops_worker_on_ack_budget_not_remaining_window(fixtu
     local.join(4);runner.join(8)
     assert local.exitcode==runner.exitcode==0
     assert json.loads((work/'local/local-result.json').read_text())['failure']
+
+
+def test_armed_unused_runner_cannot_clean_up_another_owners_project_states(fixture):
+    config,binding,model,url,work,start,children=fixture
+    runner=start();until(lambda:(work/'remote/arm.json').exists())
+    model.states['capacity']='INACTIVE';model.states['target']='ACTIVE_HEALTHY'
+    os.kill(runner.pid,signal.SIGTERM);runner.join(4);assert runner.exitcode==0
+    result=json.loads((work/'remote/result.json').read_text())
+    assert result['armed'] and not result['metadataOnly'] and not result['lifecycleAdmitted']
+    assert result['cleanupSkipReason']=='no_accepted_lifecycle_intent'
+    assert not result['cleanupVerified'] and lifecycle(model)==[]
+    assert model.states['capacity']=='INACTIVE' and model.states['target']=='ACTIVE_HEALTHY'
+
+
+def test_accepted_intent_keeps_cleanup_ownership_when_ack_response_is_lost(fixture):
+    config,binding,model,url,work,start,children=fixture
+    model.fail_intent_ack_response=True
+    runner=start();until(lambda:(work/'remote/arm.json').exists())
+    local=start('local');runner.join(8);local.join(8)
+    assert runner.exitcode==local.exitcode==0
+    result=json.loads((work/'remote/result.json').read_text())
+    assert result['armed'] and result['lifecycleAdmitted'] and result['failure']
+    assert result['cleanupVerified']
+    assert model.states['capacity']=='ACTIVE_HEALTHY' and model.states['target']=='INACTIVE'
+    assert lifecycle(model)==[('pause','capacity'),('resume','capacity')]
