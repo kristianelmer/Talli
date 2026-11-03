@@ -1541,6 +1541,8 @@
       "errno",
       "multiprocessing",
       "signal",
+      "struct",
+      "importlib.util",
       "tempfile",
       "resource",
       "talli_backend.adapters.managed_disposition_binding",

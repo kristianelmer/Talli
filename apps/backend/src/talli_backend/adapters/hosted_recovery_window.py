@@ -8,12 +8,14 @@ from datetime import datetime, timezone
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import multiprocessing
 import os
 from pathlib import Path
 import signal
+import struct
 import subprocess
 import sys
 import time
@@ -22,7 +24,7 @@ from uuid import UUID
 import httpx
 
 from talli_backend.adapters.hosted_recovery_capture import json_bytes, private_read, require
-from talli_backend.adapters.hosted_recovery_diagnostics import safe_failure
+from talli_backend.adapters.hosted_recovery_diagnostics import SafeTransportFailure, safe_failure
 from talli_backend.adapters.hosted_recovery_target import HostedDesignation
 
 
@@ -81,6 +83,7 @@ def stop_group(process):
 
 
 def bounded_process(argv, *, deadline, cwd=None):
+    require(deadline.open(), 'hosted_window_deadline_closed')
     process = subprocess.Popen(argv, cwd=cwd, start_new_session=True,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -88,6 +91,7 @@ def bounded_process(argv, *, deadline, cwd=None):
             if not deadline.open():
                 raise WindowStopped('hosted_window_worker_deadline')
             time.sleep(min(.05, max(0, deadline.remaining())))
+        require(deadline.open(), 'hosted_window_deadline_closed')
         return process.returncode
     finally:
         stop_group(process)
@@ -112,7 +116,8 @@ def _request(pipe, credentials, action, ref, allowed):
         with httpx.Client(timeout=10, follow_redirects=False, trust_env=False) as client:
             with client.stream('POST' if suffix else 'GET', 'https://api.supabase.com/v1/' + path,
                     headers={'Authorization': 'Bearer ' + token}) as response:
-                require(response.status_code == 200, 'hosted_window_provider_http_' + str(response.status_code))
+                response.raise_for_status()
+                require(response.status_code == 200, 'hosted_window_provider_http_unexpected')
                 if suffix:
                     result = {'ok': True}
                 else:
@@ -127,11 +132,17 @@ def _request(pipe, credentials, action, ref, allowed):
                         result = {'id': ref, 'plan': 'free'}
                     else:
                         require(value.get('status') in STATUSES, 'hosted_window_status_unknown')
+                        HostedDesignation(project=value.get('id'), organization=value.get('organization_id'),
+                            name=value.get('name'), region=value.get('region'))
+                        engine = value.get('database', {}).get('version')
+                        require(isinstance(engine, str) and len(engine) <= 40,
+                            'hosted_window_engine_invalid')
                         result = {k: value.get(k) for k in ('id', 'organization_id', 'name', 'region', 'status')}
-                        result['engine'] = value.get('database', {}).get('version')
-        pipe.send({'ok': True, 'value': result})
+                        result['engine'] = engine
+        require(len(json.dumps(result)) <= 2048, 'hosted_window_metadata_bound')
+        pipe.send_bytes(json.dumps({'ok': True, 'value': result}).encode())
     except BaseException as error:
-        pipe.send({'ok': False, 'failure': safe_failure(error)})
+        pipe.send_bytes(json.dumps({'ok': False, 'failure': safe_failure(error)}).encode())
     finally:
         pipe.close()
 
@@ -147,14 +158,28 @@ class Provider:
             args=(sender, self.credentials, action, ref, self.allowed), daemon=True)
         process.start(); sender.close()
         try:
-            while not receiver.poll(.02):
+            # Connection.recv()/recv_bytes() can block on a PARTIAL frame even
+            # after poll(). Read the bounded JSON frame incrementally instead.
+            descriptor = receiver.fileno()
+            os.set_blocking(descriptor, False)
+            raw = bytearray(); size = None
+            while size is None or len(raw) < size + 4:
                 if not deadline.open():
                     raise WindowStopped('hosted_window_provider_call_deadline')
-                if not process.is_alive():
-                    raise WindowStopped('hosted_window_provider_call_outcome_unknown')
+                try:
+                    chunk = os.read(descriptor, 4096 + 4 - len(raw))
+                except BlockingIOError:
+                    time.sleep(min(.02, max(0, deadline.remaining())))
+                    continue
+                require(chunk, 'hosted_window_provider_call_outcome_unknown')
+                raw.extend(chunk)
+                if size is None and len(raw) >= 4:
+                    size = struct.unpack('!i', raw[:4])[0]
+                    require(0 < size <= 4096, 'hosted_window_provider_frame_invalid')
             require(deadline.open(), 'hosted_window_provider_call_deadline')
-            value = receiver.recv()
-            require(value.get('ok') is True, 'hosted_window_provider_call_failed')
+            value = json_bytes(bytes(raw[4:4 + size]))
+            if value.get('ok') is not True:
+                raise SafeTransportFailure(value.get('failure'))
             return value['value']
         finally:
             if process.is_alive():
@@ -176,11 +201,14 @@ class WindowSupervisor:
         self.cleaning = False
         self.records_available = True
         self.events = []
+        self.timing = {}
+        self.failure = None
 
     def emit(self, event, **values):
         self.events = (self.events + [{'atUtc': utc(time.time()), 'event': event, **values}])[-64:]
         try:
-            self.record({'version': 1, 'events': self.events, 'localHostAvailabilityRequired': True,
+            self.record({'version': 1, 'events': self.events, 'timing': dict(self.timing),
+                'failure': self.failure, 'localHostAvailabilityRequired': True,
                 'hostSuspendCovered': False, 'sqlContainmentVerified': False})
         except Exception:
             self.records_available = False
@@ -210,53 +238,66 @@ class WindowSupervisor:
         self.emit('project.observed', role=role, status=observed['status'])
         return observed['status']
 
-    def wait(self, role, status, deadline):
+    def wait(self, role, status, deadline, *, require_engine=True):
         while deadline.open():
             try:
-                if self.project(role, deadline) == status:
+                if self.project(role, deadline, require_engine=require_engine) == status:
                     return True
-            except Exception:
+            except Exception as error:
                 # Reconcile through fresh GET after a lost response, never replay
                 # the import or blindly repeat the lifecycle POST.
-                self.emit('provider.observation.unavailable', role=role)
+                self.emit('provider.observation.unavailable', role=role, failure=safe_failure(error))
             self.sleep(min(self.config['pollSeconds'], max(0, deadline.remaining())))
         return False
 
     def cleanup(self):
         self.cleaning = True
+        self.timing['cleanupStartedAtUtc'] = utc(time.time())
         self.emit('cleanup.started')
         deadline = self.deadline_factory(self.config['cleanupSeconds'])
         target_paused = capacity_healthy = False
-        try:
-            # Unexpected target engine drift must not prevent pausing that exact
-            # designated project. It still prevents work admission.
-            status = self.project('target', deadline, require_engine=False)
-            if status not in ('INACTIVE', 'PAUSING', 'GOING_DOWN'):
-                try:
-                    self.call('pause', self.config['target']['project'], deadline)
-                except Exception:
-                    self.emit('target.pause.outcome.unknown')
-            # Reserve at least half the cleanup budget for capacity restoration.
-            pause_deadline = self.deadline_factory(min(deadline.remaining() / 2, 60))
-            target_paused = self.wait('target', 'INACTIVE', pause_deadline)
-        except Exception:
-            self.emit('target.pause.unverified')
-        try:
-            status = self.project('capacity', deadline)
-            if status == 'INACTIVE':
-                try:
-                    self.call('resume', self.config['capacity']['project'], deadline)
-                except Exception:
-                    self.emit('capacity.resume.outcome.unknown')
-            capacity_healthy = self.wait('capacity', 'ACTIVE_HEALTHY', deadline)
-        except Exception:
-            self.emit('capacity.health.unverified')
+        # Retain time for restoration even if target metadata is unavailable.
+        pause_deadline = self.deadline_factory(min(deadline.remaining() / 2, 60))
+        pause_requested = False
+        while pause_deadline.open():
+            try:
+                status = self.project('target', pause_deadline, require_engine=False)
+                if status == 'INACTIVE':
+                    target_paused = True
+                    break
+                if status not in ('PAUSING', 'GOING_DOWN') and not pause_requested:
+                    pause_requested = True
+                    try:
+                        self.call('pause', self.config['target']['project'], pause_deadline)
+                    except Exception as error:
+                        self.emit('target.pause.outcome.unknown', failure=safe_failure(error))
+            except Exception as error:
+                self.emit('target.pause.unverified', failure=safe_failure(error))
+            self.sleep(min(self.config['pollSeconds'], max(0, pause_deadline.remaining())))
+        resume_requested = False
+        while deadline.open():
+            try:
+                status = self.project('capacity', deadline)
+                if status == 'ACTIVE_HEALTHY':
+                    capacity_healthy = True
+                    break
+                # A lost pause response can leave PAUSING -> INACTIVE during
+                # cleanup. Observe that transition before issuing one restore.
+                if status == 'INACTIVE' and not resume_requested:
+                    resume_requested = True
+                    try:
+                        self.call('resume', self.config['capacity']['project'], deadline)
+                    except Exception as error:
+                        self.emit('capacity.resume.outcome.unknown', failure=safe_failure(error))
+            except Exception as error:
+                self.emit('capacity.health.unverified', failure=safe_failure(error))
+            self.sleep(min(self.config['pollSeconds'], max(0, deadline.remaining())))
         boundaries_current = False
         try:
             boundaries_current = (self.project('source', deadline) == 'ACTIVE_HEALTHY' and
                 self.project('preserved', deadline) == 'INACTIVE')
-        except Exception:
-            self.emit('preserved.boundaries.unverified')
+        except Exception as error:
+            self.emit('preserved.boundaries.unverified', failure=safe_failure(error))
         self.emit('cleanup.finished', targetPaused=target_paused, capacityHealthy=capacity_healthy,
             preservedBoundaryStatesVerified=boundaries_current)
         return {'targetPaused': target_paused, 'capacityHealthy': capacity_healthy,
@@ -273,6 +314,8 @@ class WindowSupervisor:
             require(self.project(role, preflight) == expected, 'hosted_window_initial_state_changed')
         # Durable acknowledgement and deadlines precede the FIRST pause request.
         self.work_deadline = self.deadline_factory(self.config['workSeconds'])
+        self.timing = {'windowStartedAtUtc': utc(self.work_deadline.started_utc),
+            'cleanupAtUtc': utc(self.work_deadline.at)}
         self.emit('window.started', cleanupAtUtc=utc(self.work_deadline.at))
         worker_code = None
         try:
@@ -286,15 +329,17 @@ class WindowSupervisor:
             worker_code = worker(self.work_deadline)
             self.emit('worker.finished', exitCode=worker_code)
         except BaseException as error:
+            self.failure = safe_failure(error)
             try:
-                self.emit('window.stopped', failure=safe_failure(error))
+                self.emit('window.stopped', failure=self.failure)
             except Exception:
                 pass  # A failed receipt must not prevent provider cleanup.
         finally:
             cleanup = self.cleanup()
         return {'workerExitCode': worker_code, **cleanup, 'hostedRecoveryAccepted': False,
             'hostSuspendCovered': False, 'providerTransitionBoundGuaranteed': False,
-            'diagnosticsAvailable': self.records_available}
+            'diagnosticsAvailable': self.records_available, 'timing': dict(self.timing),
+            'failure': self.failure, 'clockDiscontinuityDetected': self.work_deadline.clock_changed}
 
 
 def load_config(path, expected_sha, authority_path, authority_sha, *, cleanup_only=False):
@@ -303,11 +348,11 @@ def load_config(path, expected_sha, authority_path, authority_sha, *, cleanup_on
     config = json_bytes(raw)
     require(set(config) == {'version', 'work', 'credentials', 'source', 'capacity', 'target', 'preserved',
         'workSeconds', 'callSeconds', 'pollSeconds', 'cleanupSeconds', 'worker'}, 'hosted_window_config_invalid')
+    require(all(type(config[k]) in (int, float) and math.isfinite(config[k]) for k in
+        ('workSeconds', 'callSeconds', 'pollSeconds', 'cleanupSeconds')), 'hosted_window_bounds_invalid')
     require(config['version'] == 1 and 0 < config['workSeconds'] <= 2700 and
         0 < config['callSeconds'] <= 15 and 0 < config['pollSeconds'] <= 5 and
         0 < config['cleanupSeconds'] <= 900, 'hosted_window_bounds_invalid')
-    require(all(type(config[k]) in (int, float) and math.isfinite(config[k]) for k in
-        ('workSeconds', 'callSeconds', 'pollSeconds', 'cleanupSeconds')), 'hosted_window_bounds_invalid')
     refs = set()
     for role in ('source', 'capacity', 'target', 'preserved'):
         item = dict(config[role]); engine = item.pop('engine')
@@ -345,6 +390,12 @@ def load_config(path, expected_sha, authority_path, authority_sha, *, cleanup_on
         'hosted_window_candidate_changed')
     require(worker['files'] and str(Path(worker['argv'][0]).resolve()) in worker['files'],
         'hosted_window_tools_unpinned')
+    required_pins = {str(Path(sys.executable).resolve()), str(Path(__file__).resolve())}
+    for module in ('hosted_recovery_diagnostics', 'hosted_recovery_capture',
+            'hosted_recovery_target', 'hosted_backup_recovery'):
+        required_pins.add(str(Path(importlib.util.find_spec(
+            'talli_backend.adapters.' + module).origin).resolve()))
+    require(required_pins <= set(worker['files']), 'hosted_window_guardian_source_unpinned')
     for name, pin in worker['files'].items():
         require(Path(name).is_absolute() and hashlib.sha256(Path(name).read_bytes()).hexdigest() == pin,
             'hosted_window_worker_file_changed')
@@ -400,7 +451,10 @@ def main(argv=None):
             'hosted_window_no_guardian_resume')
         from talli_backend.adapters.hosted_backup_recovery import _atomic
         def record(value):
-            _atomic(work / 'guardian.json', value)
+            _atomic(work / 'guardian.json', {**value, 'configSha256': args.expected_config_sha256,
+                'authoritySha256': args.expected_authority_sha256, 'windowId': authority['windowId'],
+                'reviewedCandidate': config['worker']['head'], 'reviewedTree': config['worker']['tree'],
+                'python': sys.version.split()[0], 'monotonicClock': time.get_clock_info('monotonic').implementation})
         supervisor = WindowSupervisor(config, Provider(config['credentials'],
             {**{r: config[r]['project'] for r in ('source', 'capacity', 'target', 'preserved')},
                 'organization': config['target']['organization'], 'cleanupOnly': args.command == 'cleanup'}), record)

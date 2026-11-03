@@ -1,18 +1,21 @@
 """Awake-host enforcement and explicit negative coverage for host loss/suspend."""
 from copy import deepcopy
 import json
+import importlib.util
 import os
 from pathlib import Path
 from hashlib import sha256
 from datetime import datetime, timezone, timedelta
 import signal
 import subprocess
+import struct
 import sys
 import time
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+import httpx
 
 from talli_backend.adapters import hosted_recovery_window as window
 
@@ -148,6 +151,37 @@ def test_record_failure_after_mutation_still_attempts_both_cleanup_actions():
     assert provider.statuses['capacity'] == 'ACTIVE_HEALTHY'
 
 
+def test_lost_pause_response_reconciles_pausing_to_inactive_before_restoration():
+    supervisor, provider, _, _ = setup()
+    original = provider.call
+    pausing_reads = []
+    def transition(action, ref, *, deadline):
+        if action == 'pause' and ref == provider.cfg['capacity']['project']:
+            provider.calls.append((action, ref)); provider.statuses['capacity'] = 'PAUSING'
+            raise window.WindowStopped('hosted_window_provider_call_outcome_unknown')
+        if action == 'get_project' and ref == provider.cfg['capacity']['project'] and provider.statuses['capacity'] == 'PAUSING':
+            pausing_reads.append(True)
+            if len(pausing_reads) == 3: provider.statuses['capacity'] = 'INACTIVE'
+        return original(action, ref, deadline=deadline)
+    provider.call = transition
+    assert supervisor.run(lambda d: pytest.fail('no worker after lost pause'))['cleanupVerified']
+    assert len(pausing_reads) == 3
+    assert provider.calls.count(('resume', provider.cfg['capacity']['project'])) == 1
+
+
+def test_cleanup_retries_a_lost_target_metadata_read_within_reserved_budget():
+    supervisor, provider, _, _ = setup()
+    original = provider.call; failed = []
+    def flaky(action, ref, *, deadline):
+        if supervisor.cleaning and action == 'get_project' and ref == provider.cfg['target']['project'] and not failed:
+            failed.append(True)
+            raise window.WindowStopped('hosted_window_provider_call_outcome_unknown')
+        return original(action, ref, deadline=deadline)
+    provider.call = flaky
+    assert supervisor.run(lambda d: 1)['cleanupVerified']
+    assert failed and provider.calls.count(('pause', provider.cfg['target']['project'])) == 1
+
+
 @pytest.mark.parametrize('drift', [{'name': 'other'}, {'engine': '17.12.0.000'},
     {'organization_id': 'f' * 20}, {'region': 'eu-north-1'}])
 def test_wrong_target_metadata_refuses_before_mutation(drift):
@@ -169,16 +203,65 @@ def test_actual_worker_hang_is_killed_without_agent_turns(tmp_path):
 
 
 def hung_request(pipe, credentials, action, ref, allowed):
+    Path(credentials).write_text('child-started')
     time.sleep(30)
 
 
-def test_actual_provider_child_hang_is_killed(monkeypatch):
-    monkeypatch.setattr(window, '_request', hung_request)
+def partial_request(pipe, credentials, action, ref, allowed):
+    os.write(pipe.fileno(), struct.pack('!i', 1024) + b'x')
+    Path(credentials).write_text('partial-frame-sent')
+    time.sleep(30)
+
+
+def timeout_response(pipe, credentials, action, ref, allowed):
+    from talli_backend.adapters.hosted_recovery_diagnostics import safe_failure
+    failure = safe_failure(httpx.ReadTimeout('PRIVATE_BODY postgresql://user:password@host'))
+    pipe.send_bytes(json.dumps({'ok': False, 'failure': failure}).encode())
+    pipe.close()
+
+
+def test_provider_safe_timeout_category_survives_ipc_and_guardian_record(monkeypatch):
+    from talli_backend.adapters.hosted_recovery_diagnostics import SafeTransportFailure, safe_failure
+    monkeypatch.setattr(window, '_request', timeout_response)
+    with pytest.raises(SafeTransportFailure) as caught:
+        window.Provider('/not-read', {}).call('get_project', 'a' * 20, deadline=window.Deadline(2))
+    diagnostic = safe_failure(caught.value)
+    assert diagnostic['category'] == 'http_timeout'
+    assert 'PRIVATE_BODY' not in json.dumps(diagnostic) and 'password' not in json.dumps(diagnostic)
+    supervisor, provider, _, records = setup()
+    original = provider.call
+    def timeout_on_pause(action, ref, *, deadline):
+        if action == 'pause' and ref == provider.cfg['capacity']['project']:
+            raise caught.value
+        return original(action, ref, deadline=deadline)
+    provider.call = timeout_on_pause
+    assert supervisor.run(lambda d: pytest.fail('no worker'))['failure']['category'] == 'http_timeout'
+    assert records[-1]['failure']['category'] == 'http_timeout'
+
+
+def test_original_deadline_and_failure_survive_bounded_event_ring():
+    supervisor, provider, _, records = setup()
+    def worker(deadline):
+        for _ in range(100): supervisor.emit('bounded.progress')
+        raise window.WindowStopped('hosted_window_worker_deadline')
+    result = supervisor.run(worker)
+    assert result['cleanupVerified']
+    assert len(records[-1]['events']) <= 64
+    assert records[-1]['timing']['windowStartedAtUtc']
+    assert records[-1]['timing']['cleanupAtUtc']
+    assert records[-1]['timing']['cleanupStartedAtUtc']
+    assert records[-1]['failure']['category'] == 'hosted_window_worker_deadline'
+
+
+@pytest.mark.parametrize('request_function', [hung_request, partial_request])
+def test_actual_provider_child_hang_is_killed(monkeypatch, request_function, tmp_path):
+    monkeypatch.setattr(window, '_request', request_function)
     started = time.monotonic()
     with pytest.raises(window.WindowStopped):
-        window.Provider('/not-read', ['a' * 20]).call('get_project', 'a' * 20,
-            deadline=window.Deadline(.15))
-    assert time.monotonic() - started < 2
+        window.Provider(tmp_path / 'started', ['a' * 20]).call('get_project', 'a' * 20,
+            deadline=window.Deadline(2))
+    assert time.monotonic() - started < 3
+    assert (tmp_path / 'started').exists()  # not merely killed during spawn/import
 
 
 def guardian_script(tmp_path, seconds):
@@ -187,22 +270,25 @@ def guardian_script(tmp_path, seconds):
     script = tmp_path / 'guardian.py'
     script.write_text('''import json,pathlib,sys
 from talli_backend.adapters.hosted_recovery_window import *
+from talli_backend.adapters.hosted_backup_recovery import _atomic
 from test_hosted_recovery_window import config,ProviderModel,Clock
 p=pathlib.Path(sys.argv[1]); c=config(); c.update(workSeconds=float(sys.argv[2]),callSeconds=.1,cleanupSeconds=.5,pollSeconds=.01)
 model=ProviderModel(c,Clock())
 def record(value):
- (p/'progress.json').write_text(json.dumps(value))
+ _atomic(p/'progress.json',value)
 s=WindowSupervisor(c,model,record)
 result=s.run(lambda d: bounded_process([sys.executable,'-c','import time;time.sleep(20)'],deadline=d))
-(p/'result.json').write_text(json.dumps(result))
+_atomic(p/'result.json',result)
 ''')
     return [sys.executable, str(script), str(tmp_path), str(seconds)]
 
 
-def wait_file(path, timeout=4):
+def wait_file(path, timeout=4, predicate=lambda value: True):
     until = time.monotonic() + timeout
     while time.monotonic() < until:
-        if path.exists(): return json.loads(path.read_text())
+        if path.exists():
+            value = json.loads(path.read_text())
+            if predicate(value): return value
         time.sleep(.02)
     pytest.fail('local guardian receipt did not arrive')
 
@@ -216,7 +302,8 @@ def test_guardian_survives_actual_coordinator_sigkill(tmp_path, monkeypatch):
         stdout=subprocess.PIPE, text=True)
     guardian_pid = int(coordinator.stdout.readline())
     try:
-        wait_file(tmp_path / 'progress.json')
+        wait_file(tmp_path / 'progress.json', predicate=lambda v:
+            any(e['event'] == 'worker.started' for e in v['events']))
         coordinator.kill(); coordinator.wait(timeout=2)
         result = wait_file(tmp_path / 'result.json')
         assert result['cleanupVerified'] and result['workerExitCode'] is None
@@ -231,7 +318,8 @@ def test_stopped_guardian_cannot_act_until_resumed_negative_coverage(tmp_path, m
     monkeypatch.setenv('PYTHONPATH', os.pathsep.join(sys.path))
     child = window.launch_guardian(guardian_script(tmp_path, .25))
     try:
-        wait_file(tmp_path / 'progress.json')
+        wait_file(tmp_path / 'progress.json', predicate=lambda v:
+            any(e['event'] == 'worker.started' for e in v['events']))
         os.kill(child.pid, signal.SIGSTOP)
         time.sleep(.5)
         assert not (tmp_path / 'result.json').exists()  # no enforcement while stopped
@@ -261,6 +349,10 @@ def reviewed_config(tmp_path):
         'worker': {'argv': [binary, str(script)], 'cwd': str(cwd), 'head': revision('HEAD'),
             'tree': revision('HEAD^{tree}'), 'files': {binary: sha256(Path(binary).read_bytes()).hexdigest(),
                 str(script): sha256(script.read_bytes()).hexdigest()}}}
+    for module in ('hosted_recovery_window', 'hosted_recovery_diagnostics', 'hosted_recovery_capture',
+            'hosted_recovery_target', 'hosted_backup_recovery'):
+        name = str(Path(importlib.util.find_spec('talli_backend.adapters.' + module).origin).resolve())
+        cfg['worker']['files'][name] = sha256(Path(name).read_bytes()).hexdigest()
     def save(path, value):
         path.write_text(json.dumps(value)); path.chmod(0o600)
         return sha256(path.read_bytes()).hexdigest()
@@ -293,6 +385,25 @@ def test_consumed_old_window_receipt_is_not_new_authority(tmp_path):
         window.load_config(path, pin, auth_path, auth_pin)
 
 
+@pytest.mark.parametrize('changed', ['config', 'authority', 'checkout', 'tool', 'expiry', 'cost'])
+def test_start_refuses_changed_pins_checkout_tools_or_authority(tmp_path, changed):
+    cfg, path, pin, auth, auth_path, auth_pin, save = reviewed_config(tmp_path)
+    if changed == 'config':
+        path.write_text(path.read_text() + ' ')
+    elif changed == 'authority':
+        auth_path.write_text(auth_path.read_text() + ' ')
+    elif changed == 'checkout':
+        Path(cfg['worker']['argv'][1]).write_text('changed\n')
+    elif changed == 'tool':
+        cfg['worker']['files'][str(Path(sys.executable).resolve())] = '0' * 64
+        pin = save(path, cfg); auth['configSha256'] = pin; auth_pin = save(auth_path, auth)
+    elif changed == 'expiry':
+        auth['validBeforeUtc'] = '2000-01-01T00:00:00+00:00'; auth_pin = save(auth_path, auth)
+    else:
+        auth['maximumCharge'] = 1; auth_pin = save(auth_path, auth)
+    with pytest.raises(ValueError): window.load_config(path, pin, auth_path, auth_pin)
+
+
 def test_cleanup_only_allows_expired_consumed_authority_with_missing_worker(tmp_path, monkeypatch):
     cfg, path, pin, auth, auth_path, _, save = reviewed_config(tmp_path)
     auth['validBeforeUtc'] = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
@@ -317,9 +428,29 @@ def test_cleanup_transport_refuses_source_preserved_and_target_resume_before_cre
     bindings = {**{r: cfg[r]['project'] for r in ('source', 'capacity', 'target', 'preserved')},
         'organization': cfg['target']['organization'], 'cleanupOnly': True}
     records = []
-    pipe = SimpleNamespace(send=records.append, close=lambda: None)
+    pipe = SimpleNamespace(send_bytes=lambda value: records.append(json.loads(value)), close=lambda: None)
     reads = []
     monkeypatch.setattr(window, 'private_read', lambda *args: reads.append(args) or b'{}')
     window._request(pipe, '/not-read', action, cfg[role]['project'], bindings)
     assert records[-1]['ok'] is False
     assert not reads
+
+
+def test_production_http_adapter_uses_fixed_endpoint_and_retains_safe_http_status(monkeypatch):
+    cfg = config(); responses = []; requests = []
+    bindings = {**{r: cfg[r]['project'] for r in ('source', 'capacity', 'target', 'preserved')},
+        'organization': cfg['target']['organization'], 'cleanupOnly': True}
+    def respond(request):
+        requests.append((request.method, str(request.url)))
+        return httpx.Response(429, text='PRIVATE_SQL_ROW token=PRIVATE_TOKEN')
+    original = httpx.Client
+    monkeypatch.setattr(window.httpx, 'Client', lambda **kwargs:
+        original(transport=httpx.MockTransport(respond), **kwargs))
+    monkeypatch.setattr(window, 'private_read', lambda *args: json.dumps(
+        {'managementToken': 'SYNTHETIC_PRIVATE_TOKEN_LONG_ENOUGH'}).encode())
+    pipe = SimpleNamespace(send_bytes=lambda b: responses.append(json.loads(b)), close=lambda: None)
+    window._request(pipe, '/not-real-credentials', 'resume', cfg['capacity']['project'], bindings)
+    assert requests == [('POST', 'https://api.supabase.com/v1/projects/' + cfg['capacity']['project'] + '/restore')]
+    assert responses[-1]['failure']['httpStatus'] == 429
+    assert responses[-1]['failure']['category'] == 'http_status_error'
+    assert 'PRIVATE_' not in json.dumps(responses)

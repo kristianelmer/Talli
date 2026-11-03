@@ -53,6 +53,10 @@ The reviewed config version1 has exactly these fields:
   contain paths/digests, never secrets. The worker must not daemonize or escape its
   process group. Standard output/error are discarded; use the safe private journal.
 
+The loader requires pins for its own resolved Python executable and the executing
+guardian, diagnostics, target, capture and backup-recovery module files. A worker
+Git head alone does not identify the code of an independently installed guardian.
+
 The new authority version1 has exactly `windowId` (UUID), `configSha256`, an aware
 `validBeforeUtc`, `maximumCharge:0`, `oneAttempt:true`, and this explicit
 `availabilityAcknowledgement`:

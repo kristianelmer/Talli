@@ -47,6 +47,9 @@ def _single_failure(error):
                 break
     elif isinstance(error, httpx.TimeoutException):
         result.update({'class': 'HttpTimeout', 'category': 'http_timeout'})
+    elif isinstance(error, httpx.HTTPStatusError):
+        result.update({'class': 'HttpStatusError', 'category': 'http_status_error',
+            'httpStatus': error.response.status_code})
     elif isinstance(error, httpx.TransportError):
         result.update({'class': 'HttpTransportError', 'category': 'http_transport_failure'})
     elif isinstance(error, OSError):
@@ -66,7 +69,44 @@ def _single_failure(error):
     return result
 
 
+_CLASSES = {'Other', 'OperationalError', 'DatabaseError', 'HttpTimeout', 'HttpStatusError',
+    'HttpTransportError', 'OSError', 'Interrupted', 'ValueError'}
+_CATEGORIES = {label for label, patterns in _SIGNALS} | {'unclassified', 'http_timeout',
+    'http_transport_failure', 'http_status_error', 'os_failure', 'interrupted',
+    'hosted_window_worker_deadline', 'hosted_window_provider_call_deadline',
+    'hosted_window_provider_call_outcome_unknown', 'hosted_window_guardian_signal',
+    'hosted_window_deadline_closed'}
+
+
+def _validated_summary(value, *, allow_causes=True):
+    fallback = {'class': 'Other', 'sqlState': None, 'category': 'unclassified'}
+    if not isinstance(value, dict) or set(value) - {'class', 'sqlState', 'category', 'httpStatus', 'causes'}:
+        return fallback
+    if value.get('class') not in _CLASSES or value.get('category') not in _CATEGORIES:
+        return fallback
+    state = value.get('sqlState')
+    if state is not None and (not isinstance(state, str) or not re.fullmatch('[A-Z0-9]{5}', state)):
+        return fallback
+    result = {'class': value['class'], 'sqlState': state, 'category': value['category']}
+    status = value.get('httpStatus')
+    if type(status) is int and 100 <= status <= 599:
+        result['httpStatus'] = status
+    causes = value.get('causes')
+    if allow_causes and isinstance(causes, list) and len(causes) <= 3:
+        result['causes'] = [_validated_summary(c, allow_causes=False) for c in causes]
+    return result
+
+
+class SafeTransportFailure(Exception):
+    """Only validated code-owned diagnostics may cross the provider IPC seam."""
+    def __init__(self, summary):
+        self.summary = _validated_summary(summary)
+        super().__init__('hosted_transport_failure')
+
+
 def safe_failure(error):
+    if isinstance(error, SafeTransportFailure):
+        return dict(error.summary)
     result = _single_failure(error)
     causes, seen = [], {id(error)}
     current = error

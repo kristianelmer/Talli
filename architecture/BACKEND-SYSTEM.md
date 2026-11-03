@@ -1555,5 +1555,5 @@ remain explicit limitations; no operating SLA or hosted recovery acceptance foll
 See [the guardian runbook](../docs/security/hosted-recovery-window.md).
 
 <!-- architecture-inventory
-{"infrastructure":["hostedRecoveryWindow=>Separately approved detached guardian; one consumed authority and fixed worker, bounded provider processes, target pause and original capacity restoration. Awake-host enforcement only; no host-suspend coverage, provider transition guarantee, SQL containment inference or release acceptance."],"adapterDependencies":["talli_backend.adapters.hosted_recovery_diagnostics","talli_backend.adapters.hosted_recovery_window","contextvars","errno","functools","multiprocessing","signal"]}
+{"infrastructure":["hostedRecoveryWindow=>Separately approved detached guardian; one consumed authority and fixed worker, bounded provider processes, target pause and original capacity restoration. Awake-host enforcement only; no host-suspend coverage, provider transition guarantee, SQL containment inference or release acceptance."],"adapterDependencies":["talli_backend.adapters.hosted_recovery_diagnostics","talli_backend.adapters.hosted_recovery_window","contextvars","errno","functools","multiprocessing","signal","struct","importlib.util"]}
 -->
