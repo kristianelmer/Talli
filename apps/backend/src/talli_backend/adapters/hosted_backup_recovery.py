@@ -29,6 +29,7 @@ from talli_backend.adapters.hosted_recovery_provider import (
     require_policy_authority,
 )
 from talli_backend.adapters.hosted_recovery_managed_initialization import ManagedInitialization
+from talli_backend.adapters.hosted_recovery_diagnostics import RecoveryTrace, boundary, safe_failure, traced
 
 CONTROL = '_talli_recovery'
 MARKER = CONTROL + '.attempt'
@@ -212,6 +213,7 @@ class HostedBackupRecovery:
         if self.initialization is not None:
             self.initialization.verify(db, fresh=fresh)
 
+    @traced('restore.validation')
     def _validate(self, *, capture_required=True):
         if 'providerState' in self.plan_body:
             # An ordinary managed connection cannot attest service isolation or
@@ -296,6 +298,7 @@ class HostedBackupRecovery:
             'hosted_recovery_actor_bound')
         return digest(encoded(rows))
 
+    @traced('database.checkpoint')
     def _prepared_facts(self, db, program, tables):
         """Recompute the quarantine checkpoint without retaining extra access."""
         from talli_backend.adapters.native_managed_handoff import ROLES_SQL
@@ -654,14 +657,18 @@ class HostedBackupRecovery:
             execute_batch(db, GUC.encode())
             if not program.preserve_provider_constraints:
                 db.execute('set session_replication_role=replica')
-            execute_batch(db, program.roles)
-            restore_database_access(db, self.capture.database_access)
-            execute_batch(db, program.schemas)
-            execute_batch(db, program.temporary_create)
-            execute_batch(db, program.definitions)
-            copied = execute_data(db, program.data, self.capture.rows,
-                order_by_foreign_keys=program.preserve_provider_constraints)
-            execute_batch(db, program.post_data)
+            with boundary('database.roles'):
+                execute_batch(db, program.roles)
+                restore_database_access(db, self.capture.database_access)
+            with boundary('database.definitions'):
+                execute_batch(db, program.schemas)
+                execute_batch(db, program.temporary_create)
+                execute_batch(db, program.definitions)
+            with boundary('database.data'):
+                copied = execute_data(db, program.data, self.capture.rows,
+                    order_by_foreign_keys=program.preserve_provider_constraints)
+            with boundary('database.postdata'):
+                execute_batch(db, program.post_data)
             # Include managed sequence counters even though managed table/schema
             # definitions and migration history remain provider-owned.
             for (schema, name), value, called in program.sequences:
@@ -689,7 +696,8 @@ class HostedBackupRecovery:
             # transport identities are explicit differences, not wildcard skips.
             compared = [t for t in self.capture.profile['tables'] if '.'.join(t) in copied or
                 t[0] == 'auth']
-            observed = row_commitments(db, compared)
+            with boundary('database.bytes'):
+                observed = row_commitments(db, compared)
             require(observed == {'.'.join(t): self.capture.rows['.'.join(t)] for t in compared},
                 'hosted_restored_table_bytes_changed')
             execute_batch(db, program.final_memberships)
@@ -734,12 +742,14 @@ class HostedBackupRecovery:
                  self.target.designation.project, json.dumps(metadata)))
             if not program.preserve_provider_constraints:
                 db.execute('set session_replication_role=origin')
-            db.commit()
+            with boundary('database.commit'):
+                db.commit()
             return metadata
 
     def restore(self, *, expected_plan_sha256):
         require(expected_plan_sha256 == self.plan_sha, 'hosted_reviewed_plan_changed')
-        with self._lock(), self._target_command_lock():
+        trace = RecoveryTrace(lambda body: _atomic(self.work / 'diagnostics.json', body))
+        with self._lock(), trace.active(), self._target_command_lock():
             self._validate()
             require(self.capture.database_access is not None, 'hosted_database_acl_profile_required')
             state = self._state(create=True)
@@ -749,7 +759,8 @@ class HostedBackupRecovery:
                     preserve_managed_constraints=True) if self.initialization is not None else \
                     compile_program(self.capture, self.archive)
                 self._save(state, 'database_outcome_pending')
-                metadata = self._restore_database(state, program)
+                with boundary('restore.database'):
+                    metadata = self._restore_database(state, program)
                 if self._owner_staged:
                     ready, metadata = self._policy_ready(state, program)
                     if not ready:
@@ -813,8 +824,8 @@ class HostedBackupRecovery:
                 # Never assert that an unknown commit/upload rolled back. A
                 # subsequent restore reads the durable marker and exact objects;
                 # contain remains available without replaying native DDL.
-                state['lastFailure'] = {'class': type(error).__name__,
-                    'sqlState': getattr(error, 'sqlstate', None), 'phase': state['phase']}
+                state['lastFailure'] = {**safe_failure(error), 'phase': state['phase'],
+                    'diagnosticsFile': 'diagnostics.json'}
                 self._save(state, 'inspection_or_containment_required')
                 raise
 

@@ -1542,3 +1542,18 @@ The opt-in hostedLogicalRecovery operator consumes an independently pinned manag
 <!-- architecture-inventory
 {"infrastructure":["hostedLogicalRecovery=>Explicit operator only; owner-designated fresh target, capture and plan digests, atomic Auth/runtime quarantine, resumable private object restoration; no publication or project lifecycle authority."],"adapterDependencies":["talli_backend.adapters.hosted_backup_recovery","talli_backend.adapters.hosted_recovery_access","talli_backend.adapters.hosted_recovery_capture","talli_backend.adapters.hosted_recovery_operator","talli_backend.adapters.hosted_recovery_sql","talli_backend.adapters.hosted_recovery_target","tempfile","resource","talli_backend.adapters.managed_disposition_binding","talli_backend.adapters.native_managed_handoff"]}
 -->
+
+The separate `talli-recovery-window` guardian consumes a new reviewed authority,
+pins the checkout/configuration/tools, detaches from the coordinator and owns the
+finite provider lifecycle. It bounds provider calls and the worker in disposable
+processes; failure/deadline cleanup pauses only the designated target and restores
+the original capacity project. Cleanup-only recovery cannot launch a worker or
+resume the target. The importer gains bounded privacy-safe phase/error-category
+diagnostics, not provider lifecycle authority. Local enforcement requires an awake
+and available host. Host suspension, guardian loss and provider transition delays
+remain explicit limitations; no operating SLA or hosted recovery acceptance follows.
+See [the guardian runbook](../docs/security/hosted-recovery-window.md).
+
+<!-- architecture-inventory
+{"infrastructure":["hostedRecoveryWindow=>Separately approved detached guardian; one consumed authority and fixed worker, bounded provider processes, target pause and original capacity restoration. Awake-host enforcement only; no host-suspend coverage, provider transition guarantee, SQL containment inference or release acceptance."],"adapterDependencies":["talli_backend.adapters.hosted_recovery_diagnostics","talli_backend.adapters.hosted_recovery_window","contextvars","errno","functools","multiprocessing","signal"]}
+-->

@@ -13,6 +13,7 @@ import httpx
 import psycopg
 
 from talli_backend.adapters.hosted_recovery_capture import digest, private_read, require
+from talli_backend.adapters.hosted_recovery_diagnostics import boundary
 
 
 @dataclass(frozen=True)
@@ -112,14 +113,21 @@ class SupabaseRecoveryTarget:
             'hosted_database_ca_changed')
         # Startup options cover the first identity/preflight query as well as
         # inspect and contain; an import-session SET cannot bound later sessions.
-        with psycopg.connect(**{**self.settings,
-                'options': '-c statement_timeout=240000 -c lock_timeout=10000'}) as db:
+        with boundary('database.connect'):
+            connection = psycopg.connect(**{**self.settings,
+                'options': '-c statement_timeout=240000 -c lock_timeout=10000'})
+        with connection as db:
             db.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
-            db.execute('set role postgres')
-            identity = db.execute("select current_user,current_database(),current_setting('server_version_num')::int").fetchone()
-            require(identity[0:2] == ('postgres', 'postgres') and identity[2] // 10000 == 17,
-                'hosted_database_profile_changed')
+            with boundary('database.identity'):
+                db.execute('set role postgres')
+                identity = db.execute("select current_user,current_database(),current_setting('server_version_num')::int").fetchone()
+                require(identity[0:2] == ('postgres', 'postgres') and identity[2] // 10000 == 17,
+                    'hosted_database_profile_changed')
             yield db
+            # Same commit semantics as the connection context, with the lost
+            # acknowledgement boundary recorded before libpq can block.
+            with boundary('database.commit'):
+                db.commit()
 
     def _storage(self, method, path, *, body=None, content_type=None, json_body=None, public=False):
         headers = {} if public else {'apikey': self._service_key, 'Authorization': 'Bearer ' + self._service_key}
