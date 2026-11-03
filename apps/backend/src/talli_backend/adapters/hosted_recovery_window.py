@@ -279,6 +279,7 @@ class WindowSupervisor:
     def cleanup(self):
         self.cleaning = True
         self.timing['cleanupStartedAtUtc'] = utc(time.time())
+        self.timing['cleanupDeadlineMet'] = self.work_deadline.open() if self.work_deadline is not None else None
         self.emit('cleanup.started')
         deadline = self.deadline_factory(self.config['cleanupSeconds'])
         target_paused = capacity_healthy = False
@@ -401,6 +402,7 @@ class WindowSupervisor:
         return {'workerExitCode': worker_code, **cleanup, 'hostedRecoveryAccepted': False,
             'hostSuspendCovered': False, 'providerTransitionBoundGuaranteed': False,
             'diagnosticsAvailable': self.records_available, 'timing': dict(self.timing),
+            'cleanupDeadlineMet': self.timing['cleanupDeadlineMet'],
             'failure': self.failure, 'clockDiscontinuityDetected': self.work_deadline.clock_changed}
 
 
@@ -556,7 +558,7 @@ def main(argv=None):
                 cwd=config['worker']['cwd'], deadline=deadline))
             _atomic(work / 'result.json', result)
         succeeded = result['cleanupVerified'] and (args.command == 'cleanup' or
-            result['workerExitCode'] == 0 and result['failure'] is None)
+            result['workerExitCode'] == 0 and result['failure'] is None and result['cleanupDeadlineMet'] is True)
         return 0 if succeeded else 1
 
 

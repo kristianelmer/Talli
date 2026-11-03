@@ -339,6 +339,17 @@ def test_original_deadline_and_failure_survive_bounded_event_ring():
     assert records[-1]['failure']['category'] == 'hosted_window_worker_deadline'
 
 
+def test_completed_worker_followed_by_coordinator_delay_does_not_hide_window_overrun():
+    supervisor, provider, clock, records = setup()
+    def delayed_record(value):
+        if value['events'][-1]['event'] == 'worker.finished': clock.advance(100)
+        records.append(deepcopy(value))
+    supervisor.record = delayed_record
+    result = supervisor.run(lambda d: 0)
+    assert result['workerExitCode'] == 0 and result['cleanupVerified']
+    assert result['cleanupDeadlineMet'] is False
+
+
 @pytest.mark.parametrize('request_function', [hung_request, partial_request])
 def test_actual_provider_child_hang_is_killed(monkeypatch, request_function, tmp_path):
     monkeypatch.setattr(window, '_request', request_function)

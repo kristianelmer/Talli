@@ -68,7 +68,10 @@ host-awake-only; no hard outage bound; external availability required for host-l
 This schema binds a human decision; fabricating it is not approval. Old Nov3
 receipts do not satisfy it. A used receipt or existing guardian journal cannot
 start/resume a second attempt. `supervise` returns nonzero on worker failure or
-unverified cleanup; `cleanup` returns nonzero on unverified cleanup. Even exit0
+unverified cleanup, or when cleanup starts after its cutoff; `cleanup` returns
+nonzero on unverified cleanup. `cleanupDeadlineMet` distinguishes timely cleanup
+admission from eventual healthy metadata, including delays after a worker exits.
+Even exit0
 is not a product/recovery verdict.
 
 Provider operations use fixed Supabase Management API GET metadata and POST
