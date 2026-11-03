@@ -235,6 +235,39 @@ def test_cleanup_restart_retains_unresolved_resume_and_never_reissues_it():
     assert not any(a in ('pause', 'resume') for a, r in provider.calls)
 
 
+def test_intent_write_failure_then_lost_response_and_restart_never_repeats_unknown_post():
+    supervisor, provider, clock, _ = setup()
+    provider.statuses['target'] = 'ACTIVE_HEALTHY'
+    key = 'pause:' + provider.cfg['target']['project']
+    durable = []
+    def broken_intent(value):
+        if key in value['pendingMutations']:
+            raise OSError('synthetic private disk failure')
+        durable.append(deepcopy(value))
+    supervisor.record = broken_intent
+    assert not supervisor.cleanup()['cleanupVerified']
+    assert not any(a in ('pause', 'resume') for a, r in provider.calls)
+    assert durable[-1]['pendingMutations'] == {}
+
+    original = provider.call
+    def lost_pause(action, ref, *, deadline):
+        if action == 'pause' and ref == provider.cfg['target']['project']:
+            provider.calls.append((action, ref))
+            raise window.WindowStopped('hosted_window_provider_call_outcome_unknown')
+        return original(action, ref, deadline=deadline)
+    provider.call = lost_pause
+    resumed = window.WindowSupervisor(provider.cfg, provider, lambda v: durable.append(deepcopy(v)),
+        deadline_factory=clock.deadline, sleep=clock.advance)
+    resumed.restore_pending(durable[-1])
+    assert not resumed.cleanup()['cleanupVerified']
+    assert key in durable[-1]['pendingMutations']
+    again = window.WindowSupervisor(provider.cfg, provider, lambda v: durable.append(deepcopy(v)),
+        deadline_factory=clock.deadline, sleep=clock.advance)
+    again.restore_pending(durable[-1])
+    assert not again.cleanup()['cleanupVerified']
+    assert provider.calls.count(('pause', provider.cfg['target']['project'])) == 1
+
+
 @pytest.mark.parametrize('drift', [{'name': 'other'}, {'engine': '17.12.0.000'},
     {'organization_id': 'f' * 20}, {'region': 'eu-north-1'}])
 def test_wrong_target_metadata_refuses_before_mutation(drift):
@@ -428,6 +461,14 @@ def test_launcher_consumes_authority_once_and_uses_importable_detached_module(tm
     assert captured[0][captured[0].index('-m') + 1] == 'talli_backend.adapters.hosted_recovery_window'
     with pytest.raises(FileExistsError): window.main(args)
     assert len(captured) == 1
+
+
+def test_unsupported_python_refuses_before_reading_authority_or_starting_provider(monkeypatch):
+    monkeypatch.setattr(window, 'load_config', lambda *args, **kwargs: pytest.fail('no custody access'))
+    with monkeypatch.context() as scoped:
+        scoped.setattr(window.sys, 'version_info', (3, 9, 6))
+        with pytest.raises(ValueError, match='python_unsupported'):
+            window.main([])
 
 
 def test_consumed_old_window_receipt_is_not_new_authority(tmp_path):

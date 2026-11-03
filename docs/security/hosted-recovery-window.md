@@ -81,6 +81,10 @@ or a delayed resume can bring a currently paused target up later. Unresolved
 mutations prevent cleanup success; no blind duplicate POST is issued. This
 reconciliation assumes one lifecycle owner and the provider's metadata observations;
 it is not a provider transaction receipt or a guarantee against later state changes.
+Mutation intent persistence is mandatory, including cleanup. If private storage
+cannot durably record an intent, that POST is not dispatched. Safe observations
+continue, but restoration may need the independently approved operator/runner;
+best-effort diagnostic logging must never imply a mutation was safely journaled.
 Cleanup stops the worker process group, requests target pause, observes
 INACTIVE, restores capacity, observes its original engine/ACTIVE_HEALTHY and checks
 source/preserved state. It still attempts capacity restoration if target pause

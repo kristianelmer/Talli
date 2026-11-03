@@ -207,7 +207,7 @@ class WindowSupervisor:
         self.cleanup_failures = {}
         self.pending_history_known = True
 
-    def emit(self, event, **values):
+    def emit(self, event, *, durable=False, **values):
         self.events = (self.events + [{'atUtc': utc(time.time()), 'event': event, **values}])[-64:]
         try:
             self.record({'version': 1, 'events': self.events, 'timing': dict(self.timing),
@@ -217,7 +217,7 @@ class WindowSupervisor:
                 'hostSuspendCovered': False, 'sqlContainmentVerified': False})
         except Exception:
             self.records_available = False
-            if not self.cleaning:
+            if durable or not self.cleaning:
                 raise
 
     def call(self, action, ref, deadline):
@@ -232,7 +232,9 @@ class WindowSupervisor:
                 'goal': 'INACTIVE' if action == 'pause' else 'ACTIVE_HEALTHY',
                 'atUtc': utc(time.time()), 'acknowledged': False}
         try:
-            self.emit('provider.request', action=action, project=ref)
+            # Observational diagnostics may fail during cleanup; a mutation's
+            # intent MUST be durable before dispatch, including cleanup POSTs.
+            self.emit('provider.request', durable=action in ('pause', 'resume'), action=action, project=ref)
         except Exception:
             # No transport call has begun; this request is known NOT dispatched.
             if action in ('pause', 'resume'):
@@ -468,6 +470,7 @@ def launch_guardian(argv):
 
 
 def main(argv=None):
+    require((3, 12) <= sys.version_info[:2] < (3, 14), 'hosted_window_python_unsupported')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=('start', 'supervise', 'cleanup'))
     parser.add_argument('--config', required=True)
