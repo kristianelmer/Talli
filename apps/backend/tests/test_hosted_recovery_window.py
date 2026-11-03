@@ -554,6 +554,27 @@ def test_supervisor_cli_does_not_return_success_for_failed_worker_despite_safe_c
     assert result['hostedRecoveryAccepted'] is False
 
 
+@pytest.mark.parametrize('fail', [False, True])
+def test_cli_restores_original_signal_policy_after_normal_and_exception_exit(tmp_path, monkeypatch, fail):
+    cfg, path, pin, auth, auth_path, auth_pin, save = reviewed_config(tmp_path)
+    save(tmp_path / (auth['windowId'] + '.used'), {'configSha256': pin, 'authoritySha256': auth_pin})
+    Path(cfg['work']).mkdir(mode=0o700)
+    provider = ProviderModel(cfg, Clock())
+    if fail:
+        def failed_call(*args, **kwargs): raise RuntimeError('synthetic provider construction failure')
+        provider.call = failed_call
+    monkeypatch.setattr(window, 'Provider', lambda *args: provider)
+    monkeypatch.setattr(window, 'bounded_process', lambda *args, **kwargs: 0)
+    before = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
+    args = ['supervise', '--config', str(path), '--expected-config-sha256', pin,
+        '--authority', str(auth_path), '--expected-authority-sha256', auth_pin]
+    if fail:
+        with pytest.raises(RuntimeError): window.main(args)
+    else:
+        assert window.main(args) == 0
+    assert all(signal.getsignal(s) is handler for s, handler in before.items())
+
+
 @pytest.mark.parametrize('action,role', [('pause', 'source'), ('resume', 'source'),
     ('pause', 'preserved'), ('resume', 'preserved'), ('resume', 'target')])
 def test_cleanup_transport_refuses_source_preserved_and_target_resume_before_credentials(action, role, monkeypatch):

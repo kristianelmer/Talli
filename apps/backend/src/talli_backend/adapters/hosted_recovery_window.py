@@ -4,6 +4,7 @@ Local enforcement requires a running host, this process, network and provider.
 It cannot act during host suspension or guarantee provider recovery latency.
 """
 from dataclasses import dataclass
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import argparse
 import fcntl
@@ -471,6 +472,24 @@ def launch_guardian(argv):
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+@contextmanager
+def _window_signals(supervisor):
+    """Own handlers only while this command runs, including exceptional exits."""
+    def interrupted(signum, frame):
+        if not supervisor.cleaning:
+            raise WindowStopped('hosted_window_guardian_signal')
+    previous = {}
+    try:
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            old = signal.getsignal(signum)
+            signal.signal(signum, interrupted)
+            previous[signum] = old
+        yield
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+
+
 def main(argv=None):
     require((3, 12) <= sys.version_info[:2] < (3, 14), 'hosted_window_python_unsupported')
     parser = argparse.ArgumentParser(description=__doc__)
@@ -543,20 +562,16 @@ def main(argv=None):
         supervisor = WindowSupervisor(config, Provider(config['credentials'],
             {**{r: config[r]['project'] for r in ('source', 'capacity', 'target', 'preserved')},
                 'organization': config['target']['organization'], 'cleanupOnly': args.command == 'cleanup'}), record)
-        def interrupted(signum, frame):
-            if not supervisor.cleaning:
-                raise WindowStopped('hosted_window_guardian_signal')
-        signal.signal(signal.SIGTERM, interrupted)
-        signal.signal(signal.SIGINT, interrupted)
-        if args.command == 'cleanup':
-            supervisor.restore_pending(prior)
-            result = {**supervisor.cleanup(), 'hostedRecoveryAccepted': False,
-                'previousWorkerTerminationVerified': False, 'hostSuspendCovered': False}
-            _atomic(work / ('cleanup-only-' + format(cleanup_sequence, '06d') + '.json'), result)
-        else:
-            result = supervisor.run(lambda deadline: bounded_process(config['worker']['argv'],
-                cwd=config['worker']['cwd'], deadline=deadline))
-            _atomic(work / 'result.json', result)
+        with _window_signals(supervisor):
+            if args.command == 'cleanup':
+                supervisor.restore_pending(prior)
+                result = {**supervisor.cleanup(), 'hostedRecoveryAccepted': False,
+                    'previousWorkerTerminationVerified': False, 'hostSuspendCovered': False}
+                _atomic(work / ('cleanup-only-' + format(cleanup_sequence, '06d') + '.json'), result)
+            else:
+                result = supervisor.run(lambda deadline: bounded_process(config['worker']['argv'],
+                    cwd=config['worker']['cwd'], deadline=deadline))
+                _atomic(work / 'result.json', result)
         succeeded = result['cleanupVerified'] and (args.command == 'cleanup' or
             result['workerExitCode'] == 0 and result['failure'] is None and result['cleanupDeadlineMet'] is True)
         return 0 if succeeded else 1

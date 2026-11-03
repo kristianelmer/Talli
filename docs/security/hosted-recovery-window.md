@@ -106,6 +106,9 @@ prevents a verified-cleanup claim. First safe failures per cleanup boundary surv
 the event ring, alongside the original window deadline/failure. SIGTERM requests
 cleanup of an active guardian; SIGKILL, host loss
 or blocked local storage cannot be handled by that same process.
+SIGINT/SIGTERM handlers are scoped to the command and restored on normal and
+exceptional exits; an in-process invocation cannot leave a later recovery owner
+with a stale cancellation policy.
 
 ## What is actually enforced
 
