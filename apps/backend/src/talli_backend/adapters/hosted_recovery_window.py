@@ -552,7 +552,9 @@ def main(argv=None):
             result = supervisor.run(lambda deadline: bounded_process(config['worker']['argv'],
                 cwd=config['worker']['cwd'], deadline=deadline))
             _atomic(work / 'result.json', result)
-        return 0 if result['cleanupVerified'] else 1
+        succeeded = result['cleanupVerified'] and (args.command == 'cleanup' or
+            result['workerExitCode'] == 0 and result['failure'] is None)
+        return 0 if succeeded else 1
 
 
 if __name__ == '__main__':

@@ -488,6 +488,20 @@ def test_cleanup_only_allows_expired_consumed_authority_with_missing_worker(tmp_
     assert (Path(cfg['work']) / 'cleanup-journal-000002.json').exists()
 
 
+def test_supervisor_cli_does_not_return_success_for_failed_worker_despite_safe_cleanup(tmp_path, monkeypatch):
+    cfg, path, pin, auth, auth_path, auth_pin, save = reviewed_config(tmp_path)
+    save(tmp_path / (auth['windowId'] + '.used'), {'configSha256': pin, 'authoritySha256': auth_pin})
+    Path(cfg['work']).mkdir(mode=0o700)
+    model = ProviderModel(cfg, Clock())
+    monkeypatch.setattr(window, 'Provider', lambda *args: model)
+    monkeypatch.setattr(window, 'bounded_process', lambda *args, **kwargs: 7)
+    assert window.main(['supervise', '--config', str(path), '--expected-config-sha256', pin,
+        '--authority', str(auth_path), '--expected-authority-sha256', auth_pin]) == 1
+    result = json.loads((Path(cfg['work']) / 'result.json').read_text())
+    assert result['workerExitCode'] == 7 and result['cleanupVerified']
+    assert result['hostedRecoveryAccepted'] is False
+
+
 @pytest.mark.parametrize('action,role', [('pause', 'source'), ('resume', 'source'),
     ('pause', 'preserved'), ('resume', 'preserved'), ('resume', 'target')])
 def test_cleanup_transport_refuses_source_preserved_and_target_resume_before_credentials(action, role, monkeypatch):
