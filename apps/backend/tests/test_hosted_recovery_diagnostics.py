@@ -71,3 +71,19 @@ def test_actual_libpq_peer_disconnect_is_classified_without_row_or_credential_te
     assert records[-1]['failure']['category'] == 'connection_closed'
     assert records[-1]['failure']['boundary'] == 'database.connect'
     assert 'PRIVATE_SECRET' not in json.dumps(records)
+
+
+@pytest.mark.parametrize('code',['hosted_remote_ack_unavailable','hosted_arming_pending',
+    'hosted_arming_preflight'])
+def test_fixed_admission_codes_survive_safe_transport_envelope(code):
+    from talli_backend.adapters.hosted_recovery_diagnostics import SafeTransportFailure
+    value=safe_failure(ValueError(code))
+    assert value['category']==code
+    assert safe_failure(SafeTransportFailure(value))==value
+
+
+def test_admission_code_prefix_never_copies_arbitrary_error_text():
+    secret='fixture-private-value'
+    for message in ['hosted_remote_ack_unavailable:'+secret,'hosted_arming_unknown_'+secret]:
+        value=safe_failure(ValueError(message))
+        assert value['category']=='unclassified' and secret not in json.dumps(value)

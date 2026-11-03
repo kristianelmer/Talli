@@ -24,6 +24,16 @@ _SIGNALS = (
     ('connection_reset', ('connection reset by peer',)),
     ('broken_pipe', ('broken pipe',)),
 )
+_OPERATOR_CODES = frozenset({
+    'hosted_window_worker_deadline', 'hosted_window_provider_call_deadline',
+    'hosted_window_provider_call_outcome_unknown', 'hosted_window_guardian_signal',
+    'hosted_window_deadline_closed', 'hosted_remote_ack_unavailable',
+    'hosted_remote_closed', 'hosted_remote_dispatch_cutoff', 'hosted_remote_worker_cutoff',
+    'hosted_arming_invalid', 'hosted_arming_pending', 'hosted_arming_preflight',
+    'hosted_arming_sequence', 'hosted_arming_stale', 'hosted_arming_closed',
+    'hosted_arming_expired', 'hosted_arming_replay', 'hosted_arming_publish_failed',
+    'hosted_arming_persist_failed', 'hosted_arming_consume_failed',
+})
 
 
 def _single_failure(error):
@@ -62,9 +72,7 @@ def _single_failure(error):
         result.update({'class': 'Interrupted', 'category': 'interrupted'})
     elif isinstance(error, ValueError):
         result['class'] = 'ValueError'
-        if str(error) in {'hosted_window_worker_deadline', 'hosted_window_provider_call_deadline',
-                'hosted_window_provider_call_outcome_unknown', 'hosted_window_guardian_signal',
-                'hosted_window_deadline_closed'}:
+        if str(error) in _OPERATOR_CODES:
             result['category'] = str(error)
     return result
 
@@ -75,7 +83,7 @@ _CATEGORIES = {label for label, patterns in _SIGNALS} | {'unclassified', 'http_t
     'http_transport_failure', 'http_status_error', 'os_failure', 'interrupted',
     'hosted_window_worker_deadline', 'hosted_window_provider_call_deadline',
     'hosted_window_provider_call_outcome_unknown', 'hosted_window_guardian_signal',
-    'hosted_window_deadline_closed'}
+    'hosted_window_deadline_closed'} | _OPERATOR_CODES
 
 
 def _validated_summary(value, *, allow_causes=True):

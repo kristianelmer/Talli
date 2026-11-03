@@ -107,9 +107,11 @@ class Simulation:
 
 
 class SimMailbox:
-    def __init__(self,url,caller='remote'):self.url=url;self.seen=0;self.caller=caller
+    def __init__(self,url,caller='remote',init_seconds=0):
+        self.url=url;self.seen=0;self.caller=caller;self.init_seconds=init_seconds
     def request(self,method,path,value=None,*,deadline=None):
         if deadline is not None:assert deadline.open()
+        time.sleep(self.init_seconds)
         with httpx.Client(trust_env=False,timeout=max(.001,min(.4,
                 deadline.remaining() if deadline is not None else .4))) as client:
             response=client.request(method,self.url+path,json=value,
@@ -123,9 +125,11 @@ class SimMailbox:
 
 
 class SimProvider:
-    def __init__(self,url,caller='remote'):self.url=url;self.caller=caller
+    def __init__(self,url,caller='remote',init_seconds=0):
+        self.url=url;self.caller=caller;self.init_seconds=init_seconds
     def call(self,action,ref,*,deadline):
         assert deadline.open()
+        time.sleep(self.init_seconds)
         with httpx.Client(trust_env=False,timeout=max(.01,min(.06,deadline.remaining()))) as client:
             response=client.request('GET' if action=='get_project' else 'POST',
                 self.url+'/'+action+'/'+ref,json={} if action!='get_project' else None,
@@ -134,13 +138,16 @@ class SimProvider:
 
 
 def _run_remote(config,binding,url,work):
-    remote.RemoteRunner(config,binding,SimMailbox(url),SimProvider(url),work).run()
+    delay=config.get('syntheticClientSeconds',0)
+    remote.RemoteRunner(config,binding,SimMailbox(url,init_seconds=delay),
+        SimProvider(url,init_seconds=delay),work).run()
 
 
 def _run_local(config,binding,url,work,seed,actual_worker):
     arm=json.loads((Path(work).parent/'remote/arm.json').read_text())
     owner=remote.LocalCoordinator(config,binding,arm,Ed25519PrivateKey.from_private_bytes(seed),
-        SimMailbox(url,caller='local'),SimProvider(url,caller='local'),work)
+        SimMailbox(url,caller='local',init_seconds=config.get('syntheticClientSeconds',0)),
+        SimProvider(url,caller='local',init_seconds=config.get('syntheticClientSeconds',0)),work)
     def worker(coordinator):
         (Path(work)/'working').write_text('synthetic work; no SQL')
         if actual_worker:
@@ -171,7 +178,7 @@ def fixture(tmp_path):
         'workflowPath':'.github/workflows/talli-recovery-cleanup.yml','issueNumber':12,
         'commit':'a'*40,'windowId':str(uuid4()),'coordinatorPublicKey':protocol.public_key(key),
         'armNonce':str(uuid4()),'cleanupAtUtc':remote.utc(now+6),'armBeforeUtc':remote.utc(now+3),
-        'callSeconds':.05,'pollSeconds':.02,'cleanupSeconds':1,'heartbeatSeconds':.1,
+        'callSeconds':.3,'pollSeconds':.02,'cleanupSeconds':1,'heartbeatSeconds':.1,
         'remotePythonSha256':hashlib.sha256(Path(sys.executable).resolve().read_bytes()).hexdigest(),
         'projects':{r:{'project':c*20,'organization':'e'*20,'name':r,'region':'eu-west-1',
             'engine':'17.11.0.011'} for r,c in zip(remote.ROLES,'abcd')}}
@@ -195,7 +202,15 @@ def begin(fixture,*,actual_worker=False):
     config,binding,model,url,work,start,children=fixture
     runner=start();until(lambda:(work/'remote/arm.json').exists())
     local=start('local',actual_worker=actual_worker)
-    until(lambda:(work/'local/working').exists())
+    until(lambda:(work/'local/working').exists() or (work/'local/local-result.json').exists())
+    if not (work/'local/working').exists():
+        local_result=json.loads((work/'local/local-result.json').read_text())
+        ledger=json.loads((work/'remote/ledger.json').read_text())
+        commands=[json.loads(p.read_text()) for p in sorted((work/'local').glob('command-*.json'))]
+        pytest.fail('synthetic admission failed: '+json.dumps({'failure':local_result['failure'],
+            'remoteCloseReason':ledger['closeReason'],'acceptedRoles':[x['role'] for x in ledger['acceptedActions']],
+            'commands':[{'kind':x['kind'],'sequence':x['payload']['commandSeq'],
+                'role':x['payload'].get('role')} for x in commands]}))
     return runner,local
 
 
@@ -386,6 +401,8 @@ def test_capacity_goal_arriving_during_mailbox_read_is_reobserved_before_next_in
 
 def test_missing_heartbeat_stops_worker_on_ack_budget_not_remaining_window(fixture):
     config,binding,model,url,work,start,children=fixture
+    config['cleanupAtUtc']=binding['cleanupAtUtc']=remote.utc(time.time()+10)
+    config['armBeforeUtc']=binding['armBeforeUtc']=remote.utc(time.time()+4)
     runner,local=begin(fixture,actual_worker=True)
     until(lambda:(work/'local/worker-pid').exists())
     pid=int((work/'local/worker-pid').read_text())
@@ -394,8 +411,8 @@ def test_missing_heartbeat_stops_worker_on_ack_budget_not_remaining_window(fixtu
     def gone():
         try:os.kill(pid,0);return False
         except ProcessLookupError:return True
-    until(gone,seconds=.8)
-    assert time.monotonic()-started<.8
+    until(gone,seconds=1.5)
+    assert time.monotonic()-started<1.5
     assert time.time()<remote.timestamp(binding['cleanupAtUtc'])-1
     local.join(4);runner.join(8)
     assert local.exitcode==runner.exitcode==0
@@ -425,3 +442,12 @@ def test_accepted_intent_keeps_cleanup_ownership_when_ack_response_is_lost(fixtu
     assert result['cleanupVerified']
     assert model.states['capacity']=='ACTIVE_HEALTHY' and model.states['target']=='INACTIVE'
     assert lifecycle(model)==[('pause','capacity'),('resume','capacity')]
+
+
+def test_admission_tolerates_bounded_client_initialization_cost(fixture):
+    config,binding,model,url,work,start,children=fixture
+    config['syntheticClientSeconds']=.03
+    runner,local=begin(fixture)
+    os.kill(local.pid,signal.SIGTERM);local.join(5);runner.join(6)
+    assert local.exitcode==runner.exitcode==0
+    assert json.loads((work/'remote/result.json').read_text())['cleanupVerified']

@@ -99,6 +99,17 @@ jobs:
       - name: Reject restored legacy filing interfaces
         run: node --test tests/company_tax_architecture.test.mjs
 
+      - name: Check independent cleanup protocol offline
+        run: >-
+          uv run --project apps/backend pytest -p no:cacheprovider
+          -c apps/backend/pyproject.toml
+          apps/backend/tests/test_hosted_recovery_arming.py
+          apps/backend/tests/test_hosted_recovery_mailbox.py
+          apps/backend/tests/test_hosted_recovery_remote.py
+          apps/backend/tests/test_hosted_recovery_remote_inputs.py
+          apps/backend/tests/test_hosted_recovery_diagnostics.py
+          -xq
+
       - name: Prove the web-to-FastAPI contract boundary
         run: npm run test:boundary
 
