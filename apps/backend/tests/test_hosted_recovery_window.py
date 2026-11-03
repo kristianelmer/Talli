@@ -575,6 +575,28 @@ def test_cli_restores_original_signal_policy_after_normal_and_exception_exit(tmp
     assert all(signal.getsignal(s) is handler for s, handler in before.items())
 
 
+@pytest.mark.parametrize('cancel_signal', [signal.SIGTERM, signal.SIGINT])
+def test_cancellation_at_handler_installation_restores_both_original_policies(monkeypatch, cancel_signal):
+    original = signal.signal
+    before = {s: signal.getsignal(s) for s in (signal.SIGTERM, signal.SIGINT)}
+    injected = []
+    def install_then_cancel(signum, handler):
+        old = original(signum, handler)
+        if signum == cancel_signal and not injected:
+            injected.append(True)
+            os.kill(os.getpid(), cancel_signal)
+        return old
+    monkeypatch.setattr(window.signal, 'signal', install_then_cancel)
+    try:
+        with pytest.raises(window.WindowStopped):
+            with window._window_signals(SimpleNamespace(cleaning=False)):
+                pytest.fail('installation cancellation admitted work')
+        assert injected
+        assert all(signal.getsignal(s) is handler for s, handler in before.items())
+    finally:
+        for signum, handler in before.items(): original(signum, handler)
+
+
 @pytest.mark.parametrize('action,role', [('pause', 'source'), ('resume', 'source'),
     ('pause', 'preserved'), ('resume', 'preserved'), ('resume', 'target')])
 def test_cleanup_transport_refuses_source_preserved_and_target_resume_before_credentials(action, role, monkeypatch):

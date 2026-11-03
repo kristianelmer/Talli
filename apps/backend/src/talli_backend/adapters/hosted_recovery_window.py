@@ -478,12 +478,11 @@ def _window_signals(supervisor):
     def interrupted(signum, frame):
         if not supervisor.cleaning:
             raise WindowStopped('hosted_window_guardian_signal')
-    previous = {}
+    previous = {s: signal.getsignal(s) for s in (signal.SIGTERM, signal.SIGINT)}
+    require(all(handler is not None for handler in previous.values()), 'hosted_window_signal_policy_unsupported')
     try:
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            old = signal.getsignal(signum)
+        for signum in previous:
             signal.signal(signum, interrupted)
-            previous[signum] = old
         yield
     finally:
         for signum, handler in previous.items():
