@@ -52,6 +52,12 @@ const workflowPath = new URL(
 );
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
 
+function workflowJob(workflow, name) {
+  const section = workflow.split(`\n  ${name}:\n`)[1]?.split(/\n {2}[\w-]+:\n/u)[0];
+  assert.ok(section, `missing workflow job: ${name}`);
+  return section;
+}
+
 test("RF successor registry provides both forward and rollback migration files", () => {
   const layers = JSON.parse(readFileSync(new URL("../scripts/rf-consequential-successors.json", import.meta.url), "utf8"));
   for (const { migration } of layers) {
@@ -286,6 +292,7 @@ const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded'
 const ecrDataLimit = 'Error response from daemon: toomanyrequests: Data limit exceeded';
 const dockerHubSource = tag => `docker.io/library/postgres:${tag}`;
 const ecrDeadline = 'Error response from daemon: Head "https://public.ecr.aws/v2/docker/library/postgres/manifests/17-alpine": Get "https://public.ecr.aws/token/?scope=repository%3Adocker%2Flibrary%2Fpostgres%3Apull&service=public.ecr.aws": context deadline exceeded';
+const ecrHeaderTimeout = 'Error response from daemon: Get "https://public.ecr.aws/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)';
 
 for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
   const { result, calls, sleeps } = runFixturePrefetch({
@@ -304,19 +311,31 @@ test("PostgreSQL fixture prefetch retries the throttled image anonymously then c
   assert.match(result.stderr, /toomanyrequests: Rate exceeded/u);
 });
 
-test("PostgreSQL fixture prefetch retries the observed registry token deadline anonymously", () => {
-  const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": [ecrDeadline] } });
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
-  assert.deepEqual(sleeps, [["5"]]);
-});
-
-test("PostgreSQL fixture prefetch bounds repeated registry token deadlines", () => {
-  const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrDeadline) } });
-  assert.equal(result.status, 23, result.stderr);
-  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
-  assert.deepEqual(sleeps, [["5"], ["10"]]);
-});
+for (const [label, message] of [['registry token deadline', ecrDeadline], ['registry header timeout', ecrHeaderTimeout]]) {
+  test(`PostgreSQL fixture prefetch retries the observed ${label} anonymously`, () => {
+    const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": [message] } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+    assert.deepEqual(sleeps, [["5"]]);
+  });
+  test(`PostgreSQL fixture prefetch bounds repeated ${label}`, () => {
+    const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(message) } });
+    assert.equal(result.status, 23, result.stderr);
+    assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+    assert.deepEqual(sleeps, [["5"], ["10"]]);
+  });
+}
+for (const supabase of [false, true]) {
+  for (const message of [ecrHeaderTimeout + '\nunauthorized', 'manifest unknown\n' + ecrHeaderTimeout]) {
+    test(`registry header timeout never outranks a permanent error (${supabase ? 'Supabase' : 'PostgreSQL'}): ${message.split('\n').at(-1)}`, () => {
+      const image = supabase ? 'public.ecr.aws/supabase/postgres:17.6.1.143' : postgresPrefetchCalls[0][1];
+      const { result, calls, sleeps } = runFixturePrefetch({ supabase, pullFailures: { [image]: [message] } });
+      assert.equal(result.status, 23, result.stderr);
+      assert.deepEqual(calls, [['pull', image]]);
+      assert.deepEqual(sleeps, []);
+    });
+  }
+}
 
 test("PostgreSQL fixture prefetch bounds repeated throttle failures and stops before tagging", () => {
   const { result, calls, sleeps } = runFixturePrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrThrottle) } });
@@ -491,11 +510,22 @@ test('Supabase stack prefetch bounds repeated GHCR throttles and never tags a fa
   assert.equal(result.status,23);assert.deepEqual(calls,[['pull',ecr],...Array(5).fill(['pull',ghcr])]);
   assert.deepEqual(sleeps,[['20'],['40'],['60'],['60']]);
 });
-test('Supabase stack prefetch bounds ECR transport retries without inventing another fallback',()=>{
-  const ecr=supabaseEcr(supabaseStackImages[0]);
-  const {result,calls,sleeps}=runFixturePrefetch({supabase:true,pullFailures:{[ecr]:Array(4).fill(ecrDeadline)}});
-  assert.equal(result.status,23);assert.deepEqual(calls,Array(3).fill(['pull',ecr]));assert.deepEqual(sleeps,[['20'],['40']]);
+for (const [label, message] of [['token deadline', ecrDeadline], ['header timeout', ecrHeaderTimeout]]) {
+  test('Supabase stack prefetch bounds ECR ' + label + ' retries without inventing another fallback', () => {
+    const ecr = supabaseEcr(supabaseStackImages[0]);
+    const { result, calls, sleeps } = runFixturePrefetch({ supabase: true, pullFailures: { [ecr]: Array(4).fill(message) } });
+    assert.equal(result.status, 23); assert.deepEqual(calls, Array(3).fill(['pull', ecr]));
+    assert.deepEqual(sleeps, [['20'], ['40']]);
+  });
+}
+test('Supabase stack prefetch recovers an observed registry header timeout on the same source', () => {
+  const ecr = supabaseEcr(supabaseStackImages[0]);
+  const { result, calls, sleeps } = runFixturePrefetch({ supabase: true, pullFailures: { [ecr]: [ecrHeaderTimeout] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [['pull', ecr], ...supabaseCacheCalls]);
+  assert.deepEqual(sleeps, [['20']]);
 });
+
 for(const fatal of ['unauthorized','manifest unknown','x509: certificate expired','connection refused','unclassified failure']){
   test('Supabase stack prefetch stops on ECR permanent or unknown failure: '+fatal,()=>{
     const ecr=supabaseEcr(supabaseStackImages[0]);
@@ -598,23 +628,25 @@ for(const [name,context] of [
   const result=spawnSync('bash',[script],{encoding:'utf8',env:{...process.env,...context,TALLI_GHCR_JOB_TOKEN:registryJobFixture.token,RUNNER_TEMP:'/unavailable-prefetch-test-directory'}});
   assert.equal(result.status,2);assert.equal(result.stdout,'');assert.match(result.stderr,/designated Actions context/u);assert.doesNotMatch(result.stderr,/mktemp/u);assertNoRegistryJobCredential(result);
  });
-test('registry job credentials are step-scoped and use read-only package permission in exactly two jobs',()=>{
+test('registry job credentials are step-scoped and use read-only package permission in matrix, diagnostic and evidence jobs',()=>{
   const workflow=readFileSync(workflowPath,'utf8');
-  assert.equal(workflow.split('TALLI_GHCR_JOB_TOKEN: ${{ github.token }}').length-1,2);
-  for(const [job,next] of [['database','evidence'],['evidence','release-gate']]){
-    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+  assert.equal(workflow.split('TALLI_GHCR_JOB_TOKEN: ${{ github.token }}').length-1,3);
+  for(const job of ['database','database-diagnostic','evidence']){
+    const section=workflowJob(workflow,job);
     assert.match(section,/permissions:\n\s+contents: read\n\s+packages: read/u);
     assert.match(section,/Prefetch the pinned Supabase local stack\n\s+env:\n\s+TALLI_GHCR_JOB_TOKEN: \$\{\{ github.token \}\}\n\s+run: bash scripts\/prefetch-supabase-fixture-images.sh/u);
     assert.doesNotMatch(section,/packages: write|secrets\.|write-all/u);
   }
 });
 
-test('only the full-stack database and immutable jobs prefetch Supabase before their original aggregates',()=>{
+test('matrix, diagnostic and immutable jobs prefetch Supabase before their isolated or canonical aggregates',()=>{
   const workflow=readFileSync(workflowPath,'utf8'),command='bash scripts/prefetch-supabase-fixture-images.sh';
-  assert.equal(workflow.split(command).length-1,2);
-  for(const [job,next,aggregate] of [['database','evidence','npm run test:supabase:local'],['evidence','release-gate','npm run gate:customer-ready']]){
-    const section=workflow.slice(workflow.indexOf('  '+job+':'),workflow.indexOf('  '+next+':'));
+  assert.equal(workflow.split(command).length-1,3);
+  for(const [job,aggregate] of [['database','bash scripts/test-supabase-local.sh --group "$INTEGRATION_GROUP"'],
+    ['database-diagnostic','npm run test:supabase:local'],['evidence','npm run gate:customer-ready']]){
+    const section=workflowJob(workflow,job);
     assert.ok(section.indexOf(command)>section.indexOf('npm ci'));
+    assert.ok(section.includes(aggregate),`missing aggregate in ${job}`);
     assert.ok(section.indexOf(command)<section.indexOf(aggregate));
   }
 });
@@ -622,14 +654,16 @@ test('only the full-stack database and immutable jobs prefetch Supabase before t
 test("every database-using gate job prefetches the same fixed official PostgreSQL images", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   const command = "bash scripts/prefetch-postgres-fixture-images.sh";
-  assert.equal(workflow.split(command).length - 1, 3);
-  for (const [job, nextJob, aggregate] of [
-    ["application", "database", "npm run test:launch-rehearsal"],
-    ["database", "evidence", "npm run test:supabase:local"],
-    ["evidence", "release-gate", "npm run gate:customer-ready"],
+  assert.equal(workflow.split(command).length - 1, 4);
+  for (const [job, aggregate] of [
+    ["application", "npm run test:launch-rehearsal"],
+    ["database", 'bash scripts/test-supabase-local.sh --group "$INTEGRATION_GROUP"'],
+    ["database-diagnostic", "npm run test:supabase:local"],
+    ["evidence", "npm run gate:customer-ready"],
   ]) {
-    const section = workflow.slice(workflow.indexOf(`  ${job}:`), workflow.indexOf(`  ${nextJob}:`));
+    const section = workflowJob(workflow, job);
     assert.ok(section.includes(command));
+    assert.ok(section.includes(aggregate));
     assert.ok(section.indexOf(command) < section.indexOf(aggregate));
   }
 });
@@ -657,6 +691,13 @@ function initializeTemporaryRepository() {
   return directory;
 }
 
+function installHarnessGitShim(directory, binDirectory) {
+  mkdirSync(join(directory, ".git"));
+  const git = join(binDirectory, "git");
+  writeFileSync(git, '#!/bin/sh\n[ "$*" = "rev-parse --git-path talli-integration.lock" ] || exit 97\nprintf "%s\\n" ".git/talli-integration.lock"\n');
+  chmodSync(git, 0o755);
+}
+
 function createHarnessWorkspace(mode, guideState) {
   const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
   const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
@@ -672,6 +713,7 @@ function createHarnessWorkspace(mode, guideState) {
   mkdirSync(dirname(nextEnvPath), { recursive: true });
   mkdirSync(join(directory, "scripts"));
   mkdirSync(binDirectory);
+  installHarnessGitShim(directory, binDirectory);
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
   writeFileSync(tsconfigPath, "original config\n");
@@ -891,12 +933,12 @@ test("RF10 workflow selection is closed and cannot produce a release verdict", (
   }
   const normalized = "${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}";
   const rehearsal = workflow.split("      - name: Rehearse migrations, RLS, storage, and owner persistence\n")[1]?.split("\n      - name:")[0];
-  const verdict = workflow.split("      - name: Require every readiness job\n")[1];
+  const verdict = workflow.split("      - name: Require every readiness job\n")[1]?.split("\n      - name:")[0];
   assert.ok(rehearsal?.includes(`RF_SCOPE: ${normalized}`));
   assert.ok(verdict?.includes(`RF_SCOPE: ${normalized}`));
   const evidence = workflow.split("  evidence:\n")[1]?.split("\n  release-gate:")[0];
   assert.match(evidence, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.record_evidence && \(inputs\.rf_scope \|\| 'full'\) == 'full' \}\}/u);
-  const script = section => section.split("        run: |\n")[1].split("\n").map(line => line.replace(/^          /u, "")).join("\n");
+  const script = section => section.split("\n      - name:")[0].split("        run: |\n")[1].split("\n").map(line => line.replace(/^          /u, "")).join("\n");
   const dir = mkdtempSync(join(tmpdir(), "talli-rf10-workflow-"));
   try {
     const npm = join(dir, "npm");
@@ -932,7 +974,7 @@ test("RF10 package argv selects only the exact source title and omits unmatched 
   assert.equal(scripts["test:browser-shareholder-register-filing:rf10-diagnostic"], command);
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const start = source.indexOf("const scenarios = [");
-  const boundary = "`, {\n  timeout: 360_000,\n}, async (t) => {";
+  const boundary = "`, {\n  timeout: 360_000,";
   const end = source.indexOf(boundary, start);
   assert.ok(start >= 0 && end > start);
   assert.equal(source.indexOf(boundary, end + 1), -1);
@@ -965,8 +1007,7 @@ test("RF10 package argv selects only the exact source title and omits unmatched 
 
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
-  const databaseJob =
-    workflow.match(/\n  database:[\s\S]*?\n  release-gate:/)?.[0] ?? "";
+  const databaseJob = workflowJob(workflow, "database");
 
   assert.match(databaseJob, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.ok(databaseJob.includes("python -m pip install uv==0.10.2"));
@@ -1071,8 +1112,11 @@ test("database harness restores generated drift and preserves failure semantics"
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else {
         assert.equal(result.status, mode === "command-and-restore-failure" ? 7 : 1, result.stderr);
-        const snapshots = readdirSync(workspace.snapshotDirectory)
-          .map((name) => readFileSync(join(workspace.snapshotDirectory, name), "utf8"))
+        const retained = readdirSync(workspace.snapshotDirectory, { withFileTypes: true });
+        assert.equal(retained.filter(entry => entry.isDirectory() && entry.name.startsWith("talli-supabase-local.")).length, 1,
+          "failed cleanup preserves its owned workdir");
+        const snapshots = retained.filter(entry => entry.isFile())
+          .map((entry) => readFileSync(join(workspace.snapshotDirectory, entry.name), "utf8"))
           .sort();
         assert.deepEqual(snapshots, [
           "original declaration\n", "original config\n",
@@ -1676,6 +1720,7 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existin
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
   try {
    mkdirSync(join(dir,'apps/web'),{recursive:true});mkdirSync(join(dir,'bin'));mkdirSync(join(dir,'snapshots'));
+   installHarnessGitShim(dir,join(dir,'bin'));
    writeFileSync(join(dir,'apps/web/next-env.d.ts'),'original declaration\r\n');
    writeFileSync(join(dir,'apps/web/tsconfig.json'),'original config\r\n');
    if(existingGuides) for(const name of ['AGENTS.md','CLAUDE.md']) writeFileSync(join(dir,'apps/web',name),`original ${name}\r\n`);

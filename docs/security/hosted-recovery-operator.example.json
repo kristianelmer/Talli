@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "designation": {
+    "project": "bbbbbbbbbbbbbbbbbbbb",
+    "organization": "cccccccccccccccccccc",
+    "name": "OWNER-DESIGNATED-UNUSED-RECOVERY-PROJECT",
+    "region": "eu-west-1"
+  },
+  "credentials": "/absolute/private/target-credentials.json",
+  "ca": "/absolute/private/official-database-ca.crt",
+  "caSha256": "REPLACE_WITH_INDEPENDENT_CA_SHA256",
+  "work": "/absolute/private/recovery-work",
+  "pgRestore": "/absolute/path/pg_restore",
+  "capture": {
+    "directory": "/absolute/private/verified-decrypted-capture",
+    "header": "/absolute/private/capture-header.json",
+    "header_sha256": "REPLACE_WITH_INDEPENDENT_HEADER_SHA256",
+    "access": "/absolute/private/source-access-supplement.json",
+    "access_sha256": "REPLACE_WITH_INDEPENDENT_SUPPLEMENT_SHA256"
+  }
+}

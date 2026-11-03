@@ -5,12 +5,21 @@ set -euo pipefail
 # Diagnostic selection is explicit argv only; canonical callers remain full.
 rf10_diagnostic=0
 rf10_fast_diagnostic=0
-if [[ "$#" == "1" && "$1" == "--rf10-diagnostic" ]]; then
+integration_group=""
+integration_focus=""
+if [[ ( "$#" == "2" || "$#" == "4" ) && "$1" == "--group" ]]; then
+  integration_group="$2"
+  if [[ "$#" == "4" ]]; then
+    [[ "$3" == "--phase" && -n "$4" ]] || exit 2
+    integration_focus="$4"
+  fi
+  node scripts/integration-plan.mjs --validate "$integration_group" ${integration_focus:+"$integration_focus"} || exit 2
+elif [[ "$#" == "1" && "$1" == "--rf10-diagnostic" ]]; then
   rf10_diagnostic=1
 elif [[ "$#" == "1" && "$1" == "--rf10-fast-diagnostic" ]]; then
   rf10_fast_diagnostic=1
 elif [[ "$#" != "0" ]]; then
-  printf 'Usage: %s [--rf10-diagnostic|--rf10-fast-diagnostic]\n' "$0" >&2
+  printf 'Usage: %s [--rf10-diagnostic|--rf10-fast-diagnostic|--group NAME [--phase NAME]]\n' "$0" >&2
   exit 2
 fi
 
@@ -25,87 +34,137 @@ export SUPABASE_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 export TALLI_PYTHON_BIN
 
 started_here=0
-isolated_workdir="$(mktemp -d "${TMPDIR:-/tmp}/talli-supabase-local.XXXXXX")"
-next_env_path="apps/web/next-env.d.ts"
-next_env_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-next-env.XXXXXX")"
-tsconfig_path="apps/web/tsconfig.json"
-tsconfig_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-tsconfig.XXXXXX")"
-cp -- "$next_env_path" "$next_env_snapshot"
-cp -- "$tsconfig_path" "$tsconfig_snapshot"
-generated_guide_paths=("apps/web/AGENTS.md" "apps/web/CLAUDE.md")
-generated_guide_snapshots=("" "")
-for guide_index in "${!generated_guide_paths[@]}"; do
-  guide_path="${generated_guide_paths[$guide_index]}"
-  if [[ -e "$guide_path" || -L "$guide_path" ]]; then
-    generated_guide_snapshots[$guide_index]="$(mktemp "${TMPDIR:-/tmp}/talli-next-guide.XXXXXX")"
-    cp -- "$guide_path" "${generated_guide_snapshots[$guide_index]}"
-  fi
-done
+integration_initialized=0
+integration_lock=""
+integration_lock_owned=0
+isolated_workdir=""
+generated_paths=("apps/web/next-env.d.ts" "apps/web/tsconfig.json" "apps/web/AGENTS.md" "apps/web/CLAUDE.md")
+snapshot_prefixes=("talli-next-env" "talli-tsconfig" "talli-next-guide" "talli-next-guide")
+generated_snapshots=("" "" "" "")
+snapshot_valid=(0 0 0 0)
+original_absent=(0 0 0 0)
+generated_files_may_change=0
 
 cleanup() {
   local command_status="$1"
   local cleanup_status=0
+  local finalization_status=0
 
   trap - EXIT
+  if [[ "$integration_initialized" == "1" ]]; then
+    node scripts/run-integration-group.mjs --mark cleanup start || cleanup_status=1
+  fi
 
-  if cp -- "$next_env_snapshot" "$next_env_path"; then
-    unlink "$next_env_snapshot" || cleanup_status=1
-  else
-    printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
-      "$next_env_path" "$next_env_snapshot" >&2
-    cleanup_status=1
-  fi
-  if cp -- "$tsconfig_snapshot" "$tsconfig_path"; then
-    unlink "$tsconfig_snapshot" || cleanup_status=1
-  else
-    printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
-      "$tsconfig_path" "$tsconfig_snapshot" >&2
-    cleanup_status=1
-  fi
-  # Next dev can create these guides in an agent environment. Preserve any
-  # pre-existing file exactly; remove only guides absent before this rehearsal.
-  local guide_index guide_path guide_snapshot
-  for guide_index in "${!generated_guide_paths[@]}"; do
-    guide_path="${generated_guide_paths[$guide_index]}"
-    guide_snapshot="${generated_guide_snapshots[$guide_index]}"
-    if [[ -n "$guide_snapshot" ]]; then
-      if cp -- "$guide_snapshot" "$guide_path"; then
-        unlink "$guide_snapshot" || cleanup_status=1
+  local index path snapshot preserve_snapshot
+  for index in "${!generated_paths[@]}"; do
+    path="${generated_paths[$index]}"
+    snapshot="${generated_snapshots[$index]}"
+    preserve_snapshot=0
+    if [[ "$generated_files_may_change" == "1" ]]; then
+      if [[ "${snapshot_valid[$index]}" == "1" ]]; then
+        if ! cp -- "$snapshot" "$path"; then
+          preserve_snapshot=1
+          cleanup_status=1
+          printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
+            "$path" "$snapshot" >&2
+        fi
+      elif [[ "${original_absent[$index]}" == "1" ]]; then
+        # Only inspected, initially absent guides may be removed.
+        rm -f -- "$path" || cleanup_status=1
       else
-        printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
-          "$guide_path" "$guide_snapshot" >&2
+        # Never overwrite an original with an incomplete or missing backup.
         cleanup_status=1
+        printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
+          "$path" "$snapshot" >&2
       fi
-    else
-      rm -f -- "$guide_path" || cleanup_status=1
+    fi
+    if [[ -n "$snapshot" && "$preserve_snapshot" == "0" ]]; then
+      unlink "$snapshot" || cleanup_status=1
     fi
   done
   if [[ "$started_here" == "1" ]]; then
     npm exec -- supabase stop --workdir "$isolated_workdir" --no-backup >/dev/null \
       || cleanup_status=1
   fi
-  rm -rf -- "$isolated_workdir" || cleanup_status=1
+  if [[ "$cleanup_status" == "0" && -n "$isolated_workdir" ]]; then
+    rm -rf -- "$isolated_workdir" || cleanup_status=1
+  elif [[ "$cleanup_status" != "0" && -n "$isolated_workdir" ]]; then
+    printf 'Owned cleanup incomplete; workdir preserved for inspection.\n' >&2
+  fi
+  if [[ "$integration_initialized" == "1" ]]; then
+    TALLI_CI_GROUP="$integration_group" node scripts/run-integration-group.mjs --finalize "$command_status" "$cleanup_status" || finalization_status=$?
+  fi
+  # The source binding must remain exclusively owned through finalization.
+  if [[ "$integration_lock_owned" == "1" ]]; then
+    if ! rmdir -- "$integration_lock"; then
+      cleanup_status=1
+      if [[ "$integration_initialized" == "1" ]]; then
+        # Unlock failure invalidates any success receipt just published.
+        TALLI_CI_GROUP="$integration_group" node scripts/run-integration-group.mjs --finalize "$command_status" 1 || finalization_status=$?
+      fi
+    fi
+  fi
 
   if [[ "$command_status" != "0" ]]; then
     exit "$command_status"
   fi
 
-  exit "$cleanup_status"
+  if [[ "$cleanup_status" != "0" ]]; then exit "$cleanup_status"; fi
+  exit "$finalization_status"
 }
 
 trap 'cleanup "$?"' EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
+integration_lock="$(git rev-parse --git-path talli-integration.lock)"
+if ! mkdir -- "$integration_lock"; then
+  printf 'A local integration rehearsal already owns this checkout. Use a separate checkout.\n' >&2
+  exit 2
+fi
+integration_lock_owned=1
+if [[ -n "$integration_group" ]]; then
+  if [[ -z "${TALLI_CI_OUTPUT_DIR:-}" ]]; then
+    # --init exclusively creates this absent path; no temp resource precedes it.
+    export TALLI_CI_OUTPUT_DIR="$(cd -- "${TMPDIR:-/tmp}" && pwd -P)/talli-integration-$$-$RANDOM-diagnostics"
+  fi
+  node scripts/run-integration-group.mjs --init "$integration_group" ${integration_focus:+"$integration_focus"}
+  integration_initialized=1
+fi
 
+isolated_workdir="$(mktemp -d "${TMPDIR:-/tmp}/talli-supabase-local.XXXXXX")"
+for index in "${!generated_paths[@]}"; do
+  path="${generated_paths[$index]}"
+  if [[ "$index" -ge 2 && ! -e "$path" && ! -L "$path" ]]; then
+    original_absent[$index]=1
+  else
+    generated_snapshots[$index]="$(mktemp "${TMPDIR:-/tmp}/${snapshot_prefixes[$index]}.XXXXXX")"
+    cp -- "$path" "${generated_snapshots[$index]}"
+    snapshot_valid[$index]=1
+  fi
+done
+generated_files_may_change=1
 node scripts/prepare-isolated-supabase-workdir.mjs "$isolated_workdir"
 # Supabase prints its isolated local development keys on stdout. They are not
 # production secrets, but suppress them so CI and agent logs stay credential-free.
+started_here=1
 npm exec -- supabase start --workdir "$isolated_workdir" \
   --exclude studio,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,edge-runtime,realtime \
   >/dev/null
-started_here=1
 
-eval "$(npm exec -- supabase status --workdir "$isolated_workdir" --output env)"
+supabase_status_env="$(npm exec -- supabase status --workdir "$isolated_workdir" --output env)"
+eval "$supabase_status_env"
+unset supabase_status_env
 local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
 local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+
+if [[ -n "$integration_group" ]]; then
+  export TALLI_SUPABASE_WORKDIR="$isolated_workdir"
+  export TALLI_CI_LOCAL_DATABASE_URL="$DB_URL" TALLI_CI_LOCAL_URL="$API_URL"
+  export TALLI_CI_LOCAL_ANON_KEY="$local_anon_key" TALLI_CI_LOCAL_SERVICE_KEY="$local_service_key"
+  node scripts/run-integration-group.mjs --mark setup success
+  node scripts/run-integration-group.mjs "$integration_group" ${integration_focus:+"$integration_focus"}
+  exit 0
+fi
 
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
 if [[ "$rf10_fast_diagnostic" == "1" ]]; then

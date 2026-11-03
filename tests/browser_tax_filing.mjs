@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -14,12 +15,13 @@ const viewport = connectedViewport();
 
 // Synthetic TT02 metadata only. No authority request, acceptance or production
 // claim: the real owner form/JWT/FastAPI/SQL write the pending imported evidence.
-test("Tax owner imports pending TT02 feedback, recovers a lost response and reads complete scoped history", {timeout:240_000}, async t => {
+test("Tax owner imports pending TT02 feedback, recovers a lost response and reads complete scoped history", {timeout:240_000}, withCiBrowserDiagnostics('tax-filing', async (t, diagnostics) => {
   const fixture=await startTaxBrowserFixture({incomeYear:2025});
   let browser;
-  t.after(async()=>{try{await browser?.close();}finally{await fixture.close();}});
+  t.after(async()=>{try{await diagnostics.finish();await browser?.close();}finally{await fixture.close();}});
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext(viewport.contextOptions),blockedRequests=[];
+  diagnostics.observeContext(context);
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
   const page=await context.newPage();page.setDefaultTimeout(25_000);
   await page.goto(fixture.siteOrigin+'/login');
@@ -121,7 +123,7 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
     });
   }
   assert.deepEqual(blockedRequests,[]);
-});
+}, { variant: viewport.mobile ? 'mobile' : 'desktop' }));
 async function poll(condition) {
   const deadline=Date.now()+25_000;
   while(!condition()){assert.ok(Date.now()<deadline,'fixture condition timed out');await new Promise(resolve=>setTimeout(resolve,25));}

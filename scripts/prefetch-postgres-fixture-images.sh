@@ -26,7 +26,7 @@ fixture_pull_is_transient() {
   if fixture_pull_is_fatal "$1"; then
     return 1
   fi
-  LC_ALL=C grep -Eiq 'toomanyrequests.*rate exceeded|too many requests|TLS handshake timeout|context deadline exceeded|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
+  LC_ALL=C grep -Eiq 'toomanyrequests.*rate exceeded|too many requests|TLS handshake timeout|context deadline exceeded|Client[.]Timeout exceeded while awaiting headers|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
 }
 
 fixture_pull_is_data_limit() {

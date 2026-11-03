@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
@@ -43,7 +44,7 @@ const scenarios = [
 ];
 for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted", recoverSourceCapture = false }] of scenarios.entries()) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
-}, async (t) => {
+}, withCiBrowserDiagnostics('rf-filing', async (t, diagnostics) => {
   const replayTestStarted = performance.now();
   const phase = value => console.info("rf_browser_phase", JSON.stringify({ scenario: scenarioIndex + 1, phase: value }));
   phase("setup");
@@ -62,6 +63,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     resources.requestObservation?.dispose();
     const cleanupErrors = [];
     const attempt = async (operation) => { try { await operation(); } catch (error) { cleanupErrors.push(error); } };
+    await diagnostics.finish();
     await attempt(() => resources.browser?.close());
     await attempt(() => stopOwnedProcess(resources.web));
     await attempt(() => stopOwnedProcess(resources.backend));
@@ -214,6 +216,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     await waitForOwnedReadiness({ process: resources.web, url: siteOrigin });
     resources.browser = await chromium.launch({ headless: true });
     const context = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+    diagnostics.observeContext(context);
     context.rfLowAalObservation = resources.requestObservation;
     captureBrowserHealth(context, health);
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
@@ -462,6 +465,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
 
     phase("outsider-and-unknown-replay");
     const otherContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+    diagnostics.observeContext(otherContext);
     captureBrowserHealth(otherContext, health);
     await installBrowserEgressGuard(otherContext, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const otherPage = await otherContext.newPage();
@@ -578,6 +582,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       for (const state of restoreStorage ? ["retention_hold", "deleted"] : [null]) {
         if (state === "deleted") {
           const reviewContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+          diagnostics.observeContext(reviewContext);
           captureBrowserHealth(reviewContext, health);
           await installBrowserEgressGuard(reviewContext, { blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
           const reviewPage = await reviewContext.newPage();
@@ -644,7 +649,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     // provider body or generated private key is included in fixture output.
     throw new Error(`${error.message}\nweb=${ownedProcessDiagnostics(resources.web)}\nbackend=${ownedProcessDiagnostics(resources.backend)}`, { cause: error });
   }
-});
+}));
 
 function runtimeEnvironment() {
   const result = {};

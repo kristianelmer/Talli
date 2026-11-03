@@ -1534,3 +1534,38 @@ The workspace exposes simulation labels only with `includeSyntheticContext=true`
 -->
 
 The explicit operational artifact `supabase/private-preview/20261029170000_synthetic_tax_current_draft.sql` separately opens only finite, owner-scoped retention of current-reference drafts, with an exact fixture/year/reference wrapper and the existing Company Access eligibility contract. It expires at 2026-10-30 18:00 UTC. It is excluded from ordinary migration/topology application. Temporary migration SET authority is restored within the transaction; persistent grants and memberships remain unchanged. Its companion containment restores the prior closed marker and V2 delegate without deleting originals. Both artifacts require exact target and function identity checks before execution; they grant no submission authority.
+
+## Explicit managed logical recovery operator
+
+The opt-in hostedLogicalRecovery operator consumes an independently pinned managed capture and an explicit fresh Supabase designation. Its separate target-local attempt marker commits with restored data, Auth bans and disabled runtime logins; it is not company content or a runtime-composed capability. Private Storage restoration resumes by exact readback. The command has no publication, project lifecycle, scheduler or release-signoff authority. Native disposition bundles retain their existing replay contract. ADR0012 ownership and the existing deletion-recovery boundary remain unchanged. See the backup runbook for the supported profile and cleanup.
+
+<!-- architecture-inventory
+{"infrastructure":["hostedLogicalRecovery=>Explicit operator only; owner-designated fresh target, capture and plan digests, atomic Auth/runtime quarantine, resumable private object restoration; no publication or project lifecycle authority."],"adapterDependencies":["talli_backend.adapters.hosted_backup_recovery","talli_backend.adapters.hosted_recovery_access","talli_backend.adapters.hosted_recovery_capture","talli_backend.adapters.hosted_recovery_operator","talli_backend.adapters.hosted_recovery_sql","talli_backend.adapters.hosted_recovery_target","tempfile","resource","talli_backend.adapters.managed_disposition_binding","talli_backend.adapters.native_managed_handoff"]}
+-->
+
+The separate `talli-recovery-window` guardian consumes a new reviewed authority,
+pins the checkout/configuration/tools, detaches from the coordinator and owns the
+finite provider lifecycle. It bounds provider calls and the worker in disposable
+processes; failure/deadline cleanup pauses only the designated target and restores
+the original capacity project. Cleanup-only recovery cannot launch a worker or
+resume the target. The importer gains bounded privacy-safe phase/error-category
+diagnostics, not provider lifecycle authority. Local enforcement requires an awake
+and available host. Host suspension, guardian loss and provider transition delays
+remain explicit limitations; no operating SLA or hosted recovery acceptance follows.
+See [the guardian runbook](../docs/security/hosted-recovery-window.md).
+
+<!-- architecture-inventory
+{"infrastructure":["hostedRecoveryWindow=>Separately approved detached guardian; one consumed authority and fixed worker, bounded provider processes, target pause and original capacity restoration. Awake-host enforcement only; no host-suspend coverage, provider transition guarantee, SQL containment inference or release acceptance."],"adapterDependencies":["talli_backend.adapters.hosted_recovery_diagnostics","talli_backend.adapters.hosted_recovery_window","contextvars","errno","functools","multiprocessing","signal","struct","importlib.util"]}
+-->
+
+## Independent cleanup arming preparation
+
+The independent protocol remains outside FastAPI. Its workflow is an inactive
+metadata-only template under docs/security/workflows. Local commands require a
+fresh signed remote acknowledgement and durable one-use consumption. Only the
+remote owner performs cleanup; mailbox-only reconstruction retains unknown
+history. See [the protocol runbook](../docs/security/independent-recovery-cleanup.md).
+
+<!-- architecture-inventory
+{"infrastructure":["hostedRecoveryArming=>Inactive independent cleanup preparation: signed authority/config/commit/run/job/deadline arming, durable remote intent acknowledgement and exclusive local consumption before dispatch. Separate cleanup owner survives local coordinator process loss in loopback simulations. Metadata-only workflow template is not deployed; mailbox reconstruction alone cannot prove complete pending history and permits observation only. GitHub/runner availability, provider transition time, SQL containment and hosted acceptance remain unproved."],"adapterDependencies":["copy","zipfile","cryptography.exceptions","cryptography.hazmat.primitives.asymmetric.ed25519","talli_backend.adapters.hosted_recovery_arming","talli_backend.adapters.hosted_recovery_mailbox","talli_backend.adapters.hosted_recovery_remote"]}
+-->

@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -14,12 +15,13 @@ const viewport = connectedViewport();
 
 // Exercise the real owner form/JWT/FastAPI/restricted SQL boundary using retained
 // synthetic TT02 metadata. No signing or authority request is performed.
-test("Accounts owner imports pending evidence, records controls and reads scoped source history", { timeout: 240_000 }, async t => {
+test("Accounts owner imports pending evidence, records controls and reads scoped source history", { timeout: 240_000 }, withCiBrowserDiagnostics('accounts-filing', async (t, diagnostics) => {
   const fixture = await startTaxBrowserFixture({ incomeYear: 2025 });
   let browser;
-  t.after(async () => { try { await browser?.close(); } finally { await fixture.close(); } });
+  t.after(async () => { try { await diagnostics.finish(); await browser?.close(); } finally { await fixture.close(); } });
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext(viewport.contextOptions), blockedRequests = [];
+  diagnostics.observeContext(context);
   await installBrowserEgressGuard(context, { approvalEnabled: false, blockedRequests, mockBaseUrl: fixture.siteOrigin });
   const page = await context.newPage();
   page.setDefaultTimeout(25_000);
@@ -134,7 +136,7 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
     });
   }
   assert.deepEqual(blockedRequests, []);
-});
+}, { variant: viewport.mobile ? 'mobile' : 'desktop' }));
 
 async function poll(condition) {
   const deadline = Date.now() + 25_000;

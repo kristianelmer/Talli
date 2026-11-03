@@ -1,3 +1,4 @@
+import { withCiBrowserDiagnostics } from "./support/ci-browser-diagnostics.mjs";
 import assert from "node:assert/strict";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -39,7 +40,7 @@ const anonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const databaseUrl = process.env.DATABASE_URL;
 
-test("browser owner annual loop uses persisted state and survives reload", async (t) => {
+test("browser owner annual loop uses persisted state and survives reload", withCiBrowserDiagnostics('owner-annual', async (t, diagnostics) => {
   if (!supabaseUrl || !serviceRoleKey || !anonKey || !databaseUrl) {
     t.skip("Supabase env missing");
     return;
@@ -75,6 +76,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     storageKeys: [],
   };
   t.after(async () => {
+    await diagnostics.finish();
     const cleanupErrors = await cleanupBrowserOwnerResources(resources);
     const failure = cleanupFailure(resources.primaryFailure, cleanupErrors);
     if (cleanupErrors.length > 0 && resources.primaryFailure) {
@@ -205,6 +207,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
     resources.browser = await chromium.launch({ headless: true });
     const page = await resources.browser.newPage();
+    diagnostics.observePage(page);
 
     // The public landing page moved to `/` in #90; authentication is a distinct
     // route and the browser rehearsal must exercise the real login surface.
@@ -368,7 +371,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     resources.primaryFailure = diagnostics;
     throw diagnostics;
   }
-});
+}));
 
 async function seedSupportedInvestmentYear(
   database,

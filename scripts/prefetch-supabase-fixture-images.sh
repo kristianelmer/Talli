@@ -44,7 +44,7 @@ fixture_data_limit() {
 }
 fixture_transient() {
   ! fixture_fatal "$1" && ! fixture_data_limit "$1" &&
-    LC_ALL=C grep -Eiq 'toomanyrequests|too many requests|TLS handshake timeout|context deadline exceeded|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
+    LC_ALL=C grep -Eiq 'toomanyrequests|too many requests|TLS handshake timeout|context deadline exceeded|Client[.]Timeout exceeded while awaiting headers|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
 }
 fixture_docker() {
   local remaining="$((fixture_budget - (SECONDS - fixture_started)))"
